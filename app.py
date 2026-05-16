@@ -68,23 +68,24 @@ CHURCHGATE_PORTFOLIO = [
 ]
 
 # ============ CUSTOM CSS ============
-st.markdown(f"""
+st.markdown("""
 <style>
-    .stApp {{
+    .stApp {
         background: #f5f5f5;
-    }}
+    }
     
-     [data-testid="stSidebar"] {
+    [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #2d2d2d 0%, #3d3d3d 100%) !important;
         border-right: 3px solid #CC0000;
     }
     
     [data-testid="stSidebar"] * {
         color: #ffffff !important;
-        -webkit-text-fill-color: #ffffff !important;
     }
     
-    [data-testid="stSidebar"] .st-emotion-cache-1qg05tj {
+    [data-testid="stSidebar"] .stButton > button {
+        background: rgba(204, 0, 0, 0.3) !important;
+        border: 1px solid #CC0000 !important;
         color: #ffffff !important;
     }
     
@@ -111,120 +112,120 @@ st.markdown(f"""
         font-weight: 700 !important;
     }
     
-    .churchgate-header {{
+    .churchgate-header {
         background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
         padding: 1.5rem 2rem;
         border-radius: 10px;
         margin-bottom: 2rem;
-        border-left: 4px solid {CHURCHGATE_RED};
-    }}
+        border-left: 4px solid #CC0000;
+    }
     
-    .churchgate-header h1 {{
+    .churchgate-header h1 {
         color: white;
         font-size: 2rem;
         font-weight: 700;
         margin: 0;
-    }}
+    }
     
-    .churchgate-header p {{
+    .churchgate-header p {
         color: #cccccc;
         font-size: 0.95rem;
         margin-top: 0.5rem;
-    }}
+    }
     
-    .metric-card {{
+    .metric-card {
         background: white;
         padding: 1.5rem;
         border-radius: 10px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         transition: all 0.3s ease;
         text-align: center;
-        border-top: 3px solid {CHURCHGATE_RED};
-    }}
+        border-top: 3px solid #CC0000;
+    }
     
-    .metric-card:hover {{
+    .metric-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 10px 25px rgba(204, 0, 0, 0.15);
-    }}
+    }
     
-    .metric-value {{
+    .metric-value {
         font-size: 2rem;
         font-weight: 700;
         color: #1a1a1a;
-    }}
+    }
     
-    .metric-label {{
+    .metric-label {
         color: #666666;
         font-size: 0.85rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-    }}
+    }
     
-    .stButton > button {{
-        background: linear-gradient(135deg, {CHURCHGATE_RED} 0%, #ff1a1a 100%) !important;
+    .stButton > button {
+        background: linear-gradient(135deg, #CC0000 0%, #ff1a1a 100%) !important;
         color: white !important;
         border: none !important;
         padding: 0.6rem 1.5rem !important;
         border-radius: 6px !important;
         font-weight: 600 !important;
-    }}
+    }
     
-    .stButton > button:hover {{
+    .stButton > button:hover {
         transform: translateY(-2px) !important;
         box-shadow: 0 6px 20px rgba(204, 0, 0, 0.3) !important;
-    }}
+    }
     
-    .mission-banner {{
+    .mission-banner {
         background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
         color: white;
         padding: 2rem;
         border-radius: 10px;
         text-align: center;
         margin: 2rem 0;
-        border: 2px solid {CHURCHGATE_RED};
-    }}
+        border: 2px solid #CC0000;
+    }
     
-    .mission-banner h2 {{
-        color: {CHURCHGATE_RED};
+    .mission-banner h2 {
+        color: #CC0000;
         font-size: 1.5rem;
-    }}
+    }
     
-    .value-card {{
+    .value-card {
         background: white;
         padding: 1rem;
         border-radius: 8px;
         text-align: center;
-        border-bottom: 3px solid {CHURCHGATE_RED};
+        border-bottom: 3px solid #CC0000;
         height: 100%;
-    }}
+    }
     
-    .tier-1-badge {{
+    .tier-1-badge {
         background: #38a169;
         color: white;
         padding: 0.4rem 0.8rem;
         border-radius: 20px;
         font-weight: 700;
-    }}
+    }
     
-    .tier-2-badge {{
+    .tier-2-badge {
         background: #d69e2e;
         color: #1a1a1a;
         padding: 0.4rem 0.8rem;
         border-radius: 20px;
         font-weight: 700;
-    }}
+    }
     
-    .tier-3-badge {{
-        background: {CHURCHGATE_RED};
+    .tier-3-badge {
+        background: #CC0000;
         color: white;
         padding: 0.4rem 0.8rem;
         border-radius: 20px;
         font-weight: 700;
-    }}
+    }
     
-    .status-active {{ background: #38a169; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }}
-    .status-pending {{ background: #d69e2e; color: #1a1a1a; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }}
-    .status-at-risk {{ background: {CHURCHGATE_RED}; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }}
+    .status-active { background: #38a169; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
+    .status-pending { background: #d69e2e; color: #1a1a1a; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
+    .status-at-risk { background: #CC0000; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
 </style>
 """, unsafe_allow_html=True)
 
