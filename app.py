@@ -661,10 +661,10 @@ def employee_management():
         c1, c2, c3 = st.columns(3)
         with c1:
             single_email = st.text_input("Employee Email", placeholder="eetuk@churchgate.com", key="single_email")
-            single_email = st.text_input("Employee Email", placeholder="eetuk@churchgate.com", key="single_email")
-            single_name = st.text_input("Full Name", placeholder="Emmanuel Etuk", key="single_name")
+            single_email = st.text_input("Employee Email", placeholder="eetuk@churchgate.com", key="single_email2")
+            single_name = st.text_input("Full Name", placeholder="Emmanuel Etuk", key="single_name2")
         with c2:
-            single_password = st.text_input("Password", value="churchgate2026", key="single_pw")
+            single_password = st.text_input("Password", value="churchgate2026", key="single_pw2")
             single_role = st.selectbox("Role", ["Admin", "HR Director", "Manager", "Employee"], index=0, key="single_role")
         with c3:
             single_dept = st.selectbox("Department", ["Senior Management", "Technology Group", "Facility Management", "Human Resources", "Sales & Marketing", "Accounts & Finance", "Procurement", "Security", "Legal", "Operations"], key="single_dept")
