@@ -298,6 +298,8 @@ class DatabaseManager:
             ('Operations', 'OPS', None, 'Operations & Logistics'),
             ('Legal', 'LEGAL', None, 'Legal & Compliance'),
             ('Customer Service', 'CS', None, 'Customer Experience'),
+            ('ELV Systems', 'ELV', None, 'ELV Systems & Technology'),
+            ('MEP', 'MEP', None, 'Mechanical, Electrical & Plumbing'),
         ]
         cursor.executemany('''
             INSERT OR IGNORE INTO departments (name, code, head_id, description)
@@ -328,6 +330,13 @@ class DatabaseManager:
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', ('EMP003', 'John Doe', 'john@churchgate.com', hm_password, 'Hiring Manager', 'Engineering', 'Senior Developer'))
             
+            # ELV Head
+            elv_password = hashlib.sha256("elv123".encode()).hexdigest()
+            cursor.execute('''
+                INSERT INTO users (employee_id, name, email, password, role, department, position)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ('EMP010', 'Emmanuel Etuk', 'emmanuel@churchgate.com', elv_password, 'Manager', 'ELV Systems', 'Head, ELV Systems'))
+            
             # Sample Employees
             sample_employees = [
                 ('EMP004', 'Jane', 'Smith', 'jane@churchgate.com', '+234801234568', 'Marketing', 'Marketing Manager', 'Manager', 'Full-time', '2021-06-20'),
@@ -335,6 +344,7 @@ class DatabaseManager:
                 ('EMP006', 'David', 'Brown', 'david@churchgate.com', '+234801234570', 'Sales', 'Sales Lead', 'Manager', 'Full-time', '2022-11-30'),
                 ('EMP007', 'Lisa', 'Anderson', 'lisa@churchgate.com', '+234801234571', 'Operations', 'Operations Manager', 'Manager', 'Full-time', '2020-05-15'),
                 ('EMP008', 'James', 'Wilson', 'james@churchgate.com', '+234801234572', 'Engineering', 'Backend Developer', 'Senior', 'Full-time', '2022-08-01'),
+                ('EMP009', 'Emmanuel', 'Etuk', 'emmanuel.etuk@churchgate.com', '+234801234573', 'ELV Systems', 'Head, ELV Systems', 'Manager', 'Full-time', '2019-01-02'),
             ]
             cursor.executemany('''
                 INSERT INTO employees (employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date)
@@ -402,6 +412,21 @@ class DatabaseManager:
         employee = dict(row) if row else None
         conn.close()
         return employee
+    
+    def get_employee_by_user_id(self, user_id):
+        """Get employee linked to a user account"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT employee_id FROM users WHERE id = ?", (user_id,))
+        user_row = cursor.fetchone()
+        if user_row and user_row['employee_id']:
+            cursor.execute("SELECT * FROM employees WHERE employee_id = ?", (user_row['employee_id'],))
+            row = cursor.fetchone()
+            employee = dict(row) if row else None
+            conn.close()
+            return employee
+        conn.close()
+        return None
     
     def add_employee(self, employee_data):
         conn = self.get_connection()
