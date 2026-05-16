@@ -636,7 +636,31 @@ def employee_management():
         st.markdown("---")
         st.markdown("### ⚡ Create Single Employee Account (with Email)")
         c1, c2, c3 = st.columns(3)
+        with c1:st.markdown("---")
+        st.markdown("### 🔄 Reset Existing User Password")
+        rc1, rc2 = st.columns([2, 1])
+        with rc1:
+            reset_email = st.text_input("User Email to Reset", placeholder="eetuk@churchgate.com", key="reset_email")
+        with rc2:
+            reset_password = st.text_input("New Password", value="churchgate2026", key="reset_pw")
+        if st.button("🔄 Reset Password", use_container_width=True):
+            if reset_email:
+                hashed_pw = hashlib.sha256(reset_password.encode()).hexdigest()
+                conn = db.get_connection()
+                cursor = conn.cursor()
+                cursor.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, reset_email))
+                conn.commit()
+                conn.close()
+                st.success(f"✅ Password reset for {reset_email}!")
+                st.info(f"New password: **{reset_password}**")
+            else:
+                st.warning("Please enter an email address.")
+        
+        st.markdown("---")
+        st.markdown("### ⚡ Create Single Employee Account (with Email)")
+        c1, c2, c3 = st.columns(3)
         with c1:
+            single_email = st.text_input("Employee Email", placeholder="eetuk@churchgate.com", key="single_email")
             single_email = st.text_input("Employee Email", placeholder="eetuk@churchgate.com", key="single_email")
             single_name = st.text_input("Full Name", placeholder="Emmanuel Etuk", key="single_name")
         with c2:
