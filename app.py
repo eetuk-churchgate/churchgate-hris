@@ -67,102 +67,96 @@ CHURCHGATE_PORTFOLIO = [
     "Ocean Terrace"
 ]
 
-# ============ CUSTOM CSS - MATCHING BRS APP STYLE ============
+# ============ CUSTOM CSS ============
 st.markdown("""
 <style>
     .stApp {
-        background: #ffffff;
+        background: #f0f2f6;
     }
     
     section[data-testid="stSidebar"] {
-        background-color: #f8f9fa !important;
-        border-right: 1px solid #e0e0e0 !important;
+        background-color: #2d3748 !important;
     }
     
-    section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] p,
-    section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] span,
-    section[data-testid="stSidebar"] label,
-    section[data-testid="stSidebar"] button {
-        color: #333333 !important;
+    section[data-testid="stSidebar"] * {
+        color: #e2e8f0 !important;
     }
     
-    section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj,
-    section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj span,
-    section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj p,
-    section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj div {
-        color: #333333 !important;
+    section[data-testid="stSidebar"] .stButton > button {
+        background-color: #4a5568 !important;
+        border: 1px solid #718096 !important;
+        color: #e2e8f0 !important;
     }
     
     section[data-testid="stSidebar"] .nav-link {
-        color: #333333 !important;
+        color: #e2e8f0 !important;
     }
     
     section[data-testid="stSidebar"] .nav-link span {
-        color: #333333 !important;
+        color: #e2e8f0 !important;
+        font-size: 14px !important;
     }
     
     section[data-testid="stSidebar"] .nav-link svg {
-        color: #CC0000 !important;
+        color: #fc8181 !important;
     }
     
     section[data-testid="stSidebar"] .nav-link-selected {
-        background-color: #fff0f0 !important;
-        border-left: 3px solid #CC0000 !important;
+        background-color: #4a5568 !important;
+        border-left: 3px solid #fc8181 !important;
     }
     
     section[data-testid="stSidebar"] .nav-link-selected span {
-        color: #CC0000 !important;
+        color: #ffffff !important;
         font-weight: 700 !important;
     }
     
     .churchgate-header {
         background: white;
         padding: 1.5rem 2rem;
-        border-radius: 10px;
-        margin-bottom: 2rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
         border-left: 4px solid #CC0000;
-        border: 1px solid #e0e0e0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     
     .churchgate-header h1 {
         color: #1a1a1a;
-        font-size: 2rem;
+        font-size: 1.8rem;
         font-weight: 700;
         margin: 0;
     }
     
     .churchgate-header p {
-        color: #666666;
-        font-size: 0.95rem;
-        margin-top: 0.5rem;
+        color: #666;
+        font-size: 0.9rem;
+        margin-top: 0.3rem;
     }
     
     .metric-card {
         background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        transition: all 0.3s ease;
+        padding: 1.2rem;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         text-align: center;
         border: 1px solid #e0e0e0;
+        transition: all 0.2s ease;
     }
     
     .metric-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(204, 0, 0, 0.1);
-        border-color: #CC0000;
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     }
     
     .metric-value {
-        font-size: 2rem;
+        font-size: 1.8rem;
         font-weight: 700;
         color: #1a1a1a;
     }
     
     .metric-label {
-        color: #666666;
-        font-size: 0.85rem;
+        color: #666;
+        font-size: 0.8rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -171,46 +165,43 @@ st.markdown("""
         background: #CC0000 !important;
         color: white !important;
         border: none !important;
-        padding: 0.6rem 1.5rem !important;
+        padding: 0.5rem 1rem !important;
         border-radius: 6px !important;
         font-weight: 600 !important;
     }
     
     .stButton > button:hover {
         background: #aa0000 !important;
-        box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3) !important;
     }
     
     .mission-banner {
         background: white;
-        padding: 2rem;
-        border-radius: 10px;
+        padding: 1.5rem;
+        border-radius: 8px;
         text-align: center;
-        margin: 2rem 0;
+        margin: 1.5rem 0;
         border: 2px solid #CC0000;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     
     .mission-banner h2 {
         color: #CC0000;
-        font-size: 1.5rem;
+        font-size: 1.3rem;
     }
     
     .value-card {
         background: white;
-        padding: 1rem;
-        border-radius: 8px;
+        padding: 0.8rem;
+        border-radius: 6px;
         text-align: center;
         border: 1px solid #e0e0e0;
-        height: 100%;
     }
     
-    .tier-1-badge { background: #38a169; color: white; padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: 700; }
-    .tier-2-badge { background: #d69e2e; color: #1a1a1a; padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: 700; }
-    .tier-3-badge { background: #CC0000; color: white; padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: 700; }
-    .status-active { background: #38a169; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
-    .status-pending { background: #d69e2e; color: #1a1a1a; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
-    .status-at-risk { background: #CC0000; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
+    .tier-1-badge { background: #38a169; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.8rem; }
+    .tier-2-badge { background: #d69e2e; color: #1a1a1a; padding: 0.3rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.8rem; }
+    .tier-3-badge { background: #CC0000; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.8rem; }
+    .status-active { background: #38a169; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
+    .status-pending { background: #d69e2e; color: #1a1a1a; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
+    .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
 </style>
 """, unsafe_allow_html=True)
 
