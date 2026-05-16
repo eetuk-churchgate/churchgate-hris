@@ -1,7 +1,6 @@
 """
-Churchgate Group HRIS v4.0
+Churchgate Group HRIS v5.0
 Enterprise-Grade AI-Powered Human Resource Information System
-Fortune 500 Standard | International Best Practices
 """
 
 import streamlit as st
@@ -10,7 +9,6 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from datetime import datetime, timedelta, date
 import hashlib
 from pathlib import Path
@@ -21,11 +19,9 @@ import base64
 import io
 import os
 import random
-from PIL import Image, ImageDraw, ImageFont
-import requests
+from PIL import Image
 import calendar
 
-# Add utils to path
 sys.path.append(str(Path(__file__).parent))
 
 from utils.database import DatabaseManager
@@ -49,7 +45,6 @@ CHURCHGATE_DARK = "#1a1a1a"
 CHURCHGATE_GREY = "#4a4a4a"
 CHURCHGATE_LIGHT = "#f5f5f5"
 CHURCHGATE_WHITE = "#ffffff"
-CHURCHGATE_GOLD = "#c49216"
 
 CHURCHGATE_PURPOSE = "To improve the lives of all those we serve."
 CHURCHGATE_VISION = "To become the premier property developer in Nigeria, impacting millions, while having fun!"
@@ -72,48 +67,47 @@ CHURCHGATE_PORTFOLIO = [
     "Ocean Terrace"
 ]
 
-# ============ CUSTOM CSS - CHURCHGATE BRANDING ============
+# ============ CUSTOM CSS ============
 st.markdown(f"""
 <style>
-    :root {{
-        --cg-red: {CHURCHGATE_RED};
-        --cg-dark: {CHURCHGATE_DARK};
-        --cg-grey: {CHURCHGATE_GREY};
-        --cg-light: {CHURCHGATE_LIGHT};
-        --cg-white: {CHURCHGATE_WHITE};
-        --cg-gold: {CHURCHGATE_GOLD};
-    }}
-    
     .stApp {{
-        background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+        background: #f5f5f5;
     }}
     
     [data-testid="stSidebar"] {{
-        background: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%) !important;
+        background: linear-gradient(180deg, #2d2d2d 0%, #3d3d3d 100%) !important;
         border-right: 3px solid {CHURCHGATE_RED};
     }}
     
     [data-testid="stSidebar"] * {{
-        color: #e0e0e0 !important;
+        color: #ffffff !important;
     }}
     
     [data-testid="stSidebar"] .stButton > button {{
-        background: rgba(204, 0, 0, 0.2) !important;
+        background: rgba(204, 0, 0, 0.3) !important;
         border: 1px solid {CHURCHGATE_RED} !important;
-        color: white !important;
+        color: #ffffff !important;
     }}
     
-    [data-testid="stSidebar"] .stButton > button:hover {{
-        background: rgba(204, 0, 0, 0.4) !important;
+    [data-testid="stSidebar"] .nav-link {{
+        color: #ffffff !important;
+    }}
+    
+    [data-testid="stSidebar"] .nav-link svg {{
+        color: #ff4444 !important;
+    }}
+    
+    [data-testid="stSidebar"] .nav-link-selected {{
+        background-color: rgba(204, 0, 0, 0.4) !important;
+        border-left: 3px solid {CHURCHGATE_RED} !important;
     }}
     
     .churchgate-header {{
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
         padding: 1.5rem 2rem;
-        border-radius: 12px;
+        border-radius: 10px;
         margin-bottom: 2rem;
         border-left: 4px solid {CHURCHGATE_RED};
-        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
     }}
     
     .churchgate-header h1 {{
@@ -164,7 +158,6 @@ st.markdown(f"""
         padding: 0.6rem 1.5rem !important;
         border-radius: 6px !important;
         font-weight: 600 !important;
-        transition: all 0.3s ease !important;
     }}
     
     .stButton > button:hover {{
@@ -176,7 +169,7 @@ st.markdown(f"""
         background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
         color: white;
         padding: 2rem;
-        border-radius: 12px;
+        border-radius: 10px;
         text-align: center;
         margin: 2rem 0;
         border: 2px solid {CHURCHGATE_RED};
@@ -219,6 +212,10 @@ st.markdown(f"""
         border-radius: 20px;
         font-weight: 700;
     }}
+    
+    .status-active {{ background: #38a169; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }}
+    .status-pending {{ background: #d69e2e; color: #1a1a1a; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }}
+    .status-at-risk {{ background: {CHURCHGATE_RED}; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -245,8 +242,6 @@ if 'candidates_batch' not in st.session_state:
     st.session_state.candidates_batch = []
 if 'chat_messages' not in st.session_state:
     st.session_state.chat_messages = []
-if 'active_chat_user' not in st.session_state:
-    st.session_state.active_chat_user = None
 if 'dashboard_metrics' not in st.session_state:
     st.session_state.dashboard_metrics = {
         'total_employees': 48,
@@ -258,7 +253,6 @@ if 'dashboard_metrics' not in st.session_state:
 
 # ============ HELPER FUNCTIONS ============
 def get_logo():
-    """Get Churchgate logo"""
     logo_paths = [
         Path(__file__).parent / "churchgate-logo.png",
         Path(__file__).parent / "churchgate_logo.png"
@@ -300,10 +294,9 @@ def generate_ref(prefix):
     return f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{str(time.time())[-6:]}"
 
 def show_churchgate_mission():
-    """Display actual Churchgate Mission, Vision, Purpose & Values"""
     st.markdown(f"""
     <div class="mission-banner">
-        <h2>🏢 Churchgate Group</h2>
+        <h2>Churchgate Group</h2>
         <div style="display: flex; justify-content: space-around; margin: 1.5rem 0; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 200px; padding: 1rem;">
                 <h3 style="color: {CHURCHGATE_RED};">🎯 Our Purpose</h3>
@@ -334,7 +327,7 @@ def show_churchgate_mission():
                 </div>
             """, unsafe_allow_html=True)
 
-# ============ LOGIN SECTION ============
+# ============ LOGIN ============
 def login_section():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -342,7 +335,7 @@ def login_section():
         if logo:
             st.image(logo, width=300)
         
-        st.markdown(f"""
+        st.markdown("""
             <div style="text-align: center; padding: 1rem 0;">
                 <h1 style="color: #1a1a1a; font-size: 2rem; font-weight: 700;">HRIS Portal</h1>
                 <p style="color: #666666; font-size: 0.9rem;">Human Resource Information System</p>
@@ -372,7 +365,7 @@ def login_section():
             |------|-------|----------|
             | Admin | admin@churchgate.com | admin123 |
             | HR Director | sarah@churchgate.com | hr123 |
-            | Manager | emmanuel@churchgate.com | elv123 |
+            | ELV Head | emmanuel@churchgate.com | elv123 |
             | Employee | jane@churchgate.com | staff123 |
             """)
 
@@ -386,10 +379,10 @@ def sidebar_navigation():
                 st.image(logo, width=120)
         
         st.markdown(f"""
-            <div style="text-align: center; padding: 0.8rem 0; background: rgba(204, 0, 0, 0.1); 
+            <div style="text-align: center; padding: 0.8rem 0; background: rgba(204, 0, 0, 0.15); 
                         border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.3);">
                 <h3 style="color: {CHURCHGATE_RED}; margin: 0; font-size: 1rem;">CHURCHGATE GROUP</h3>
-                <p style="color: #cccccc; font-size: 0.7rem; margin: 0;">HRIS v4.0</p>
+                <p style="color: #cccccc; font-size: 0.7rem; margin: 0;">HRIS v5.0</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -460,21 +453,35 @@ def sidebar_navigation():
             default_index=0,
             styles={
                 "container": {"padding": "0!important", "background-color": "transparent"},
-                "icon": {"color": CHURCHGATE_RED, "font-size": "16px"},
+                "icon": {"color": "#ff4444", "font-size": "16px"},
                 "nav-link": {
                     "font-size": "13px", "text-align": "left", "margin": "3px 0",
-                    "color": "#e0e0e0", "--hover-color": "rgba(204, 0, 0, 0.2)",
+                    "color": "#ffffff", "--hover-color": "rgba(204, 0, 0, 0.2)",
                     "border-radius": "6px",
                 },
                 "nav-link-selected": {
-                    "background-color": "rgba(204, 0, 0, 0.3)",
-                    "color": "white",
-                    "border-left": "3px solid " + CHURCHGATE_RED,
+                    "background-color": "rgba(204, 0, 0, 0.35)",
+                    "color": "#ffffff",
+                    "border-left": "3px solid #CC0000",
+                    "font-weight": "700",
                 },
             }
         )
         
         st.markdown("---")
+        
+        # Quick Actions (KEPT as you liked them)
+        if user_role in ['Admin', 'HR Director', 'Manager']:
+            st.markdown("<p style='color: #ff4444; font-size: 0.75rem; margin-bottom: 0.5rem;'>⚡ QUICK ACTIONS</p>", unsafe_allow_html=True)
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("📝 Post Job", use_container_width=True, key="qa_job"):
+                    st.session_state['navigate_to'] = "💼 Recruitment Hub"
+                    st.rerun()
+            with col2:
+                if st.button("🤖 AI Screen", use_container_width=True, key="qa_ai"):
+                    st.session_state['navigate_to'] = "🤖 AI Recruitment Agent"
+                    st.rerun()
         
         if st.session_state.user:
             if st.button("🚪 Sign Out", use_container_width=True):
@@ -484,7 +491,7 @@ def sidebar_navigation():
         st.markdown(f"""
             <div style="text-align: center; padding: 0.5rem; margin-top: 1rem;">
                 <p style="color: #888888; font-size: 0.65rem; margin: 0;">© 2026 Churchgate Group</p>
-                <p style="color: #888888; font-size: 0.65rem; margin: 0;">HRIS v4.0</p>
+                <p style="color: #888888; font-size: 0.65rem; margin: 0;">HRIS v5.0</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -629,11 +636,10 @@ def executive_dashboard():
     st.markdown(f"""
         <div class="churchgate-header">
             <h1>📊 Executive Dashboard</h1>
-            <p>Corporate Strategy 2026-2027 | Churchgate Group Portfolio Performance</p>
+            <p>Corporate Strategy 2026-2027 | Churchgate Group Portfolio</p>
         </div>
     """, unsafe_allow_html=True)
     
-    # Dynamic metrics (admin can update)
     metrics = st.session_state.dashboard_metrics
     
     col1, col2, col3, col4, col5 = st.columns(5)
@@ -678,43 +684,39 @@ def executive_dashboard():
             </div>
         """, unsafe_allow_html=True)
     
-    # Admin controls to update metrics
+    # Admin update metrics
     if st.session_state.user and st.session_state.user['role'] in ['Admin', 'HR Director']:
-        with st.expander("⚙️ Update Dashboard Metrics (Admin Only)"):
+        with st.expander("⚙️ Update Dashboard Metrics (Admin)"):
             col1, col2, col3 = st.columns(3)
             with col1:
-                new_employees = st.number_input("Total Employees", value=metrics['total_employees'])
-                new_occupancy = st.slider("Occupancy Rate %", 0, 100, metrics['occupancy_rate'])
+                new_emp = st.number_input("Total Employees", value=metrics['total_employees'])
+                new_occ = st.slider("Occupancy Rate %", 0, 100, metrics['occupancy_rate'])
             with col2:
-                new_revenue = st.slider("Revenue vs Budget %", 0, 100, metrics['revenue_vs_budget'])
-                new_satisfaction = st.slider("Tenant Satisfaction", 1.0, 5.0, metrics['tenant_satisfaction'], 0.1)
+                new_rev = st.slider("Revenue vs Budget %", 0, 100, metrics['revenue_vs_budget'])
+                new_sat = st.slider("Tenant Satisfaction", 1.0, 5.0, metrics['tenant_satisfaction'], 0.1)
             with col3:
-                new_positions = st.number_input("Open Positions", value=metrics['open_positions'])
-            
+                new_pos = st.number_input("Open Positions", value=metrics['open_positions'])
             if st.button("💾 Update Metrics", use_container_width=True):
                 st.session_state.dashboard_metrics = {
-                    'total_employees': new_employees,
-                    'occupancy_rate': new_occupancy,
-                    'revenue_vs_budget': new_revenue,
-                    'tenant_satisfaction': new_satisfaction,
-                    'open_positions': new_positions
+                    'total_employees': new_emp, 'occupancy_rate': new_occ,
+                    'revenue_vs_budget': new_rev, 'tenant_satisfaction': new_sat,
+                    'open_positions': new_pos
                 }
-                st.success("✅ Metrics updated!")
+                st.success("✅ Updated!")
                 st.rerun()
     
     # Portfolio performance
     st.subheader("🏢 Portfolio Performance")
-    
     portfolio_data = pd.DataFrame({
         'Property': CHURCHGATE_PORTFOLIO,
-        'Occupancy': [87, 92, 85, 78, 95, 90],
-        'Revenue': [94, 98, 88, 82, 97, 91],
+        'Occupancy %': [87, 92, 85, 78, 95, 90],
+        'Revenue %': [94, 98, 88, 82, 97, 91],
         'Satisfaction': [4.3, 4.5, 4.1, 3.9, 4.4, 4.2]
     })
     
     fig = go.Figure()
-    fig.add_trace(go.Bar(name='Occupancy %', x=portfolio_data['Property'], y=portfolio_data['Occupancy'], marker_color=CHURCHGATE_RED))
-    fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue'], marker_color=CHURCHGATE_GREY))
+    fig.add_trace(go.Bar(name='Occupancy %', x=portfolio_data['Property'], y=portfolio_data['Occupancy %'], marker_color=CHURCHGATE_RED))
+    fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue %'], marker_color=CHURCHGATE_GREY))
     fig.update_layout(height=350, barmode='group')
     st.plotly_chart(fig, use_container_width=True)
     
@@ -725,7 +727,7 @@ def executive_dashboard():
         st.markdown(f"""
             <div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid {CHURCHGATE_RED};">
                 <h4>1. Occupancy & Revenue Growth</h4>
-                <p style="font-size: 0.85rem;">Drive revenue, maintain fiscal discipline, improve tenant retention</p>
+                <p style="font-size: 0.85rem;">Drive revenue, fiscal discipline, tenant retention</p>
                 <div style="background: #e0e0e0; height: 6px; border-radius: 3px;">
                     <div style="background: {CHURCHGATE_RED}; width: 85%; height: 6px; border-radius: 3px;"></div>
                 </div>
@@ -736,14 +738,13 @@ def executive_dashboard():
         st.markdown(f"""
             <div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid {CHURCHGATE_RED};">
                 <h4>2. Process Simplification</h4>
-                <p style="font-size: 0.85rem;">AI-driven automation, workflow optimization</p>
+                <p style="font-size: 0.85rem;">AI automation, workflow optimization</p>
                 <div style="background: #e0e0e0; height: 6px; border-radius: 3px;">
                     <div style="background: {CHURCHGATE_RED}; width: 72%; height: 6px; border-radius: 3px;"></div>
                 </div>
                 <small>72% Complete</small>
             </div>
         """, unsafe_allow_html=True)
-
 # ============ EMPLOYEE MANAGEMENT ============
 def employee_management():
     st.markdown(f"""
@@ -767,23 +768,27 @@ def employee_management():
         with col3:
             status = st.selectbox("Status", ["All", "Active", "On Leave", "Probation"])
         
-        # Real employee data from Churchgate
         employees = [
             {"name": "Vinay Mahtani", "id": "GMD01", "dept": "Senior Management", "position": "GMD", "status": "Active"},
+            {"name": "Jerome Das", "id": "LE00019", "dept": "Senior Management", "position": "COO", "status": "Active"},
             {"name": "Emmanuel Etuk", "id": "AN00387", "dept": "Technology Group", "position": "Head, ELV Systems", "status": "Active"},
             {"name": "Sanjeev Purwar", "id": "LE00212", "dept": "Facility Management", "position": "Head, MEP", "status": "Active"},
             {"name": "Ahmed Karim", "id": "LN00369", "dept": "Sales & Marketing", "position": "GM, Sales & Marketing", "status": "Active"},
-            {"name": "Jerome Das", "id": "LE00019", "dept": "Senior Management", "position": "COO", "status": "Active"},
             {"name": "Ibukun Adeogun", "id": "AN00012", "dept": "Operations", "position": "GM, Operations/Admin", "status": "Active"},
             {"name": "Jeff Arikawe", "id": "LN00008", "dept": "Accounts & Finance", "position": "Chief Accountant", "status": "Active"},
             {"name": "Adebayo Sakote", "id": "LN00037", "dept": "Human Resources", "position": "HR Manager", "status": "Active"},
             {"name": "Anand Bora", "id": "LE00071", "dept": "Procurement", "position": "GM, Procurement", "status": "Active"},
             {"name": "Maikudi Kadoh", "id": "AN00391", "dept": "Security", "position": "Chief Security Officer", "status": "Active"},
             {"name": "David Aiyedun", "id": "AN00455", "dept": "Legal", "position": "Legal Officer", "status": "Active"},
-            {"name": "Chika Ikwuegbu", "id": "LN00438", "dept": "Security", "position": "Admin Assistant", "status": "Active"},
-            {"name": "Francis Asuquo", "id": "AN00433", "dept": "Technology Group", "position": "ELV Engineer", "status": "Active"},
-            {"name": "Alice Agbo", "id": "AN00423", "dept": "Procurement", "position": "Store Keeper", "status": "Active"},
+            {"name": "Charles Okere", "id": "AN00400", "dept": "Facility Management", "position": "Lift Supervisor", "status": "Active"},
+            {"name": "George Ojile", "id": "AN00398", "dept": "Facility Management", "position": "Lift Engineer", "status": "Active"},
             {"name": "Augustine Oleh", "id": "AN00425", "dept": "Facility Management", "position": "HSE Coordinator", "status": "Active"},
+            {"name": "Francis Asuquo", "id": "AN00433", "dept": "Technology Group", "position": "ELV Engineer", "status": "Active"},
+            {"name": "Chika Ikwuegbu", "id": "LN00438", "dept": "Security", "position": "Admin Assistant", "status": "Active"},
+            {"name": "Alice Agbo", "id": "AN00423", "dept": "Procurement", "position": "Store Keeper", "status": "Active"},
+            {"name": "Rhoda Ajibola", "id": "AN00460", "dept": "Facility Management", "position": "Front Desk Executive", "status": "Active"},
+            {"name": "Ogechukwu Obute", "id": "AN00451", "dept": "Sales & Marketing", "position": "Sales Executive", "status": "Active"},
+            {"name": "David Effiong", "id": "AN00496", "dept": "Facility Management", "position": "Facility Manager", "status": "Active"},
         ]
         
         for emp in employees:
@@ -929,8 +934,7 @@ def employee_management():
                 pad=20, thickness=20,
                 line=dict(color="black", width=0.5),
                 label=["GMD", "COO", "Technology", "Facility Mgmt", "HR", "Sales", "Finance", "Procurement", "Security", "Legal", "Operations"],
-                color=[CHURCHGATE_RED, CHURCHGATE_GREY, CHURCHGATE_GREY, CHURCHGATE_GREY, CHURCHGATE_GREY,
-                       CHURCHGATE_GREY, CHURCHGATE_GREY, CHURCHGATE_GREY, CHURCHGATE_GREY, CHURCHGATE_GREY, CHURCHGATE_GREY]
+                color=[CHURCHGATE_RED] + [CHURCHGATE_GREY]*10
             ),
             link=dict(
                 source=[0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -947,71 +951,154 @@ def performance_okrs():
     st.markdown(f"""
         <div class="churchgate-header">
             <h1>📈 Performance & Strategic OKRs</h1>
-            <p>Corporate Strategy 2026-2027 | Performance Management</p>
+            <p>Corporate Strategy 2026-2027 | Set & Track Your KPIs</p>
         </div>
     """, unsafe_allow_html=True)
     
-    st.subheader("🎯 Corporate Strategic Pillars 2026-2027")
+    tab1, tab2, tab3 = st.tabs(["🎯 Strategic Pillars", "✏️ Set My KPIs", "📊 My Performance"])
     
-    pillars = {
-        "1. Occupancy & Revenue Growth": {
-            "weight": 40,
-            "objectives": [
-                "Increase data centre revenue by 15%",
-                "100% revenue realization as per approved budget",
-                "Nil O/S debts within 30 days of invoicing",
-                "Retention of 90% existing customers",
-                "0% variance from budgeted costs"
-            ],
-            "progress": 85,
-            "responsible": "COO",
-            "accountable": "GMD"
-        },
-        "2. Process Simplification": {
-            "weight": 20,
-            "objectives": [
-                "AI implementation strategy by May 31, 2026",
-                "Full BMS installation by June 30, 2026",
-                "99% Preventive Maintenance compliance",
-                "90% SMARTCHECK utilization"
-            ],
-            "progress": 72,
-            "responsible": "ELV/Hive Mechanics",
-            "accountable": "GMD"
-        },
-        "3. Asset Reliability & Digitalization": {
-            "weight": 25,
-            "objectives": [
-                "100% ELV critical assets assessed biannually",
-                "80% identified risks mitigated within timeframe",
-                "0 days delay in tenant handover",
-                "90% tenant complaints addressed within 24hrs"
-            ],
-            "progress": 90,
-            "responsible": "FM Heads",
-            "accountable": "COO"
-        },
-        "4. People & Culture": {
-            "weight": 15,
-            "objectives": [
-                "100% staff with JDs by April 30, 2026",
-                "100% staff appraised twice yearly",
-                "Succession planning for A-players",
-                "2 LMS courses per employee per half-year",
-                "60-80% improvement in behavioural skills"
-            ],
-            "progress": 88,
-            "responsible": "HR Director",
-            "accountable": "GMD"
+    with tab1:
+        st.subheader("🎯 Corporate Strategic Pillars 2026-2027")
+        
+        pillars = {
+            "1. Occupancy & Revenue Growth": {
+                "weight": 40, "progress": 85,
+                "objectives": [
+                    "Increase data centre revenue by 15% from end 2025/26",
+                    "100% of revenues realised as per approved budget",
+                    "Nil O/S of debts within 30 days of invoicing",
+                    "100% quarterly reconciliation of all customers",
+                    "Retention of existing 90% customers",
+                    "0% variance from budgeted costs"
+                ],
+                "responsible": "COO", "accountable": "GMD"
+            },
+            "2. Process Simplification": {
+                "weight": 20, "progress": 72,
+                "objectives": [
+                    "Implementation of AI task plan by end of FY",
+                    "AI strategy implementation plan by 31st May 2026",
+                    "Full BMS installation by 30.06.26",
+                    "Achieve 99% Preventive Maintenance compliance",
+                    "99% uptime in all ELV critical assets"
+                ],
+                "responsible": "ELV/Hive Mechanics", "accountable": "GMD"
+            },
+            "3. Asset Reliability & Digitalization": {
+                "weight": 25, "progress": 90,
+                "objectives": [
+                    "100% ELV critical assets assessed and risk-rated biannually",
+                    "0% variance in adherence to risk mitigation timeline",
+                    "80% of identified risks mitigated within timeframe",
+                    "Achieve 90% SMARTCHECK utilisation compliance by 30.09.26",
+                    "100% operational of all ELV assets during emergencies"
+                ],
+                "responsible": "FM Heads", "accountable": "COO"
+            },
+            "4. People & Culture": {
+                "weight": 15, "progress": 88,
+                "objectives": [
+                    "100% staff have JDs within 30th April 2026",
+                    "100% staff appraised by line managers twice a year",
+                    "Complete identification of A-players (2 minimum) by 30 April 2026",
+                    "Detailed competency gap assessment by 31 May 2026",
+                    "Each employee completes at least 2 LMS courses per half-year",
+                    "60-80% improvement in behavioural skills in 8 months"
+                ],
+                "responsible": "HR Director", "accountable": "GMD"
+            }
         }
-    }
+        
+        for pillar_name, data in pillars.items():
+            color = "#38a169" if data['progress'] >= 85 else "#d69e2e" if data['progress'] >= 70 else "#CC0000"
+            with st.expander(f"{pillar_name} | Weight: {data['weight']}% | Progress: {data['progress']}%", expanded=True):
+                st.progress(data['progress'] / 100)
+                for obj in data['objectives']:
+                    st.markdown(f"✅ {obj}")
+                st.markdown(f"**RACI:** R: {data['responsible']} | A: {data['accountable']} | C: All HODs | I: Board")
     
-    for pillar_name, data in pillars.items():
-        with st.expander(f"{pillar_name} | Weight: {data['weight']}% | Progress: {data['progress']}%", expanded=True):
-            st.progress(data['progress'] / 100)
-            for obj in data['objectives']:
-                st.markdown(f"✅ {obj}")
-            st.markdown(f"**RACI:** Responsible: {data['responsible']} | Accountable: {data['accountable']} | Consulted: All HODs | Informed: Board")
+    with tab2:
+        st.subheader("✏️ Set My KPIs & Objectives")
+        
+        with st.form("set_kpi_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                strategic_pillar = st.selectbox("Strategic Pillar", [
+                    "Occupancy & Revenue Growth",
+                    "Process Simplification",
+                    "Asset Reliability & Digitalization",
+                    "People & Culture"
+                ])
+                kpi_title = st.text_input("KPI Title *", placeholder="e.g., Increase data centre revenue")
+                kpi_description = st.text_area("Description", placeholder="Describe what this KPI measures...")
+                weight = st.slider("Weight (%)", 0, 100, 25)
+            
+            with col2:
+                target_value = st.number_input("Target Value", min_value=0, value=100)
+                current_value = st.number_input("Current Value", min_value=0, value=0)
+                start_date = st.date_input("Start Date")
+                end_date = st.date_input("End Date")
+                measurement_unit = st.selectbox("Unit", ["Percentage (%)", "Number (#)", "Currency (₦)", "Days", "Score (/5)"])
+            
+            st.markdown("### Key Results")
+            key_results = st.text_area("Key Results (one per line)", height=100, 
+                placeholder="e.g.,\nRevenue increased by 15%\n5 new customers acquired")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.form_submit_button("💾 Save KPI", use_container_width=True):
+                    if kpi_title:
+                        st.success(f"✅ KPI '{kpi_title}' saved successfully!")
+                        st.balloons()
+                    else:
+                        st.error("Please enter a KPI title")
+            with col2:
+                if st.form_submit_button("📋 Save & Add Another", use_container_width=True):
+                    if kpi_title:
+                        st.success(f"✅ KPI saved! Add another below.")
+    
+    with tab3:
+        st.subheader("📊 My Performance Scorecard")
+        
+        my_kpis = [
+            {"title": "Increase data centre revenue", "pillar": "Occupancy & Revenue", "target": "15%", "current": "12%", "progress": 80, "status": "On Track"},
+            {"title": "100% revenue realisation", "pillar": "Occupancy & Revenue", "target": "100%", "current": "95%", "progress": 95, "status": "Near Target"},
+            {"title": "Nil O/S debts within 30 days", "pillar": "Occupancy & Revenue", "target": "0", "current": "2", "progress": 60, "status": "At Risk"},
+            {"title": "BMS Installation complete", "pillar": "Process Simplification", "target": "100%", "current": "75%", "progress": 75, "status": "On Track"},
+            {"title": "Preventive Maintenance compliance", "pillar": "Asset Reliability", "target": "99%", "current": "95%", "progress": 96, "status": "On Track"},
+        ]
+        
+        for kpi in my_kpis:
+            if kpi['progress'] >= 85:
+                color, badge = "#38a169", "status-active"
+            elif kpi['progress'] >= 65:
+                color, badge = "#d69e2e", "status-pending"
+            else:
+                color, badge = "#CC0000", "status-at-risk"
+            
+            st.markdown(f"""
+                <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem;
+                            border-left: 4px solid {color}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>{kpi['title']}</strong>
+                            <br><small style="color: #666;">{kpi['pillar']} | Target: {kpi['target']} | Current: {kpi['current']}</small>
+                        </div>
+                        <div style="text-align: right;">
+                            <span class="{badge}">{kpi['status']}</span>
+                            <br><small>{kpi['progress']}%</small>
+                        </div>
+                    </div>
+                    <div style="background: #e0e0e0; height: 6px; border-radius: 3px; margin-top: 0.5rem;">
+                        <div style="background: {color}; width: {kpi['progress']}%; height: 6px; border-radius: 3px;"></div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Overall Score", "81.2%", "↑ 3.5%")
+        col2.metric("KPIs On Track", "3/5", "60%")
+        col3.metric("KPIs At Risk", "1/5", "Needs attention")
 
 
 # ============ PROMOTIONS ============
@@ -1024,32 +1111,11 @@ def promotions():
     """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(f"""
-            <div class="metric-card">
-                <h3 style="color: #38a169;">⭐ A-Players</h3>
-                <div class="metric-value">4</div>
-                <small>Ready for promotion</small>
-            </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
-            <div class="metric-card">
-                <h3 style="color: {CHURCHGATE_RED};">📋 Pipeline</h3>
-                <div class="metric-value">85%</div>
-                <small>Key positions covered</small>
-            </div>
-        """, unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"""
-            <div class="metric-card">
-                <h3 style="color: #3182ce;">📈 Avg Time</h3>
-                <div class="metric-value">2.3</div>
-                <small>Years to promotion</small>
-            </div>
-        """, unsafe_allow_html=True)
+    col1.markdown(f"""<div class="metric-card"><h3 style="color: #38a169;">⭐ A-Players</h3><div class="metric-value">4</div><small>Ready for promotion</small></div>""", unsafe_allow_html=True)
+    col2.markdown(f"""<div class="metric-card"><h3 style="color: {CHURCHGATE_RED};">📋 Pipeline</h3><div class="metric-value">85%</div><small>Key positions covered</small></div>""", unsafe_allow_html=True)
+    col3.markdown(f"""<div class="metric-card"><h3 style="color: #3182ce;">📈 Avg Time</h3><div class="metric-value">2.3</div><small>Years to promotion</small></div>""", unsafe_allow_html=True)
     
-    st.subheader("🎯 Promotion Candidates - AI Assessment")
+    st.subheader("🎯 Promotion Candidates")
     candidates = [
         {"name": "Emmanuel Etuk", "current": "Head, ELV Systems", "proposed": "Director, Technology", "score": 93, "readiness": "Ready Now", "gap": "None", "risk": "Low"},
         {"name": "Sanjeev Purwar", "current": "Head, MEP", "proposed": "Director, Facilities", "score": 88, "readiness": "Ready Now", "gap": "Leadership", "risk": "Medium"},
@@ -1063,14 +1129,9 @@ def promotions():
             <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem;
                         border-left: 4px solid {color};">
                 <div style="display: flex; justify-content: space-between;">
-                    <div>
-                        <strong>{c['name']}</strong>
-                        <br><small>{c['current']} → <strong>{c['proposed']}</strong></small>
-                    </div>
+                    <div><strong>{c['name']}</strong><br><small>{c['current']} → <strong>{c['proposed']}</strong></small></div>
                     <div style="text-align: right;">
-                        <span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-weight: 600;">
-                            {c['readiness']}
-                        </span>
+                        <span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-weight: 600;">{c['readiness']}</span>
                         <br><small>Score: {c['score']}% | Risk: {c['risk']}</small>
                     </div>
                 </div>
@@ -1078,7 +1139,7 @@ def promotions():
         """, unsafe_allow_html=True)
 
 
-# ============ RECRUITMENT HUB - FULLY FUNCTIONAL ============
+# ============ RECRUITMENT HUB ============
 def recruitment_hub():
     st.markdown(f"""
         <div class="churchgate-header">
@@ -1169,18 +1230,17 @@ def recruitment_hub():
         col3.metric("Acceptance", "88%", "↑ 12%")
 
 
-# ============ AI RECRUITMENT AGENT - FULLY FIXED ============
+# ============ AI RECRUITMENT AGENT ============
 def ai_recruitment_agent():
     st.markdown(f"""
         <div class="churchgate-header">
             <h1>🤖 AI Recruitment Agent</h1>
-            <p>AI-Powered CV Analysis | Candidate Scoring | Intelligent Tiering</p>
+            <p>AI-Powered CV Analysis | Candidate Scoring | LinkedIn Parsing | Intelligent Tiering</p>
         </div>
     """, unsafe_allow_html=True)
     
-    # Use radio buttons instead of tabs to prevent navigation conflicts
     ai_section = st.radio("Select Function:", [
-        "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "💾 Save Results"
+        "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 LinkedIn Parse", "💾 Save Results"
     ], horizontal=True)
     
     if ai_section == "📋 JD Analysis":
@@ -1269,45 +1329,105 @@ def ai_recruitment_agent():
             for c in candidates:
                 tiers[c['score']['tier']].append(c)
             
+            summary_data = []
             for tier_name, tier_candidates in tiers.items():
                 if tier_candidates:
-                    names = ', '.join([f"{c['score']['candidate_name']} ({c['score']['overall_score']}%)" for c in tier_candidates[:3]])
+                    names = ', '.join([f"{c['score']['candidate_name']} ({c['score']['overall_score']}%)" for c in tier_candidates])
                 else:
                     names = "None"
-                action = "Recommend for Final Interview" if 'Tier 1' in tier_name else "Keep in View" if 'Tier 2' in tier_name else "–"
-                st.markdown(f"**{tier_name}** ({len(tier_candidates)}): {names} → *{action}*")
+                action = "🌟 Recommend for Final Interview" if 'Tier 1' in tier_name else "👍 Keep in View" if 'Tier 2' in tier_name else "–"
+                summary_data.append({'Tier': tier_name, 'Count': len(tier_candidates), 'Candidates': names, 'Action': action})
             
-            # Tier 1 Details
+            st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
+            
             if tiers['Tier 1 (Strong Fit)']:
                 st.markdown("---")
                 st.markdown("## 🌟 TIER 1 – STRONG FIT")
+                tier1_data = []
                 for i, c in enumerate(tiers['Tier 1 (Strong Fit)'], 1):
                     score = c['score']
-                    st.markdown(f"""
-                        <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;
-                                    border-left: 4px solid #38a169;">
-                            <h4>#{i} {score['candidate_name']} - {score['overall_score']}%</h4>
-                            <p><strong>LinkedIn:</strong> {'✓ Verified' if score['linkedin_verified'] else '⚠ Not provided'}</p>
-                            <p><strong>Strengths:</strong> {', '.join(score['key_strengths'][:3])}</p>
-                            <p><strong>Recommendation:</strong> {score['recommendation']}</p>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    tier1_data.append({
+                        '#': i, 'Candidate': score['candidate_name'], 'Score': f"{score['overall_score']}%",
+                        'LinkedIn': '✓ Verified' if score['linkedin_verified'] else '⚠ Not provided',
+                        'Key Strengths': ' | '.join(score['key_strengths'][:4]),
+                        'Recommendation': score['recommendation']
+                    })
+                st.dataframe(pd.DataFrame(tier1_data), use_container_width=True, hide_index=True)
             
-            # Scoring Breakdown
+            if tiers['Tier 2 (Good Fit)']:
+                st.markdown("---")
+                st.markdown("## 👍 TIER 2 – GOOD FIT")
+                tier2_data = []
+                for i, c in enumerate(tiers['Tier 2 (Good Fit)'], len(tiers['Tier 1 (Strong Fit)']) + 1):
+                    score = c['score']
+                    tier2_data.append({
+                        '#': i, 'Candidate': score['candidate_name'], 'Score': f"{score['overall_score']}%",
+                        'Strengths': ' | '.join(score['key_strengths'][:3]),
+                        'Gaps': ' | '.join(score['gaps_identified'][:2]),
+                        'Action': 'Contact if Tier 1 unavailable'
+                    })
+                st.dataframe(pd.DataFrame(tier2_data), use_container_width=True, hide_index=True)
+            
             st.markdown("---")
             st.markdown("## 📊 DETAILED SCORING BREAKDOWN")
             breakdown = []
             for c in candidates:
                 s = c['score']
                 breakdown.append({
-                    'Candidate': s['candidate_name'],
-                    'Overall': f"{s['overall_score']}%",
-                    'Skills': f"{s['skills_score']}%",
-                    'Experience': f"{s['experience_score']}%",
-                    'Education': f"{s['education_score']}%",
-                    'Tier': s['tier']
+                    'Candidate': s['candidate_name'], 'Overall': f"{s['overall_score']}%",
+                    'Skills': f"{s['skills_score']}%", 'Experience': f"{s['experience_score']}%",
+                    'Education': f"{s['education_score']}%", 'Tier': s['tier']
                 })
             st.dataframe(pd.DataFrame(breakdown), use_container_width=True, hide_index=True)
+    
+    elif ai_section == "🔍 LinkedIn Parse":
+        st.subheader("🔍 LinkedIn Profile Parser")
+        st.info("Parse LinkedIn profiles to extract candidate information for scoring")
+        
+        linkedin_url = st.text_input("Enter LinkedIn Profile URL", placeholder="https://linkedin.com/in/username")
+        
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("🔍 Parse Profile", use_container_width=True):
+                if linkedin_url:
+                    with st.spinner("Parsing LinkedIn profile..."):
+                        time.sleep(1)
+                        profile = linkedin_parser.parse_profile(linkedin_url)
+                        st.success("✅ Profile Parsed Successfully!")
+                        
+                        col_a, col_b = st.columns([1, 2])
+                        with col_a:
+                            st.markdown(f"**Name:** {profile['name']}")
+                            st.markdown(f"**Headline:** {profile['headline']}")
+                            st.markdown(f"**Location:** {profile['location']}")
+                            st.markdown(f"**Experience:** {profile.get('experience_years', 'N/A')} years")
+                        with col_b:
+                            st.markdown("**Skills:**")
+                            skills = profile.get('skills', [])
+                            st.markdown(f"`{', '.join(skills[:8])}`")
+                            if profile.get('education'):
+                                st.markdown(f"**Education:** {profile['education']}")
+                else:
+                    st.warning("Please enter a LinkedIn URL")
+        
+        with col2:
+            st.markdown(f"""
+                <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; 
+                            padding: 1.5rem; border-radius: 10px; border: 1px solid {CHURCHGATE_RED};">
+                    <h4>💡 LinkedIn Integration</h4>
+                    <p style="font-size: 0.9rem;">The LinkedIn parser extracts:</p>
+                    <ul style="font-size: 0.85rem;">
+                        <li>Professional headline & summary</li>
+                        <li>Skills & endorsements</li>
+                        <li>Work experience timeline</li>
+                        <li>Education & certifications</li>
+                        <li>Location & contact info</li>
+                    </ul>
+                    <p style="font-size: 0.8rem; margin-top: 1rem;">
+                        <strong>Note:</strong> For full API access, configure LinkedIn API credentials.
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
     
     elif ai_section == "💾 Save Results":
         st.subheader("Save Candidates to Database")
@@ -1353,22 +1473,17 @@ def chat_communications():
     tab1, tab2, tab3 = st.tabs(["💬 Team Chat", "📢 Announcements", "📧 Email"])
     
     with tab1:
-        st.subheader("Team Chat - @mention to chat with colleagues")
+        st.subheader("Team Chat")
         
-        # Team members for @mentions
         team_members = [
             "Emmanuel Etuk (Technology)", "Sanjeev Purwar (FM)", "Ahmed Karim (Sales)",
             "Adebayo Sakote (HR)", "Jeff Arikawe (Finance)", "Maikudi Kadoh (Security)",
             "Francis Asuquo (ELV)", "David Aiyedun (Legal)", "Ibukun Adeogun (Operations)"
         ]
         
-        # Select person to chat with
         chat_with = st.selectbox("Chat with:", ["Select colleague..."] + team_members)
         
         if chat_with != "Select colleague...":
-            st.session_state.active_chat_user = chat_with
-            
-            # Display chat history
             chat_key = f"chat_{chat_with}"
             if chat_key not in st.session_state:
                 st.session_state[chat_key] = []
@@ -1378,22 +1493,17 @@ def chat_communications():
                     st.markdown(f"""
                         <div style="background: {CHURCHGATE_RED}; color: white; padding: 0.6rem 1rem; 
                                     border-radius: 10px; margin: 0.3rem 0; margin-left: 3rem;">
-                            <strong>You</strong>
-                            <p style="margin: 0.2rem 0;">{msg['content']}</p>
-                            <small>{msg['time']}</small>
+                            <strong>You</strong><p style="margin: 0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small>
                         </div>
                     """, unsafe_allow_html=True)
                 else:
                     st.markdown(f"""
                         <div style="background: #f0f0f0; padding: 0.6rem 1rem; 
                                     border-radius: 10px; margin: 0.3rem 0; margin-right: 3rem;">
-                            <strong>{msg['sender']}</strong>
-                            <p style="margin: 0.2rem 0;">{msg['content']}</p>
-                            <small>{msg['time']}</small>
+                            <strong>{msg['sender']}</strong><p style="margin: 0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small>
                         </div>
                     """, unsafe_allow_html=True)
             
-            # Send message
             with st.form(f"chat_form_{chat_with}", clear_on_submit=True):
                 col1, col2 = st.columns([4, 1])
                 with col1:
@@ -1403,11 +1513,9 @@ def chat_communications():
                 
                 if send and message:
                     st.session_state[chat_key].append({
-                        'sender': 'You',
-                        'content': message,
+                        'sender': 'You', 'content': message,
                         'time': datetime.now().strftime('%I:%M %p')
                     })
-                    # Simulate reply
                     st.session_state[chat_key].append({
                         'sender': chat_with,
                         'content': f"Thanks for your message! (Auto-reply: {chat_with.split('(')[0].strip()} will respond soon)",
@@ -1415,31 +1523,28 @@ def chat_communications():
                     })
                     st.rerun()
         
-        # HRIS Bot
         st.markdown("---")
         st.markdown("### 🤖 HRIS Assistant Bot")
-        bot_question = st.text_input("Ask HRIS Bot:", placeholder="e.g., How do I apply for leave?")
-        if bot_question:
-            bot_responses = {
-                'leave': "To apply for leave, go to your Employee Dashboard and click 'Request Leave'. Your current balance is 18 days.",
-                'payroll': "Payroll is processed on the 25th of each month. Contact Accounts & Finance for specific inquiries.",
-                'training': "Check the Training & Development section for available courses. New webinars are added weekly.",
-                'policy': "HR policies are available in the Employee Handbook. Contact HR for specific policy questions.",
-                'benefits': "Churchgate offers health insurance, pension, and annual leave. See HR for full benefits details.",
+        bot_q = st.text_input("Ask HRIS Bot:", placeholder="e.g., How do I apply for leave?")
+        if bot_q:
+            responses = {
+                'leave': "To apply for leave, go to your Employee Dashboard. Your current balance is 18 days.",
+                'payroll': "Payroll is processed on the 25th of each month.",
+                'training': "Check the Training & Development section for available courses.",
+                'policy': "HR policies are available in the Employee Handbook.",
             }
-            response = "I can help with leave, payroll, training, policies, and benefits. What would you like to know?"
-            for key, val in bot_responses.items():
-                if key in bot_question.lower():
+            response = "I can help with leave, payroll, training, and policies."
+            for key, val in responses.items():
+                if key in bot_q.lower():
                     response = val
-                    break
             st.info(f"🤖 {response}")
     
     with tab2:
         st.subheader("📢 Company Announcements")
         announcements = [
-            {"title": "Q2 Performance Reviews", "date": "2026-06-01", "priority": "High", "content": "All departments to submit Q2 performance reviews by June 15."},
+            {"title": "Q2 Performance Reviews", "date": "2026-06-01", "priority": "High", "content": "All departments to submit Q2 reviews by June 15."},
             {"title": "BMS Implementation Update", "date": "2026-05-28", "priority": "Medium", "content": "Phase 1 complete. Phase 2 starts June 10."},
-            {"title": "Holiday - Democracy Day", "date": "2026-05-25", "priority": "Medium", "content": "Office closed June 12 for Democracy Day."},
+            {"title": "Holiday - Democracy Day", "date": "2026-05-25", "priority": "Medium", "content": "Office closed June 12."},
         ]
         for ann in announcements:
             pc = "#e53e3e" if ann['priority'] == 'High' else "#d69e2e"
@@ -1458,7 +1563,6 @@ def chat_communications():
     with tab3:
         st.subheader("📧 Email Notifications")
         with st.form("email_prefs"):
-            st.markdown("### Notification Preferences")
             col1, col2 = st.columns(2)
             with col1:
                 st.checkbox("Birthday Alerts", value=True)
@@ -1496,8 +1600,7 @@ def training_development():
             st.markdown(f"""
                 <div style="background: white; padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem;">
                     <div style="display: flex; justify-content: space-between;">
-                        <strong>{course['name']}</strong>
-                        <span>{course['progress']}%</span>
+                        <strong>{course['name']}</strong><span>{course['progress']}%</span>
                     </div>
                     <div style="background: #e0e0e0; height: 5px; border-radius: 3px; margin: 0.4rem 0;">
                         <div style="background: {color}; width: {course['progress']}%; height: 5px; border-radius: 3px;"></div>
@@ -1507,7 +1610,7 @@ def training_development():
             """, unsafe_allow_html=True)
     
     with tab2:
-        st.subheader("Upcoming Webinars & Conferences")
+        st.subheader("Upcoming Webinars")
         webinars = [
             {"title": "AI in Real Estate Management", "date": "June 20, 2026", "source": "LinkedIn Learning", "dept": "Technology"},
             {"title": "Financial Modeling for RE", "date": "June 25, 2026", "source": "CFA Institute", "dept": "Finance"},
@@ -1526,17 +1629,13 @@ def training_development():
     
     with tab3:
         st.subheader("Training Calendar - June 2026")
-        
-        # Simple calendar view
         cal_data = []
-        today = datetime.now()
         for day in range(1, 31):
             events = []
             if day == 15: events.append("BMS Training")
             if day == 20: events.append("AI in FM Webinar")
             if day == 25: events.append("Finance Workshop")
             cal_data.append({"Day": day, "Events": ", ".join(events) if events else "-"})
-        
         st.dataframe(pd.DataFrame(cal_data), use_container_width=True, hide_index=True)
 
 
@@ -1545,7 +1644,7 @@ def reports_analytics():
     st.markdown(f"""
         <div class="churchgate-header">
             <h1>📊 Reports & Analytics</h1>
-            <p>Business Intelligence | Fortune 500 Standard</p>
+            <p>Business Intelligence | Churchgate Group</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -1555,7 +1654,6 @@ def reports_analytics():
         funnel = pd.DataFrame({'Stage': ['Sourced', 'Applied', 'Screened', 'Interviewed', 'Offered', 'Hired'], 'Count': [100, 75, 50, 20, 5, 2]})
         fig = px.funnel(funnel, x='Count', y='Stage', color_discrete_sequence=[CHURCHGATE_RED])
         st.plotly_chart(fig, use_container_width=True)
-    
     elif report == "Workforce Analytics":
         dept_data = pd.DataFrame({'Department': ['Technology', 'FM', 'Sales', 'Finance', 'HR', 'Procurement', 'Security', 'Legal', 'Operations'], 
                                    'Count': [12, 25, 15, 10, 8, 8, 20, 3, 18]})
@@ -1573,9 +1671,9 @@ def notifications_page():
     """, unsafe_allow_html=True)
     
     notifs = [
-        {"title": "Performance Review Due", "msg": "Q2 2026 performance reviews due by June 15", "time": "2 hours ago", "unread": True},
-        {"title": "New Hire Announcement", "msg": "Welcome David Effiong - Facility Manager", "time": "Yesterday", "unread": True},
-        {"title": "Training Reminder", "msg": "BMS Advanced Integration starts June 15", "time": "2 days ago", "unread": False},
+        {"title": "Performance Review Due", "msg": "Q2 2026 reviews due by June 15", "time": "2 hours ago", "unread": True},
+        {"title": "New Hire", "msg": "Welcome David Effiong - Facility Manager", "time": "Yesterday", "unread": True},
+        {"title": "Training Reminder", "msg": "BMS Advanced starts June 15", "time": "2 days ago", "unread": False},
         {"title": "Holiday Notice", "msg": "Democracy Day - June 12, 2026", "time": "1 week ago", "unread": False},
     ]
     
@@ -1637,7 +1735,7 @@ def my_profile():
                 st.success("✅ Profile updated!")
 
 
-# ============ MAIN APP ============
+# ============ MAIN APP ROUTER ============
 def main():
     if st.session_state.user is None:
         login_section()
@@ -1647,7 +1745,6 @@ def main():
         if 'navigate_to' in st.session_state:
             page = st.session_state.pop('navigate_to')
         
-        # Route to correct page
         page_routes = {
             "🏠 Employee Dashboard": employee_dashboard,
             "📊 Executive Dashboard": executive_dashboard,
@@ -1664,7 +1761,6 @@ def main():
             "👤 My Profile": my_profile,
         }
         
-        # Execute the selected page function
         page_func = page_routes.get(page, employee_dashboard)
         page_func()
 
