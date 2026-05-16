@@ -297,9 +297,9 @@ def generate_ref(prefix):
     return f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{str(time.time())[-6:]}"
 
 def show_churchgate_mission():
-    st.markdown(f"""
+        st.markdown("""
     <div class="mission-banner">
-        <h2>Churchgate Group</h2>
+        <h2 style="font-size: 2.5rem; font-weight: 900; letter-spacing: 2px;">CHURCHGATE GROUP</h2>
         <div style="display: flex; justify-content: space-around; margin: 1.5rem 0; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 200px; padding: 1rem;">
                 <h3 style="color: {CHURCHGATE_RED};">🎯 Our Purpose</h3>
@@ -334,14 +334,17 @@ def show_churchgate_mission():
 def login_section():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        logo = get_logo()
+                        logo = get_logo()
         if logo:
-            st.image(logo, width=300)
+            col1, col2, col3 = st.columns([1, 1, 1])
+            with col2:
+                st.image(logo, width=300)
         
         st.markdown("""
-            <div style="text-align: center; padding: 1rem 0;">
-                <h1 style="color: #1a1a1a; font-size: 2rem; font-weight: 700;">HRIS Portal</h1>
-                <p style="color: #666666; font-size: 0.9rem;">Human Resource Information System</p>
+            <div style="text-align: center; padding: 0.8rem 0; background: #4a4a4a; 
+                        border-radius: 6px; margin-bottom: 1rem; border: 1px solid #666666;">
+                <h3 style="color: #ffffff; margin: 0; font-size: 1.1rem; font-weight: 700;">CHURCHGATE GROUP</h3>
+                <p style="color: #cccccc; font-size: 0.7rem; margin: 0;">HRIS v5.0</p>
             </div>
         """, unsafe_allow_html=True)
         
