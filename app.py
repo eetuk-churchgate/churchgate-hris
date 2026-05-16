@@ -634,7 +634,38 @@ def employee_management():
             st.info("Note: Role updates require database write access. In production, this will update the users table.")
         
         st.markdown("---")
-        st.markdown("### 🔑 Generate Login Credentials")
+        st.markdown("### ⚡ Create Single Employee Account (with Email)")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            single_email = st.text_input("Employee Email", placeholder="eetuk@churchgate.com", key="single_email")
+            single_name = st.text_input("Full Name", placeholder="Emmanuel Etuk", key="single_name")
+        with c2:
+            single_password = st.text_input("Password", value="churchgate2026", key="single_pw")
+            single_role = st.selectbox("Role", ["Admin", "HR Director", "Manager", "Employee"], index=0, key="single_role")
+        with c3:
+            single_dept = st.selectbox("Department", ["Senior Management", "Technology Group", "Facility Management", "Human Resources", "Sales & Marketing", "Accounts & Finance", "Procurement", "Security", "Legal", "Operations"], key="single_dept")
+            single_id = st.text_input("Staff ID", placeholder="AN00387", key="single_id")
+        
+        if st.button("🔑 Create Account & Send Welcome Email", use_container_width=True):
+            if single_email and single_name:
+                hashed_pw = hashlib.sha256(single_password.encode()).hexdigest()
+                try:
+                    db.create_user(single_id, single_name, single_email, single_password, single_role, single_dept, single_dept)
+                    st.success(f"✅ Account created for {single_name}!")
+                    # Send welcome email
+                    success, msg = email_service.send_welcome_email(single_name, single_email, single_password, single_role)
+                    if success:
+                        st.success(f"📧 Welcome email sent to {single_email}!")
+                        st.balloons()
+                    else:
+                        st.warning(f"⚠️ Account created but email failed: {msg}")
+                except Exception as e:
+                    st.warning(f"⚠️ Account may already exist or error: {str(e)}")
+            else:
+                st.warning("Please enter at least email and name.")
+        
+        st.markdown("---")
+        st.markdown("### 🔑 Generate All Employee Login Credentials (Bulk)")
         st.info("Generate login access for all active employees. Default password will be 'churchgate2026' and employees will be prompted to change on first login.")
         emp_list = [
             {"name": "Vinay Mahtani", "id": "GMD01", "email": "vbmahtani@churchgate.com", "dept": "Senior Management", "role": "Admin"},
