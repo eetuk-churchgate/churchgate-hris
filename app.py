@@ -74,33 +74,42 @@ st.markdown(f"""
         background: #f5f5f5;
     }}
     
-    [data-testid="stSidebar"] {{
+     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #2d2d2d 0%, #3d3d3d 100%) !important;
-        border-right: 3px solid {CHURCHGATE_RED};
-    }}
+        border-right: 3px solid #CC0000;
+    }
     
-    [data-testid="stSidebar"] * {{
+    [data-testid="stSidebar"] * {
         color: #ffffff !important;
-    }}
+        -webkit-text-fill-color: #ffffff !important;
+    }
     
-    [data-testid="stSidebar"] .stButton > button {{
-        background: rgba(204, 0, 0, 0.3) !important;
-        border: 1px solid {CHURCHGATE_RED} !important;
+    [data-testid="stSidebar"] .st-emotion-cache-1qg05tj {
         color: #ffffff !important;
-    }}
+    }
     
-    [data-testid="stSidebar"] .nav-link {{
+    [data-testid="stSidebar"] .nav-link {
         color: #ffffff !important;
-    }}
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
     
-    [data-testid="stSidebar"] .nav-link svg {{
+    [data-testid="stSidebar"] .nav-link span {
+        color: #ffffff !important;
+    }
+    
+    [data-testid="stSidebar"] .nav-link svg {
         color: #ff4444 !important;
-    }}
+    }
     
-    [data-testid="stSidebar"] .nav-link-selected {{
+    [data-testid="stSidebar"] .nav-link-selected {
         background-color: rgba(204, 0, 0, 0.4) !important;
-        border-left: 3px solid {CHURCHGATE_RED} !important;
-    }}
+        border-left: 3px solid #CC0000 !important;
+    }
+    
+    [data-testid="stSidebar"] .nav-link-selected span {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+    }
     
     .churchgate-header {{
         background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
