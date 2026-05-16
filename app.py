@@ -297,25 +297,38 @@ def generate_ref(prefix):
     return f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{str(time.time())[-6:]}"
 
 def show_churchgate_mission():
-        st.markdown("""
+    st.markdown("""
     <div class="mission-banner">
         <h2 style="font-size: 2.5rem; font-weight: 900; letter-spacing: 2px;">CHURCHGATE GROUP</h2>
         <div style="display: flex; justify-content: space-around; margin: 1.5rem 0; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 200px; padding: 1rem;">
-                <h3 style="color: {CHURCHGATE_RED};">🎯 Our Purpose</h3>
-                <p style="font-size: 0.9rem;">{CHURCHGATE_PURPOSE}</p>
+                <h3 style="color: #CC0000;">🎯 Our Purpose</h3>
+                <p style="font-size: 0.9rem;">To improve the lives of all those we serve.</p>
             </div>
             <div style="flex: 1; min-width: 200px; padding: 1rem;">
-                <h3 style="color: {CHURCHGATE_RED};">🔭 Our Vision</h3>
-                <p style="font-size: 0.9rem;">{CHURCHGATE_VISION}</p>
+                <h3 style="color: #CC0000;">🔭 Our Vision</h3>
+                <p style="font-size: 0.9rem;">To become the premier property developer in Nigeria, impacting millions, while having fun!</p>
             </div>
             <div style="flex: 1; min-width: 200px; padding: 1rem;">
-                <h3 style="color: {CHURCHGATE_RED};">📋 Our Mission</h3>
-                <p style="font-size: 0.9rem;">{CHURCHGATE_MISSION}</p>
+                <h3 style="color: #CC0000;">📋 Our Mission</h3>
+                <p style="font-size: 0.9rem;">To provide our customers with innovative and sustainable real estate solutions that enable them to thrive.</p>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
+    
+    st.markdown("### Our Values Are Dear To Us")
+    st.markdown("We deliver exceptional properties and infrastructure because we consistently sustain our core values of:")
+    
+    cols = st.columns(5)
+    for i, (value, desc) in enumerate(CHURCHGATE_VALUES.items()):
+        with cols[i]:
+            st.markdown(f"""
+                <div class="value-card">
+                    <h4 style="color: #CC0000;">{value}</h4>
+                    <p style="font-size: 0.8rem; color: #666;">{desc}</p>
+                </div>
+            """, unsafe_allow_html=True)
     
     st.markdown("### Our Values Are Dear To Us")
     st.markdown("We deliver exceptional properties and infrastructure because we consistently sustain our core values of:")
