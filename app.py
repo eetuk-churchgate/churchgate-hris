@@ -662,99 +662,34 @@ def employee_management():
         ]
         st.dataframe(pd.DataFrame(emp_list), use_container_width=True, hide_index=True)
         default_password = st.text_input("Default Password", value="churchgate2026")
-        if created_count > 0:
+        if st.button("🔑 Generate Logins for All Employees", use_container_width=True):
+            created_count = 0
+            for emp in emp_list:
+                hashed_pw = hashlib.sha256(default_password.encode()).hexdigest()
+                try:
+                    existing = db.verify_user(emp['email'], hashed_pw)
+                    if not existing:
+                        db.create_user(emp['id'], emp['name'], emp['email'], default_password, emp['role'], emp['dept'], emp['dept'])
+                        created_count += 1
+                except:
+                    pass
+            if created_count > 0:
                 st.success(f"✅ {created_count} new employee logins created successfully!")
                 st.balloons()
-                
-                # Send welcome emails
-                with st.spinner("📧 Sending welcome emails..."):
-                    email_sent_count = 0
-                    for emp in emp_list:
-                        if emp['role'] in ['Admin', 'HR Director']:
-                            # Special welcome for leadership
-                            subject = f"🏢 Welcome to Churchgate Group HRIS, {emp['name']}!"
-                            body = f"""
-                            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-                                <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 30px; text-align: center; border-bottom: 4px solid #CC0000;">
-                                    <h1 style="color: white; margin: 0; font-size: 28px;">🏢 Churchgate Group</h1>
-                                    <p style="color: #CC0000; font-size: 18px; margin: 10px 0 0 0;">HRIS Portal — Welcome</p>
-                                </div>
-                                <div style="padding: 30px;">
-                                    <h2 style="color: #1a1a1a;">Dear {emp['name']},</h2>
-                                    <p style="font-size: 16px; color: #333; line-height: 1.6;">Welcome to the <strong>Churchgate Group HRIS Portal</strong> — your all-in-one Human Resource Information System.</p>
-                                    <p style="font-size: 16px; color: #333; line-height: 1.6;">As a member of our <strong style="color: #CC0000;">Senior Leadership Team</strong>, you have full access to the Executive Dashboard, Strategic Pillars, RACI Matrix, and all HR management functions.</p>
-                                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #CC0000;">
-                                        <p style="margin: 0; font-size: 15px;"><strong>🔗 Your Login Portal:</strong><br><a href="https://churchgate-hris.streamlit.app" style="color: #CC0000; font-weight: bold; font-size: 16px;">https://churchgate-hris.streamlit.app</a></p>
-                                        <p style="margin: 10px 0 0 0; font-size: 15px;"><strong>📧 Email:</strong> {emp['email']}</p>
-                                        <p style="margin: 5px 0 0 0; font-size: 15px;"><strong>🔒 Password:</strong> {default_password}</p>
-                                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #CC0000;">⚠️ Please change your password on first login</p>
-                                    </div>
-                                    <p style="font-size: 15px; color: #333;">🎯 <strong>What you can do:</strong></p>
-                                    <ul style="font-size: 14px; color: #555; line-height: 1.8;">
-                                        <li>📊 View Executive Dashboard & Strategic Pillars</li>
-                                        <li>👥 Manage employees & departments</li>
-                                        <li>📈 Track performance & OKRs</li>
-                                        <li>🤖 AI-powered recruitment & CV screening</li>
-                                        <li>💬 Chat with your team</li>
-                                        <li>🎓 Access training & development</li>
-                                    </ul>
-                                    <a href="https://churchgate-hris.streamlit.app" style="display: inline-block; background: #CC0000; color: white; padding: 15px 40px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin-top: 15px;">🚀 Launch HRIS Portal</a>
-                                    <p style="margin-top: 25px; font-size: 13px; color: #888;">This is an automated message from Churchgate Group HRIS. For assistance, contact HR at hr@churchgate.com</p>
-                                </div>
-                                <div style="background: #1a1a1a; padding: 15px; text-align: center;">
-                                    <p style="color: #888; font-size: 12px; margin: 0;">© 2026 Churchgate Group | World Trade Center, Abuja</p>
-                                </div>
-                            </div>
-                            """
-                        else:
-                            # Standard employee welcome
-                            subject = f"🎉 Welcome to Churchgate Group, {emp['name']}!"
-                            body = f"""
-                            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
-                                <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 30px; text-align: center; border-bottom: 4px solid #CC0000;">
-                                    <h1 style="color: white; margin: 0; font-size: 28px;">🏢 Churchgate Group</h1>
-                                    <p style="color: #CC0000; font-size: 18px; margin: 10px 0 0 0;">Your HRIS Portal is Ready!</p>
-                                </div>
-                                <div style="padding: 30px;">
-                                    <h2 style="color: #1a1a1a;">Dear {emp['name']},</h2>
-                                    <p style="font-size: 16px; color: #333; line-height: 1.6;">Welcome aboard! Your <strong>Churchgate Group HRIS Portal</strong> account is now active.</p>
-                                    <p style="font-size: 16px; color: #333; line-height: 1.6;">This is your personal hub for everything HR — from viewing your profile and performance goals to accessing training and connecting with colleagues.</p>
-                                    <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #CC0000;">
-                                        <p style="margin: 0; font-size: 15px;"><strong>🔗 Login Here:</strong><br><a href="https://churchgate-hris.streamlit.app" style="color: #CC0000; font-weight: bold; font-size: 16px;">https://churchgate-hris.streamlit.app</a></p>
-                                        <p style="margin: 10px 0 0 0; font-size: 15px;"><strong>📧 Your Email:</strong> {emp['email']}</p>
-                                        <p style="margin: 5px 0 0 0; font-size: 15px;"><strong>🔒 Temporary Password:</strong> {default_password}</p>
-                                        <p style="margin: 5px 0 0 0; font-size: 13px; color: #CC0000;">⚠️ Please change your password after your first login</p>
-                                    </div>
-                                    <p style="font-size: 15px; color: #333;">✨ <strong>Explore your portal:</strong></p>
-                                    <ul style="font-size: 14px; color: #555; line-height: 1.8;">
-                                        <li>👤 Complete your profile & upload your photo</li>
-                                        <li>📈 View your performance dashboard</li>
-                                        <li>🎯 Set and track your KPIs</li>
-                                        <li>🎓 Access training courses & webinars</li>
-                                        <li>💬 Chat with your teammates</li>
-                                        <li>🎂 See team birthdays & anniversaries</li>
-                                    </ul>
-                                    <a href="https://churchgate-hris.streamlit.app" style="display: inline-block; background: #CC0000; color: white; padding: 15px 40px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin-top: 15px;">🚀 Log In Now</a>
-                                    <p style="margin-top: 25px; font-size: 13px; color: #888;">We're excited to have you on board! — Churchgate Group HR Team</p>
-                                </div>
-                                <div style="background: #1a1a1a; padding: 15px; text-align: center;">
-                                    <p style="color: #888; font-size: 12px; margin: 0;">© 2026 Churchgate Group | World Trade Center, Abuja</p>
-                                </div>
-                            </div>
-                            """
-                        
-                        # Send email
-                        success, msg = email_service.send_email(emp['email'], subject, body)
-                        if success:
-                            email_sent_count += 1
-                    
-                    if email_sent_count > 0:
-                        st.success(f"📧 {email_sent_count} welcome emails sent successfully!")
-                    else:
-                        st.info("📧 Email service is in simulation mode. In production, all employees will receive welcome emails.")
+                email_sent_count = 0
+                for emp in emp_list:
+                    subject = f"🎉 Welcome to Churchgate Group, {emp['name']}!"
+                    body = f"Dear {emp['name']}, your HRIS account is ready! Login at https://churchgate-hris.streamlit.app with email: {emp['email']} and password: {default_password}"
+                    success, msg = email_service.send_email(emp['email'], subject, body)
+                    if success:
+                        email_sent_count += 1
+                if email_sent_count > 0:
+                    st.success(f"📧 {email_sent_count} welcome emails sent!")
+                else:
+                    st.info("📧 Email simulation mode. In production, welcome emails will be sent.")
             else:
-                st.info("All employees already have accounts. Use existing credentials.")
-            st.info(f"Default password: **{default_password}** | Employees should change password on first login.")
+                st.info("All employees already have accounts.")
+            st.info(f"Default password: **{default_password}**")
             st.download_button("📥 Download Login List (CSV)", pd.DataFrame(emp_list).to_csv(index=False), "employee_logins.csv", "text/csv")
     with tab5:
         st.subheader("Churchgate Group Departments")
