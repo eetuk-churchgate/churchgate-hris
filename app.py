@@ -71,43 +71,47 @@ CHURCHGATE_PORTFOLIO = [
 st.markdown("""
 <style>
     .stApp {
-        background: #f0f2f6;
+        background: #f5f5f5;
+    }
+    
+    .main > div {
+        background: #f5f5f5;
     }
     
     section[data-testid="stSidebar"] {
-        background-color: #2d3748 !important;
+        background-color: #e8e8e8 !important;
     }
     
     section[data-testid="stSidebar"] * {
-        color: #e2e8f0 !important;
+        color: #333333 !important;
     }
     
     section[data-testid="stSidebar"] .stButton > button {
-        background-color: #4a5568 !important;
-        border: 1px solid #718096 !important;
-        color: #e2e8f0 !important;
+        background-color: #d0d0d0 !important;
+        border: 1px solid #b0b0b0 !important;
+        color: #333333 !important;
     }
     
     section[data-testid="stSidebar"] .nav-link {
-        color: #e2e8f0 !important;
+        color: #333333 !important;
     }
     
     section[data-testid="stSidebar"] .nav-link span {
-        color: #e2e8f0 !important;
+        color: #333333 !important;
         font-size: 14px !important;
     }
     
     section[data-testid="stSidebar"] .nav-link svg {
-        color: #fc8181 !important;
+        color: #CC0000 !important;
     }
     
     section[data-testid="stSidebar"] .nav-link-selected {
-        background-color: #4a5568 !important;
-        border-left: 3px solid #fc8181 !important;
+        background-color: #d0d0d0 !important;
+        border-left: 3px solid #CC0000 !important;
     }
     
     section[data-testid="stSidebar"] .nav-link-selected span {
-        color: #ffffff !important;
+        color: #CC0000 !important;
         font-weight: 700 !important;
     }
     
@@ -202,6 +206,12 @@ st.markdown("""
     .status-active { background: #38a169; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .status-pending { background: #d69e2e; color: #1a1a1a; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
+    
+    /* Center login logo */
+    .stImage {
+        display: flex;
+        justify-content: center;
+    }
 </style>
 """, unsafe_allow_html=True)
 
