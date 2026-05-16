@@ -328,6 +328,18 @@ def show_churchgate_mission():
                     <h4 style="color: #CC0000;">{value}</h4>
                     <p style="font-size: 0.8rem; color: #666;">{desc}</p>
                 </div>
+            """, unsafe_allow_html=True)    
+    st.markdown("### Our Values Are Dear To Us")
+    st.markdown("We deliver exceptional properties and infrastructure because we consistently sustain our core values of:")
+    
+    cols = st.columns(5)
+    for i, (value, desc) in enumerate(CHURCHGATE_VALUES.items()):
+        with cols[i]:
+            st.markdown(f"""
+                <div class="value-card">
+                    <h4 style="color: #CC0000;">{value}</h4>
+                    <p style="font-size: 0.8rem; color: #666;">{desc}</p>
+                </div>
             """, unsafe_allow_html=True)
     
     st.markdown("### Our Values Are Dear To Us")
