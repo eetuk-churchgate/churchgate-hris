@@ -93,6 +93,7 @@ st.markdown("""
     .status-pending { background: #d69e2e; color: #1a1a1a; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .stImage { display: flex; justify-content: center; }
+    .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -117,6 +118,8 @@ if 'candidates_batch' not in st.session_state:
     st.session_state.candidates_batch = []
 if 'chat_messages' not in st.session_state:
     st.session_state.chat_messages = []
+if 'bot_conversation' not in st.session_state:
+    st.session_state.bot_conversation = []
 if 'dashboard_metrics' not in st.session_state:
     st.session_state.dashboard_metrics = {
         'total_employees': 48, 'occupancy_rate': 87,
@@ -291,7 +294,7 @@ def employee_dashboard():
 
 def executive_dashboard():
     show_churchgate_mission()
-    st.markdown("""<div class="churchgate-header"><h1>📊 Executive Dashboard</h1><p>Corporate Strategy 2026-2027 | Churchgate Group Portfolio</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>📊 Executive Dashboard</h1><p>Corporate Strategy 2026-2027 | Churchgate Group Portfolio Performance</p></div>""", unsafe_allow_html=True)
     metrics = st.session_state.dashboard_metrics
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
@@ -326,15 +329,23 @@ def executive_dashboard():
     fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue %'], marker_color='#4a4a4a'))
     fig.update_layout(height=350, barmode='group')
     st.plotly_chart(fig, use_container_width=True)
-    st.subheader("🎯 Strategic Pillars 2026-2027")
-    sc1, sc2 = st.columns(2)
-    with sc1:
-        st.markdown("""<div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid #CC0000;"><h4>1. Occupancy & Revenue Growth</h4><p style="font-size: 0.85rem;">Drive revenue, fiscal discipline, tenant retention</p><div style="background: #e0e0e0; height: 6px; border-radius: 3px;"><div style="background: #CC0000; width: 85%; height: 6px; border-radius: 3px;"></div></div><small>85% Complete</small></div>""", unsafe_allow_html=True)
-    with sc2:
-        st.markdown("""<div style="background: white; padding: 1rem; border-radius: 8px; border-left: 4px solid #CC0000;"><h4>2. Process Simplification</h4><p style="font-size: 0.85rem;">AI automation, workflow optimization</p><div style="background: #e0e0e0; height: 6px; border-radius: 3px;"><div style="background: #CC0000; width: 72%; height: 6px; border-radius: 3px;"></div></div><small>72% Complete</small></div>""", unsafe_allow_html=True)
+    st.subheader("🎯 Strategic Pillars 2026-2027 - All 4 Pillars")
+    pillars = {
+        "1. Occupancy & Revenue Growth": {"weight": 40, "progress": 85, "objectives": ["Increase data centre revenue by 15% from end 2025/26", "100% of revenues realised as per approved budget", "Nil O/S of debts within 30 days of invoicing", "100% quarterly reconciliation of all customers", "Retention of existing 90% customers", "0% variance from budgeted costs for all cost centres", "Budget reviews below 5% at each performance review"], "responsible": "COO", "accountable": "GMD", "consulted": "All HODs", "informed": "Board"},
+        "2. Process Simplification": {"weight": 20, "progress": 72, "objectives": ["Implementation of AI task plan by end of FY 2026", "AI strategy implementation plan by 31st May 2026", "Full BMS installation by 30.06.26", "Achieve 99% Preventive Maintenance (PPM) compliance", "99% uptime in all ELV critical assets", "Complete CRM implementation for all marketing executives", "Website architecture maintenance & SEO"], "responsible": "ELV/Hive Mechanics", "accountable": "GMD", "consulted": "All HODs", "informed": "Board"},
+        "3. Asset Reliability & Digitalization": {"weight": 25, "progress": 90, "objectives": ["100% ELV critical assets assessed and risk-rated biannually", "0% variance in adherence to risk mitigation timeline", "80% of identified risks mitigated within stipulated timeframe", "90% tenant ELV complaints addressed within 24 hours", "Achieve 90% SMARTCHECK utilisation compliance by 30.09.26", "100% operational ELV assets during emergencies/fire drills", "Nil disruptions on collaborative issues involving departments"], "responsible": "FM Heads", "accountable": "COO", "consulted": "VP-Sales/GM-Proc/Stores", "informed": "Board"},
+        "4. People & Culture": {"weight": 15, "progress": 88, "objectives": ["100% staff have JDs within 30th April 2026", "100% staff appraised by line managers twice a year", "Complete identification and validation of A-players (2 min) by 30 April 2026", "Detailed competency gap assessment by 31 May 2026", "Each employee completes at least 2 LMS courses per half-year", "60-80% improvement in behavioural skills in 8 months", "Succession planning with mentoring program for A-players"], "responsible": "HR Director", "accountable": "GMD", "consulted": "GEA/COO/HR", "informed": "Board"}
+    }
+    for pn, pd in pillars.items():
+        color = "#38a169" if pd['progress'] >= 85 else "#d69e2e" if pd['progress'] >= 70 else "#CC0000"
+        with st.expander(f"{pn} | Weight: {pd['weight']}% | Progress: {pd['progress']}%", expanded=False):
+            st.progress(pd['progress'] / 100)
+            for obj in pd['objectives']:
+                st.markdown(f"✅ {obj}")
+            st.markdown(f"**RACI:** R: {pd['responsible']} | A: {pd['accountable']} | C: {pd['consulted']} | I: {pd['informed']}")
 def employee_management():
     st.markdown("""<div class="churchgate-header"><h1>👥 Employee Management</h1><p>Comprehensive workforce management | Churchgate Group</p></div>""", unsafe_allow_html=True)
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Directory", "➕ Add Employee", "📤 Bulk Upload", "🏢 Departments", "📊 Org Chart"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📋 Directory", "➕ Add Employee", "📤 Bulk Upload", "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart"])
     with tab1:
         st.subheader("Employee Directory")
         c1, c2, c3 = st.columns([2, 1, 1])
@@ -414,12 +425,13 @@ def employee_management():
                 st.text_input("Account Name")
             with c3:
                 st.text_input("Account Number")
-            st.markdown("### Documents")
+            st.markdown("### Profile Picture & Documents")
             c1, c2 = st.columns(2)
             with c1:
-                st.file_uploader("Upload CV", type=['pdf', 'docx'])
+                st.file_uploader("Upload Profile Picture", type=['jpg', 'jpeg', 'png'])
             with c2:
-                st.file_uploader("Upload Certifications", type=['pdf', 'docx', 'jpg', 'png'])
+                st.file_uploader("Upload CV", type=['pdf', 'docx'])
+            st.file_uploader("Upload Certifications", type=['pdf', 'docx', 'jpg', 'png'])
             if st.form_submit_button("✅ Add Employee", use_container_width=True):
                 st.success("✅ Employee added successfully!")
                 st.balloons()
@@ -438,10 +450,41 @@ def employee_management():
                 st.success(f"✅ {len(df)} employees uploaded!")
                 st.balloons()
     with tab4:
+        st.subheader("🔑 Generate Employee Login Credentials")
+        st.info("Generate login access for all active employees. Default password will be 'churchgate2026' and employees will be prompted to change on first login.")
+        emp_list = [
+            {"name": "Vinay Mahtani", "id": "GMD01", "email": "vbmahtani@churchgate.com", "dept": "Senior Management", "role": "Admin"},
+            {"name": "Jerome Das", "id": "LE00019", "email": "jdas@churchgate.com", "dept": "Senior Management", "role": "Admin"},
+            {"name": "Emmanuel Etuk", "id": "AN00387", "email": "eetuk@churchgate.com", "dept": "Technology Group", "role": "Manager"},
+            {"name": "Sanjeev Purwar", "id": "LE00212", "email": "purwar@churchgate.com", "dept": "Facility Management", "role": "Manager"},
+            {"name": "Ahmed Karim", "id": "LN00369", "email": "akarim@churchgate.com", "dept": "Sales & Marketing", "role": "Manager"},
+            {"name": "Ibukun Adeogun", "id": "AN00012", "email": "adeogun@churchgate.com", "dept": "Operations", "role": "Manager"},
+            {"name": "Jeff Arikawe", "id": "LN00008", "email": "jeff@churchgate.com", "dept": "Accounts & Finance", "role": "Manager"},
+            {"name": "Adebayo Sakote", "id": "LN00037", "email": "asakote@churchgate.com", "dept": "Human Resources", "role": "HR Director"},
+            {"name": "Anand Bora", "id": "LE00071", "email": "abora@churchgate.com", "dept": "Procurement", "role": "Manager"},
+            {"name": "Maikudi Kadoh", "id": "AN00391", "email": "mkadoh@churchgate.com", "dept": "Security", "role": "Manager"},
+            {"name": "David Aiyedun", "id": "AN00455", "email": "daiyedun@churchgate.com", "dept": "Legal", "role": "Employee"},
+            {"name": "Charles Okere", "id": "AN00400", "email": "cokere@churchgate.com", "dept": "Facility Management", "role": "Employee"},
+            {"name": "George Ojile", "id": "AN00398", "email": "gojile@churchgate.com", "dept": "Facility Management", "role": "Employee"},
+            {"name": "Augustine Oleh", "id": "AN00425", "email": "aoleh@churchgate.com", "dept": "Facility Management", "role": "Employee"},
+            {"name": "Francis Asuquo", "id": "AN00433", "email": "fasuquo@churchgate.com", "dept": "Technology Group", "role": "Employee"},
+            {"name": "Chika Ikwuegbu", "id": "LN00438", "email": "cikwuegbu@churchgate.com", "dept": "Security", "role": "Employee"},
+            {"name": "Alice Agbo", "id": "AN00423", "email": "aagbo@churchgate.com", "dept": "Procurement", "role": "Employee"},
+            {"name": "Rhoda Ajibola", "id": "AN00460", "email": "rajibola@churchgate.com", "dept": "Facility Management", "role": "Employee"},
+            {"name": "Ogechukwu Obute", "id": "AN00451", "email": "jobute@churchgate.com", "dept": "Sales & Marketing", "role": "Employee"},
+            {"name": "David Effiong", "id": "AN00496", "email": "deffiong@churchgate.com", "dept": "Facility Management", "role": "Employee"},
+        ]
+        st.dataframe(pd.DataFrame(emp_list), use_container_width=True, hide_index=True)
+        default_password = st.text_input("Default Password", value="churchgate2026")
+        if st.button("🔑 Generate Logins for All 20 Employees", use_container_width=True):
+            st.success(f"✅ Login credentials generated for {len(emp_list)} employees!")
+            st.info(f"Default password: **{default_password}** | Employees will be prompted to change on first login.")
+            st.download_button("📥 Download Login List (CSV)", pd.DataFrame(emp_list).to_csv(index=False), "employee_logins.csv", "text/csv")
+    with tab5:
         st.subheader("Churchgate Group Departments")
         for dept in [{"name": "Senior Management", "head": "Vinay Mahtani (GMD)", "staff": 5}, {"name": "Technology Group", "head": "Emmanuel Etuk", "staff": 12}, {"name": "Facility Management", "head": "Sanjeev Purwar", "staff": 25}, {"name": "Human Resources", "head": "Adebayo Sakote", "staff": 8}, {"name": "Sales & Marketing", "head": "Ahmed Karim", "staff": 15}, {"name": "Accounts & Finance", "head": "Jeff Arikawe", "staff": 10}, {"name": "Procurement", "head": "Anand Bora", "staff": 8}, {"name": "Security", "head": "Maikudi Kadoh", "staff": 20}, {"name": "Legal", "head": "David Aiyedun", "staff": 3}, {"name": "Operations", "head": "Ibukun Adeogun", "staff": 18}]:
             st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #CC0000; display: flex; justify-content: space-between;"><div><strong>{dept['name']}</strong><br><small>Head: {dept['head']}</small></div><div style="text-align: right;"><span style="font-size: 1.5rem; font-weight: 700;">{dept['staff']}</span><br><small>staff</small></div></div>""", unsafe_allow_html=True)
-    with tab5:
+    with tab6:
         st.subheader("Organizational Structure")
         fig = go.Figure(data=[go.Sankey(node=dict(pad=20, thickness=20, line=dict(color="black", width=0.5), label=["GMD", "COO", "Technology", "Facility Mgmt", "HR", "Sales", "Finance", "Procurement", "Security", "Legal", "Operations"], color=["#CC0000"] + ["#4a4a4a"]*10), link=dict(source=[0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1], target=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 2], value=[20, 12, 25, 8, 15, 10, 8, 20, 3, 18, 5]))])
         fig.update_layout(height=450)
@@ -453,10 +496,10 @@ def performance_okrs():
     with tab1:
         st.subheader("🎯 Corporate Strategic Pillars 2026-2027")
         pillars = {
-            "1. Occupancy & Revenue Growth": {"weight": 40, "progress": 85, "objectives": ["Increase data centre revenue by 15%", "100% of revenues realised as per approved budget", "Nil O/S of debts within 30 days", "100% quarterly reconciliation", "Retention of existing 90% customers", "0% variance from budgeted costs"], "responsible": "COO", "accountable": "GMD"},
-            "2. Process Simplification": {"weight": 20, "progress": 72, "objectives": ["AI task plan implementation by end of FY", "AI strategy plan by 31st May 2026", "Full BMS installation by 30.06.26", "99% Preventive Maintenance compliance", "99% uptime in ELV critical assets"], "responsible": "ELV/Hive Mechanics", "accountable": "GMD"},
-            "3. Asset Reliability & Digitalization": {"weight": 25, "progress": 90, "objectives": ["100% ELV assets assessed biannually", "0% variance in risk mitigation timeline", "80% risks mitigated within timeframe", "90% SMARTCHECK compliance by 30.09.26", "100% operational ELV assets in emergencies"], "responsible": "FM Heads", "accountable": "COO"},
-            "4. People & Culture": {"weight": 15, "progress": 88, "objectives": ["100% staff with JDs by April 30, 2026", "100% staff appraised twice yearly", "A-players identified (2 min) by April 30", "Competency gap assessment by May 31", "2 LMS courses per employee per half-year", "60-80% improvement in behavioural skills"], "responsible": "HR Director", "accountable": "GMD"}
+            "1. Occupancy & Revenue Growth": {"weight": 40, "progress": 85, "objectives": ["Increase data centre revenue by 15% from end 2025/26", "100% of revenues realised as per approved budget", "Nil O/S of debts within 30 days of invoicing", "100% quarterly reconciliation of all customers", "Retention of existing 90% customers", "0% variance from budgeted costs for all cost centres"], "responsible": "COO", "accountable": "GMD"},
+            "2. Process Simplification": {"weight": 20, "progress": 72, "objectives": ["Implementation of AI task plan by end of FY 2026", "AI strategy implementation plan by 31st May 2026", "Full BMS installation by 30.06.26", "Achieve 99% Preventive Maintenance (PPM) compliance", "99% uptime in all ELV critical assets", "Complete CRM implementation"], "responsible": "ELV/Hive Mechanics", "accountable": "GMD"},
+            "3. Asset Reliability & Digitalization": {"weight": 25, "progress": 90, "objectives": ["100% ELV critical assets assessed and risk-rated biannually", "0% variance in adherence to risk mitigation timeline", "80% of identified risks mitigated within stipulated timeframe", "90% tenant ELV complaints addressed within 24 hours", "Achieve 90% SMARTCHECK utilisation compliance by 30.09.26", "100% operational ELV assets during emergencies"], "responsible": "FM Heads", "accountable": "COO"},
+            "4. People & Culture": {"weight": 15, "progress": 88, "objectives": ["100% staff have JDs within 30th April 2026", "100% staff appraised by line managers twice a year", "Complete identification of A-players (2 min) by 30 April 2026", "Detailed competency gap assessment by 31 May 2026", "Each employee completes at least 2 LMS courses per half-year", "60-80% improvement in behavioural skills in 8 months"], "responsible": "HR Director", "accountable": "GMD"}
         }
         for pn, pd in pillars.items():
             color = "#38a169" if pd['progress'] >= 85 else "#d69e2e" if pd['progress'] >= 70 else "#CC0000"
@@ -518,10 +561,11 @@ def promotions():
     c1.markdown("""<div class="metric-card"><h3 style="color: #38a169;">⭐ A-Players</h3><div class="metric-value">4</div><small>Ready for promotion</small></div>""", unsafe_allow_html=True)
     c2.markdown("""<div class="metric-card"><h3 style="color: #CC0000;">📋 Pipeline</h3><div class="metric-value">85%</div><small>Key positions covered</small></div>""", unsafe_allow_html=True)
     c3.markdown("""<div class="metric-card"><h3 style="color: #3182ce;">📈 Avg Time</h3><div class="metric-value">2.3</div><small>Years to promotion</small></div>""", unsafe_allow_html=True)
-    st.subheader("🎯 Promotion Candidates")
-    for c in [{"name": "Emmanuel Etuk", "current": "Head, ELV Systems", "proposed": "Director, Technology", "score": 93, "readiness": "Ready Now", "gap": "None", "risk": "Low"}, {"name": "Sanjeev Purwar", "current": "Head, MEP", "proposed": "Director, Facilities", "score": 88, "readiness": "Ready Now", "gap": "Leadership", "risk": "Medium"}, {"name": "Adebayo Sakote", "current": "HR Manager", "proposed": "Senior HR Manager", "score": 85, "readiness": "Q3 2026", "gap": "Strategic HR", "risk": "Low"}, {"name": "Olalekan Bolarinwa", "current": "Deputy Accounts Manager", "proposed": "Accounts Manager", "score": 82, "readiness": "Q4 2026", "gap": "Certification", "risk": "Medium"}]:
+    st.subheader("🎯 Promotion Candidates - AI Assessment")
+    st.info("💡 **How A-Players are determined:** Candidates are evaluated based on Performance Score (40%), Leadership Competency (25%), Strategic Impact (20%), and Readiness Assessment (15%). Scores above 85% qualify as A-Players ready for immediate promotion.")
+    for c in [{"name": "Emmanuel Etuk", "current": "Head, ELV Systems", "proposed": "Director, Technology", "score": 93, "perf": 95, "leadership": 92, "strategic": 90, "readiness": "Ready Now", "gap": "None", "risk": "Low"}, {"name": "Sanjeev Purwar", "current": "Head, MEP", "proposed": "Director, Facilities", "score": 88, "perf": 90, "leadership": 85, "strategic": 88, "readiness": "Ready Now", "gap": "Leadership training", "risk": "Medium"}, {"name": "Adebayo Sakote", "current": "HR Manager", "proposed": "Senior HR Manager", "score": 85, "perf": 87, "leadership": 83, "strategic": 84, "readiness": "Q3 2026", "gap": "Strategic HR certification", "risk": "Low"}, {"name": "Olalekan Bolarinwa", "current": "Deputy Accounts Manager", "proposed": "Accounts Manager", "score": 82, "perf": 84, "leadership": 80, "strategic": 81, "readiness": "Q4 2026", "gap": "ICAN certification", "risk": "Medium"}]:
         color = "#38a169" if c['readiness'] == 'Ready Now' else "#d69e2e"
-        st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem; border-left: 4px solid {color};"><div style="display: flex; justify-content: space-between;"><div><strong>{c['name']}</strong><br><small>{c['current']} → <strong>{c['proposed']}</strong></small></div><div style="text-align: right;"><span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-weight: 600;">{c['readiness']}</span><br><small>Score: {c['score']}% | Risk: {c['risk']}</small></div></div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem; border-left: 4px solid {color};"><div style="display: flex; justify-content: space-between;"><div><strong>{c['name']}</strong><br><small>{c['current']} → <strong>{c['proposed']}</strong></small><br><small style="color: #666;">Perf: {c['perf']}% | Leadership: {c['leadership']}% | Strategic: {c['strategic']}%</small></div><div style="text-align: right;"><span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-weight: 600;">{c['readiness']}</span><br><small>Score: {c['score']}% | Gap: {c['gap']} | Risk: {c['risk']}</small></div></div></div>""", unsafe_allow_html=True)
 
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Manage Jobs, Applications, and Recruitment Workflows</p></div>""", unsafe_allow_html=True)
@@ -711,7 +755,7 @@ def ai_recruitment_agent():
             st.info("No candidates to save. Upload and analyze CVs first.")
 
 def chat_communications():
-    st.markdown("""<div class="churchgate-header"><h1>💬 Chat & Communications</h1><p>Team Messaging | Announcements | @Mentions</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>💬 Chat & Communications</h1><p>Team Messaging | Announcements | AI Assistant</p></div>""", unsafe_allow_html=True)
     tab1, tab2, tab3 = st.tabs(["💬 Team Chat", "📢 Announcements", "📧 Email"])
     with tab1:
         st.subheader("Team Chat")
@@ -738,14 +782,43 @@ def chat_communications():
                     st.rerun()
         st.markdown("---")
         st.markdown("### 🤖 HRIS Assistant Bot")
-        bot_q = st.text_input("Ask HRIS Bot:", placeholder="e.g., How do I apply for leave?")
-        if bot_q:
-            responses = {'leave': "To apply for leave, go to your Employee Dashboard. Your current balance is 18 days.", 'payroll': "Payroll is processed on the 25th of each month.", 'training': "Check the Training & Development section for available courses.", 'policy': "HR policies are available in the Employee Handbook."}
-            response = "I can help with leave, payroll, training, and policies."
-            for key, val in responses.items():
-                if key in bot_q.lower():
-                    response = val
-            st.info(f"🤖 {response}")
+        st.info("Ask me anything about leave, payroll, training, policies, benefits, or general HR inquiries. I'm here to help!")
+        if 'bot_conversation' not in st.session_state:
+            st.session_state.bot_conversation = []
+        for msg in st.session_state.bot_conversation:
+            if msg['role'] == 'user':
+                st.markdown(f"""<div style="background: #CC0000; color: white; padding: 0.6rem 1rem; border-radius: 10px; margin: 0.3rem 0; margin-left: 3rem;"><strong>You</strong><p style="margin: 0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+            else:
+                st.markdown(f"""<div style="background: #f0f0f0; padding: 0.6rem 1rem; border-radius: 10px; margin: 0.3rem 0; margin-right: 3rem;"><strong>🤖 HRIS Bot</strong><p style="margin: 0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+        with st.form("bot_form", clear_on_submit=True):
+            c1, c2 = st.columns([4, 1])
+            with c1:
+                bot_question = st.text_input("Ask HRIS Bot:", placeholder="e.g., How do I apply for leave? What are the training options?")
+            with c2:
+                ask = st.form_submit_button("🤖 Ask", use_container_width=True)
+            if ask and bot_question:
+                responses = {
+                    'leave': "To apply for leave, go to your Employee Dashboard and click 'Request Leave'. Your current balance is 18 days. You can also check your leave history and upcoming approved leaves there. Would you like to know about specific leave types?",
+                    'payroll': "Payroll is processed on the 25th of each month. For any payroll discrepancies, contact Accounts & Finance. Would you like to see your pay history?",
+                    'training': "Check the Training & Development section for available courses. Currently we have BMS Advanced Integration, AI in Facility Management, Leadership Excellence, and Data Analytics for Operations. New webinars are added weekly. Which area interests you?",
+                    'policy': "HR policies are available in the Employee Handbook. You can find policies on leave, code of conduct, benefits, and more. Is there a specific policy you'd like to know about?",
+                    'benefits': "Churchgate Group offers health insurance (HMO), pension contributions, annual leave (20 days), and performance bonuses. Would you like details on any specific benefit?",
+                    'performance': "Your performance reviews are conducted twice yearly. Your current score is 93.3%. You can view your detailed performance breakdown in the Performance & OKRs section. Would you like tips on improving your score?",
+                    'promotion': "Promotions are based on performance score (40%), leadership competency (25%), strategic impact (20%), and readiness assessment (15%). Your current eligibility can be viewed in the Promotions section. Would you like to know more?",
+                    'birthday': "You can view team birthdays on your Employee Dashboard. Upcoming birthdays this month include Chika Ikwuegbu (May 13), Francis Asuquo (May 19), Rhoda Ajibola (May 25), and Alice Agbo (May 28).",
+                    'help': "I can help with: Leave, Payroll, Training, Policies, Benefits, Performance, Promotions, Birthdays, and general HR questions. What would you like to know?",
+                }
+                response = "I can help with leave, payroll, training, policies, benefits, performance, promotions, and more. What would you like to know?"
+                for key, val in responses.items():
+                    if key in bot_question.lower():
+                        response = val
+                        break
+                st.session_state.bot_conversation.append({'role': 'user', 'content': bot_question, 'time': datetime.now().strftime('%I:%M %p')})
+                st.session_state.bot_conversation.append({'role': 'bot', 'content': response, 'time': datetime.now().strftime('%I:%M %p')})
+                st.rerun()
+        if st.button("🗑️ Clear Chat History", use_container_width=True):
+            st.session_state.bot_conversation = []
+            st.rerun()
     with tab2:
         st.subheader("📢 Company Announcements")
         for ann in [{"title": "Q2 Performance Reviews", "date": "2026-06-01", "priority": "High", "content": "All departments to submit Q2 reviews by June 15."}, {"title": "BMS Implementation Update", "date": "2026-05-28", "priority": "Medium", "content": "Phase 1 complete. Phase 2 starts June 10."}, {"title": "Holiday - Democracy Day", "date": "2026-05-25", "priority": "Medium", "content": "Office closed June 12."}]:
@@ -791,14 +864,67 @@ def training_development():
 
 def reports_analytics():
     st.markdown("""<div class="churchgate-header"><h1>📊 Reports & Analytics</h1><p>Business Intelligence | Churchgate Group</p></div>""", unsafe_allow_html=True)
-    report = st.selectbox("Select Report", ["Executive Scorecard", "Workforce Analytics", "Recruitment Funnel", "Performance Trends"])
-    if report == "Recruitment Funnel":
+    report = st.selectbox("Select Report", ["Executive Scorecard", "Workforce Analytics", "Recruitment Funnel", "Performance Trends", "Department Scorecard", "Financial Overview"])
+    if report == "Executive Scorecard":
+        st.subheader("📊 Executive Scorecard")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Revenue", "₦12.5B", "+15%")
+        c2.metric("EBITDA", "₦3.8B", "+8%")
+        c3.metric("Occupancy", "87%", "+5%")
+        c4.metric("NPS Score", "72", "+12")
+        pillars_df = pd.DataFrame({'Pillar': ['Occupancy & Revenue', 'Process Simplification', 'Asset Reliability', 'People & Culture'], 'Q1': [75, 60, 80, 85], 'Q2': [78, 65, 82, 88], 'Q3': [82, 70, 85, 90], 'Q4': [85, 72, 90, 88], 'Target': [90, 80, 95, 90]})
+        fig = go.Figure()
+        for i, row in pillars_df.iterrows():
+            fig.add_trace(go.Scatter(x=['Q1', 'Q2', 'Q3', 'Q4'], y=[row['Q1'], row['Q2'], row['Q3'], row['Q4']], name=row['Pillar'], mode='lines+markers'))
+        fig.add_hline(y=85, line_dash="dash", line_color="red", annotation_text="Target")
+        fig.update_layout(height=400)
+        st.plotly_chart(fig, use_container_width=True)
+    elif report == "Recruitment Funnel":
+        st.subheader("📊 Recruitment Funnel")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Time to Hire", "23 days", "↓ 35%")
+        c2.metric("Cost per Hire", "₦450K", "↓ 42%")
+        c3.metric("Offer Acceptance", "85%", "↑ 10%")
         funnel = pd.DataFrame({'Stage': ['Sourced', 'Applied', 'Screened', 'Interviewed', 'Offered', 'Hired'], 'Count': [100, 75, 50, 20, 5, 2]})
         fig = px.funnel(funnel, x='Count', y='Stage', color_discrete_sequence=['#CC0000'])
         st.plotly_chart(fig, use_container_width=True)
     elif report == "Workforce Analytics":
-        dept_data = pd.DataFrame({'Department': ['Technology', 'FM', 'Sales', 'Finance', 'HR', 'Procurement', 'Security', 'Legal', 'Operations'], 'Count': [12, 25, 15, 10, 8, 8, 20, 3, 18]})
-        fig = px.bar(dept_data, x='Department', y='Count', color_discrete_sequence=['#CC0000'])
+        st.subheader("Workforce Distribution")
+        c1, c2 = st.columns(2)
+        with c1:
+            dept_data = pd.DataFrame({'Department': ['Technology', 'FM', 'Sales', 'Finance', 'HR', 'Procurement', 'Security', 'Legal', 'Operations'], 'Count': [12, 25, 15, 10, 8, 8, 20, 3, 18]})
+            fig = px.bar(dept_data, x='Department', y='Count', color_discrete_sequence=['#CC0000'])
+            st.plotly_chart(fig, use_container_width=True)
+        with c2:
+            exp_data = pd.DataFrame({'Experience': ['0-2 yrs', '3-5 yrs', '6-10 yrs', '10+ yrs'], 'Count': [8, 15, 18, 7]})
+            fig = px.pie(exp_data, values='Count', names='Experience', hole=0.4, color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#cccccc'])
+            st.plotly_chart(fig, use_container_width=True)
+    elif report == "Department Scorecard":
+        st.subheader("📊 Department Performance Scorecard")
+        scorecard = pd.DataFrame({'Department': ['Technology', 'FM', 'Finance', 'HR', 'Sales', 'Procurement', 'Security', 'Legal', 'Operations'], 'Occupancy & Revenue': [85, 80, 90, 75, 88, 82, 78, 70, 85], 'Process Simplification': [72, 68, 75, 70, 65, 60, 55, 50, 68], 'Asset Reliability': [90, 88, 82, 85, 80, 78, 85, 75, 82], 'People & Culture': [88, 85, 80, 92, 82, 78, 80, 75, 85], 'Overall': [84, 80, 82, 81, 79, 75, 75, 68, 80]})
+        fig = go.Figure(data=[go.Heatmap(z=scorecard[['Occupancy & Revenue', 'Process Simplification', 'Asset Reliability', 'People & Culture']].values, x=['Occupancy & Revenue', 'Process Simplification', 'Asset Reliability', 'People & Culture'], y=scorecard['Department'], colorscale='RdYlGn', zmin=0, zmax=100)])
+        fig.update_layout(height=400)
+        st.plotly_chart(fig, use_container_width=True)
+    elif report == "Performance Trends":
+        st.subheader("📈 Performance Trends")
+        trends = pd.DataFrame({'Month': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], 'Overall Score': [78, 80, 82, 84, 85, 87], 'Target': [85, 85, 85, 85, 85, 85]})
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=trends['Month'], y=trends['Overall Score'], name='Actual', mode='lines+markers', line=dict(color='#CC0000', width=3)))
+        fig.add_trace(go.Scatter(x=trends['Month'], y=trends['Target'], name='Target', mode='lines', line=dict(color='#4a4a4a', dash='dash')))
+        fig.update_layout(height=350)
+        st.plotly_chart(fig, use_container_width=True)
+    elif report == "Financial Overview":
+        st.subheader("💰 Financial Overview")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Revenue", "₦12.5B", "+15%")
+        c2.metric("Operating Cost", "₦8.7B", "+8%")
+        c3.metric("EBITDA Margin", "30.4%", "+2.1%")
+        c4.metric("Cash Flow", "₦2.1B", "+12%")
+        fin_data = pd.DataFrame({'Month': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'], 'Revenue': [1.8, 2.0, 2.1, 2.2, 2.3, 2.1], 'Cost': [1.3, 1.4, 1.5, 1.5, 1.6, 1.4]})
+        fig = go.Figure()
+        fig.add_trace(go.Bar(name='Revenue (₦B)', x=fin_data['Month'], y=fin_data['Revenue'], marker_color='#CC0000'))
+        fig.add_trace(go.Bar(name='Cost (₦B)', x=fin_data['Month'], y=fin_data['Cost'], marker_color='#4a4a4a'))
+        fig.update_layout(height=350, barmode='group')
         st.plotly_chart(fig, use_container_width=True)
 
 def notifications_page():
@@ -815,6 +941,7 @@ def my_profile():
     with c1:
         initials = generate_initials(user['name'])
         st.markdown(f"""<div style="text-align: center; padding: 1.5rem; background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);"><div style="width: 80px; height: 80px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; color: white; margin: 0 auto;">{initials}</div><h3 style="margin-top: 0.8rem;">{user['name']}</h3><p>{user.get('position', 'Employee')}</p><p style="color: #CC0000;">ID: {user.get('employee_id', 'N/A')}</p><p>🏢 {user.get('department', 'N/A')}</p><p>👤 Supervisor: Jerome Das (COO)</p></div>""", unsafe_allow_html=True)
+        st.file_uploader("📸 Upload Profile Picture", type=['jpg', 'jpeg', 'png'])
     with c2:
         with st.form("profile_update"):
             c1, c2 = st.columns(2)
