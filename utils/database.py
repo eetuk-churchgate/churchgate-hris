@@ -328,14 +328,28 @@ class DatabaseManager:
             cursor.execute('''
                 INSERT INTO users (employee_id, name, email, password, role, department, position)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', ('EMP003', 'John Doe', 'john@churchgate.com', hm_password, 'Hiring Manager', 'Engineering', 'Senior Developer'))
+            ''', ('EMP003', 'John Doe', 'john@churchgate.com', hm_password, 'Hiring Manager', 'Engineering', 'Senior Developer'),
             
-            # ELV Head
-            elv_password = hashlib.sha256("elv123".encode()).hexdigest()
+            # Emmanuel Etuk - Senior Management Admin
+            eetuk_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
             cursor.execute('''
                 INSERT INTO users (employee_id, name, email, password, role, department, position)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', ('EMP010', 'Emmanuel Etuk', 'emmanuel@churchgate.com', elv_password, 'Manager', 'ELV Systems', 'Head, ELV Systems'))
+            ''', ('AN00387', 'Emmanuel Etuk', 'eetuk@churchgate.com', eetuk_password, 'Admin', 'Senior Management', 'Head, ELV Systems'))
+            
+            # Vinay Mahtani - GMD
+            vinay_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
+            cursor.execute('''
+                INSERT INTO users (employee_id, name, email, password, role, department, position)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ('GMD01', 'Vinay Mahtani', 'vbmahtani@churchgate.com', vinay_password, 'Admin', 'Senior Management', 'GMD'))
+            
+            # Jerome Das - COO
+            jerome_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
+            cursor.execute('''
+                INSERT INTO users (employee_id, name, email, password, role, department, position)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ('LE00019', 'Jerome Das', 'jeromedas@churchgate.com', jerome_password, 'Admin', 'Senior Management', 'COO'))
             
             # Sample Employees
             sample_employees = [
