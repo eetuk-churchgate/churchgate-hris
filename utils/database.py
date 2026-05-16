@@ -20,7 +20,6 @@ class DatabaseManager:
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # Users/Authentication table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,7 +37,6 @@ class DatabaseManager:
             )
         ''')
         
-        # Employees table (enhanced)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS employees (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +70,6 @@ class DatabaseManager:
             )
         ''')
         
-        # Departments table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS departments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,7 +81,6 @@ class DatabaseManager:
             )
         ''')
         
-        # Job Postings table (enhanced)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS job_postings (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,7 +107,6 @@ class DatabaseManager:
             )
         ''')
         
-        # Candidates table (enhanced with AI scoring)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS candidates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -160,7 +155,6 @@ class DatabaseManager:
             )
         ''')
         
-        # Performance Reviews table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS performance_reviews (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -189,7 +183,6 @@ class DatabaseManager:
             )
         ''')
         
-        # OKRs/Objectives table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS objectives (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -209,7 +202,6 @@ class DatabaseManager:
             )
         ''')
         
-        # Promotions table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS promotions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -231,7 +223,6 @@ class DatabaseManager:
             )
         ''')
         
-        # Interviews table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS interviews (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -254,7 +245,6 @@ class DatabaseManager:
             )
         ''')
         
-        # Notifications table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS notifications (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -269,7 +259,6 @@ class DatabaseManager:
             )
         ''')
         
-        # Documents table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS documents (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -287,110 +276,85 @@ class DatabaseManager:
             )
         ''')
         
-        # Insert default departments
         departments = [
-            ('Executive', 'EXEC', None, 'Executive Leadership'),
+            ('Senior Management', 'SM', None, 'Senior Leadership'),
             ('Human Resources', 'HR', None, 'Human Resources Department'),
-            ('Engineering', 'ENG', None, 'Engineering & Technology'),
-            ('Sales', 'SALES', None, 'Sales & Business Development'),
-            ('Marketing', 'MKT', None, 'Marketing & Communications'),
-            ('Finance', 'FIN', None, 'Finance & Accounting'),
+            ('Technology Group', 'TECH', None, 'ELV Systems & Technology'),
+            ('Sales & Marketing', 'SALES', None, 'Sales & Business Development'),
+            ('Accounts & Finance', 'FIN', None, 'Finance & Accounting'),
             ('Operations', 'OPS', None, 'Operations & Logistics'),
+            ('Facility Management', 'FM', None, 'Facility Management'),
             ('Legal', 'LEGAL', None, 'Legal & Compliance'),
-            ('Customer Service', 'CS', None, 'Customer Experience'),
-            ('ELV Systems', 'ELV', None, 'ELV Systems & Technology'),
-            ('MEP', 'MEP', None, 'Mechanical, Electrical & Plumbing'),
+            ('Procurement', 'PROC', None, 'Procurement'),
+            ('Security', 'SEC', None, 'Security'),
         ]
         cursor.executemany('''
             INSERT OR IGNORE INTO departments (name, code, head_id, description)
             VALUES (?, ?, ?, ?)
         ''', departments)
         
-        # Insert default admin user if not exists
         cursor.execute("SELECT COUNT(*) FROM users WHERE email = 'admin@churchgate.com'")
         if cursor.fetchone()[0] == 0:
-            # Admin
-            default_password = hashlib.sha256("admin123".encode()).hexdigest()
+            admin_password = hashlib.sha256("admin123".encode()).hexdigest()
             cursor.execute('''
                 INSERT INTO users (employee_id, name, email, password, role, department, position)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', ('EMP001', 'Admin User', 'admin@churchgate.com', default_password, 'Admin', 'Executive', 'System Administrator'))
+            ''', ('ADM001', 'Admin User', 'admin@churchgate.com', admin_password, 'Admin', 'Senior Management', 'System Administrator'))
             
-            # HR Director
             hr_password = hashlib.sha256("hr123".encode()).hexdigest()
             cursor.execute('''
                 INSERT INTO users (employee_id, name, email, password, role, department, position)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', ('EMP002', 'Sarah Williams', 'sarah@churchgate.com', hr_password, 'HR Director', 'Human Resources', 'HR Director'))
+            ''', ('LN00037', 'Adebayo Sakote', 'asakote@churchgate.com', hr_password, 'HR Director', 'Human Resources', 'HR Manager'))
             
-            # Hiring Manager
-            hm_password = hashlib.sha256("hire123".encode()).hexdigest()
-            cursor.execute('''
-                INSERT INTO users (employee_id, name, email, password, role, department, position)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', ('EMP003', 'John Doe', 'john@churchgate.com', hm_password, 'Hiring Manager', 'Engineering', 'Senior Developer'),
-            
-            # Emmanuel Etuk - Admin
             eetuk_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
             cursor.execute('''
                 INSERT INTO users (employee_id, name, email, password, role, department, position)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', ('AN00387', 'Emmanuel Etuk', 'eetuk@churchgate.com', eetuk_password, 'Admin', 'Technology Group', 'Head, ELV Systems'))
+            ''', ('AN00387', 'Emmanuel Etuk', 'eetuk@churchgate.com', eetuk_password, 'Admin', 'Senior Management', 'Head, ELV Systems'))
             
-            # Vinay Mahtani - GMD
             vinay_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
             cursor.execute('''
                 INSERT INTO users (employee_id, name, email, password, role, department, position)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', ('GMD01', 'Vinay Mahtani', 'vbmahtani@churchgate.com', vinay_password, 'Admin', 'Senior Management', 'GMD'))
             
-            # Jerome Das - COO
             jerome_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
             cursor.execute('''
                 INSERT INTO users (employee_id, name, email, password, role, department, position)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', ('LE00019', 'Jerome Das', 'jeromedas@churchgate.com', jerome_password, 'Admin', 'Senior Management', 'COO'))
             
-            # Vinay Mahtani - GMD
-            vinay_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
-            cursor.execute('''
-                INSERT INTO users (employee_id, name, email, password, role, department, position)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', ('GMD01', 'Vinay Mahtani', 'vbmahtani@churchgate.com', vinay_password, 'Admin', 'Senior Management', 'GMD'))
-            
-            # Jerome Das - COO
-            jerome_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
-            cursor.execute('''
-                INSERT INTO users (employee_id, name, email, password, role, department, position)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', ('LE00019', 'Jerome Das', 'jeromedas@churchgate.com', jerome_password, 'Admin', 'Senior Management', 'COO'))
-            
-            # Sample Employees
             sample_employees = [
-                ('EMP004', 'Jane', 'Smith', 'jane@churchgate.com', '+234801234568', 'Marketing', 'Marketing Manager', 'Manager', 'Full-time', '2021-06-20'),
-                ('EMP005', 'Mike', 'Johnson', 'mike@churchgate.com', '+234801234569', 'Finance', 'Financial Analyst', 'Senior', 'Full-time', '2023-03-10'),
-                ('EMP006', 'David', 'Brown', 'david@churchgate.com', '+234801234570', 'Sales', 'Sales Lead', 'Manager', 'Full-time', '2022-11-30'),
-                ('EMP007', 'Lisa', 'Anderson', 'lisa@churchgate.com', '+234801234571', 'Operations', 'Operations Manager', 'Manager', 'Full-time', '2020-05-15'),
-                ('EMP008', 'James', 'Wilson', 'james@churchgate.com', '+234801234572', 'Engineering', 'Backend Developer', 'Senior', 'Full-time', '2022-08-01'),
-                ('EMP009', 'Emmanuel', 'Etuk', 'emmanuel.etuk@churchgate.com', '+234801234573', 'ELV Systems', 'Head, ELV Systems', 'Manager', 'Full-time', '2019-01-02'),
+                ('AN00387', 'Emmanuel', 'Etuk', 'eetuk@churchgate.com', '+234-09092922509', 'Senior Management', 'Head, ELV Systems', 'Manager', 'Full-time', '2019-01-02'),
+                ('GMD01', 'Vinay', 'Mahtani', 'vbmahtani@churchgate.com', '+234-00070300000', 'Senior Management', 'GMD', 'C-Level', 'Full-time', '2018-08-29'),
+                ('LE00019', 'Jerome', 'Das', 'jeromedas@churchgate.com', '', 'Senior Management', 'COO', 'C-Level', 'Full-time', '2015-01-01'),
+                ('LE00212', 'Sanjeev', 'Purwar', 'purwar@churchgate.com', '+234-08033606471', 'Facility Management', 'Head, MEP', 'Manager', 'Full-time', '1997-07-11'),
+                ('LN00369', 'Ahmed', 'Karim', 'akarim@churchgate.com', '+234-09027363561', 'Sales & Marketing', 'GM, Sales & Marketing', 'Manager', 'Full-time', '2021-04-19'),
+                ('AN00012', 'Ibukun', 'Adeogun', 'adeogun@churchgate.com', '+234-08033012808', 'Operations', 'GM, Operations/Admin', 'Manager', 'Full-time', '1991-04-04'),
+                ('LN00008', 'Jeff', 'Arikawe', 'jeff@churchgate.com', '+234-07036233478', 'Accounts & Finance', 'Chief Accountant', 'Manager', 'Full-time', '1991-06-09'),
+                ('LN00037', 'Adebayo', 'Sakote', 'asakote@churchgate.com', '', 'Human Resources', 'HR Manager', 'Manager', 'Full-time', '2020-01-01'),
+                ('LE00071', 'Anand', 'Bora', 'abora@churchgate.com', '', 'Procurement', 'GM, Procurement', 'Manager', 'Full-time', '2018-01-01'),
+                ('AN00391', 'Maikudi', 'Kadoh', 'mkadoh@churchgate.com', '+234-08033162042', 'Security', 'Chief Security Officer', 'Manager', 'Full-time', '2017-12-05'),
+                ('AN00455', 'David', 'Aiyedun', 'daiyedun@churchgate.com', '+234-08062114849', 'Legal', 'Legal Officer', 'Senior', 'Full-time', '2022-10-24'),
+                ('AN00400', 'Charles', 'Okere', 'cokere@churchgate.com', '+234-08033618587', 'Facility Management', 'Lift Supervisor', 'Senior', 'Full-time', '2018-05-15'),
+                ('AN00398', 'George', 'Ojile', 'gojile@churchgate.com', '+234-08035673006', 'Facility Management', 'Lift Engineer', 'Senior', 'Full-time', '2018-04-24'),
+                ('AN00425', 'Augustine', 'Oleh', 'aoleh@churchgate.com', '+234-08062069622', 'Facility Management', 'HSE Coordinator', 'Senior', 'Full-time', '2021-05-03'),
+                ('AN00433', 'Francis', 'Asuquo', 'fasuquo@churchgate.com', '+234-08136403113', 'Technology Group', 'ELV Engineer', 'Junior', 'Full-time', '2022-01-21'),
+                ('LN00438', 'Chika', 'Ikwuegbu', 'cikwuegbu@churchgate.com', '+234-08026822643', 'Security', 'Admin Assistant', 'Junior', 'Full-time', '2022-05-21'),
+                ('AN00423', 'Alice', 'Agbo', 'aagbo@churchgate.com', '+234-08066792728', 'Procurement', 'Store Keeper', 'Junior', 'Full-time', '2021-02-22'),
+                ('AN00460', 'Rhoda', 'Ajibola', 'rajibola@churchgate.com', '+234-07080037934', 'Facility Management', 'Front Desk Executive', 'Junior', 'Full-time', '2023-02-02'),
+                ('AN00451', 'Ogechukwu', 'Obute', 'jobute@churchgate.com', '+234-09082989886', 'Sales & Marketing', 'Sales Executive', 'Junior', 'Full-time', '2022-10-03'),
+                ('AN00496', 'David', 'Effiong', 'deffiong@churchgate.com', '+234-08036451805', 'Facility Management', 'Facility Manager', 'Manager', 'Full-time', '2025-01-20'),
             ]
             cursor.executemany('''
                 INSERT INTO employees (employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', sample_employees)
-            
-            # Create user accounts for sample employees
-            for emp in sample_employees:
-                emp_password = hashlib.sha256("staff123".encode()).hexdigest()
-                cursor.execute('''
-                    INSERT INTO users (employee_id, name, email, password, role, department, position)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (emp[0], f"{emp[1]} {emp[2]}", emp[3], emp_password, 'Employee', emp[5], emp[6]))
         
         conn.commit()
         conn.close()
     
-    # User Management Methods
     def verify_user(self, email, password):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -425,7 +389,6 @@ class DatabaseManager:
         finally:
             conn.close()
     
-    # Employee Management Methods
     def get_all_employees(self):
         conn = self.get_connection()
         df = pd.read_sql_query("SELECT * FROM employees WHERE status = 'Active'", conn)
@@ -442,7 +405,6 @@ class DatabaseManager:
         return employee
     
     def get_employee_by_user_id(self, user_id):
-        """Get employee linked to a user account"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT employee_id FROM users WHERE id = ?", (user_id,))
@@ -467,7 +429,6 @@ class DatabaseManager:
         conn.commit()
         conn.close()
     
-    # Job Posting Methods
     def create_job_posting(self, job_data):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -491,7 +452,6 @@ class DatabaseManager:
         conn.close()
         return df
     
-    # Candidate Management Methods
     def add_candidate(self, candidate_data):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -537,7 +497,6 @@ class DatabaseManager:
         conn.close()
         return df
     
-    # Performance Methods
     def add_objective(self, employee_id, title, description, key_results, target_value, start_date, end_date, weight=1.0):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -554,7 +513,6 @@ class DatabaseManager:
         conn.close()
         return df
     
-    # Notification Methods
     def add_notification(self, user_id, title, message, type='Info', link=None):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -576,23 +534,17 @@ class DatabaseManager:
         conn.close()
         return df
     
-    # Dashboard Stats
     def get_dashboard_stats(self):
         conn = self.get_connection()
         cursor = conn.cursor()
-        
         cursor.execute("SELECT COUNT(*) FROM employees WHERE status = 'Active'")
         total_employees = cursor.fetchone()[0]
-        
         cursor.execute("SELECT COUNT(*) FROM job_postings WHERE status = 'Open'")
         open_positions = cursor.fetchone()[0]
-        
         cursor.execute("SELECT COUNT(*) FROM candidates WHERE status = 'New'")
         new_candidates = cursor.fetchone()[0]
-        
         cursor.execute("SELECT AVG(overall_rating) FROM performance_reviews")
         avg_performance = cursor.fetchone()[0] or 0
-        
         conn.close()
         return {
             'total_employees': total_employees,
