@@ -336,7 +336,7 @@ def executive_dashboard():
         "3. Asset Reliability & Digitalization": {"weight": 25, "progress": 90, "objectives": ["100% ELV critical assets assessed and risk-rated biannually", "0% variance in adherence to risk mitigation timeline", "80% of identified risks mitigated within stipulated timeframe", "90% tenant ELV complaints addressed within 24 hours", "Achieve 90% SMARTCHECK utilisation compliance by 30.09.26", "100% operational ELV assets during emergencies/fire drills", "Nil disruptions on collaborative issues involving departments"], "responsible": "FM Heads", "accountable": "COO", "consulted": "VP-Sales/GM-Proc/Stores", "informed": "Board"},
         "4. People & Culture": {"weight": 15, "progress": 88, "objectives": ["100% staff have JDs within 30th April 2026", "100% staff appraised by line managers twice a year", "Complete identification and validation of A-players (2 min) by 30 April 2026", "Detailed competency gap assessment by 31 May 2026", "Each employee completes at least 2 LMS courses per half-year", "60-80% improvement in behavioural skills in 8 months", "Succession planning with mentoring program for A-players"], "responsible": "HR Director", "accountable": "GMD", "consulted": "GEA/COO/HR", "informed": "Board"}
     }
-        for pn, pdata in pillars.items():
+    for pn, pdata in pillars.items():
         color = "#38a169" if pdata['progress'] >= 85 else "#d69e2e" if pdata['progress'] >= 70 else "#CC0000"
         with st.expander(f"{pn} | Weight: {pdata['weight']}% | Progress: {pdata['progress']}%", expanded=False):
             st.progress(pdata['progress'] / 100)
