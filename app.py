@@ -67,49 +67,73 @@ CHURCHGATE_PORTFOLIO = [
     "Ocean Terrace"
 ]
 
-# ============ CUSTOM CSS ============
+# ============ CUSTOM CSS - MATCHING BRS APP STYLE ============
 st.markdown("""
 <style>
     .stApp {
-        background: #f5f5f5;
+        background: #ffffff;
     }
     
     section[data-testid="stSidebar"] {
-        background-color: #1a1a1a !important;
+        background-color: #f8f9fa !important;
+        border-right: 1px solid #e0e0e0 !important;
     }
     
     section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] p,
     section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] span,
     section[data-testid="stSidebar"] label,
-    section[data-testid="stSidebar"] .stSelectbox label,
     section[data-testid="stSidebar"] button {
-        color: #ffffff !important;
+        color: #333333 !important;
     }
     
     section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj,
     section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj span,
     section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj p,
     section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj div {
-        color: #ffffff !important;
+        color: #333333 !important;
+    }
+    
+    section[data-testid="stSidebar"] .nav-link {
+        color: #333333 !important;
+    }
+    
+    section[data-testid="stSidebar"] .nav-link span {
+        color: #333333 !important;
+    }
+    
+    section[data-testid="stSidebar"] .nav-link svg {
+        color: #CC0000 !important;
+    }
+    
+    section[data-testid="stSidebar"] .nav-link-selected {
+        background-color: #fff0f0 !important;
+        border-left: 3px solid #CC0000 !important;
+    }
+    
+    section[data-testid="stSidebar"] .nav-link-selected span {
+        color: #CC0000 !important;
+        font-weight: 700 !important;
     }
     
     .churchgate-header {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        background: white;
         padding: 1.5rem 2rem;
         border-radius: 10px;
         margin-bottom: 2rem;
         border-left: 4px solid #CC0000;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     
     .churchgate-header h1 {
-        color: white;
+        color: #1a1a1a;
         font-size: 2rem;
         font-weight: 700;
         margin: 0;
     }
     
     .churchgate-header p {
-        color: #cccccc;
+        color: #666666;
         font-size: 0.95rem;
         margin-top: 0.5rem;
     }
@@ -121,12 +145,13 @@ st.markdown("""
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         transition: all 0.3s ease;
         text-align: center;
-        border-top: 3px solid #CC0000;
+        border: 1px solid #e0e0e0;
     }
     
     .metric-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(204, 0, 0, 0.15);
+        box-shadow: 0 10px 25px rgba(204, 0, 0, 0.1);
+        border-color: #CC0000;
     }
     
     .metric-value {
@@ -143,7 +168,7 @@ st.markdown("""
     }
     
     .stButton > button {
-        background: linear-gradient(135deg, #CC0000 0%, #ff1a1a 100%) !important;
+        background: #CC0000 !important;
         color: white !important;
         border: none !important;
         padding: 0.6rem 1.5rem !important;
@@ -152,18 +177,18 @@ st.markdown("""
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 20px rgba(204, 0, 0, 0.3) !important;
+        background: #aa0000 !important;
+        box-shadow: 0 4px 12px rgba(204, 0, 0, 0.3) !important;
     }
     
     .mission-banner {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-        color: white;
+        background: white;
         padding: 2rem;
         border-radius: 10px;
         text-align: center;
         margin: 2rem 0;
         border: 2px solid #CC0000;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     
     .mission-banner h2 {
@@ -176,7 +201,7 @@ st.markdown("""
         padding: 1rem;
         border-radius: 8px;
         text-align: center;
-        border-bottom: 3px solid #CC0000;
+        border: 1px solid #e0e0e0;
         height: 100%;
     }
     
