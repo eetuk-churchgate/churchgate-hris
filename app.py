@@ -294,7 +294,9 @@ def employee_dashboard():
 
 def executive_dashboard():
     show_churchgate_mission()
-    st.markdown("""<div class="churchgate-header"><h1>📊 Executive Dashboard</h1><p>Corporate Strategy 2026-2027 | Churchgate Group Portfolio Performance</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>📊 Executive Dashboard</h1><p>Corporate Strategy 2026-2027 | AI-Powered Group Performance Intelligence</p></div>""", unsafe_allow_html=True)
+    
+    # TOP METRICS
     metrics = st.session_state.dashboard_metrics
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
@@ -307,6 +309,8 @@ def executive_dashboard():
         st.markdown(f"""<div class="metric-card"><div class="metric-label">Tenant Satisfaction</div><div class="metric-value">{metrics['tenant_satisfaction']}/5</div><small style="color: #38a169;">↑ 0.3 points</small></div>""", unsafe_allow_html=True)
     with c5:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">Open Positions</div><div class="metric-value">{metrics['open_positions']}</div><small style="color: #CC0000;">Active recruitment</small></div>""", unsafe_allow_html=True)
+    
+    # ADMIN METRICS UPDATE
     if st.session_state.user and st.session_state.user['role'] in ['Admin', 'HR Director']:
         with st.expander("⚙️ Update Dashboard Metrics (Admin)"):
             ec1, ec2, ec3 = st.columns(3)
@@ -322,27 +326,178 @@ def executive_dashboard():
                 st.session_state.dashboard_metrics = {'total_employees': ne, 'occupancy_rate': no, 'revenue_vs_budget': nr, 'tenant_satisfaction': ns, 'open_positions': np}
                 st.success("✅ Updated!")
                 st.rerun()
-    st.subheader("🏢 Portfolio Performance")
-    portfolio_data = pd.DataFrame({'Property': CHURCHGATE_PORTFOLIO, 'Occupancy %': [87, 92, 85, 78, 95, 90], 'Revenue %': [94, 98, 88, 82, 97, 91], 'Satisfaction': [4.3, 4.5, 4.1, 3.9, 4.4, 4.2]})
-    fig = go.Figure()
-    fig.add_trace(go.Bar(name='Occupancy %', x=portfolio_data['Property'], y=portfolio_data['Occupancy %'], marker_color='#CC0000'))
-    fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue %'], marker_color='#4a4a4a'))
-    fig.update_layout(height=350, barmode='group')
-    st.plotly_chart(fig, use_container_width=True)
-    st.subheader("🎯 Strategic Pillars 2026-2027 - All 4 Pillars")
+    
+    # STRATEGIC PILLARS OVERVIEW - VISUAL CARDS
+    st.markdown("---")
+    st.subheader("🎯 Group Strategic Pillars 2026-2027 — Executive Scorecard")
+    
     pillars = {
-        "1. Occupancy & Revenue Growth": {"weight": 40, "progress": 85, "objectives": ["Increase data centre revenue by 15% from end 2025/26", "100% of revenues realised as per approved budget", "Nil O/S of debts within 30 days of invoicing", "100% quarterly reconciliation of all customers", "Retention of existing 90% customers", "0% variance from budgeted costs for all cost centres", "Budget reviews below 5% at each performance review"], "responsible": "COO", "accountable": "GMD", "consulted": "All HODs", "informed": "Board"},
-        "2. Process Simplification": {"weight": 20, "progress": 72, "objectives": ["Implementation of AI task plan by end of FY 2026", "AI strategy implementation plan by 31st May 2026", "Full BMS installation by 30.06.26", "Achieve 99% Preventive Maintenance (PPM) compliance", "99% uptime in all ELV critical assets", "Complete CRM implementation for all marketing executives", "Website architecture maintenance & SEO"], "responsible": "ELV/Hive Mechanics", "accountable": "GMD", "consulted": "All HODs", "informed": "Board"},
-        "3. Asset Reliability & Digitalization": {"weight": 25, "progress": 90, "objectives": ["100% ELV critical assets assessed and risk-rated biannually", "0% variance in adherence to risk mitigation timeline", "80% of identified risks mitigated within stipulated timeframe", "90% tenant ELV complaints addressed within 24 hours", "Achieve 90% SMARTCHECK utilisation compliance by 30.09.26", "100% operational ELV assets during emergencies/fire drills", "Nil disruptions on collaborative issues involving departments"], "responsible": "FM Heads", "accountable": "COO", "consulted": "VP-Sales/GM-Proc/Stores", "informed": "Board"},
-        "4. People & Culture": {"weight": 15, "progress": 88, "objectives": ["100% staff have JDs within 30th April 2026", "100% staff appraised by line managers twice a year", "Complete identification and validation of A-players (2 min) by 30 April 2026", "Detailed competency gap assessment by 31 May 2026", "Each employee completes at least 2 LMS courses per half-year", "60-80% improvement in behavioural skills in 8 months", "Succession planning with mentoring program for A-players"], "responsible": "HR Director", "accountable": "GMD", "consulted": "GEA/COO/HR", "informed": "Board"}
+        "1. Occupancy & Revenue Growth": {
+            "weight": 40, "progress": 85, "trend": "+5%", "status": "On Track",
+            "kpis": ["Data centre revenue +15%", "100% budget realization", "Nil O/S within 30 days", "90% customer retention", "0% cost variance"],
+            "responsible": "COO", "accountable": "GMD", "consulted": "All HODs", "informed": "Board",
+            "highlight": "Revenue streams from Data Centre, ISP, Managed Services"
+        },
+        "2. Process Simplification": {
+            "weight": 20, "progress": 72, "trend": "+8%", "status": "In Progress",
+            "kpis": ["AI implementation by FY end", "BMS complete by 30.06.26", "99% PPM compliance", "99% ELV uptime", "CRM full deployment"],
+            "responsible": "ELV/Hive Mechanics", "accountable": "GMD", "consulted": "All HODs", "informed": "Board",
+            "highlight": "AI strategy + BMS + SMARTCHECK deployment"
+        },
+        "3. Asset Reliability & Digitalization": {
+            "weight": 25, "progress": 90, "trend": "+3%", "status": "Exceeding",
+            "kpis": ["100% ELV assets assessed biannually", "0% variance risk mitigation", "80% risks mitigated", "90% SMARTCHECK by 30.09.26", "100% emergency readiness"],
+            "responsible": "FM Heads", "accountable": "COO", "consulted": "VP-Sales/GM-Procurement", "informed": "Board",
+            "highlight": "SMARTCHECK 8 modules + preventive maintenance culture"
+        },
+        "4. People & Culture": {
+            "weight": 15, "progress": 88, "trend": "+4%", "status": "On Track",
+            "kpis": ["100% JDs by April 2026", "100% appraised 2x yearly", "A-players identified", "Competency gaps assessed", "2 LMS courses/employee", "60-80% behavioural improvement"],
+            "responsible": "HR Director", "accountable": "GMD", "consulted": "GEA/COO/HR", "informed": "Board",
+            "highlight": "Succession planning + Learning culture + 360° assessment"
+        }
     }
-    for pn, pdata in pillars.items():
-        color = "#38a169" if pdata['progress'] >= 85 else "#d69e2e" if pdata['progress'] >= 70 else "#CC0000"
-        with st.expander(f"{pn} | Weight: {pdata['weight']}% | Progress: {pdata['progress']}%", expanded=False):
-            st.progress(pdata['progress'] / 100)
-            for obj in pdata['objectives']:
-                st.markdown(f"✅ {obj}")
-            st.markdown(f"**RACI:** R: {pdata['responsible']} | A: {pdata['accountable']} | C: {pdata['consulted']} | I: {pdata['informed']}")
+    
+    # DISPLAY 4 PILLARS AS CARDS IN 2x2 GRID
+    p1, p2 = st.columns(2)
+    with p1:
+        pn = "1. Occupancy & Revenue Growth"
+        pdata = pillars[pn]
+        color = "#38a169"
+        st.markdown(f"""
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; border-top: 4px solid {color}; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem;">💰 {pn}</h3>
+                <span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">{pdata['status']} {pdata['trend']}</span>
+            </div>
+            <div style="margin: 0.8rem 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;"><span>Progress</span><span>{pdata['progress']}%</span></div>
+                <div style="background: #e0e0e0; height: 8px; border-radius: 4px; margin-top: 0.3rem;"><div style="background: {color}; width: {pdata['progress']}%; height: 8px; border-radius: 4px;"></div></div>
+            </div>
+            <p style="font-size: 0.8rem; color: #CC0000; font-weight: 600;">🎯 {pdata['highlight']}</p>
+            <div style="font-size: 0.8rem; margin: 0.5rem 0;">
+                <strong>RACI:</strong> R: {pdata['responsible']} | A: {pdata['accountable']} | C: {pdata['consulted']} | I: {pdata['informed']}
+            </div>
+            <div style="font-size: 0.78rem; color: #555;">Weight: {pdata['weight']}% of corporate strategy</div>
+        </div>""", unsafe_allow_html=True)
+        
+        pn2 = "3. Asset Reliability & Digitalization"
+        pdata2 = pillars[pn2]
+        color2 = "#38a169"
+        st.markdown(f"""
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; border-top: 4px solid {color2}; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem;">🔧 {pn2}</h3>
+                <span style="background: {color2}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">{pdata2['status']} {pdata2['trend']}</span>
+            </div>
+            <div style="margin: 0.8rem 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;"><span>Progress</span><span>{pdata2['progress']}%</span></div>
+                <div style="background: #e0e0e0; height: 8px; border-radius: 4px; margin-top: 0.3rem;"><div style="background: {color2}; width: {pdata2['progress']}%; height: 8px; border-radius: 4px;"></div></div>
+            </div>
+            <p style="font-size: 0.8rem; color: #CC0000; font-weight: 600;">🎯 {pdata2['highlight']}</p>
+            <div style="font-size: 0.8rem; margin: 0.5rem 0;">
+                <strong>RACI:</strong> R: {pdata2['responsible']} | A: {pdata2['accountable']} | C: {pdata2['consulted']} | I: {pdata2['informed']}
+            </div>
+            <div style="font-size: 0.78rem; color: #555;">Weight: {pdata2['weight']}% of corporate strategy</div>
+        </div>""", unsafe_allow_html=True)
+    
+    with p2:
+        pn3 = "2. Process Simplification"
+        pdata3 = pillars[pn3]
+        color3 = "#d69e2e"
+        st.markdown(f"""
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; border-top: 4px solid {color3}; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem;">🤖 {pn3}</h3>
+                <span style="background: {color3}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">{pdata3['status']} {pdata3['trend']}</span>
+            </div>
+            <div style="margin: 0.8rem 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;"><span>Progress</span><span>{pdata3['progress']}%</span></div>
+                <div style="background: #e0e0e0; height: 8px; border-radius: 4px; margin-top: 0.3rem;"><div style="background: {color3}; width: {pdata3['progress']}%; height: 8px; border-radius: 4px;"></div></div>
+            </div>
+            <p style="font-size: 0.8rem; color: #CC0000; font-weight: 600;">🎯 {pdata3['highlight']}</p>
+            <div style="font-size: 0.8rem; margin: 0.5rem 0;">
+                <strong>RACI:</strong> R: {pdata3['responsible']} | A: {pdata3['accountable']} | C: {pdata3['consulted']} | I: {pdata3['informed']}
+            </div>
+            <div style="font-size: 0.78rem; color: #555;">Weight: {pdata3['weight']}% of corporate strategy</div>
+        </div>""", unsafe_allow_html=True)
+        
+        pn4 = "4. People & Culture"
+        pdata4 = pillars[pn4]
+        color4 = "#38a169"
+        st.markdown(f"""
+        <div style="background: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; border-top: 4px solid {color4}; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem;">👥 {pn4}</h3>
+                <span style="background: {color4}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">{pdata4['status']} {pdata4['trend']}</span>
+            </div>
+            <div style="margin: 0.8rem 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;"><span>Progress</span><span>{pdata4['progress']}%</span></div>
+                <div style="background: #e0e0e0; height: 8px; border-radius: 4px; margin-top: 0.3rem;"><div style="background: {color4}; width: {pdata4['progress']}%; height: 8px; border-radius: 4px;"></div></div>
+            </div>
+            <p style="font-size: 0.8rem; color: #CC0000; font-weight: 600;">🎯 {pdata4['highlight']}</p>
+            <div style="font-size: 0.8rem; margin: 0.5rem 0;">
+                <strong>RACI:</strong> R: {pdata4['responsible']} | A: {pdata4['accountable']} | C: {pdata4['consulted']} | I: {pdata4['informed']}
+            </div>
+            <div style="font-size: 0.78rem; color: #555;">Weight: {pdata4['weight']}% of corporate strategy</div>
+        </div>""", unsafe_allow_html=True)
+    
+    # PORTFOLIO PERFORMANCE
+    st.markdown("---")
+    st.subheader("🏢 Portfolio Performance — Churchgate Group Properties")
+    portfolio_data = pd.DataFrame({
+        'Property': CHURCHGATE_PORTFOLIO,
+        'Occupancy %': [87, 92, 85, 78, 95, 90],
+        'Revenue %': [94, 98, 88, 82, 97, 91],
+        'Satisfaction': [4.3, 4.5, 4.1, 3.9, 4.4, 4.2]
+    })
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name='Occupancy %', x=portfolio_data['Property'], y=portfolio_data['Occupancy %'], marker_color='#CC0000', text=portfolio_data['Occupancy %'], textposition='outside'))
+    fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue %'], marker_color='#4a4a4a', text=portfolio_data['Revenue %'], textposition='outside'))
+    fig.update_layout(height=400, barmode='group', margin=dict(t=20), legend=dict(orientation='h', yanchor='bottom', y=1.02))
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # DEPARTMENT SCORECARD
+    st.markdown("---")
+    st.subheader("📊 Department Performance Scorecard — Strategic Pillar Alignment")
+    scorecard = pd.DataFrame({
+        'Department': ['Technology', 'Facility Mgmt', 'Finance', 'HR', 'Sales & Mkt', 'Procurement', 'Security', 'Legal', 'Operations'],
+        'Occupancy & Revenue': [85, 80, 90, 75, 88, 82, 78, 70, 85],
+        'Process Simplification': [72, 68, 75, 70, 65, 60, 55, 50, 68],
+        'Asset Reliability': [90, 88, 82, 85, 80, 78, 85, 75, 82],
+        'People & Culture': [88, 85, 80, 92, 82, 78, 80, 75, 85]
+    })
+    fig2 = go.Figure(data=[go.Heatmap(
+        z=scorecard[['Occupancy & Revenue', 'Process Simplification', 'Asset Reliability', 'People & Culture']].values,
+        x=['Occupancy & Revenue', 'Process Simplification', 'Asset Reliability', 'People & Culture'],
+        y=scorecard['Department'],
+        colorscale=[[0, '#e53e3e'], [0.5, '#d69e2e'], [1, '#38a169']],
+        zmin=0, zmax=100,
+        text=scorecard[['Occupancy & Revenue', 'Process Simplification', 'Asset Reliability', 'People & Culture']].values,
+        texttemplate='%{text}%',
+        textfont=dict(size=11)
+    )])
+    fig2.update_layout(height=400, margin=dict(t=20))
+    st.plotly_chart(fig2, use_container_width=True)
+    
+    # RACI SUMMARY TABLE
+    st.markdown("---")
+    st.subheader("📋 Group Strategy RACI Matrix — 2026-2027")
+    raci_data = pd.DataFrame({
+        'Strategic Initiative': [
+            'Occupancy & Revenue Growth',
+            'Process Simplification (AI/BMS)',
+            'Asset Reliability & Digitalization',
+            'People & Culture'
+        ],
+        'Responsible': ['COO', 'ELV/Hive Mechanics', 'FM Heads', 'HR Director'],
+        'Accountable': ['GMD', 'GMD', 'COO', 'GMD'],
+        'Consulted': ['All HODs', 'All HODs', 'VP-Sales/GM-Procurement', 'GEA/COO/HR'],
+        'Informed': ['Board', 'Board', 'Board', 'Board'],
+        'Timeline': ['0-12 months', '0-8 months', '6-12 months', '0-8 months'],
+        'Status': ['On Track', 'In Progress', 'Exceeding', 'On Track']
+    })
+    st.dataframe(raci_data, use_container_width=True, hide_index=True)
 
 def employee_management():
     st.markdown("""<div class="churchgate-header"><h1>👥 Employee Management</h1><p>Comprehensive workforce management | Churchgate Group</p></div>""", unsafe_allow_html=True)
