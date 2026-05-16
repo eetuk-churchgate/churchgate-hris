@@ -330,12 +330,26 @@ class DatabaseManager:
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', ('EMP003', 'John Doe', 'john@churchgate.com', hm_password, 'Hiring Manager', 'Engineering', 'Senior Developer'),
             
-            # Emmanuel Etuk - Senior Management Admin
+            # Emmanuel Etuk - Admin
             eetuk_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
             cursor.execute('''
                 INSERT INTO users (employee_id, name, email, password, role, department, position)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', ('AN00387', 'Emmanuel Etuk', 'eetuk@churchgate.com', eetuk_password, 'Admin', 'Senior Management', 'Head, ELV Systems'))
+            ''', ('AN00387', 'Emmanuel Etuk', 'eetuk@churchgate.com', eetuk_password, 'Admin', 'Technology Group', 'Head, ELV Systems'))
+            
+            # Vinay Mahtani - GMD
+            vinay_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
+            cursor.execute('''
+                INSERT INTO users (employee_id, name, email, password, role, department, position)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ('GMD01', 'Vinay Mahtani', 'vbmahtani@churchgate.com', vinay_password, 'Admin', 'Senior Management', 'GMD'))
+            
+            # Jerome Das - COO
+            jerome_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
+            cursor.execute('''
+                INSERT INTO users (employee_id, name, email, password, role, department, position)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', ('LE00019', 'Jerome Das', 'jeromedas@churchgate.com', jerome_password, 'Admin', 'Senior Management', 'COO'))
             
             # Vinay Mahtani - GMD
             vinay_password = hashlib.sha256("churchgate2026".encode()).hexdigest()
