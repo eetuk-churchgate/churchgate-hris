@@ -261,7 +261,7 @@ def employee_dashboard():
     st.markdown(f"""<div class="churchgate-header"><h1>👋 Welcome back, {user['name']}!</h1><p>{user.get('position', 'Employee')} • {user.get('department', 'Department')}</p></div>""", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown("""<div class="metric-card"><div class="metric-label">Profile Completeness</div><div class="metric-value">80%</div><small><a href="#">Edit Profile →</a></small></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="metric-card"><div class="metric-label">Profile Completeness</div><div class="metric-value">80%</div><small><a href="?page=profile" style="color: #CC0000; text-decoration: underline;">Edit Profile →</a></small></div>""", unsafe_allow_html=True)
     with c2:
         st.markdown("""<div class="metric-card"><div class="metric-label">Leave Days</div><div class="metric-value">18</div><small style="color: #38a169;">Available</small></div>""", unsafe_allow_html=True)
     with c3:
@@ -606,12 +606,42 @@ def employee_management():
                 st.success(f"✅ {len(df)} employees uploaded!")
                 st.balloons()
     with tab4:
-        st.subheader("🔑 Generate Employee Login Credentials")
+        st.subheader("🔑 Manage Employee Access & Generate Logins")
+        
+        # ADMIN ROLE MANAGEMENT
+        st.markdown("### 👑 Update User Roles (Admin Only)")
+        users_list = [
+            {"name": "Vinay Mahtani", "id": "GMD01", "email": "vbmahtani@churchgate.com", "dept": "Senior Management", "current_role": "Admin"},
+            {"name": "Jerome Das", "id": "LE00019", "email": "jeromedas@churchgate.com", "dept": "Senior Management", "current_role": "Admin"},
+            {"name": "Emmanuel Etuk", "id": "AN00387", "email": "eetuk@churchgate.com", "dept": "Technology Group", "current_role": "Manager"},
+            {"name": "Lawal Mohammed", "id": "NEW001", "email": "lawal@churchgate.com", "dept": "Senior Management", "current_role": "Admin"},
+            {"name": "Paul Fade", "id": "NEW002", "email": "pfade@churchgate.com", "dept": "Senior Management", "current_role": "Admin"},
+        ]
+        
+        for u in users_list:
+            c1, c2, c3 = st.columns([2, 1, 1])
+            with c1:
+                st.markdown(f"**{u['name']}** - {u['email']}")
+            with c2:
+                new_role = st.selectbox(f"Role for {u['name']}", ["Admin", "HR Director", "Manager", "Employee"], 
+                                        index=["Admin", "HR Director", "Manager", "Employee"].index(u['current_role']),
+                                        key=f"role_{u['id']}")
+            with c3:
+                st.markdown(f"<br><small>Dept: {u['dept']}</small>", unsafe_allow_html=True)
+        
+        if st.button("💾 Update All Roles", use_container_width=True):
+            st.success("✅ Roles updated successfully! Changes will apply on next login.")
+            st.info("Note: Role updates require database write access. In production, this will update the users table.")
+        
+        st.markdown("---")
+        st.markdown("### 🔑 Generate Login Credentials")
         st.info("Generate login access for all active employees. Default password will be 'churchgate2026' and employees will be prompted to change on first login.")
         emp_list = [
             {"name": "Vinay Mahtani", "id": "GMD01", "email": "vbmahtani@churchgate.com", "dept": "Senior Management", "role": "Admin"},
-            {"name": "Jerome Das", "id": "LE00019", "email": "jdas@churchgate.com", "dept": "Senior Management", "role": "Admin"},
-            {"name": "Emmanuel Etuk", "id": "AN00387", "email": "eetuk@churchgate.com", "dept": "Technology Group", "role": "Manager"},
+            {"name": "Jerome Das", "id": "LE00019", "email": "jeromedas@churchgate.com", "dept": "Senior Management", "role": "Admin"},
+            {"name": "Emmanuel Etuk", "id": "AN00387", "email": "eetuk@churchgate.com", "dept": "Technology Group", "role": "Admin"},
+            {"name": "Lawal Mohammed", "id": "NEW001", "email": "lawal@churchgate.com", "dept": "Senior Management", "role": "Admin"},
+            {"name": "Paul Fade", "id": "NEW002", "email": "pfade@churchgate.com", "dept": "Senior Management", "role": "Admin"},
             {"name": "Sanjeev Purwar", "id": "LE00212", "email": "purwar@churchgate.com", "dept": "Facility Management", "role": "Manager"},
             {"name": "Ahmed Karim", "id": "LN00369", "email": "akarim@churchgate.com", "dept": "Sales & Marketing", "role": "Manager"},
             {"name": "Ibukun Adeogun", "id": "AN00012", "email": "adeogun@churchgate.com", "dept": "Operations", "role": "Manager"},
@@ -632,7 +662,7 @@ def employee_management():
         ]
         st.dataframe(pd.DataFrame(emp_list), use_container_width=True, hide_index=True)
         default_password = st.text_input("Default Password", value="churchgate2026")
-        if st.button("🔑 Generate Logins for All 20 Employees", use_container_width=True):
+        if st.button("🔑 Generate Logins for All Employees", use_container_width=True):
             st.success(f"✅ Login credentials generated for {len(emp_list)} employees!")
             st.info(f"Default password: **{default_password}** | Employees will be prompted to change on first login.")
             st.download_button("📥 Download Login List (CSV)", pd.DataFrame(emp_list).to_csv(index=False), "employee_logins.csv", "text/csv")
