@@ -32,8 +32,8 @@ class EmailService:
                 .email-header p {{ color: #CC0000; margin: 8px 0 0 0; font-size: 16px; }}
                 .email-body {{ padding: 30px 25px; color: #333; }}
                 .email-body h2 {{ color: #1a1a1a; }}
-                .btn {{ display: inline-block; background: #CC0000; color: white; padding: 14px 35px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 15px 0; }}
-                .info-box {{ background: #f9f9f9; padding: 18px; border-radius: 8px; margin: 18px 0; border-left: 4px solid #CC0000; }}
+                .btn {{ display: inline-block; background: #CC0000; color: white; padding: 14px 35px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 15px 0; text-shadow: none; -webkit-font-smoothing: antialiased; }}
+                .info-box {{ background: #d5d5d5; padding: 18px; border-radius: 8px; margin: 18px 0; border-left: 4px solid #CC0000; }}
                 .email-footer {{ background: #1a1a1a; padding: 15px; text-align: center; }}
                 .email-footer p {{ color: #888; font-size: 11px; margin: 0; }}
             </style>
@@ -41,7 +41,8 @@ class EmailService:
         <body>
             <div class="email-container">
                 <div class="email-header">
-                    <h1>🏢 Churchgate Group</h1>
+                    <img src="https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate_logo.png" alt="Churchgate Group" style="max-width: 180px; margin-bottom: 10px;">
+                    <h1>Churchgate Group</h1>
                     <p>HRIS Portal</p>
                 </div>
                 <div class="email-body">
