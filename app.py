@@ -74,42 +74,23 @@ st.markdown("""
         background: #f5f5f5;
     }
     
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #2d2d2d 0%, #3d3d3d 100%) !important;
-        border-right: 3px solid #CC0000;
+    section[data-testid="stSidebar"] {
+        background-color: #1a1a1a !important;
     }
     
-    [data-testid="stSidebar"] * {
+    section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] p,
+    section[data-testid="stSidebar"] div[data-testid="stMarkdownContainer"] span,
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] .stSelectbox label,
+    section[data-testid="stSidebar"] button {
         color: #ffffff !important;
     }
     
-    [data-testid="stSidebar"] .stButton > button {
-        background: rgba(204, 0, 0, 0.3) !important;
-        border: 1px solid #CC0000 !important;
+    section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj,
+    section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj span,
+    section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj p,
+    section[data-testid="stSidebar"] .st-emotion-cache-1qg05tj div {
         color: #ffffff !important;
-    }
-    
-    [data-testid="stSidebar"] .nav-link {
-        color: #ffffff !important;
-        background-color: rgba(255, 255, 255, 0.05) !important;
-    }
-    
-    [data-testid="stSidebar"] .nav-link span {
-        color: #ffffff !important;
-    }
-    
-    [data-testid="stSidebar"] .nav-link svg {
-        color: #ff4444 !important;
-    }
-    
-    [data-testid="stSidebar"] .nav-link-selected {
-        background-color: rgba(204, 0, 0, 0.4) !important;
-        border-left: 3px solid #CC0000 !important;
-    }
-    
-    [data-testid="stSidebar"] .nav-link-selected span {
-        color: #ffffff !important;
-        font-weight: 700 !important;
     }
     
     .churchgate-header {
@@ -199,30 +180,9 @@ st.markdown("""
         height: 100%;
     }
     
-    .tier-1-badge {
-        background: #38a169;
-        color: white;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-weight: 700;
-    }
-    
-    .tier-2-badge {
-        background: #d69e2e;
-        color: #1a1a1a;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-weight: 700;
-    }
-    
-    .tier-3-badge {
-        background: #CC0000;
-        color: white;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-weight: 700;
-    }
-    
+    .tier-1-badge { background: #38a169; color: white; padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: 700; }
+    .tier-2-badge { background: #d69e2e; color: #1a1a1a; padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: 700; }
+    .tier-3-badge { background: #CC0000; color: white; padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: 700; }
     .status-active { background: #38a169; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
     .status-pending { background: #d69e2e; color: #1a1a1a; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
     .status-at-risk { background: #CC0000; color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
