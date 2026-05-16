@@ -71,15 +71,15 @@ CHURCHGATE_PORTFOLIO = [
 st.markdown("""
 <style>
     .stApp {
-        background: #f5f5f5;
+        background: #e8e8e8;
     }
     
     .main > div {
-        background: #f5f5f5;
+        background: #e8e8e8;
     }
     
     section[data-testid="stSidebar"] {
-        background-color: #e8e8e8 !important;
+        background-color: #d5d5d5 !important;
     }
     
     section[data-testid="stSidebar"] * {
@@ -87,8 +87,8 @@ st.markdown("""
     }
     
     section[data-testid="stSidebar"] .stButton > button {
-        background-color: #d0d0d0 !important;
-        border: 1px solid #b0b0b0 !important;
+        background-color: #c0c0c0 !important;
+        border: 1px solid #a0a0a0 !important;
         color: #333333 !important;
     }
     
@@ -106,7 +106,7 @@ st.markdown("""
     }
     
     section[data-testid="stSidebar"] .nav-link-selected {
-        background-color: #d0d0d0 !important;
+        background-color: #c0c0c0 !important;
         border-left: 3px solid #CC0000 !important;
     }
     
@@ -143,7 +143,7 @@ st.markdown("""
         border-radius: 8px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         text-align: center;
-        border: 1px solid #e0e0e0;
+        border: 1px solid #cccccc;
         transition: all 0.2s ease;
     }
     
@@ -179,7 +179,7 @@ st.markdown("""
     }
     
     .mission-banner {
-        background: white;
+        background: #d5d5d5;
         padding: 1.5rem;
         border-radius: 8px;
         text-align: center;
@@ -192,12 +192,20 @@ st.markdown("""
         font-size: 1.3rem;
     }
     
+    .mission-banner h3 {
+        color: #1a1a1a;
+    }
+    
+    .mission-banner p {
+        color: #333333;
+    }
+    
     .value-card {
         background: white;
         padding: 0.8rem;
         border-radius: 6px;
         text-align: center;
-        border: 1px solid #e0e0e0;
+        border: 1px solid #cccccc;
     }
     
     .tier-1-badge { background: #38a169; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.8rem; }
@@ -207,7 +215,6 @@ st.markdown("""
     .status-pending { background: #d69e2e; color: #1a1a1a; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     
-    /* Center login logo */
     .stImage {
         display: flex;
         justify-content: center;
