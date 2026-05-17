@@ -1541,7 +1541,20 @@ def promotions():
             
             if st.form_submit_button("✅ Submit Nomination", use_container_width=True):
                 if nominee_name and nominee_dept and nominated_by:
-                    st.session_state.aplayer_nominations.append({
+                    # Store with timestamp to ensure uniqueness
+                    nomination_entry = {
+                        'name': nominee_name, 'position': nominee_position, 'department': nominee_dept,
+                        'nominated_by': nominated_by, 'reason': nomination_reason, 
+                        'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        'submitted_by': st.session_state.user['name'] if st.session_state.user else 'Unknown',
+                        'submitted_by_email': st.session_state.user['email'] if st.session_state.user else 'Unknown'
+                    }
+                    st.session_state.aplayer_nominations.append(nomination_entry)
+                    st.success(f"✅ {nominee_name} nominated successfully! Visible to Admin & Sr. Management.")
+                    st.balloons()
+                    time.sleep(1)
+                else:
+                    st.warning("Please fill all required fields (*)")
                         'name': nominee_name, 'position': nominee_position, 'department': nominee_dept,
                         'nominated_by': nominated_by, 'reason': nomination_reason, 'date': datetime.now().strftime('%Y-%m-%d'),
                         'submitted_by': st.session_state.user['name'] if st.session_state.user else 'Unknown'
@@ -1663,6 +1676,8 @@ def promotions():
                                     'photo': player_data.get('photo')
                                 }
                                 st.success(f"✅ Assessment saved! Overall Score: {overall}%")
+                                st.balloons()
+                                time.sleep(1)
                                 st.rerun()
             else:
                 st.info("No A-Players available for assessment. Nominate and approve players first.")
@@ -1735,17 +1750,17 @@ def promotions():
                     pdf.add_page()
                     
                     # HEADER
-                    pdf.set_fill_color(26, 26, 26)
-                    pdf.rect(0, 0, 297, 32, 'F')
+                    pdf.set_fill_color(55, 55, 55)
+                    pdf.rect(0, 0, 297, 35, 'F')
                     pdf.set_fill_color(204, 0, 0)
-                    pdf.rect(0, 32, 297, 3, 'F')
+                    pdf.rect(0, 35, 297, 3, 'F')
                     pdf.set_font('Helvetica', 'B', 22)
                     pdf.set_text_color(255, 255, 255)
                     pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
                     pdf.set_font('Helvetica', 'B', 12)
-                    pdf.set_text_color(204, 0, 0)
+                    pdf.set_text_color(255, 255, 255)
                     pdf.cell(0, 8, 'A-PLAYERS & SUCCESSION PIPELINE - EXECUTIVE REPORT', ln=True, align='C')
-                    pdf.ln(8)
+                    pdf.ln(10)
                     
                     # STATS BAR
                     total = sum(len(players) for players in st.session_state.aplayers_data.values())
