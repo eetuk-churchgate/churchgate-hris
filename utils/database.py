@@ -77,7 +77,8 @@ class DatabaseManager:
     def verify_user(self, email, password):
         if self.use_supabase:
             hashed_pw = hashlib.sha256(password.encode()).hexdigest()
-            users = self._supabase_query("GET", f"users?email=eq.{email}&select=*")
+           users = self._supabase_query("GET", f"users?email=eq.{email}&select=*")
+            st.write(f"DEBUG: Found {len(users) if users else 0} users")  # Add this
             if users and len(users) > 0:
                 user = users[0]
                 stored_pw = user.get('password', '')
