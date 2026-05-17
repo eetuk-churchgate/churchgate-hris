@@ -161,6 +161,185 @@ def save_uploaded_file(uploaded_file):
     except Exception as e:
         return f"[Error: {str(e)}]"
 
+def generate_summary_pdf(dept_name, dept_data, summary):
+    """Generate a Fortune 500 Executive Summary PDF"""
+    import fpdf
+    FPDF = fpdf.FPDF
+    
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=12)
+    pdf.add_page()
+    
+    # ===== COVER HEADER =====
+    pdf.set_fill_color(26, 26, 26)
+    pdf.rect(0, 0, 210, 35, 'F')
+    pdf.set_fill_color(204, 0, 0)
+    pdf.rect(0, 35, 210, 4, 'F')
+    pdf.set_font('Helvetica', 'B', 22)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
+    pdf.set_font('Helvetica', 'B', 13)
+    pdf.set_text_color(204, 0, 0)
+    pdf.cell(0, 10, 'EXECUTIVE PERFORMANCE SUMMARY', ln=True, align='C')
+    pdf.ln(8)
+    
+    # ===== DEPT & DATE BAR =====
+    pdf.set_fill_color(245, 245, 245)
+    pdf.rect(10, pdf.get_y(), 190, 10, 'F')
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_text_color(26, 26, 26)
+    pdf.cell(95, 10, f'  Department: {dept_name}', 0, 0, 'L')
+    pdf.cell(95, 10, f'Generated: {datetime.now().strftime("%B %d, %Y")}  ', 0, 0, 'R')
+    pdf.ln(14)
+    
+    # ===== OVERALL SCORE HERO =====
+    total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values())
+    on_track = sum(1 for p in dept_data.values() if p['status'] in ['On Track', 'Exceeding'])
+    at_risk = sum(1 for p in dept_data.values() if p['status'] == 'At Risk')
+    completed = sum(1 for p in dept_data.values() if p['status'] == 'Completed')
+    
+    pdf.set_fill_color(26, 26, 26)
+    pdf.rect(10, pdf.get_y(), 190, 18, 'F')
+    pdf.set_fill_color(204, 0, 0)
+    pdf.rect(10, pdf.get_y()+18, 190, 2, 'F')
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(190, 18, f'OVERALL WEIGHTED SCORE: {total_weighted:.1f}%', ln=True, align='C')
+    pdf.ln(6)
+    
+    # ===== KPI CARDS ROW =====
+    pdf.set_font('Helvetica', 'B', 9)
+    col_w = 42
+    col_h = 14
+    x_start = 14
+    y_pos = pdf.get_y()
+    
+    cards = [
+        ('ON TRACK', str(on_track), (56, 161, 105)),
+        ('AT RISK', str(at_risk), (204, 0, 0)),
+        ('COMPLETED', str(completed), (49, 130, 206)),
+        ('TOTAL PILLARS', '4', (100, 100, 100)),
+    ]
+    
+    for i, (label, value, color) in enumerate(cards):
+        x = x_start + i * (col_w + 6)
+        pdf.set_fill_color(*color)
+        pdf.rect(x, y_pos, col_w, col_h, 'F')
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_xy(x, y_pos + 1)
+        pdf.cell(col_w, 6, label, 0, 0, 'C')
+        pdf.set_xy(x, y_pos + 7)
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.cell(col_w, 7, value, 0, 0, 'C')
+        pdf.set_font('Helvetica', 'B', 9)
+    
+    pdf.set_y(y_pos + col_h + 8)
+    
+    # ===== PILLAR TABLE =====
+    pdf.set_fill_color(26, 26, 26)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font('Helvetica', 'B', 9)
+    pdf.cell(68, 8, '  STRATEGIC PILLAR', 1, 0, 'L', True)
+    pdf.cell(18, 8, 'WEIGHT', 1, 0, 'C', True)
+    pdf.cell(22, 8, 'PROGRESS', 1, 0, 'C', True)
+    pdf.cell(30, 8, 'STATUS', 1, 0, 'C', True)
+    pdf.cell(52, 8, 'DEADLINE', 1, 0, 'C', True)
+    pdf.ln()
+    
+    pdf.set_font('Helvetica', '', 8)
+    for pn, pdata in dept_data.items():
+        if pdata['status'] in ['On Track', 'Exceeding']:
+            sc = (230, 255, 230)
+            tc = (56, 161, 105)
+        elif pdata['status'] == 'In Progress':
+            sc = (255, 248, 230)
+            tc = (214, 158, 46)
+        else:
+            sc = (255, 230, 230)
+            tc = (204, 0, 0)
+        
+        pdf.set_fill_color(*sc)
+        pdf.set_text_color(26, 26, 26)
+        pdf.cell(68, 9, f'  {pn[:45]}', 1, 0, 'L', True)
+        pdf.cell(18, 9, f'{pdata["weight"]}%', 1, 0, 'C', True)
+        pdf.cell(22, 9, f'{pdata["progress"]}%', 1, 0, 'C', True)
+        pdf.set_text_color(*tc)
+        pdf.set_font('Helvetica', 'B', 8)
+        pdf.cell(30, 9, pdata['status'], 1, 0, 'C', True)
+        pdf.set_text_color(26, 26, 26)
+        pdf.set_font('Helvetica', '', 8)
+        pdf.cell(52, 9, pdata['deadline'], 1, 0, 'C', True)
+        pdf.ln()
+    
+    pdf.ln(4)
+    
+    # ===== PROGRESS BARS =====
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.set_text_color(26, 26, 26)
+    pdf.cell(0, 8, 'PILLAR PROGRESS', ln=True)
+    pdf.ln(2)
+    
+    for pn, pdata in dept_data.items():
+        pdf.set_font('Helvetica', '', 8)
+        pdf.set_text_color(80, 80, 80)
+        pdf.cell(190, 4, pn[:55], ln=True)
+        
+        bar_y = pdf.get_y()
+        pdf.set_fill_color(230, 230, 230)
+        pdf.rect(10, bar_y, 190, 5, 'F')
+        
+        if pdata['progress'] >= 85:
+            bar_color = (56, 161, 105)
+        elif pdata['progress'] >= 65:
+            bar_color = (214, 158, 46)
+        else:
+            bar_color = (204, 0, 0)
+        
+        pdf.set_fill_color(*bar_color)
+        pdf.rect(10, bar_y, 190 * pdata['progress'] / 100, 5, 'F')
+        pdf.set_y(bar_y + 7)
+    
+    pdf.ln(4)
+    
+    # ===== RACI MATRIX TABLE =====
+    pdf.set_fill_color(26, 26, 26)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font('Helvetica', 'B', 9)
+    pdf.cell(190, 8, '  RACI MATRIX', 1, 0, 'L', True)
+    pdf.ln()
+    
+    pdf.set_fill_color(245, 245, 245)
+    pdf.set_text_color(26, 26, 26)
+    pdf.set_font('Helvetica', 'B', 8)
+    pdf.cell(35, 7, '  Role', 1, 0, 'L', True)
+    pdf.cell(155, 7, '  Party', 1, 0, 'L', True)
+    pdf.ln()
+    
+    raci_data = [
+        ('RESPONSIBLE', 'Department Heads / HODs'),
+        ('ACCOUNTABLE', 'GMD / COO'),
+        ('CONSULTED', 'All HODs / Key Stakeholders'),
+        ('INFORMED', 'Board of Directors'),
+    ]
+    
+    pdf.set_font('Helvetica', '', 8)
+    for role, party in raci_data:
+        pdf.set_fill_color(255, 255, 255)
+        pdf.cell(35, 7, f'  {role}', 1, 0, 'L', True)
+        pdf.cell(155, 7, f'  {party}', 1, 0, 'L', True)
+        pdf.ln()
+    
+    # ===== FOOTER =====
+    pdf.set_y(-18)
+    pdf.set_fill_color(26, 26, 26)
+    pdf.rect(0, pdf.get_y()-2, 210, 20, 'F')
+    pdf.set_font('Helvetica', 'I', 7)
+    pdf.set_text_color(180, 180, 180)
+    pdf.cell(0, 6, 'Churchgate Group - Confidential - Fortune 500 Standard HRIS', ln=True, align='C')
+    pdf.cell(0, 5, 'World Trade Center, Abuja | hr@churchgate.com', ln=True, align='C')
+    
+    return bytes(pdf.output())
+
 def generate_performance_pdf(dept_name, dept_data, report_data):
     """Generate a Fortune 500 Performance Report PDF"""
     import fpdf
@@ -170,7 +349,6 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
     pdf.set_auto_page_break(auto=True, margin=12)
     pdf.add_page()
     
-    # ===== HEADER =====
     pdf.set_fill_color(26, 26, 26)
     pdf.rect(0, 0, 297, 28, 'F')
     pdf.set_fill_color(204, 0, 0)
@@ -183,7 +361,6 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
     pdf.cell(0, 8, 'DETAILED PERFORMANCE REPORT', ln=True, align='C')
     pdf.ln(6)
     
-    # ===== INFO BAR =====
     total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values())
     pdf.set_fill_color(245, 245, 245)
     pdf.rect(10, pdf.get_y(), 277, 8, 'F')
@@ -194,7 +371,6 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
     pdf.cell(93, 8, f'Generated: {datetime.now().strftime("%B %d, %Y %I:%M %p")}  ', 0, 0, 'R')
     pdf.ln(12)
     
-    # ===== KPI TABLE =====
     pdf.set_fill_color(26, 26, 26)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Helvetica', 'B', 8)
@@ -210,7 +386,6 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
     pdf.set_font('Helvetica', '', 7)
     row_num = 0
     for pn, pdata in dept_data.items():
-        # Pillar header row
         pdf.set_fill_color(240, 240, 240)
         pdf.set_text_color(26, 26, 26)
         pdf.set_font('Helvetica', 'B', 8)
@@ -234,7 +409,6 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
         pdf.cell(93, 7, f' {len(pdata.get("kpis", []))} KPIs defined', 1, 0, 'L', True)
         pdf.ln()
         
-        # KPI rows
         for kpi in pdata.get('kpis', []):
             row_num += 1
             pdf.set_fill_color(255, 255, 255)
@@ -262,7 +436,6 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
     
     pdf.ln(4)
     
-    # ===== RACI SUMMARY =====
     pdf.set_fill_color(26, 26, 26)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Helvetica', 'B', 9)
@@ -284,7 +457,6 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
         pdf.cell(242, 6, f'  {party}', 1, 0, 'L', True)
         pdf.ln()
     
-    # ===== FOOTER =====
     pdf.set_y(-15)
     pdf.set_fill_color(26, 26, 26)
     pdf.rect(0, pdf.get_y()-2, 297, 17, 'F')
