@@ -227,11 +227,8 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
         pdf.set_text_color(150, 150, 150)
         pdf.cell(0, 10, 'Churchgate Group - Confidential - Fortune 500 Standard HRIS', align='C')
         
-        result = pdf.output(dest='S')
-        if isinstance(result, bytes):
-            return result
-        else:
-            return result.encode('latin-1')
+        result = pdf.output()
+        return result
     except Exception as e:
         st.error(f"PDF Error: {str(e)}")
         return None
@@ -305,11 +302,8 @@ def generate_summary_pdf(dept_name, dept_data, summary):
         pdf.set_text_color(150, 150, 150)
         pdf.cell(0, 10, 'Churchgate Group - Confidential - Fortune 500 Standard HRIS', align='C')
         
-        result = pdf.output(dest='S')
-        if isinstance(result, bytes):
-            return result
-        else:
-            return result.encode('latin-1')
+        result = pdf.output()
+        return result
     except Exception as e:
         st.error(f"PDF Error: {str(e)}")
         return None
