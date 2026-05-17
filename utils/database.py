@@ -26,6 +26,9 @@ class DatabaseManager:
             Path("data").mkdir(exist_ok=True)
             self.sqlite_path = "data/churchgate_hr.db"
     
+    def create_tables(self):
+        pass
+    
     def verify_user(self, email, password):
         if self.use_supabase and self.supabase:
             hashed_pw = hashlib.sha256(password.encode()).hexdigest()
