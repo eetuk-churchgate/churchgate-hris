@@ -162,200 +162,135 @@ def save_uploaded_file(uploaded_file):
         return f"[Error: {str(e)}]"
 
 def generate_performance_pdf(dept_name, dept_data, report_data):
-    """Generate a professional PDF report with charts"""
+    """Generate a Fortune 500 Performance Report PDF"""
     import fpdf
     FPDF = fpdf.FPDF
     
     pdf = FPDF(orientation='L', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=True, margin=12)
     pdf.add_page()
     
+    # ===== HEADER =====
     pdf.set_fill_color(26, 26, 26)
-    pdf.rect(0, 0, 297, 25, 'F')
+    pdf.rect(0, 0, 297, 28, 'F')
     pdf.set_fill_color(204, 0, 0)
-    pdf.rect(0, 25, 297, 3, 'F')
-    pdf.set_font('Helvetica', 'B', 20)
+    pdf.rect(0, 28, 297, 3, 'F')
+    pdf.set_font('Helvetica', 'B', 22)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 20, 'CHURCHGATE GROUP', ln=True, align='C')
-    pdf.set_font('Helvetica', 'B', 14)
-    pdf.cell(0, 8, f'Performance Report - {dept_name}', ln=True, align='C')
-    pdf.set_text_color(100, 100, 100)
-    pdf.set_font('Helvetica', 'I', 10)
-    pdf.cell(0, 6, f'Generated: {datetime.now().strftime("%B %d, %Y at %I:%M %p")}', ln=True, align='C')
-    pdf.ln(8)
+    pdf.cell(0, 16, 'CHURCHGATE GROUP', ln=True, align='C')
+    pdf.set_font('Helvetica', 'B', 11)
+    pdf.set_text_color(204, 0, 0)
+    pdf.cell(0, 8, 'DETAILED PERFORMANCE REPORT', ln=True, align='C')
+    pdf.ln(6)
     
-    pdf.set_font('Helvetica', 'B', 14)
+    # ===== INFO BAR =====
+    total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values())
+    pdf.set_fill_color(245, 245, 245)
+    pdf.rect(10, pdf.get_y(), 277, 8, 'F')
+    pdf.set_font('Helvetica', 'B', 9)
     pdf.set_text_color(26, 26, 26)
-    pdf.cell(0, 10, 'Strategic Pillar Summary', ln=True)
-    pdf.ln(3)
+    pdf.cell(92, 8, f'  Department: {dept_name}', 0, 0, 'L')
+    pdf.cell(92, 8, f'Overall Score: {total_weighted:.1f}%', 0, 0, 'C')
+    pdf.cell(93, 8, f'Generated: {datetime.now().strftime("%B %d, %Y %I:%M %p")}  ', 0, 0, 'R')
+    pdf.ln(12)
     
+    # ===== KPI TABLE =====
+    pdf.set_fill_color(26, 26, 26)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font('Helvetica', 'B', 8)
+    pdf.cell(8, 8, ' #', 1, 0, 'C', True)
+    pdf.cell(80, 8, ' STRATEGIC PILLAR / KPI', 1, 0, 'L', True)
+    pdf.cell(22, 8, 'TARGET', 1, 0, 'C', True)
+    pdf.cell(22, 8, 'CURRENT', 1, 0, 'C', True)
+    pdf.cell(24, 8, 'STATUS', 1, 0, 'C', True)
+    pdf.cell(28, 8, 'DEADLINE', 1, 0, 'C', True)
+    pdf.cell(93, 8, ' REMARKS', 1, 0, 'L', True)
+    pdf.ln()
+    
+    pdf.set_font('Helvetica', '', 7)
+    row_num = 0
+    for pn, pdata in dept_data.items():
+        # Pillar header row
+        pdf.set_fill_color(240, 240, 240)
+        pdf.set_text_color(26, 26, 26)
+        pdf.set_font('Helvetica', 'B', 8)
+        pdf.cell(8, 7, '', 1, 0, 'C', True)
+        pdf.cell(80, 7, f' {pn}', 1, 0, 'L', True)
+        pdf.cell(22, 7, f'Weight: {pdata["weight"]}%', 1, 0, 'C', True)
+        pdf.cell(22, 7, f'{pdata["progress"]}%', 1, 0, 'C', True)
+        
+        if pdata['status'] in ['On Track', 'Exceeding']:
+            sc = (56, 161, 105)
+        elif pdata['status'] == 'In Progress':
+            sc = (214, 158, 46)
+        else:
+            sc = (204, 0, 0)
+        pdf.set_fill_color(*sc)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(24, 7, pdata['status'], 1, 0, 'C', True)
+        pdf.set_text_color(26, 26, 26)
+        pdf.set_font('Helvetica', '', 7)
+        pdf.cell(28, 7, pdata['deadline'], 1, 0, 'C', True)
+        pdf.cell(93, 7, f' {len(pdata.get("kpis", []))} KPIs defined', 1, 0, 'L', True)
+        pdf.ln()
+        
+        # KPI rows
+        for kpi in pdata.get('kpis', []):
+            row_num += 1
+            pdf.set_fill_color(255, 255, 255)
+            pdf.set_text_color(80, 80, 80)
+            pdf.set_font('Helvetica', '', 7)
+            pdf.cell(8, 6, str(row_num), 1, 0, 'C', True)
+            pdf.cell(80, 6, f'   {kpi["kpi"][:55]}', 1, 0, 'L', True)
+            pdf.cell(22, 6, kpi['target'], 1, 0, 'C', True)
+            pdf.cell(22, 6, kpi['current'], 1, 0, 'C', True)
+            
+            if kpi['status'] in ['On Track', 'Completed']:
+                kc = (56, 161, 105)
+            elif kpi['status'] in ['Near Target', 'In Progress']:
+                kc = (214, 158, 46)
+            else:
+                kc = (204, 0, 0)
+            pdf.set_text_color(*kc)
+            pdf.set_font('Helvetica', 'B', 7)
+            pdf.cell(24, 6, kpi['status'], 1, 0, 'C', True)
+            pdf.set_text_color(80, 80, 80)
+            pdf.set_font('Helvetica', '', 7)
+            pdf.cell(28, 6, kpi['deadline'], 1, 0, 'C', True)
+            pdf.cell(93, 6, '', 1, 0, 'L', True)
+            pdf.ln()
+    
+    pdf.ln(4)
+    
+    # ===== RACI SUMMARY =====
     pdf.set_fill_color(26, 26, 26)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Helvetica', 'B', 9)
-    pdf.cell(70, 8, 'Strategic Pillar', 1, 0, 'C', True)
-    pdf.cell(20, 8, 'Weight', 1, 0, 'C', True)
-    pdf.cell(25, 8, 'Progress', 1, 0, 'C', True)
-    pdf.cell(30, 8, 'Status', 1, 0, 'C', True)
-    pdf.cell(117, 8, 'Key KPIs', 1, 0, 'C', True)
+    pdf.cell(277, 8, '  RACI MATRIX', 1, 0, 'L', True)
     pdf.ln()
     
-    pdf.set_font('Helvetica', '', 8)
-    for pn, pdata in dept_data.items():
+    raci = [
+        ('RESPONSIBLE', 'Department Heads'),
+        ('ACCOUNTABLE', 'GMD / COO'),
+        ('CONSULTED', 'All HODs'),
+        ('INFORMED', 'Board'),
+    ]
+    for role, party in raci:
+        pdf.set_fill_color(255, 255, 255)
         pdf.set_text_color(26, 26, 26)
-        status_color = (56, 161, 105) if pdata['status'] in ['On Track', 'Exceeding'] else (214, 158, 46) if pdata['status'] == 'In Progress' else (204, 0, 0)
-        pdf.set_fill_color(*status_color)
-        kpi_text = ', '.join([k['kpi'][:40] for k in pdata.get('kpis', [])[:3]])
-        pdf.cell(70, 8, pn[:45], 1, 0, 'L')
-        pdf.cell(20, 8, f"{pdata['weight']}%", 1, 0, 'C')
-        pdf.cell(25, 8, f"{pdata['progress']}%", 1, 0, 'C')
-        pdf.cell(30, 8, pdata['status'], 1, 0, 'C', True)
-        pdf.cell(117, 8, kpi_text[:75], 1, 0, 'L')
+        pdf.set_font('Helvetica', 'B', 7)
+        pdf.cell(35, 6, f'  {role}', 1, 0, 'L', True)
+        pdf.set_font('Helvetica', '', 7)
+        pdf.cell(242, 6, f'  {party}', 1, 0, 'L', True)
         pdf.ln()
     
-    pdf.ln(5)
-    total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values())
-    pdf.set_font('Helvetica', 'B', 16)
-    pdf.set_text_color(204, 0, 0)
-    pdf.cell(0, 12, f'Overall Weighted Score: {total_weighted:.1f}%', ln=True, align='C')
-    
-    pdf.set_y(-20)
+    # ===== FOOTER =====
+    pdf.set_y(-15)
+    pdf.set_fill_color(26, 26, 26)
+    pdf.rect(0, pdf.get_y()-2, 297, 17, 'F')
     pdf.set_font('Helvetica', 'I', 7)
-    pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 10, 'Churchgate Group - Confidential', align='C')
-    
-    return bytes(pdf.output())
-
-def generate_summary_pdf(dept_name, dept_data, summary):
-    """Generate a professional PDF summary"""
-    import fpdf
-    FPDF = fpdf.FPDF
-    
-    pdf = FPDF(orientation='P', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    
-    pdf.set_fill_color(26, 26, 26)
-    pdf.rect(0, 0, 210, 22, 'F')
-    pdf.set_fill_color(204, 0, 0)
-    pdf.rect(0, 22, 210, 3, 'F')
-    pdf.set_font('Helvetica', 'B', 18)
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.cell(0, 8, f'Executive Summary - {dept_name}', ln=True, align='C')
-    pdf.set_text_color(100, 100, 100)
-    pdf.set_font('Helvetica', 'I', 9)
-    pdf.cell(0, 6, f'Generated: {datetime.now().strftime("%B %d, %Y")}', ln=True, align='C')
-    pdf.ln(10)
-    
-    total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values())
-    pdf.set_font('Helvetica', 'B', 14)
-    pdf.set_text_color(26, 26, 26)
-    pdf.cell(0, 10, 'Strategic Pillar Scorecard', ln=True, align='C')
-    pdf.ln(3)
-    
-    pdf.set_fill_color(26, 26, 26)
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font('Helvetica', 'B', 10)
-    pdf.cell(65, 8, 'Strategic Pillar', 1, 0, 'C', True)
-    pdf.cell(20, 8, 'Weight', 1, 0, 'C', True)
-    pdf.cell(25, 8, 'Progress', 1, 0, 'C', True)
-    pdf.cell(35, 8, 'Status', 1, 0, 'C', True)
-    pdf.cell(45, 8, 'Deadline', 1, 0, 'C', True)
-    pdf.ln()
-    
-    pdf.set_font('Helvetica', '', 9)
-    for pn, pdata in dept_data.items():
-        pdf.set_text_color(26, 26, 26)
-        status_color = (56, 161, 105) if pdata['status'] in ['On Track', 'Exceeding'] else (214, 158, 46) if pdata['status'] == 'In Progress' else (204, 0, 0)
-        pdf.set_fill_color(*status_color)
-        pdf.cell(65, 8, pn[:42], 1, 0, 'L')
-        pdf.cell(20, 8, f"{pdata['weight']}%", 1, 0, 'C')
-        pdf.cell(25, 8, f"{pdata['progress']}%", 1, 0, 'C')
-        pdf.cell(35, 8, pdata['status'], 1, 0, 'C', True)
-        pdf.cell(45, 8, pdata['deadline'], 1, 0, 'C')
-        pdf.ln()
-    
-    pdf.ln(8)
-    pdf.set_font('Helvetica', 'B', 16)
-    pdf.set_text_color(204, 0, 0)
-    pdf.cell(0, 12, f'Overall Weighted Score: {total_weighted:.1f}%', ln=True, align='C')
-    
-    pdf.ln(5)
-    pdf.set_font('Helvetica', 'B', 12)
-    pdf.set_text_color(26, 26, 26)
-    pdf.cell(0, 8, 'RACI Matrix', ln=True)
-    pdf.set_font('Helvetica', '', 9)
-    pdf.cell(0, 6, 'Responsible: Department Heads | Accountable: GMD/COO | Consulted: All HODs | Informed: Board', ln=True)
-    
-    pdf.set_y(-20)
-    pdf.set_font('Helvetica', 'I', 7)
-    pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 10, 'Churchgate Group - Confidential', align='C')
-    
-    return bytes(pdf.output())
-
-def generate_performance_pdf(dept_name, dept_data, report_data):
-    """Generate a professional PDF report with charts"""
-    import fpdf
-    FPDF = fpdf.FPDF
-    
-    pdf = FPDF(orientation='L', unit='mm', format='A4')
-    pdf.set_auto_page_break(auto=True, margin=15)
-    pdf.add_page()
-    
-    pdf.set_fill_color(26, 26, 26)
-    pdf.rect(0, 0, 297, 25, 'F')
-    pdf.set_fill_color(204, 0, 0)
-    pdf.rect(0, 25, 297, 3, 'F')
-    pdf.set_font('Helvetica', 'B', 20)
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 20, 'CHURCHGATE GROUP', ln=True, align='C')
-    pdf.set_font('Helvetica', 'B', 14)
-    pdf.cell(0, 8, f'Performance Report - {dept_name}', ln=True, align='C')
-    pdf.set_text_color(100, 100, 100)
-    pdf.set_font('Helvetica', 'I', 10)
-    pdf.cell(0, 6, f'Generated: {datetime.now().strftime("%B %d, %Y at %I:%M %p")}', ln=True, align='C')
-    pdf.ln(8)
-    
-    pdf.set_font('Helvetica', 'B', 14)
-    pdf.set_text_color(26, 26, 26)
-    pdf.cell(0, 10, 'Strategic Pillar Summary', ln=True)
-    pdf.ln(3)
-    
-    pdf.set_fill_color(26, 26, 26)
-    pdf.set_text_color(255, 255, 255)
-    pdf.set_font('Helvetica', 'B', 9)
-    pdf.cell(70, 8, 'Strategic Pillar', 1, 0, 'C', True)
-    pdf.cell(20, 8, 'Weight', 1, 0, 'C', True)
-    pdf.cell(25, 8, 'Progress', 1, 0, 'C', True)
-    pdf.cell(30, 8, 'Status', 1, 0, 'C', True)
-    pdf.cell(117, 8, 'Key KPIs', 1, 0, 'C', True)
-    pdf.ln()
-    
-    pdf.set_font('Helvetica', '', 8)
-    for pn, pdata in dept_data.items():
-        pdf.set_text_color(26, 26, 26)
-        status_color = (56, 161, 105) if pdata['status'] in ['On Track', 'Exceeding'] else (214, 158, 46) if pdata['status'] == 'In Progress' else (204, 0, 0)
-        pdf.set_fill_color(*status_color)
-        kpi_text = ', '.join([k['kpi'][:40] for k in pdata.get('kpis', [])[:3]])
-        pdf.cell(70, 8, pn[:45], 1, 0, 'L')
-        pdf.cell(20, 8, f"{pdata['weight']}%", 1, 0, 'C')
-        pdf.cell(25, 8, f"{pdata['progress']}%", 1, 0, 'C')
-        pdf.cell(30, 8, pdata['status'], 1, 0, 'C', True)
-        pdf.cell(117, 8, kpi_text[:75], 1, 0, 'L')
-        pdf.ln()
-    
-    pdf.ln(5)
-    total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values())
-    pdf.set_font('Helvetica', 'B', 16)
-    pdf.set_text_color(204, 0, 0)
-    pdf.cell(0, 12, f'Overall Weighted Score: {total_weighted:.1f}%', ln=True, align='C')
-    
-    pdf.set_y(-20)
-    pdf.set_font('Helvetica', 'I', 7)
-    pdf.set_text_color(150, 150, 150)
-    pdf.cell(0, 10, 'Churchgate Group - Confidential', align='C')
+    pdf.set_text_color(180, 180, 180)
+    pdf.cell(0, 5, 'Churchgate Group - Confidential - Fortune 500 Standard HRIS | World Trade Center, Abuja', ln=True, align='C')
     
     return bytes(pdf.output())
 
