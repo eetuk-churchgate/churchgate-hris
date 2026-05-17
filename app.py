@@ -1541,7 +1541,20 @@ def promotions():
             
             if st.form_submit_button("✅ Submit Nomination", use_container_width=True):
                 if nominee_name and nominee_dept and nominated_by:
-                    st.session_state.aplayer_nominations.append({
+                    # Store with timestamp to ensure uniqueness
+                    nomination_entry = {
+                        'name': nominee_name, 'position': nominee_position, 'department': nominee_dept,
+                        'nominated_by': nominated_by, 'reason': nomination_reason, 
+                        'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        'submitted_by': st.session_state.user['name'] if st.session_state.user else 'Unknown',
+                        'submitted_by_email': st.session_state.user['email'] if st.session_state.user else 'Unknown'
+                    }
+                    st.session_state.aplayer_nominations.append(nomination_entry)
+                    st.success(f"✅ {nominee_name} nominated successfully! Visible to Admin & Sr. Management.")
+                    st.balloons()
+                    time.sleep(1)
+                else:
+                    st.warning("Please fill all required fields (*)")
                         'name': nominee_name, 'position': nominee_position, 'department': nominee_dept,
                         'nominated_by': nominated_by, 'reason': nomination_reason, 'date': datetime.now().strftime('%Y-%m-%d'),
                         'submitted_by': st.session_state.user['name'] if st.session_state.user else 'Unknown'
