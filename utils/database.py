@@ -76,9 +76,12 @@ class DatabaseManager:
     def verify_user(self, email, password):
         if self.use_supabase:
             hashed_pw = hashlib.sha256(password.encode()).hexdigest()
-            users = self._supabase_query("GET", f"users?email=eq.{email}&password=eq.{hashed_pw}")
+            # Get user by email first, then check password
+            users = self._supabase_query("GET", f"users?email=eq.{email}&select=*")
             if users and len(users) > 0:
-                return users[0]
+                user = users[0]
+                if user.get('password') == hashed_pw:
+                    return user
             return None
         else:
             import sqlite3
