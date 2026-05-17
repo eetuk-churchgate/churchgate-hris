@@ -164,7 +164,8 @@ def save_uploaded_file(uploaded_file):
 def generate_performance_pdf(dept_name, dept_data, report_data):
     """Generate a professional PDF report with charts"""
     try:
-        from fpdf import FPDF
+        import fpdf
+        FPDF = fpdf.FPDF
         import tempfile
         import matplotlib.pyplot as plt
         from matplotlib.backends.backend_agg import FigureCanvasAgg
@@ -233,7 +234,8 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
 def generate_summary_pdf(dept_name, dept_data, summary):
     """Generate a professional PDF summary"""
     try:
-        from fpdf import FPDF
+        import fpdf
+        FPDF = fpdf.FPDF
         
         pdf = FPDF(orientation='P', unit='mm', format='A4')
         pdf.set_auto_page_break(auto=True, margin=15)
