@@ -1086,6 +1086,106 @@ def performance_okrs():
     
     # Initialize session state for performance data
     if 'performance_data' not in st.session_state:
+        # Try loading from database
+        st.session_state.performance_data = {}
+        try:
+            db_perf = db.get_performance_data()
+            if not db_perf.empty:
+                for _, row in db_perf.iterrows():
+                    dept = row['department']
+                    pillar = row['pillar_name']
+                    if dept not in st.session_state.performance_data:
+                        st.session_state.performance_data[dept] = {}
+                    kpi_list = json.loads(row['kpi_data']) if row['kpi_data'] else []
+                    st.session_state.performance_data[dept][pillar] = {
+                        'weight': row['weight'], 'progress': row['progress'],
+                        'status': row['status'], 'deadline': row['deadline'], 'kpis': kpi_list
+                    }
+        except:
+            pass
+        
+        # If empty, load defaults
+        if not st.session_state.performance_data:
+            st.session_state.performance_data = {
+                'Technology Group': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 72, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Facility Management': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Sales & Marketing': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 65, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Accounts & Finance': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Human Resources': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 70, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 92, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Procurement': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 60, 'status': 'At Risk', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Security': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 55, 'status': 'At Risk', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Legal': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 70, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 50, 'status': 'At Risk', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Operations': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Engineering': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 83, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 70, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Central Stores': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 62, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 75, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Project Development': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+                'Trade Services': {
+                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                },
+            }
         st.session_state.performance_data = {
             'Technology Group': {
                 '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
@@ -1254,6 +1354,14 @@ def performance_okrs():
                                 st.session_state.performance_data[selected_dept][pillar_name]['progress'] = new_progress
                                 st.session_state.performance_data[selected_dept][pillar_name]['status'] = new_status
                                 st.session_state.performance_data[selected_dept][pillar_name]['deadline'] = new_deadline.strftime('%Y-%m-%d')
+                                # Save to database
+                                try:
+                                    db.save_performance_data(selected_dept, pillar_name, 
+                                        st.session_state.performance_data[selected_dept][pillar_name]['weight'],
+                                        new_progress, new_status, new_deadline.strftime('%Y-%m-%d'),
+                                        st.session_state.performance_data[selected_dept][pillar_name]['kpis'])
+                                except:
+                                    pass
                                 st.success("✅ Updated!")
                                 st.rerun()
                         
