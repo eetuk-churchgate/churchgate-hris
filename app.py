@@ -226,7 +226,23 @@ def sidebar_navigation():
         if st.session_state.user:
             user = st.session_state.user
             initials = generate_initials(user['name'])
-            profile_html = f'<img src="data:image/png;base64,{base64.b64encode(st.session_state["profile_pic"].read()).decode()}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">' if 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None else f'<div style="width: 40px; height: 40px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: white;">{initials}</div>'
+            db_pic = None
+            try:
+                conn = db.get_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
+                row = cursor.fetchone()
+                if row and row['profile_picture']:
+                    db_pic = row['profile_picture']
+                conn.close()
+            except:
+                pass
+            if db_pic is not None:
+                profile_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">'
+            elif 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
+                profile_html = f'<img src="data:image/png;base64,{base64.b64encode(st.session_state["profile_pic"].read()).decode()}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">'
+            else:
+                profile_html = f'<div style="width: 40px; height: 40px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: white;">{initials}</div>'
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
@@ -1205,7 +1221,21 @@ def my_profile():
     st.markdown(f"""<div class="churchgate-header"><h1>👤 My Profile</h1><p>{user['name']} • {user.get('position', 'Employee')}</p></div>""", unsafe_allow_html=True)
     c1, c2 = st.columns([1, 2])
     with c1:
-        if 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
+        db_pic = None
+        try:
+            conn = db.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
+            row = cursor.fetchone()
+            if row and row['profile_picture']:
+                db_pic = row['profile_picture']
+            conn.close()
+        except:
+            pass
+        
+        if db_pic is not None:
+            st.image(db_pic, width=150)
+        elif 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
             st.image(st.session_state['profile_pic'], width=150)
         else:
             initials = generate_initials(user['name'])
