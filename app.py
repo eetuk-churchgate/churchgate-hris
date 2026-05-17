@@ -229,6 +229,7 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
         
         return pdf.output(dest='S').encode('latin-1')
     except Exception as e:
+        st.error(f"PDF Error: {str(e)}")
         return None
 
 def generate_summary_pdf(dept_name, dept_data, summary):
@@ -302,6 +303,7 @@ def generate_summary_pdf(dept_name, dept_data, summary):
         
         return pdf.output(dest='S').encode('latin-1')
     except Exception as e:
+        st.error(f"PDF Error: {str(e)}")
         return None
 
 def generate_ref(prefix):
@@ -1145,11 +1147,6 @@ def performance_okrs():
                 # Download reports
                 st.markdown("---")
                 st.markdown("### 📥 Download Reports")
-                try:
-                    import fpdf
-                    st.success("✅ PDF engine ready")
-                except:
-                    st.error("❌ fpdf2 not installed. Run: pip install fpdf2")
                 c1, c2, c3, c4 = st.columns(4)
                 
                 # Use the correct department name
