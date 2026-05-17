@@ -1154,26 +1154,14 @@ def performance_okrs():
                         st.download_button(f"📊 Summary (CSV)", pd.DataFrame(summary).to_csv(index=False), f"{dl_name}_summary.csv", "text/csv")
                 with c3:
                     if report_data:
-                        try:
-                            pdf_bytes = generate_performance_pdf(dl_name, dept_data, report_data)
-                            if pdf_bytes:
-                                st.download_button(f"📕 Report (PDF)", pdf_bytes, f"{dl_name}_report.pdf", "application/pdf")
-                            else:
-                                st.warning("PDF generation unavailable - add 'fpdf2' to requirements")
-                        except:
-                            st.warning("Install fpdf2 for PDF reports")
+                        pdf_bytes = generate_performance_pdf(dl_name, dept_data, report_data)
+                        st.download_button(f"📕 Report (PDF)", pdf_bytes, f"{dl_name}_report.pdf", "application/pdf")
                     else:
                         st.info("Add KPIs to download report")
-                with c4:
-                    if summary:
-                        try:
-                            pdf_bytes = generate_summary_pdf(dl_name, dept_data, summary)
-                            if pdf_bytes:
-                                st.download_button(f"📕 Summary (PDF)", pdf_bytes, f"{dl_name}_summary.pdf", "application/pdf")
-                            else:
-                                st.warning("PDF generation unavailable")
-                        except:
-                            st.warning("Install fpdf2 for PDF reports")
+                with c3:
+                    if report_data:
+                        pdf_bytes = generate_performance_pdf(dl_name, dept_data, report_data)
+                        st.download_button(f"📕 Report (PDF)", pdf_bytes, f"{dl_name}_report.pdf", "application/pdf")
                     else:
                         st.info("Add KPIs to download summary")
         else:
