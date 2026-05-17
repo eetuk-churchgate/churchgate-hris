@@ -1145,6 +1145,9 @@ def performance_okrs():
                 st.markdown("### 📥 Download Reports")
                 c1, c2, c3, c4 = st.columns(4)
                 
+                # Use the correct department name
+                dl_name = working_dept_name if 'working_dept_name' in dir() else selected_dept
+                
                 # Prepare data
                 report_data = []
                 for pn, pdata in dept_data.items():
@@ -1158,18 +1161,20 @@ def performance_okrs():
                 with c1:
                     if report_data:
                         df = pd.DataFrame(report_data)
-                        st.download_button(f"📥 Report (CSV)", df.to_csv(index=False), f"{working_dept_name}_report.csv", "text/csv")
+                        st.download_button(f"📥 Report (CSV)", df.to_csv(index=False), f"{dl_name}_report.csv", "text/csv")
                 with c2:
                     if summary:
-                        st.download_button(f"📊 Summary (CSV)", pd.DataFrame(summary).to_csv(index=False), f"{working_dept_name}_summary.csv", "text/csv")
+                        st.download_button(f"📊 Summary (CSV)", pd.DataFrame(summary).to_csv(index=False), f"{dl_name}_summary.csv", "text/csv")
                 with c3:
                     if report_data:
-                        pdf_bytes = generate_performance_pdf(working_dept_name, dept_data, report_data)
-                        st.download_button(f"📕 Report (PDF)", pdf_bytes, f"{working_dept_name}_report.pdf", "application/pdf")
+                        pdf_bytes = generate_performance_pdf(dl_name, dept_data, report_data)
+                        if pdf_bytes:
+                            st.download_button(f"📕 Report (PDF)", pdf_bytes, f"{dl_name}_report.pdf", "application/pdf")
                 with c4:
                     if summary:
-                        pdf_bytes = generate_summary_pdf(working_dept_name, dept_data, summary)
-                        st.download_button(f"📕 Summary (PDF)", pdf_bytes, f"{working_dept_name}_summary.pdf", "application/pdf")
+                        pdf_bytes = generate_summary_pdf(dl_name, dept_data, summary)
+                        if pdf_bytes:
+                            st.download_button(f"📕 Summary (PDF)", pdf_bytes, f"{dl_name}_summary.pdf", "application/pdf")
         else:
             # Non-admin view - show own department
             if user_dept in st.session_state.performance_data:
