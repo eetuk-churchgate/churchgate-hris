@@ -260,6 +260,46 @@ class DatabaseManager:
             )
         ''')
         
+        # A-Players table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS aplayers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                position TEXT,
+                department TEXT NOT NULL,
+                nominated_by TEXT,
+                perf_score REAL DEFAULT 0,
+                leadership REAL DEFAULT 0,
+                strategic REAL DEFAULT 0,
+                peer_review REAL DEFAULT 0,
+                junior_review REAL DEFAULT 0,
+                independent_review REAL DEFAULT 0,
+                overall REAL DEFAULT 0,
+                readiness TEXT DEFAULT 'Pending Assessment',
+                gap TEXT DEFAULT 'TBD',
+                risk TEXT DEFAULT 'TBD',
+                approval_reason TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # A-Player Nominations table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS aplayer_nominations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                position TEXT,
+                department TEXT NOT NULL,
+                nominated_by TEXT,
+                reason TEXT,
+                submitted_by TEXT,
+                submitted_by_email TEXT,
+                status TEXT DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS documents (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -330,23 +370,6 @@ class DatabaseManager:
                 ('AN00387', 'Emmanuel', 'Etuk', 'eetuk@churchgate.com', '+234-09092922509', 'Senior Management', 'Head, ELV Systems', 'Manager', 'Full-time', '2019-01-02'),
                 ('GMD01', 'Vinay', 'Mahtani', 'vbmahtani@churchgate.com', '+234-00070300000', 'Senior Management', 'GMD', 'C-Level', 'Full-time', '2018-08-29'),
                 ('LE00019', 'Jerome', 'Das', 'jeromedas@churchgate.com', '', 'Senior Management', 'COO', 'C-Level', 'Full-time', '2015-01-01'),
-                ('LE00212', 'Sanjeev', 'Purwar', 'purwar@churchgate.com', '+234-08033606471', 'Facility Management', 'Head, MEP', 'Manager', 'Full-time', '1997-07-11'),
-                ('LN00369', 'Ahmed', 'Karim', 'akarim@churchgate.com', '+234-09027363561', 'Sales & Marketing', 'GM, Sales & Marketing', 'Manager', 'Full-time', '2021-04-19'),
-                ('AN00012', 'Ibukun', 'Adeogun', 'adeogun@churchgate.com', '+234-08033012808', 'Operations', 'GM, Operations/Admin', 'Manager', 'Full-time', '1991-04-04'),
-                ('LN00008', 'Jeff', 'Arikawe', 'jeff@churchgate.com', '+234-07036233478', 'Accounts & Finance', 'Chief Accountant', 'Manager', 'Full-time', '1991-06-09'),
-                ('LN00037', 'Adebayo', 'Sakote', 'asakote@churchgate.com', '', 'Human Resources', 'HR Manager', 'Manager', 'Full-time', '2020-01-01'),
-                ('LE00071', 'Anand', 'Bora', 'abora@churchgate.com', '', 'Procurement', 'GM, Procurement', 'Manager', 'Full-time', '2018-01-01'),
-                ('AN00391', 'Maikudi', 'Kadoh', 'mkadoh@churchgate.com', '+234-08033162042', 'Security', 'Chief Security Officer', 'Manager', 'Full-time', '2017-12-05'),
-                ('AN00455', 'David', 'Aiyedun', 'daiyedun@churchgate.com', '+234-08062114849', 'Legal', 'Legal Officer', 'Senior', 'Full-time', '2022-10-24'),
-                ('AN00400', 'Charles', 'Okere', 'cokere@churchgate.com', '+234-08033618587', 'Facility Management', 'Lift Supervisor', 'Senior', 'Full-time', '2018-05-15'),
-                ('AN00398', 'George', 'Ojile', 'gojile@churchgate.com', '+234-08035673006', 'Facility Management', 'Lift Engineer', 'Senior', 'Full-time', '2018-04-24'),
-                ('AN00425', 'Augustine', 'Oleh', 'aoleh@churchgate.com', '+234-08062069622', 'Facility Management', 'HSE Coordinator', 'Senior', 'Full-time', '2021-05-03'),
-                ('AN00433', 'Francis', 'Asuquo', 'fasuquo@churchgate.com', '+234-08136403113', 'Technology Group', 'ELV Engineer', 'Junior', 'Full-time', '2022-01-21'),
-                ('LN00438', 'Chika', 'Ikwuegbu', 'cikwuegbu@churchgate.com', '+234-08026822643', 'Security', 'Admin Assistant', 'Junior', 'Full-time', '2022-05-21'),
-                ('AN00423', 'Alice', 'Agbo', 'aagbo@churchgate.com', '+234-08066792728', 'Procurement', 'Store Keeper', 'Junior', 'Full-time', '2021-02-22'),
-                ('AN00460', 'Rhoda', 'Ajibola', 'rajibola@churchgate.com', '+234-07080037934', 'Facility Management', 'Front Desk Executive', 'Junior', 'Full-time', '2023-02-02'),
-                ('AN00451', 'Ogechukwu', 'Obute', 'jobute@churchgate.com', '+234-09082989886', 'Sales & Marketing', 'Sales Executive', 'Junior', 'Full-time', '2022-10-03'),
-                ('AN00496', 'David', 'Effiong', 'deffiong@churchgate.com', '+234-08036451805', 'Facility Management', 'Facility Manager', 'Manager', 'Full-time', '2025-01-20'),
             ]
             cursor.executemany('''
                 INSERT INTO employees (employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date)
@@ -534,6 +557,46 @@ class DatabaseManager:
                                    conn, params=(user_id,))
         conn.close()
         return df
+    
+    # A-Player Methods
+    def save_aplayer(self, name, position, department, nominated_by, perf_score, leadership, strategic, peer_review, junior_review, independent_review, overall, readiness, gap, risk):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT OR REPLACE INTO aplayers (name, position, department, nominated_by, perf_score, leadership, strategic, peer_review, junior_review, independent_review, overall, readiness, gap, risk)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (name, position, department, nominated_by, perf_score, leadership, strategic, peer_review, junior_review, independent_review, overall, readiness, gap, risk))
+        conn.commit()
+        conn.close()
+    
+    def get_all_aplayers(self):
+        conn = self.get_connection()
+        df = pd.read_sql_query("SELECT * FROM aplayers ORDER BY department, overall DESC", conn)
+        conn.close()
+        return df
+    
+    def save_nomination(self, name, position, department, nominated_by, reason, submitted_by, submitted_by_email):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO aplayer_nominations (name, position, department, nominated_by, reason, submitted_by, submitted_by_email)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (name, position, department, nominated_by, reason, submitted_by, submitted_by_email))
+        conn.commit()
+        conn.close()
+    
+    def get_all_nominations(self):
+        conn = self.get_connection()
+        df = pd.read_sql_query("SELECT * FROM aplayer_nominations WHERE status = 'Pending' ORDER BY created_at DESC", conn)
+        conn.close()
+        return df
+    
+    def delete_nomination(self, nomination_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM aplayer_nominations WHERE id = ?", (nomination_id,))
+        conn.commit()
+        conn.close()
     
     def get_dashboard_stats(self):
         conn = self.get_connection()
