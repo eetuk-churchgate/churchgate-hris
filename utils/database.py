@@ -28,7 +28,9 @@ class DatabaseManager:
                 database=st.secrets["DB_NAME"],
                 user=st.secrets["DB_USER"],
                 password=st.secrets["DB_PASSWORD"],
-                port=st.secrets["DB_PORT"]
+                port=st.secrets["DB_PORT"],
+                sslmode='require',
+                connect_timeout=30
             )
             return conn
         else:
