@@ -161,6 +161,147 @@ def save_uploaded_file(uploaded_file):
     except Exception as e:
         return f"[Error: {str(e)}]"
 
+def generate_performance_pdf(dept_name, dept_data, report_data):
+    """Generate a professional PDF report with charts"""
+    try:
+        from fpdf import FPDF
+        import tempfile
+        import matplotlib.pyplot as plt
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
+        
+        pdf = FPDF(orientation='L', unit='mm', format='A4')
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        
+        pdf.set_fill_color(26, 26, 26)
+        pdf.rect(0, 0, 297, 25, 'F')
+        pdf.set_fill_color(204, 0, 0)
+        pdf.rect(0, 25, 297, 3, 'F')
+        pdf.set_font('Helvetica', 'B', 20)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(0, 20, 'CHURCHGATE GROUP', ln=True, align='C')
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.cell(0, 8, f'Performance Report - {dept_name}', ln=True, align='C')
+        pdf.set_text_color(100, 100, 100)
+        pdf.set_font('Helvetica', 'I', 10)
+        pdf.cell(0, 6, f'Generated: {datetime.now().strftime("%B %d, %Y at %I:%M %p")}', ln=True, align='C')
+        pdf.ln(8)
+        
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.set_text_color(26, 26, 26)
+        pdf.cell(0, 10, 'Strategic Pillar Summary', ln=True)
+        pdf.ln(3)
+        
+        pdf.set_fill_color(26, 26, 26)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('Helvetica', 'B', 9)
+        pdf.cell(70, 8, 'Strategic Pillar', 1, 0, 'C', True)
+        pdf.cell(20, 8, 'Weight', 1, 0, 'C', True)
+        pdf.cell(25, 8, 'Progress', 1, 0, 'C', True)
+        pdf.cell(30, 8, 'Status', 1, 0, 'C', True)
+        pdf.cell(117, 8, 'Key KPIs', 1, 0, 'C', True)
+        pdf.ln()
+        
+        pdf.set_font('Helvetica', '', 8)
+        for pn, pdata in dept_data.items():
+            pdf.set_text_color(26, 26, 26)
+            status_color = (56, 161, 105) if pdata['status'] in ['On Track', 'Exceeding'] else (214, 158, 46) if pdata['status'] == 'In Progress' else (204, 0, 0)
+            pdf.set_fill_color(*status_color)
+            kpi_text = ', '.join([k['kpi'][:40] for k in pdata.get('kpis', [])[:3]])
+            pdf.cell(70, 8, pn[:45], 1, 0, 'L')
+            pdf.cell(20, 8, f"{pdata['weight']}%", 1, 0, 'C')
+            pdf.cell(25, 8, f"{pdata['progress']}%", 1, 0, 'C')
+            pdf.cell(30, 8, pdata['status'], 1, 0, 'C', True)
+            pdf.cell(117, 8, kpi_text[:75], 1, 0, 'L')
+            pdf.ln()
+        
+        pdf.ln(5)
+        total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values())
+        pdf.set_font('Helvetica', 'B', 16)
+        pdf.set_text_color(204, 0, 0)
+        pdf.cell(0, 12, f'Overall Weighted Score: {total_weighted:.1f}%', ln=True, align='C')
+        
+        pdf.set_y(-20)
+        pdf.set_font('Helvetica', 'I', 7)
+        pdf.set_text_color(150, 150, 150)
+        pdf.cell(0, 10, 'Churchgate Group - Confidential - Fortune 500 Standard HRIS', align='C')
+        
+        return pdf.output(dest='S').encode('latin-1')
+    except Exception as e:
+        return None
+
+def generate_summary_pdf(dept_name, dept_data, summary):
+    """Generate a professional PDF summary"""
+    try:
+        from fpdf import FPDF
+        
+        pdf = FPDF(orientation='P', unit='mm', format='A4')
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
+        
+        pdf.set_fill_color(26, 26, 26)
+        pdf.rect(0, 0, 210, 22, 'F')
+        pdf.set_fill_color(204, 0, 0)
+        pdf.rect(0, 22, 210, 3, 'F')
+        pdf.set_font('Helvetica', 'B', 18)
+        pdf.set_text_color(255, 255, 255)
+        pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
+        pdf.set_font('Helvetica', 'B', 12)
+        pdf.cell(0, 8, f'Executive Summary - {dept_name}', ln=True, align='C')
+        pdf.set_text_color(100, 100, 100)
+        pdf.set_font('Helvetica', 'I', 9)
+        pdf.cell(0, 6, f'Generated: {datetime.now().strftime("%B %d, %Y")}', ln=True, align='C')
+        pdf.ln(10)
+        
+        total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values())
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.set_text_color(26, 26, 26)
+        pdf.cell(0, 10, 'Strategic Pillar Scorecard', ln=True, align='C')
+        pdf.ln(3)
+        
+        pdf.set_fill_color(26, 26, 26)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('Helvetica', 'B', 10)
+        pdf.cell(65, 8, 'Strategic Pillar', 1, 0, 'C', True)
+        pdf.cell(20, 8, 'Weight', 1, 0, 'C', True)
+        pdf.cell(25, 8, 'Progress', 1, 0, 'C', True)
+        pdf.cell(35, 8, 'Status', 1, 0, 'C', True)
+        pdf.cell(45, 8, 'Deadline', 1, 0, 'C', True)
+        pdf.ln()
+        
+        pdf.set_font('Helvetica', '', 9)
+        for pn, pdata in dept_data.items():
+            pdf.set_text_color(26, 26, 26)
+            status_color = (56, 161, 105) if pdata['status'] in ['On Track', 'Exceeding'] else (214, 158, 46) if pdata['status'] == 'In Progress' else (204, 0, 0)
+            pdf.set_fill_color(*status_color)
+            pdf.cell(65, 8, pn[:42], 1, 0, 'L')
+            pdf.cell(20, 8, f"{pdata['weight']}%", 1, 0, 'C')
+            pdf.cell(25, 8, f"{pdata['progress']}%", 1, 0, 'C')
+            pdf.cell(35, 8, pdata['status'], 1, 0, 'C', True)
+            pdf.cell(45, 8, pdata['deadline'], 1, 0, 'C')
+            pdf.ln()
+        
+        pdf.ln(8)
+        pdf.set_font('Helvetica', 'B', 16)
+        pdf.set_text_color(204, 0, 0)
+        pdf.cell(0, 12, f'Overall Weighted Score: {total_weighted:.1f}%', ln=True, align='C')
+        
+        pdf.ln(5)
+        pdf.set_font('Helvetica', 'B', 12)
+        pdf.set_text_color(26, 26, 26)
+        pdf.cell(0, 8, 'RACI Matrix', ln=True)
+        pdf.set_font('Helvetica', '', 9)
+        pdf.cell(0, 6, 'Responsible: Department Heads | Accountable: GMD/COO | Consulted: All HODs | Informed: Board', ln=True)
+        
+        pdf.set_y(-20)
+        pdf.set_font('Helvetica', 'I', 7)
+        pdf.set_text_color(150, 150, 150)
+        pdf.cell(0, 10, 'Churchgate Group - Confidential - Fortune 500 Standard HRIS', align='C')
+        
+        return pdf.output(dest='S').encode('latin-1')
+    except Exception as e:
+        return None
+
 def generate_ref(prefix):
     return f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{str(time.time())[-6:]}"
 
@@ -999,24 +1140,36 @@ def performance_okrs():
                                         st.success("✅ KPI Added!")
                                         st.rerun()
                 
-                # Download report
+                # Download reports
                 st.markdown("---")
-                c1, c2 = st.columns(2)
+                st.markdown("### 📥 Download Reports")
+                c1, c2, c3, c4 = st.columns(4)
+                
+                # Prepare data
+                report_data = []
+                for pn, pdata in dept_data.items():
+                    for kpi in pdata.get('kpis', []):
+                        report_data.append({'Pillar': pn, 'KPI': kpi['kpi'], 'Target': kpi['target'], 'Current': kpi['current'], 'Status': kpi['status'], 'Deadline': kpi['deadline']})
+                
+                summary = []
+                for pn, pdata in dept_data.items():
+                    summary.append({'Pillar': pn, 'Weight': pdata['weight'], 'Progress': pdata['progress'], 'Status': pdata['status'], 'Deadline': pdata['deadline']})
+                
                 with c1:
-                    report_data = []
-                    for pn, pdata in dept_data.items():
-                        for kpi in pdata['kpis']:
-                            report_data.append({'Pillar': pn, 'KPI': kpi['kpi'], 'Target': kpi['target'], 'Current': kpi['current'], 'Status': kpi['status'], 'Deadline': kpi['deadline']})
                     if report_data:
                         df = pd.DataFrame(report_data)
-                        st.download_button(f"📥 Download {selected_dept} Report (CSV)", df.to_csv(index=False), f"{selected_dept}_performance.csv", "text/csv")
-                    else:
-                        st.info("Add KPIs first to download report")
+                        st.download_button(f"📥 Report (CSV)", df.to_csv(index=False), f"{working_dept_name}_report.csv", "text/csv")
                 with c2:
-                    summary = []
-                    for pn, pdata in dept_data.items():
-                        summary.append({'Pillar': pn, 'Weight': pdata['weight'], 'Progress': pdata['progress'], 'Status': pdata['status'], 'Deadline': pdata['deadline']})
-                    st.download_button(f"📊 Download {selected_dept} Summary (CSV)", pd.DataFrame(summary).to_csv(index=False), f"{selected_dept}_summary.csv", "text/csv")
+                    if summary:
+                        st.download_button(f"📊 Summary (CSV)", pd.DataFrame(summary).to_csv(index=False), f"{working_dept_name}_summary.csv", "text/csv")
+                with c3:
+                    if report_data:
+                        pdf_bytes = generate_performance_pdf(working_dept_name, dept_data, report_data)
+                        st.download_button(f"📕 Report (PDF)", pdf_bytes, f"{working_dept_name}_report.pdf", "application/pdf")
+                with c4:
+                    if summary:
+                        pdf_bytes = generate_summary_pdf(working_dept_name, dept_data, summary)
+                        st.download_button(f"📕 Summary (PDF)", pdf_bytes, f"{working_dept_name}_summary.pdf", "application/pdf")
         else:
             # Non-admin view - show own department
             if user_dept in st.session_state.performance_data:
