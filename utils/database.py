@@ -32,6 +32,7 @@ class DatabaseManager:
                 position TEXT,
                 manager_id INTEGER,
                 is_active BOOLEAN DEFAULT 1,
+                profile_picture BLOB,
                 last_login TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
