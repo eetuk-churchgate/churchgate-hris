@@ -39,7 +39,8 @@ class DatabaseManager:
             response = requests.delete(url, headers=headers)
         
         if response.status_code in [200, 201]:
-            return response.json() if response.text else []
+            data = response.json()
+            return data if isinstance(data, list) else [data] if data else []
         return []
     
     def execute_query(self, query, params=None, fetch=False):
@@ -76,11 +77,11 @@ class DatabaseManager:
     def verify_user(self, email, password):
         if self.use_supabase:
             hashed_pw = hashlib.sha256(password.encode()).hexdigest()
-            # Get user by email first, then check password
             users = self._supabase_query("GET", f"users?email=eq.{email}&select=*")
             if users and len(users) > 0:
                 user = users[0]
-                if user.get('password') == hashed_pw:
+                stored_pw = user.get('password', '')
+                if stored_pw == hashed_pw:
                     return user
             return None
         else:
