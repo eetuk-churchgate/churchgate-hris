@@ -261,7 +261,7 @@ def employee_dashboard():
     st.markdown(f"""<div class="churchgate-header"><h1>👋 Welcome back, {user['name']}!</h1><p>{user.get('position', 'Employee')} • {user.get('department', 'Department')}</p></div>""", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown("""<div class="metric-card"><div class="metric-label">Profile Completeness</div><div class="metric-value">80%</div><small><a href="?page=profile" style="color: #CC0000; text-decoration: underline;">Edit Profile →</a></small></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="metric-card"><div class="metric-label">Profile Completeness</div><div class="metric-value">80%</div><small><span style="color: #CC0000; text-decoration: underline; cursor: pointer;">Edit Profile →</span></small></div>""", unsafe_allow_html=True)
     with c2:
         st.markdown("""<div class="metric-card"><div class="metric-label">Leave Days</div><div class="metric-value">18</div><small style="color: #38a169;">Available</small></div>""", unsafe_allow_html=True)
     with c3:
