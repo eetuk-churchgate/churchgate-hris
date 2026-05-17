@@ -1451,12 +1451,12 @@ def promotions():
     with tab1:
         st.subheader("🏆 Group A-Players — Talent Pipeline")
         
-        # Pending nominations alert
-        if st.session_state.aplayer_nominations and is_admin:
+        # Pending nominations alert - visible to ALL
+        if st.session_state.aplayer_nominations:
             pending_count = len(st.session_state.aplayer_nominations)
             st.markdown(f"""
             <div style="background: #fff3cd; padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #d69e2e;">
-                <strong>🔔 {pending_count} Pending Nomination{'s' if pending_count > 1 else ''}</strong> — Review in the 'Nominate A-Player' tab
+                <strong>🔔 {pending_count} Pending Nomination{'s' if pending_count > 1 else ''}</strong> — {'Review in the Nominate A-Player tab' if is_admin else 'Awaiting admin review'}
             </div>
             """, unsafe_allow_html=True)
         
@@ -1500,7 +1500,7 @@ def promotions():
                                 <div>
                                     <strong style="font-size: 1.1rem;">{player['name']}</strong>
                                     <span style="color: #666; font-size: 0.85rem; margin-left: 0.5rem;">{player['department']}</span>
-                                    <br><small>{player['position']} → <strong>Nominated by: {player['nominated_by']}</strong></small>
+                                    <br><small>{player['position']} -> <strong>Nominated by: {player['nominated_by']}</strong></small>
                                 </div>
                                 <div style="text-align: right;">
                                     <span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-weight: 700; font-size: 0.85rem;">{player['readiness']}</span>
@@ -1527,7 +1527,7 @@ def promotions():
     
     with tab2:
         st.subheader("📝 Nominate A-Player")
-        st.info("HODs and Line Managers can nominate top performers as A-Players for the 360° assessment process.")
+        st.info("HODs and Line Managers can nominate top performers as A-Players for the 360-degree assessment process. All nominations are visible to Admin and Senior Management for review.")
         
         with st.form("nominate_form"):
             c1, c2 = st.columns(2)
@@ -1543,9 +1543,10 @@ def promotions():
                 if nominee_name and nominee_dept and nominated_by:
                     st.session_state.aplayer_nominations.append({
                         'name': nominee_name, 'position': nominee_position, 'department': nominee_dept,
-                        'nominated_by': nominated_by, 'reason': nomination_reason, 'date': datetime.now().strftime('%Y-%m-%d')
+                        'nominated_by': nominated_by, 'reason': nomination_reason, 'date': datetime.now().strftime('%Y-%m-%d'),
+                        'submitted_by': st.session_state.user['name'] if st.session_state.user else 'Unknown'
                     })
-                    st.success(f"✅ {nominee_name} nominated successfully!")
+                    st.success(f"✅ {nominee_name} nominated successfully! The nomination is now visible to Admin and Senior Management.")
                     st.balloons()
                 else:
                     st.warning("Please fill all required fields (*)")
@@ -1560,35 +1561,60 @@ def promotions():
                     <div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #d69e2e;">
                         <strong>{nom['name']}</strong> - {nom['position']}<br>
                         <small>Department: {nom['department']} | Nominated by: {nom['nominated_by']} | {nom['date']}</small><br>
-                        <small style="color: #666;">Reason: {nom.get('reason', 'N/A')}</small>
+                        <small style="color: #666;">Reason: {nom.get('reason', 'N/A')}</small><br>
+                        <small style="color: #888;">Submitted by: {nom.get('submitted_by', 'N/A')}</small>
                     </div>
                     """, unsafe_allow_html=True)
                 with c2:
                     if is_admin:
-                        if st.button(f"✅ Approve", key=f"approve_{i}", use_container_width=True):
-                            if nom['department'] not in st.session_state.aplayers_data:
-                                st.session_state.aplayers_data[nom['department']] = []
-                            st.session_state.aplayers_data[nom['department']].append({
-                                'name': nom['name'], 'position': nom['position'],
-                                'nominated_by': nom['nominated_by'],
-                                'perf_score': 0, 'leadership': 0, 'strategic': 0,
-                                'peer_review': 0, 'junior_review': 0, 'independent_review': 0,
-                                'overall': 0, 'readiness': 'Pending Assessment', 'gap': 'TBD', 'risk': 'TBD',
-                                'photo': None
-                            })
-                            st.session_state.aplayer_nominations.pop(i)
-                            st.success(f"✅ {nom['name']} approved and added to A-Players!")
-                            st.rerun()
-                        if st.button(f"❌ Reject", key=f"reject_{i}", use_container_width=True):
-                            st.session_state.aplayer_nominations.pop(i)
-                            st.rerun()
+                        action_key = f"action_{i}"
+                        if action_key not in st.session_state:
+                            st.session_state[action_key] = None
+                        
+                        col_btn1, col_btn2, col_btn3 = st.columns(3)
+                        with col_btn1:
+                            if st.button(f"✅", key=f"approve_{i}", use_container_width=True, help="Approve"):
+                                st.session_state[action_key] = 'approve'
+                        with col_btn2:
+                            if st.button(f"⏸️", key=f"hold_{i}", use_container_width=True, help="On Hold"):
+                                st.session_state[action_key] = 'hold'
+                        with col_btn3:
+                            if st.button(f"❌", key=f"reject_{i}", use_container_width=True, help="Reject"):
+                                st.session_state[action_key] = 'reject'
+                        
+                        if st.session_state[action_key]:
+                            reason = st.text_area(f"Reason for {st.session_state[action_key].upper()}: *", key=f"reason_{i}", placeholder="Please provide a reason for this decision...")
+                            if st.button(f"✅ Confirm {st.session_state[action_key].title()}", key=f"confirm_{i}", use_container_width=True):
+                                if reason:
+                                    if st.session_state[action_key] == 'approve':
+                                        if nom['department'] not in st.session_state.aplayers_data:
+                                            st.session_state.aplayers_data[nom['department']] = []
+                                        st.session_state.aplayers_data[nom['department']].append({
+                                            'name': nom['name'], 'position': nom['position'],
+                                            'nominated_by': nom['nominated_by'],
+                                            'perf_score': 0, 'leadership': 0, 'strategic': 0,
+                                            'peer_review': 0, 'junior_review': 0, 'independent_review': 0,
+                                            'overall': 0, 'readiness': 'Pending Assessment', 'gap': 'TBD', 'risk': 'TBD',
+                                            'photo': None, 'approval_reason': reason
+                                        })
+                                        st.session_state.aplayer_nominations.pop(i)
+                                        st.success(f"✅ {nom['name']} approved!")
+                                    elif st.session_state[action_key] == 'hold':
+                                        st.warning(f"⏸️ {nom['name']} put on hold. Reason: {reason}")
+                                        st.session_state[action_key] = None
+                                    elif st.session_state[action_key] == 'reject':
+                                        st.error(f"❌ {nom['name']} rejected. Reason: {reason}")
+                                        st.session_state.aplayer_nominations.pop(i)
+                                        st.session_state[action_key] = None
+                                    st.rerun()
+                                else:
+                                    st.warning("Please provide a reason.")
     
     with tab3:
         st.subheader("📊 360° Assessment Scorecard")
-        st.info("Complete 360° assessment for nominated A-Players. Assessment includes: Line Manager Review (35%), Peer Review (10%), Junior/Subordinate Review (5%), Independent Review (5%), Leadership Competency (25%), and Strategic Impact (20%).")
+        st.info("Complete 360-degree assessment. Weights: Line Manager/Performance (35%), Leadership Competency (25%), Strategic Impact (20%), Peer Review (10%), Junior/Subordinate Review (5%), Independent Review (5%).")
         
         if is_admin:
-            # Get all departments with players
             depts_with_players = [d for d, p in st.session_state.aplayers_data.items() if p]
             if depts_with_players:
                 assess_dept = st.selectbox("Select Department", depts_with_players, key="assess_dept")
@@ -1606,7 +1632,7 @@ def promotions():
                             break
                     
                     if player_data:
-                        st.markdown(f"### Assessing: {player_data['name']} — {player_data['position']}")
+                        st.markdown(f"### Assessing: {player_data['name']} - {player_data['position']}")
                         
                         with st.form("assessment_form"):
                             st.markdown("#### 360° Review Scores")
@@ -1639,7 +1665,7 @@ def promotions():
                                 st.success(f"✅ Assessment saved! Overall Score: {overall}%")
                                 st.rerun()
             else:
-                st.info("No A-Players available for assessment. Nominate players first.")
+                st.info("No A-Players available for assessment. Nominate and approve players first.")
         else:
             st.info("Assessment access restricted to Admin, HR Director, and Senior Management.")
     
@@ -1718,7 +1744,7 @@ def promotions():
                     pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
                     pdf.set_font('Helvetica', 'B', 12)
                     pdf.set_text_color(204, 0, 0)
-                    pdf.cell(0, 8, 'A-PLAYERS & SUCCESSION PIPELINE — EXECUTIVE REPORT', ln=True, align='C')
+                    pdf.cell(0, 8, 'A-PLAYERS & SUCCESSION PIPELINE - EXECUTIVE REPORT', ln=True, align='C')
                     pdf.ln(8)
                     
                     # STATS BAR
