@@ -1213,6 +1213,17 @@ def my_profile():
         uploaded_pic = st.file_uploader("📸 Upload Profile Picture", type=['jpg', 'jpeg', 'png'])
         if uploaded_pic is not None:
             st.session_state['profile_pic'] = uploaded_pic
+            try:
+                conn = db.get_connection()
+                cursor = conn.cursor()
+                user_id = st.session_state.user['id']
+                image_bytes = uploaded_pic.read()
+                cursor.execute("UPDATE users SET profile_picture = ? WHERE id = ?", (image_bytes, user_id))
+                conn.commit()
+                conn.close()
+                st.success("✅ Profile picture saved permanently!")
+            except Exception as e:
+                pass
     with c2:
         with st.form("profile_update"):
             c1, c2 = st.columns(2)
