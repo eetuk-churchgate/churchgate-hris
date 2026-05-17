@@ -1414,7 +1414,6 @@ def promotions():
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     
-    # Initialize session state for A-Players
     if 'aplayers_data' not in st.session_state:
         st.session_state.aplayers_data = {
             'Technology Group': [
@@ -1434,6 +1433,14 @@ def promotions():
             'Sales & Marketing': [
                 {"name": "Ahmed Karim", "position": "GM, Sales & Marketing", "nominated_by": "Vinay Mahtani", "perf_score": 88, "leadership": 86, "strategic": 87, "peer_review": 85, "junior_review": 83, "independent_review": 86, "overall": 86, "readiness": "Ready Now", "gap": "Digital marketing", "risk": "Low", "photo": None},
             ],
+            'Procurement': [],
+            'Security': [],
+            'Legal': [],
+            'Operations': [],
+            'Engineering': [],
+            'Central Stores': [],
+            'Project Development': [],
+            'Trade Services': [],
         }
     
     if 'aplayer_nominations' not in st.session_state:
@@ -1444,7 +1451,15 @@ def promotions():
     with tab1:
         st.subheader("🏆 Group A-Players — Talent Pipeline")
         
-        # Top stats
+        # Pending nominations alert
+        if st.session_state.aplayer_nominations and is_admin:
+            pending_count = len(st.session_state.aplayer_nominations)
+            st.markdown(f"""
+            <div style="background: #fff3cd; padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #d69e2e;">
+                <strong>🔔 {pending_count} Pending Nomination{'s' if pending_count > 1 else ''}</strong> — Review in the 'Nominate A-Player' tab
+            </div>
+            """, unsafe_allow_html=True)
+        
         all_players = []
         for dept, players in st.session_state.aplayers_data.items():
             for p in players:
@@ -1457,17 +1472,15 @@ def promotions():
         c1.metric("Total A-Players", len(all_players))
         c2.metric("Ready Now", len(ready_now), "🚀")
         c3.metric("Avg Score", f"{sum(p['overall'] for p in all_players) / len(all_players):.1f}%" if all_players else "N/A")
-        c4.metric("Departments", len(st.session_state.aplayers_data))
+        c4.metric("Departments", len([d for d, p in st.session_state.aplayers_data.items() if p]))
         
         st.markdown("---")
         
-        # Department filter
         if is_admin:
             view_dept = st.selectbox("🏢 Filter by Department", ["All Departments"] + list(st.session_state.aplayers_data.keys()))
         else:
             view_dept = user_dept if user_dept in st.session_state.aplayers_data else "All Departments"
         
-        # Display A-Players
         if view_dept == "All Departments":
             display_players = all_players
         else:
@@ -1475,7 +1488,7 @@ def promotions():
         
         if display_players:
             for player in display_players:
-                color = "#38a169" if player['readiness'] == 'Ready Now' else "#d69e2e" if 'Q3' in player['readiness'] else "#3182ce"
+                color = "#38a169" if player['readiness'] == 'Ready Now' else "#d69e2e" if 'Q3' in str(player['readiness']) else "#3182ce" if 'Q4' in str(player['readiness']) else "#CC0000"
                 initials = generate_initials(player['name'])
                 
                 st.markdown(f"""
@@ -1521,7 +1534,7 @@ def promotions():
             with c1:
                 nominee_name = st.text_input("Nominee Full Name *")
                 nominee_position = st.text_input("Current Position *")
-                nominee_dept = st.selectbox("Department *", ["Technology Group", "Facility Management", "Human Resources", "Sales & Marketing", "Accounts & Finance", "Procurement", "Security", "Legal", "Operations", "Engineering", "Central Stores", "Project Development", "Trade Services"])
+                nominee_dept = st.selectbox("Department *", list(st.session_state.aplayers_data.keys()))
             with c2:
                 nominated_by = st.text_input("Nominated By (HOD/Line Manager) *")
                 nomination_reason = st.text_area("Reason for Nomination", placeholder="Describe why this employee is being nominated as an A-Player...")
@@ -1539,94 +1552,126 @@ def promotions():
         
         if st.session_state.aplayer_nominations:
             st.markdown("---")
-            st.markdown("### 📋 Recent Nominations")
-            for nom in st.session_state.aplayer_nominations[-5:]:
-                st.markdown(f"""
-                <div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #CC0000;">
-                    <strong>{nom['name']}</strong> - {nom['department']} | Nominated by: {nom['nominated_by']} | {nom['date']}
-                </div>
-                """, unsafe_allow_html=True)
+            st.markdown("### 📋 Pending Nominations — Admin Review")
+            for i, nom in enumerate(st.session_state.aplayer_nominations):
+                c1, c2 = st.columns([3, 1])
+                with c1:
+                    st.markdown(f"""
+                    <div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #d69e2e;">
+                        <strong>{nom['name']}</strong> - {nom['position']}<br>
+                        <small>Department: {nom['department']} | Nominated by: {nom['nominated_by']} | {nom['date']}</small><br>
+                        <small style="color: #666;">Reason: {nom.get('reason', 'N/A')}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with c2:
+                    if is_admin:
+                        if st.button(f"✅ Approve", key=f"approve_{i}", use_container_width=True):
+                            if nom['department'] not in st.session_state.aplayers_data:
+                                st.session_state.aplayers_data[nom['department']] = []
+                            st.session_state.aplayers_data[nom['department']].append({
+                                'name': nom['name'], 'position': nom['position'],
+                                'nominated_by': nom['nominated_by'],
+                                'perf_score': 0, 'leadership': 0, 'strategic': 0,
+                                'peer_review': 0, 'junior_review': 0, 'independent_review': 0,
+                                'overall': 0, 'readiness': 'Pending Assessment', 'gap': 'TBD', 'risk': 'TBD',
+                                'photo': None
+                            })
+                            st.session_state.aplayer_nominations.pop(i)
+                            st.success(f"✅ {nom['name']} approved and added to A-Players!")
+                            st.rerun()
+                        if st.button(f"❌ Reject", key=f"reject_{i}", use_container_width=True):
+                            st.session_state.aplayer_nominations.pop(i)
+                            st.rerun()
     
     with tab3:
         st.subheader("📊 360° Assessment Scorecard")
-        st.info("Complete 360° assessment for nominated A-Players. Assessment includes: Line Manager Review, Peer Review, Junior/Subordinate Review, and Independent Review.")
+        st.info("Complete 360° assessment for nominated A-Players. Assessment includes: Line Manager Review (35%), Peer Review (10%), Junior/Subordinate Review (5%), Independent Review (5%), Leadership Competency (25%), and Strategic Impact (20%).")
         
         if is_admin:
-            assess_dept = st.selectbox("Select Department for Assessment", list(st.session_state.aplayers_data.keys()), key="assess_dept")
-            
-            if assess_dept and st.session_state.aplayers_data[assess_dept]:
-                assess_player = st.selectbox("Select A-Player", [p['name'] for p in st.session_state.aplayers_data[assess_dept]], key="assess_player")
+            # Get all departments with players
+            depts_with_players = [d for d, p in st.session_state.aplayers_data.items() if p]
+            if depts_with_players:
+                assess_dept = st.selectbox("Select Department", depts_with_players, key="assess_dept")
                 
-                # Find the player
-                player_data = None
-                player_idx = None
-                for i, p in enumerate(st.session_state.aplayers_data[assess_dept]):
-                    if p['name'] == assess_player:
-                        player_data = p
-                        player_idx = i
-                        break
-                
-                if player_data:
-                    st.markdown(f"### Assessing: {player_data['name']}")
+                if assess_dept:
+                    player_names = [p['name'] for p in st.session_state.aplayers_data[assess_dept]]
+                    assess_player_name = st.selectbox("Select A-Player", player_names, key="assess_player")
                     
-                    with st.form("assessment_form"):
-                        st.markdown("#### 360° Review Scores")
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            perf = st.slider("Performance Score", 0, 100, player_data['perf_score'])
-                            leadership = st.slider("Leadership Competency", 0, 100, player_data['leadership'])
-                            strategic = st.slider("Strategic Impact", 0, 100, player_data['strategic'])
-                        with c2:
-                            peer = st.slider("Peer Review Score", 0, 100, player_data['peer_review'])
-                            junior = st.slider("Junior/Subordinate Review", 0, 100, player_data['junior_review'])
-                            independent = st.slider("Independent Review", 0, 100, player_data['independent_review'])
+                    player_data = None
+                    player_idx = None
+                    for i, p in enumerate(st.session_state.aplayers_data[assess_dept]):
+                        if p['name'] == assess_player_name:
+                            player_data = p
+                            player_idx = i
+                            break
+                    
+                    if player_data:
+                        st.markdown(f"### Assessing: {player_data['name']} — {player_data['position']}")
                         
-                        readiness_options = ['Ready Now', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Q2 2027']
-                        readiness = st.selectbox("Readiness", readiness_options, index=readiness_options.index(player_data['readiness']) if player_data['readiness'] in readiness_options else 0)
-                        gap = st.text_input("Competency Gap Identified", player_data['gap'])
-                        risk = st.selectbox("Succession Risk", ['Low', 'Medium', 'High'], index=['Low', 'Medium', 'High'].index(player_data['risk']))
-                        
-                        if st.form_submit_button("💾 Save Assessment", use_container_width=True):
-                            overall = int((perf * 0.35 + leadership * 0.25 + strategic * 0.20 + peer * 0.10 + junior * 0.05 + independent * 0.05))
-                            st.session_state.aplayers_data[assess_dept][player_idx] = {
-                                'name': player_data['name'], 'position': player_data['position'],
-                                'nominated_by': player_data['nominated_by'],
-                                'perf_score': perf, 'leadership': leadership, 'strategic': strategic,
-                                'peer_review': peer, 'junior_review': junior, 'independent_review': independent,
-                                'overall': overall, 'readiness': readiness, 'gap': gap, 'risk': risk,
-                                'photo': player_data.get('photo')
-                            }
-                            st.success(f"✅ Assessment saved for {player_data['name']}! Overall Score: {overall}%")
-                            st.rerun()
+                        with st.form("assessment_form"):
+                            st.markdown("#### 360° Review Scores")
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                perf = st.slider("Line Manager - Performance Score (35%)", 0, 100, player_data['perf_score'])
+                                leadership = st.slider("Leadership Competency (25%)", 0, 100, player_data['leadership'])
+                                strategic = st.slider("Strategic Impact (20%)", 0, 100, player_data['strategic'])
+                            with c2:
+                                peer = st.slider("Peer Review Score (10%)", 0, 100, player_data['peer_review'])
+                                junior = st.slider("Junior/Subordinate Review (5%)", 0, 100, player_data['junior_review'])
+                                independent = st.slider("Independent Review (5%)", 0, 100, player_data['independent_review'])
+                            
+                            readiness_options = ['Ready Now', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Q2 2027', 'Pending Assessment']
+                            current_readiness = player_data['readiness'] if player_data['readiness'] in readiness_options else 'Pending Assessment'
+                            readiness = st.selectbox("Readiness", readiness_options, index=readiness_options.index(current_readiness))
+                            gap = st.text_input("Competency Gap Identified", player_data['gap'])
+                            risk = st.selectbox("Succession Risk", ['Low', 'Medium', 'High'], index=['Low', 'Medium', 'High'].index(player_data['risk']) if player_data['risk'] in ['Low', 'Medium', 'High'] else 0)
+                            
+                            if st.form_submit_button("💾 Save Assessment", use_container_width=True):
+                                overall = int((perf * 0.35 + leadership * 0.25 + strategic * 0.20 + peer * 0.10 + junior * 0.05 + independent * 0.05))
+                                st.session_state.aplayers_data[assess_dept][player_idx] = {
+                                    'name': player_data['name'], 'position': player_data['position'],
+                                    'nominated_by': player_data['nominated_by'],
+                                    'perf_score': perf, 'leadership': leadership, 'strategic': strategic,
+                                    'peer_review': peer, 'junior_review': junior, 'independent_review': independent,
+                                    'overall': overall, 'readiness': readiness, 'gap': gap, 'risk': risk,
+                                    'photo': player_data.get('photo')
+                                }
+                                st.success(f"✅ Assessment saved! Overall Score: {overall}%")
+                                st.rerun()
+            else:
+                st.info("No A-Players available for assessment. Nominate players first.")
+        else:
+            st.info("Assessment access restricted to Admin, HR Director, and Senior Management.")
     
     with tab4:
         st.subheader("📋 Succession Pipeline")
-        
-        # Visual pipeline
-        st.markdown("### Churchgate Group Succession Pipeline")
         
         pipeline_data = []
         for dept, players in st.session_state.aplayers_data.items():
             for p in players:
                 pipeline_data.append({
-                    'Department': dept,
-                    'A-Player': p['name'],
-                    'Current Position': p['position'],
-                    'Readiness': p['readiness'],
-                    'Overall Score': p['overall'],
-                    'Risk': p['risk']
+                    'Department': dept, 'A-Player': p['name'], 'Current Position': p['position'],
+                    'Readiness': p['readiness'], 'Overall Score': p['overall'],
+                    'Risk': p['risk'], 'Gap': p['gap']
                 })
         
         if pipeline_data:
             df = pd.DataFrame(pipeline_data)
             st.dataframe(df, use_container_width=True, hide_index=True)
             
-            # Readiness distribution
             st.markdown("### Readiness Distribution")
             readiness_counts = df['Readiness'].value_counts()
-            fig = px.pie(values=readiness_counts.values, names=readiness_counts.index, hole=0.5, color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000'])
-            fig.update_layout(height=300)
+            fig = px.pie(values=readiness_counts.values, names=readiness_counts.index, hole=0.5, 
+                        color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000', '#718096', '#a0aec0'])
+            fig.update_layout(height=350)
             st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("### Department A-Player Distribution")
+            dept_counts = df['Department'].value_counts()
+            fig2 = px.bar(x=dept_counts.index, y=dept_counts.values, color_discrete_sequence=['#CC0000'],
+                         labels={'x': 'Department', 'y': 'A-Players'})
+            fig2.update_layout(height=300)
+            st.plotly_chart(fig2, use_container_width=True)
     
     with tab5:
         st.subheader("📥 Promotion Reports")
@@ -1634,72 +1679,154 @@ def promotions():
         c1, c2 = st.columns(2)
         
         with c1:
-            if st.button("📊 Generate A-Players Report", use_container_width=True):
+            if st.button("📊 Generate A-Players Report (CSV)", use_container_width=True):
                 report_data = []
                 for dept, players in st.session_state.aplayers_data.items():
                     for p in players:
                         report_data.append({
                             'Department': dept, 'Name': p['name'], 'Position': p['position'],
-                            'Nominated By': p['nominated_by'], 'Performance': f"{p['perf_score']}%",
-                            'Leadership': f"{p['leadership']}%", 'Strategic': f"{p['strategic']}%",
-                            'Peer Review': f"{p['peer_review']}%", 'Junior Review': f"{p['junior_review']}%",
-                            'Independent': f"{p['independent_review']}%", 'Overall': f"{p['overall']}%",
+                            'Nominated By': p['nominated_by'], 'Performance (35%)': f"{p['perf_score']}%",
+                            'Leadership (25%)': f"{p['leadership']}%", 'Strategic (20%)': f"{p['strategic']}%",
+                            'Peer Review (10%)': f"{p['peer_review']}%", 'Junior Review (5%)': f"{p['junior_review']}%",
+                            'Independent (5%)': f"{p['independent_review']}%", 'Overall': f"{p['overall']}%",
                             'Readiness': p['readiness'], 'Gap': p['gap'], 'Risk': p['risk']
                         })
                 if report_data:
                     df = pd.DataFrame(report_data)
                     st.download_button("📥 Download CSV", df.to_csv(index=False), "aplayers_report.csv", "text/csv")
                     st.dataframe(df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("No A-Player data available.")
         
         with c2:
-            if st.button("📕 Generate Executive Summary PDF", use_container_width=True):
+            if st.button("📕 Generate Executive PDF Report", use_container_width=True):
                 try:
                     import fpdf
                     FPDF = fpdf.FPDF
-                    pdf = FPDF(orientation='P', unit='mm', format='A4')
-                    pdf.set_auto_page_break(auto=True, margin=12)
+                    
+                    pdf = FPDF(orientation='L', unit='mm', format='A4')
+                    pdf.set_auto_page_break(auto=True, margin=10)
                     pdf.add_page()
                     
+                    # HEADER
                     pdf.set_fill_color(26, 26, 26)
-                    pdf.rect(0, 0, 210, 30, 'F')
+                    pdf.rect(0, 0, 297, 32, 'F')
                     pdf.set_fill_color(204, 0, 0)
-                    pdf.rect(0, 30, 210, 3, 'F')
-                    pdf.set_font('Helvetica', 'B', 18)
+                    pdf.rect(0, 32, 297, 3, 'F')
+                    pdf.set_font('Helvetica', 'B', 22)
                     pdf.set_text_color(255, 255, 255)
-                    pdf.cell(0, 16, 'CHURCHGATE GROUP', ln=True, align='C')
-                    pdf.set_font('Helvetica', 'B', 11)
+                    pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
+                    pdf.set_font('Helvetica', 'B', 12)
                     pdf.set_text_color(204, 0, 0)
-                    pdf.cell(0, 8, 'A-PLAYERS & SUCCESSION PIPELINE REPORT', ln=True, align='C')
-                    pdf.ln(10)
+                    pdf.cell(0, 8, 'A-PLAYERS & SUCCESSION PIPELINE — EXECUTIVE REPORT', ln=True, align='C')
+                    pdf.ln(8)
                     
+                    # STATS BAR
                     total = sum(len(players) for players in st.session_state.aplayers_data.values())
                     ready = sum(1 for dept, players in st.session_state.aplayers_data.items() for p in players if p['readiness'] == 'Ready Now')
+                    avg_score = sum(p['overall'] for dept, players in st.session_state.aplayers_data.items() for p in players) / total if total > 0 else 0
                     
-                    pdf.set_font('Helvetica', 'B', 12)
+                    pdf.set_fill_color(245, 245, 245)
+                    pdf.rect(10, pdf.get_y(), 277, 10, 'F')
+                    pdf.set_font('Helvetica', 'B', 9)
                     pdf.set_text_color(26, 26, 26)
-                    pdf.cell(0, 8, f'Total A-Players: {total} | Ready Now: {ready}', ln=True, align='C')
-                    pdf.ln(5)
+                    pdf.cell(92, 10, f'  Total A-Players: {total}', 0, 0, 'L')
+                    pdf.cell(92, 10, f'Ready Now: {ready}', 0, 0, 'C')
+                    pdf.cell(93, 10, f'Average Score: {avg_score:.1f}%  ', 0, 0, 'R')
+                    pdf.ln(14)
                     
+                    # KPI CARDS
+                    cards_data = [
+                        ('TOTAL A-PLAYERS', str(total), (26, 26, 26)),
+                        ('READY NOW', str(ready), (56, 161, 105)),
+                        ('AVG SCORE', f'{avg_score:.1f}%', (204, 0, 0)),
+                        ('DEPARTMENTS', str(len([d for d, p in st.session_state.aplayers_data.items() if p])), (49, 130, 206)),
+                    ]
+                    
+                    col_w = 65
+                    col_h = 16
+                    x_start = 14
+                    y_pos = pdf.get_y()
+                    
+                    for i, (label, value, color) in enumerate(cards_data):
+                        x = x_start + i * (col_w + 5)
+                        pdf.set_fill_color(*color)
+                        pdf.rect(x, y_pos, col_w, col_h, 'F')
+                        pdf.set_text_color(255, 255, 255)
+                        pdf.set_xy(x, y_pos + 1)
+                        pdf.set_font('Helvetica', 'B', 7)
+                        pdf.cell(col_w, 6, label, 0, 0, 'C')
+                        pdf.set_xy(x, y_pos + 7)
+                        pdf.set_font('Helvetica', 'B', 14)
+                        pdf.cell(col_w, 8, value, 0, 0, 'C')
+                    
+                    pdf.set_y(y_pos + col_h + 8)
+                    
+                    # TABLE HEADER
+                    pdf.set_fill_color(26, 26, 26)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.set_font('Helvetica', 'B', 8)
+                    pdf.cell(6, 7, ' #', 1, 0, 'C', True)
+                    pdf.cell(42, 7, ' NAME', 1, 0, 'L', True)
+                    pdf.cell(42, 7, ' DEPARTMENT', 1, 0, 'L', True)
+                    pdf.cell(50, 7, ' POSITION', 1, 0, 'L', True)
+                    pdf.cell(18, 7, 'SCORE', 1, 0, 'C', True)
+                    pdf.cell(32, 7, 'READINESS', 1, 0, 'C', True)
+                    pdf.cell(22, 7, 'RISK', 1, 0, 'C', True)
+                    pdf.cell(65, 7, ' GAP / DEVELOPMENT NEED', 1, 0, 'L', True)
+                    pdf.ln()
+                    
+                    # TABLE ROWS
+                    row_num = 0
+                    pdf.set_font('Helvetica', '', 7)
                     for dept, players in st.session_state.aplayers_data.items():
-                        pdf.set_fill_color(240, 240, 240)
-                        pdf.set_font('Helvetica', 'B', 10)
-                        pdf.cell(190, 7, f'  {dept} ({len(players)} A-Players)', 1, 0, 'L', True)
-                        pdf.ln()
                         for p in players:
-                            pdf.set_font('Helvetica', '', 8)
-                            pdf.cell(190, 6, f'  {p["name"]} - {p["position"]} | Score: {p["overall"]}% | {p["readiness"]}', 1, 0, 'L')
+                            row_num += 1
+                            if p['readiness'] == 'Ready Now':
+                                sc = (230, 255, 230)
+                            elif 'Q3' in str(p['readiness']):
+                                sc = (255, 248, 230)
+                            elif 'Q4' in str(p['readiness']):
+                                sc = (255, 240, 230)
+                            else:
+                                sc = (255, 255, 255)
+                            
+                            pdf.set_fill_color(*sc)
+                            pdf.set_text_color(26, 26, 26)
+                            pdf.cell(6, 6, str(row_num), 1, 0, 'C', True)
+                            pdf.cell(42, 6, f' {p["name"][:25]}', 1, 0, 'L', True)
+                            pdf.cell(42, 6, f' {dept[:25]}', 1, 0, 'L', True)
+                            pdf.cell(50, 6, f' {p["position"][:30]}', 1, 0, 'L', True)
+                            
+                            if p['overall'] >= 85:
+                                tc = (56, 161, 105)
+                            elif p['overall'] >= 70:
+                                tc = (214, 158, 46)
+                            else:
+                                tc = (204, 0, 0)
+                            pdf.set_text_color(*tc)
+                            pdf.set_font('Helvetica', 'B', 7)
+                            pdf.cell(18, 6, f'{p["overall"]}%', 1, 0, 'C', True)
+                            
+                            pdf.set_text_color(26, 26, 26)
+                            pdf.set_font('Helvetica', '', 7)
+                            pdf.cell(32, 6, p['readiness'][:18], 1, 0, 'C', True)
+                            pdf.cell(22, 6, p['risk'], 1, 0, 'C', True)
+                            pdf.cell(65, 6, f' {p["gap"][:40]}', 1, 0, 'L', True)
                             pdf.ln()
-                        pdf.ln(2)
                     
-                    pdf.set_y(-20)
+                    # FOOTER
+                    pdf.set_y(-15)
+                    pdf.set_fill_color(26, 26, 26)
+                    pdf.rect(0, pdf.get_y()-2, 297, 17, 'F')
                     pdf.set_font('Helvetica', 'I', 7)
-                    pdf.set_text_color(150, 150, 150)
-                    pdf.cell(0, 10, 'Churchgate Group - Confidential - Fortune 500 Standard HRIS', align='C')
+                    pdf.set_text_color(180, 180, 180)
+                    pdf.cell(0, 5, 'Churchgate Group - Confidential - Fortune 500 Standard HRIS | World Trade Center, Abuja | hr@churchgate.com', ln=True, align='C')
                     
-                    st.download_button("📥 Download PDF", bytes(pdf.output()), "aplayers_summary.pdf", "application/pdf")
-                    st.success("✅ PDF generated!")
-                except:
-                    st.warning("Install fpdf2 for PDF reports")
+                    st.download_button("📥 Download Executive PDF", bytes(pdf.output()), "aplayers_executive_report.pdf", "application/pdf")
+                    st.success("✅ PDF generated successfully!")
+                except Exception as e:
+                    st.warning(f"PDF Error: {str(e)}")
 
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Manage Jobs, Applications, and Recruitment Workflows</p></div>""", unsafe_allow_html=True)
