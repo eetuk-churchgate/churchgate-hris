@@ -76,13 +76,23 @@ class DatabaseManager:
     
     def verify_user(self, email, password):
         if self.use_supabase:
+            import requests
             hashed_pw = hashlib.sha256(password.encode()).hexdigest()
-            users = self._supabase_query("GET", f"users?email=eq.{email}&select=*")
-            if users and len(users) > 0:
-                user = users[0]
-                stored_pw = user.get('password', '')
-                if stored_pw == hashed_pw:
-                    return user
+            url = f"{self.supabase_url}/rest/v1/users?email=eq.{email}&select=*"
+            headers = {
+                "apikey": self.supabase_key,
+                "Authorization": f"Bearer {self.supabase_key}"
+            }
+            try:
+                response = requests.get(url, headers=headers)
+                if response.status_code == 200:
+                    data = response.json()
+                    if data and len(data) > 0:
+                        user = data[0]
+                        if user.get('password') == hashed_pw:
+                            return user
+            except:
+                pass
             return None
         else:
             import sqlite3
