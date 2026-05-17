@@ -871,6 +871,61 @@ def performance_okrs():
                 '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
                 '4. People & Culture': {'weight': 15, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
             },
+            'Central Stores': {
+                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                '2. Process Simplification': {'weight': 20, 'progress': 62, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                '4. People & Culture': {'weight': 15, 'progress': 75, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+            },
+            'Project Development': {
+                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
+                '2. Process Simplification': {'weight': 20, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                '4. People & Culture': {'weight': 15, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+            },
+            'Trade Services': {
+                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+            },
+            'Technology Group': {
+                '_sub_divisions': {
+                    'ELV Systems Technology': {
+                        '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': 'Increase data centre revenue by 15%', 'target': '15%', 'current': '12%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': '100% revenue realisation as per budget', 'target': '100%', 'current': '95%', 'status': 'Near Target', 'deadline': '2026-12-31'},
+                            {'kpi': 'Nil O/S debts within 30 days', 'target': '0', 'current': '2', 'status': 'At Risk', 'deadline': '2026-06-30'},
+                            {'kpi': 'Retention of 90% customers', 'target': '90%', 'current': '88%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': '0% variance from budgeted costs', 'target': '0%', 'current': '2%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                        ]},
+                        '2. Process Simplification': {'weight': 20, 'progress': 72, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': 'AI implementation by FY end', 'target': '100%', 'current': '60%', 'status': 'In Progress', 'deadline': '2026-12-31'},
+                            {'kpi': 'BMS complete by 30.06.26', 'target': '100%', 'current': '75%', 'status': 'On Track', 'deadline': '2026-06-30'},
+                            {'kpi': '99% PPM compliance', 'target': '99%', 'current': '95%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                        ]},
+                        '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': '100% ELV assets assessed biannually', 'target': '100%', 'current': '100%', 'status': 'Completed', 'deadline': '2026-06-30'},
+                            {'kpi': '90% SMARTCHECK by 30.09.26', 'target': '90%', 'current': '85%', 'status': 'On Track', 'deadline': '2026-09-30'},
+                            {'kpi': '100% emergency readiness', 'target': '100%', 'current': '95%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                        ]},
+                        '4. People & Culture': {'weight': 15, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': '100% JDs by April 2026', 'target': '100%', 'current': '90%', 'status': 'On Track', 'deadline': '2026-04-30'},
+                            {'kpi': '100% appraised 2x yearly', 'target': '100%', 'current': '50%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': 'A-players identified', 'target': '2', 'current': '2', 'status': 'Completed', 'deadline': '2026-04-30'},
+                        ]},
+                    },
+                    'ISND Technology': {
+                        '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': 'ISP revenue growth 20%', 'target': '20%', 'current': '15%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': 'Network uptime 99.9%', 'target': '99.9%', 'current': '99.7%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                        ]},
+                        '2. Process Simplification': {'weight': 20, 'progress': 65, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                        '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                        '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                    },
+                }
+            },
         }
     
     tab1, tab2, tab3 = st.tabs(["🎯 Strategic Pillars Console", "✏️ Set My KPIs", "📊 My Performance"])
