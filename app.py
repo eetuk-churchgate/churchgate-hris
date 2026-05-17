@@ -225,6 +225,76 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
     
     return bytes(pdf.output())
 
+def generate_summary_pdf(dept_name, dept_data, summary):
+    """Generate a professional PDF summary"""
+    import fpdf
+    FPDF = fpdf.FPDF
+    
+    pdf = FPDF(orientation='P', unit='mm', format='A4')
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    
+    pdf.set_fill_color(26, 26, 26)
+    pdf.rect(0, 0, 210, 22, 'F')
+    pdf.set_fill_color(204, 0, 0)
+    pdf.rect(0, 22, 210, 3, 'F')
+    pdf.set_font('Helvetica', 'B', 18)
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.cell(0, 8, f'Executive Summary - {dept_name}', ln=True, align='C')
+    pdf.set_text_color(100, 100, 100)
+    pdf.set_font('Helvetica', 'I', 9)
+    pdf.cell(0, 6, f'Generated: {datetime.now().strftime("%B %d, %Y")}', ln=True, align='C')
+    pdf.ln(10)
+    
+    total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values())
+    pdf.set_font('Helvetica', 'B', 14)
+    pdf.set_text_color(26, 26, 26)
+    pdf.cell(0, 10, 'Strategic Pillar Scorecard', ln=True, align='C')
+    pdf.ln(3)
+    
+    pdf.set_fill_color(26, 26, 26)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.cell(65, 8, 'Strategic Pillar', 1, 0, 'C', True)
+    pdf.cell(20, 8, 'Weight', 1, 0, 'C', True)
+    pdf.cell(25, 8, 'Progress', 1, 0, 'C', True)
+    pdf.cell(35, 8, 'Status', 1, 0, 'C', True)
+    pdf.cell(45, 8, 'Deadline', 1, 0, 'C', True)
+    pdf.ln()
+    
+    pdf.set_font('Helvetica', '', 9)
+    for pn, pdata in dept_data.items():
+        pdf.set_text_color(26, 26, 26)
+        status_color = (56, 161, 105) if pdata['status'] in ['On Track', 'Exceeding'] else (214, 158, 46) if pdata['status'] == 'In Progress' else (204, 0, 0)
+        pdf.set_fill_color(*status_color)
+        pdf.cell(65, 8, pn[:42], 1, 0, 'L')
+        pdf.cell(20, 8, f"{pdata['weight']}%", 1, 0, 'C')
+        pdf.cell(25, 8, f"{pdata['progress']}%", 1, 0, 'C')
+        pdf.cell(35, 8, pdata['status'], 1, 0, 'C', True)
+        pdf.cell(45, 8, pdata['deadline'], 1, 0, 'C')
+        pdf.ln()
+    
+    pdf.ln(8)
+    pdf.set_font('Helvetica', 'B', 16)
+    pdf.set_text_color(204, 0, 0)
+    pdf.cell(0, 12, f'Overall Weighted Score: {total_weighted:.1f}%', ln=True, align='C')
+    
+    pdf.ln(5)
+    pdf.set_font('Helvetica', 'B', 12)
+    pdf.set_text_color(26, 26, 26)
+    pdf.cell(0, 8, 'RACI Matrix', ln=True)
+    pdf.set_font('Helvetica', '', 9)
+    pdf.cell(0, 6, 'Responsible: Department Heads | Accountable: GMD/COO | Consulted: All HODs | Informed: Board', ln=True)
+    
+    pdf.set_y(-20)
+    pdf.set_font('Helvetica', 'I', 7)
+    pdf.set_text_color(150, 150, 150)
+    pdf.cell(0, 10, 'Churchgate Group - Confidential', align='C')
+    
+    return bytes(pdf.output())
+
 def generate_performance_pdf(dept_name, dept_data, report_data):
     """Generate a professional PDF report with charts"""
     import fpdf
