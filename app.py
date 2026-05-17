@@ -223,7 +223,7 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
     pdf.set_text_color(150, 150, 150)
     pdf.cell(0, 10, 'Churchgate Group - Confidential', align='C')
     
-    return pdf.output()
+    return bytes(pdf.output())
 
 def generate_performance_pdf(dept_name, dept_data, report_data):
     """Generate a professional PDF report with charts"""
@@ -287,7 +287,7 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
     pdf.set_text_color(150, 150, 150)
     pdf.cell(0, 10, 'Churchgate Group - Confidential', align='C')
     
-    return pdf.output()
+    return bytes(pdf.output())
 
 def generate_ref(prefix):
     return f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{str(time.time())[-6:]}"
