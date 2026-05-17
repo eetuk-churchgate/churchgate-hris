@@ -215,8 +215,7 @@ def login_section():
                         st.error("❌ Invalid credentials.")
                 else:
                     st.warning("⚠️ Please enter your email and password.")
-        with st.expander("🔑 Demo Credentials"):
-            st.markdown("""| Role | Email | Password ||------|-------|----------|| Admin | admin@churchgate.com | admin123 || HR Director | sarah@churchgate.com | hr123 || ELV Head | emmanuel@churchgate.com | elv123 || Employee | jane@churchgate.com | staff123 |""")
+        
 
 def sidebar_navigation():
     with st.sidebar:
@@ -227,7 +226,8 @@ def sidebar_navigation():
         if st.session_state.user:
             user = st.session_state.user
             initials = generate_initials(user['name'])
-            st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;"><div style="width: 40px; height: 40px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: white;">{initials}</div><div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
+            profile_html = f'<img src="data:image/png;base64,{base64.b64encode(st.session_state["profile_pic"].read()).decode()}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">' if 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None else f'<div style="width: 40px; height: 40px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: white;">{initials}</div>'
+            st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
             menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "👤 My Profile"]
