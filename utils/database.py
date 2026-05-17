@@ -24,12 +24,15 @@ class DatabaseManager:
     def get_connection(self):
         if self.use_postgres:
             import psycopg2
+            import urllib.parse
+            password = st.secrets["DB_PASSWORD"]
             conn = psycopg2.connect(
                 host=st.secrets["DB_HOST"],
                 database=st.secrets["DB_NAME"],
                 user=st.secrets["DB_USER"],
-                password=st.secrets["DB_PASSWORD"],
-                port=st.secrets["DB_PORT"]
+                password=password,
+                port=st.secrets["DB_PORT"],
+                sslmode='require'
             )
             return conn
         else:
