@@ -22,3 +22,4 @@ python-dateutil>=2.8.0
 fpdf2
 matplotlib
 psycopg2-binary
+supabase
