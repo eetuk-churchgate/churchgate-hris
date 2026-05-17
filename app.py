@@ -988,8 +988,15 @@ def performance_okrs():
             if selected_dept:
                 dept_data = st.session_state.performance_data[selected_dept]
                 
-                # Department overall scorecard
-                st.markdown(f"### 📊 {selected_dept} — Strategic Pillar Scorecard")
+                # Check for sub-divisions (Technology Group)
+                if '_sub_divisions' in dept_data:
+                    st.markdown(f"### 📊 {selected_dept} — Sub-Divisions")
+                    sub_divs = list(dept_data['_sub_divisions'].keys())
+                    selected_sub = st.selectbox("Select Sub-Division", sub_divs)
+                    dept_data = dept_data['_sub_divisions'][selected_sub]
+                    st.markdown(f"### 📊 {selected_sub} — Strategic Pillar Scorecard")
+                else:
+                    st.markdown(f"### 📊 {selected_dept} — Strategic Pillar Scorecard")
                 
                 # Calculate overall
                 total_weighted = sum(pillar['progress'] * pillar['weight'] / 100 for pillar in dept_data.values())
