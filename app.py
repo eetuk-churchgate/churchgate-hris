@@ -1048,45 +1048,7 @@ def performance_okrs():
                                 kc = "#38a169" if kpi['status'] in ['On Track', 'Completed'] else "#d69e2e" if kpi['status'] == 'Near Target' else "#CC0000"
                                 st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid {kc}; display: flex; justify-content: space-between;"><div><strong>{kpi['kpi']}</strong><br><small>Target: {kpi['target']} | Current: {kpi['current']} | Deadline: {kpi['deadline']}</small></div><span class="status-active" style="background: {kc};">{kpi['status']}</span></div>""", unsafe_allow_html=True)
                             
-                            # Edit KPI
-                            if is_admin:
-                                with st.expander("✏️ Edit KPIs"):
-                                    for i, kpi in enumerate(pillar_data['kpis']):
-                                        c1, c2, c3 = st.columns(3)
-                                        with c1:
-                                            st.session_state.performance_data[selected_dept][pillar_name]['kpis'][i]['current'] = st.text_input(f"Current ({kpi['kpi'][:30]}...)", kpi['current'], key=f"kpi_curr_{selected_dept}_{pillar_name}_{i}")
-                                        with c2:
-                                            st.session_state.performance_data[selected_dept][pillar_name]['kpis'][i]['status'] = st.selectbox(f"Status", ['On Track', 'Near Target', 'At Risk', 'Completed'], 
-                                                                                                                                            index=['On Track', 'Near Target', 'At Risk', 'Completed'].index(kpi['status']) if kpi['status'] in ['On Track', 'Near Target', 'At Risk', 'Completed'] else 0,
-                                                                                                                                            key=f"kpi_stat_{selected_dept}_{pillar_name}_{i}")
-                                        with c3:
-                                            st.session_state.performance_data[selected_dept][pillar_name]['kpis'][i]['deadline'] = st.date_input(f"Deadline", 
-                                                                                                                                                datetime.strptime(kpi['deadline'], '%Y-%m-%d') if kpi['deadline'] else datetime.now(),
-                                                                                                                                                key=f"kpi_dead_{selected_dept}_{pillar_name}_{i}").strftime('%Y-%m-%d')
-                        
-                        # Add new KPI
-                        if is_admin:
-                            st.markdown("---")
-                            st.markdown("**➕ Add New KPI:**")
-                            with st.form(f"add_kpi_{selected_dept}_{pillar_name}"):
-                                nc1, nc2, nc3 = st.columns(3)
-                                with nc1:
-                                    new_kpi_title = st.text_input("KPI Title", key=f"nk_t_{selected_dept}_{pillar_name}")
-                                    new_kpi_target = st.text_input("Target", key=f"nk_ta_{selected_dept}_{pillar_name}")
-                                with nc2:
-                                    new_kpi_current = st.text_input("Current Value", key=f"nk_c_{selected_dept}_{pillar_name}")
-                                    new_kpi_status = st.selectbox("Status", ['On Track', 'Near Target', 'At Risk', 'In Progress'], key=f"nk_s_{selected_dept}_{pillar_name}")
-                                with nc3:
-                                    new_kpi_deadline = st.date_input("Deadline", key=f"nk_d_{selected_dept}_{pillar_name}")
-                                
-                                if st.form_submit_button("➕ Add KPI"):
-                                    if new_kpi_title:
-                                        st.session_state.performance_data[selected_dept][pillar_name]['kpis'].append({
-                                            'kpi': new_kpi_title, 'target': new_kpi_target, 'current': new_kpi_current,
-                                            'status': new_kpi_status, 'deadline': new_kpi_deadline.strftime('%Y-%m-%d')
-                                        })
-                                        st.success("✅ KPI Added!")
-                                        st.rerun()
+                           
                 
                 # Download report
                 st.markdown("---")
