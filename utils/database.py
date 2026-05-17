@@ -8,15 +8,18 @@ import streamlit as st
 
 class DatabaseManager:
     def __init__(self):
-        self.db_url = st.secrets.get("DATABASE_URL", "")
-        if not self.db_url:
-            # Fallback to SQLite for local development
-            self.use_postgres = False
+        # Check for Supabase secrets
+        self.use_postgres = False
+        try:
+            if "DB_HOST" in st.secrets:
+                self.use_postgres = True
+        except:
+            pass
+        
+        if not self.use_postgres:
             import sqlite3
             Path("data").mkdir(exist_ok=True)
             self.sqlite_path = "data/churchgate_hr.db"
-        else:
-            self.use_postgres = True
     
     def get_connection(self):
         if self.use_postgres:
