@@ -1155,13 +1155,13 @@ def performance_okrs():
                 with c3:
                     if report_data:
                         pdf_bytes = generate_performance_pdf(dl_name, dept_data, report_data)
-                        st.download_button(f"📕 Report (PDF)", pdf_bytes, f"{dl_name}_report.pdf", "application/pdf")
+                        st.download_button(f"📕 Report (PDF)", pdf_bytes, f"{dl_name}_report.pdf", "application/pdf", key=f"pdf_report_{dl_name}")
                     else:
                         st.info("Add KPIs to download report")
-                with c3:
-                    if report_data:
-                        pdf_bytes = generate_performance_pdf(dl_name, dept_data, report_data)
-                        st.download_button(f"📕 Report (PDF)", pdf_bytes, f"{dl_name}_report.pdf", "application/pdf")
+                with c4:
+                    if summary:
+                        pdf_bytes = generate_summary_pdf(dl_name, dept_data, summary)
+                        st.download_button(f"📕 Summary (PDF)", pdf_bytes, f"{dl_name}_summary.pdf", "application/pdf", key=f"pdf_summary_{dl_name}")
                     else:
                         st.info("Add KPIs to download summary")
         else:
