@@ -21,7 +21,13 @@ class DatabaseManager:
     def get_connection(self):
         if self.use_postgres:
             import psycopg2
-            conn = psycopg2.connect(self.db_url)
+            conn = psycopg2.connect(
+                host=st.secrets["DB_HOST"],
+                database=st.secrets["DB_NAME"],
+                user=st.secrets["DB_USER"],
+                password=st.secrets["DB_PASSWORD"],
+                port=st.secrets["DB_PORT"]
+            )
             return conn
         else:
             import sqlite3
