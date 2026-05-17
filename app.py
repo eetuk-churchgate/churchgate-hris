@@ -1145,6 +1145,11 @@ def performance_okrs():
                 # Download reports
                 st.markdown("---")
                 st.markdown("### 📥 Download Reports")
+                try:
+                    import fpdf
+                    st.success("✅ PDF engine ready")
+                except:
+                    st.error("❌ fpdf2 not installed. Run: pip install fpdf2")
                 c1, c2, c3, c4 = st.columns(4)
                 
                 # Use the correct department name
