@@ -871,6 +871,106 @@ def performance_okrs():
                 '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
                 '4. People & Culture': {'weight': 15, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
             },
+            'Central Stores': {
+                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                '2. Process Simplification': {'weight': 20, 'progress': 62, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                '4. People & Culture': {'weight': 15, 'progress': 75, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+            },
+            'Project Development': {
+                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
+                '2. Process Simplification': {'weight': 20, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                '4. People & Culture': {'weight': 15, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+            },
+            'Trade Services': {
+                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
+                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+                '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
+            },
+            'Technology Group': {
+                '_sub_divisions': {
+                    'ELV Systems Technology': {
+                        '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': 'Increase data centre revenue by 15%', 'target': '15%', 'current': '12%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': '100% revenue realisation as per budget', 'target': '100%', 'current': '95%', 'status': 'Near Target', 'deadline': '2026-12-31'},
+                            {'kpi': 'Nil O/S debts within 30 days', 'target': '0', 'current': '2', 'status': 'At Risk', 'deadline': '2026-06-30'},
+                            {'kpi': 'Retention of 90% customers', 'target': '90%', 'current': '88%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': '0% variance from budgeted costs', 'target': '0%', 'current': '2%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                        ]},
+                        '2. Process Simplification': {'weight': 20, 'progress': 72, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': 'AI implementation by FY end', 'target': '100%', 'current': '60%', 'status': 'In Progress', 'deadline': '2026-12-31'},
+                            {'kpi': 'BMS complete by 30.06.26', 'target': '100%', 'current': '75%', 'status': 'On Track', 'deadline': '2026-06-30'},
+                            {'kpi': '99% PPM compliance', 'target': '99%', 'current': '95%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                        ]},
+                        '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': '100% ELV assets assessed biannually', 'target': '100%', 'current': '100%', 'status': 'Completed', 'deadline': '2026-06-30'},
+                            {'kpi': '90% SMARTCHECK by 30.09.26', 'target': '90%', 'current': '85%', 'status': 'On Track', 'deadline': '2026-09-30'},
+                            {'kpi': '100% emergency readiness', 'target': '100%', 'current': '95%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                        ]},
+                        '4. People & Culture': {'weight': 15, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': '100% JDs by April 2026', 'target': '100%', 'current': '90%', 'status': 'On Track', 'deadline': '2026-04-30'},
+                            {'kpi': '100% appraised 2x yearly', 'target': '100%', 'current': '50%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': 'A-players identified', 'target': '2', 'current': '2', 'status': 'Completed', 'deadline': '2026-04-30'},
+                        ]},
+                    },
+                    'ISND Technology': {
+                        '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': '0% variance from budgeted costs for all cost centres', 'target': '0%', 'current': '1%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': 'Budget reviews below 5%', 'target': '5%', 'current': '3%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': 'Nil down time on access Control & boom barrier', 'target': '0', 'current': '0', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': 'Tenant surveys - 60% participation minimum', 'target': '60%', 'current': '45%', 'status': 'In Progress', 'deadline': '2026-08-01'},
+                            {'kpi': '0% cyber-attacks (data loss & restriction)', 'target': '0', 'current': '0', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': 'Quarterly tenant surveys starting June 1', 'target': '100%', 'current': '50%', 'status': 'In Progress', 'deadline': '2026-06-01'},
+                            {'kpi': 'Data Integration Strategy - Smart Check + Survey to AI', 'target': 'Complete', 'current': 'Drafting', 'status': 'In Progress', 'deadline': '2026-07-01'},
+                            {'kpi': 'NDPA 2023 Data Protection Strategy with Legal', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-06-30'},
+                            {'kpi': 'Business Continuity - Daily backups optimized', 'target': 'Complete', 'current': 'Done', 'status': 'Completed', 'deadline': '2026-05-15'},
+                            {'kpi': 'PO/WO cleanup and correction', 'target': 'Complete', 'current': 'In Progress', 'status': 'At Risk', 'deadline': '2026-05-20'},
+                            {'kpi': 'Email alerts for various expiries', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-06-01'},
+                        ]},
+                        '2. Process Simplification': {'weight': 20, 'progress': 65, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': 'Monthly reliability assessments for all IT services', 'target': 'Monthly', 'current': 'On Schedule', 'status': 'On Track', 'deadline': '2026-05-05'},
+                            {'kpi': 'Monthly Risk Assessments - CCTV, servers, access control', 'target': 'Monthly', 'current': 'On Schedule', 'status': 'On Track', 'deadline': '2026-05-05'},
+                            {'kpi': 'A-Players identification concluded', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-05-08'},
+                            {'kpi': 'Primus - Await Access Bank feedback', 'target': 'Complete', 'current': 'Waiting', 'status': 'At Risk', 'deadline': '2026-07-07'},
+                            {'kpi': '360 degree questionnaires', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-05-08'},
+                            {'kpi': 'Fixed Cost Billings/Invoicing/Term sheets implementation', 'target': 'Complete', 'current': 'Started', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                            {'kpi': 'Tenant O/S report fixed under In4velocity', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                            {'kpi': 'Clean out of WO/PO/reports - timeline monitoring', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                        ]},
+                        '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': '90% PPM compliance across all critical assets', 'target': '90%', 'current': '82%', 'status': 'On Track', 'deadline': '2026-07-07'},
+                            {'kpi': '80% of identified risks mitigated within timeframe', 'target': '80%', 'current': '70%', 'status': 'On Track', 'deadline': '2026-05-05'},
+                            {'kpi': 'Downtime of all ISND assets determined', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-05-05'},
+                            {'kpi': '100% licensing compliance', 'target': '100%', 'current': '95%', 'status': 'On Track', 'deadline': '2026-05-05'},
+                            {'kpi': '100% updates for servers and licensed software', 'target': '100%', 'current': '90%', 'status': 'On Track', 'deadline': '2026-05-05'},
+                            {'kpi': '90% SMARTCHECK utilization compliance all modules', 'target': '90%', 'current': '75%', 'status': 'In Progress', 'deadline': '2026-05-05'},
+                            {'kpi': 'Risk assessment for 6 modules systematically', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                            {'kpi': 'Replacement of 4 inactive cameras out of 85', 'target': '4', 'current': '2', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                            {'kpi': 'Material indents and assets standardization', 'target': 'Complete', 'current': 'Done', 'status': 'Completed', 'deadline': '2026-05-08'},
+                            {'kpi': 'All ISND assets uploaded to SMARTCHECK for PM', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                            {'kpi': 'BMS-like Monitoring System for Lagos (₦1.3M budget)', 'target': 'Complete', 'current': 'Planning', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                            {'kpi': 'Camera buffer stock planning (2-3 replacement)', 'target': 'Complete', 'current': 'Done', 'status': 'Completed', 'deadline': '2026-07-07'},
+                            {'kpi': 'Smart Check - all modules assessed as Team', 'target': 'Complete', 'current': 'In Progress', 'status': 'At Risk', 'deadline': '2026-07-07'},
+                            {'kpi': 'ERP development - needs listing', 'target': 'Complete', 'current': 'Started', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                            {'kpi': 'CCTV blind spot verification & phased installation', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                            {'kpi': 'Open-source HR system exploration', 'target': 'Complete', 'current': 'Started', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                            {'kpi': 'Kings College access control project update', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                        ]},
+                        '4. People & Culture': {'weight': 15, 'progress': 75, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
+                            {'kpi': '100% staff have JDs by 30th April 2026', 'target': '100%', 'current': '90%', 'status': 'On Track', 'deadline': '2026-04-30'},
+                            {'kpi': '100% staff appraised twice a year', 'target': '100%', 'current': '50%', 'status': 'On Track', 'deadline': '2026-12-31'},
+                            {'kpi': 'A-players identification (2 min) by 30 April 2026', 'target': '2', 'current': '2', 'status': 'Completed', 'deadline': '2026-04-30'},
+                            {'kpi': 'Competency gap assessment for A-players by 31 May', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-05-31'},
+                            {'kpi': '2 LMS courses per employee per half-year', 'target': '2', 'current': '1', 'status': 'In Progress', 'deadline': '2026-06-30'},
+                            {'kpi': '60-80% improvement in behavioural skills in 8 months', 'target': '70%', 'current': '30%', 'status': 'In Progress', 'deadline': '2026-12-31'},
+                            {'kpi': 'Competency gaps compared to baseline - by 30th April', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-04-30'},
+                            {'kpi': 'Points 1-8 fully progressed at next meeting', 'target': 'Complete', 'current': 'In Progress', 'status': 'In Progress', 'deadline': '2026-07-07'},
+                        ]},
+                    },
+                }
+            },
         }
     
     tab1, tab2, tab3 = st.tabs(["🎯 Strategic Pillars Console", "✏️ Set My KPIs", "📊 My Performance"])
@@ -985,13 +1085,15 @@ def performance_okrs():
                 st.markdown("---")
                 c1, c2 = st.columns(2)
                 with c1:
-                    if st.button(f"📥 Download {selected_dept} Report (CSV)", use_container_width=True):
-                        report_data = []
-                        for pn, pd in dept_data.items():
-                            for kpi in pd['kpis']:
-                                report_data.append({'Pillar': pn, 'KPI': kpi['kpi'], 'Target': kpi['target'], 'Current': kpi['current'], 'Status': kpi['status'], 'Deadline': kpi['deadline']})
+                    report_data = []
+                    for pn, pdata in dept_data.items():
+                        for kpi in pdata['kpis']:
+                            report_data.append({'Pillar': pn, 'KPI': kpi['kpi'], 'Target': kpi['target'], 'Current': kpi['current'], 'Status': kpi['status'], 'Deadline': kpi['deadline']})
+                    if report_data:
                         df = pd.DataFrame(report_data)
-                        st.download_button("📥 Download CSV", df.to_csv(index=False), f"{selected_dept}_performance.csv", "text/csv")
+                        st.download_button(f"📥 Download {selected_dept} Report (CSV)", df.to_csv(index=False), f"{selected_dept}_performance.csv", "text/csv")
+                    else:
+                        st.info("Add KPIs first to download report")
                 with c2:
                     if st.button(f"📊 Download Executive Summary (CSV)", use_container_width=True):
                         summary = []
