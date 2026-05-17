@@ -889,7 +889,7 @@ def performance_okrs():
                 '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
                 '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
             },
-            
+        }
     
     tab1, tab2, tab3 = st.tabs(["🎯 Strategic Pillars Console", "✏️ Set My KPIs", "📊 My Performance"])
     
