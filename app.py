@@ -1753,10 +1753,6 @@ def promotions():
                         st.info(f"No A-Players found in {assess_dept}. Nominate first.")
             else:
                 st.info("No A-Players available. Nominate first.")
-            else:
-                st.info("No A-Players available for assessment.")
-        else:
-            st.info("Assessment access restricted to Admin and Senior Management.")
     
     with tab4:
         st.subheader("📋 Succession Pipeline")
