@@ -65,13 +65,19 @@ class DatabaseManager:
         return True, "Created"
     
     def update_profile_picture(self, user_id, image_bytes):
-        self._patch("users", {"profile_picture": image_bytes}, {"id": user_id})
+        import base64
+        b64_data = base64.b64encode(image_bytes).decode('utf-8')
+        self._patch("users", {"profile_picture": b64_data}, {"id": str(user_id)})
     
     def get_profile_picture(self, user_id):
+        import base64
         data = self._get("users", {"id": str(user_id)})
         if data and data[0].get('profile_picture'):
-            return data[0]['profile_picture']
-        return None
+            try:
+                return base64.b64decode(data[0]['profile_picture'])
+            except:
+                return data[0]['profile_picture']
+        return Nonee
     
     def save_aplayer(self, name, position, department, nominated_by, perf_score, leadership, strategic, peer_review, junior_review, independent_review, overall, readiness, gap, risk):
         self._post("aplayers", {"name": name, "position": position, "department": department, "nominated_by": nominated_by, "perf_score": perf_score, "leadership": leadership, "strategic": strategic, "peer_review": peer_review, "junior_review": junior_review, "independent_review": independent_review, "overall": overall, "readiness": readiness, "gap": gap, "risk": risk})
