@@ -535,8 +535,8 @@ def sidebar_navigation():
             initials = generate_initials(user['name'])
             db_pic = None
             try:
-                if db.use_supabase:
-                    db_pic = db.get_profile_picture(user['id'])
+                 if db.use_supabase:
+                    db_pic = db.get_profile_picture(int(user['id']))
                 else:
                     conn = db.get_connection()
                     cursor = conn.cursor()
@@ -2257,9 +2257,12 @@ def my_profile():
     with c1:
         db_pic = None
         try:
-            conn = db.get_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
+            if db.use_supabase:
+                db_pic = db.get_profile_picture(int(user['id']))
+            else:
+                conn = db.get_connection()
+                cursor = conn.cursor()
+                cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
             row = cursor.fetchone()
             if row and row['profile_picture']:
                 db_pic = row['profile_picture']
@@ -2281,7 +2284,7 @@ def my_profile():
                 user_id = st.session_state.user['id']
                 image_bytes = uploaded_pic.read()
                 if db.use_supabase:
-                    db.update_profile_picture(user_id, image_bytes)
+                    db.update_profile_picture(int(user_id), image_bytes)
                 else:
                     conn = db.get_connection()
                     cursor = conn.cursor()
