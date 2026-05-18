@@ -2363,13 +2363,16 @@ def my_profile():
         if uploaded_pic is not None:
             st.session_state['profile_pic'] = uploaded_pic
             try:
-                conn = db.get_connection()
-                cursor = conn.cursor()
                 user_id = st.session_state.user['id']
                 image_bytes = uploaded_pic.read()
-                cursor.execute("UPDATE users SET profile_picture = ? WHERE id = ?", (image_bytes, user_id))
-                conn.commit()
-                conn.close()
+                if db.use_supabase:
+                    db.update_profile_picture(user_id, image_bytes)
+                else:
+                    conn = db.get_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE users SET profile_picture = ? WHERE id = ?", (image_bytes, user_id))
+                    conn.commit()
+                    conn.close()
                 st.success("✅ Profile picture saved permanently!")
             except Exception as e:
                 pass
