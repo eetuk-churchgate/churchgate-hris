@@ -535,13 +535,16 @@ def sidebar_navigation():
             initials = generate_initials(user['name'])
             db_pic = None
             try:
-                conn = db.get_connection()
-                cursor = conn.cursor()
-                cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
-                row = cursor.fetchone()
-                if row and row['profile_picture']:
-                    db_pic = row['profile_picture']
-                conn.close()
+                if db.use_supabase:
+                    db_pic = db.get_profile_picture(user['id'])
+                else:
+                    conn = db.get_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
+                    row = cursor.fetchone()
+                    if row and row['profile_picture']:
+                        db_pic = row['profile_picture']
+                    conn.close()
             except:
                 pass
             if db_pic is not None:
