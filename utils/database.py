@@ -33,10 +33,12 @@ class DatabaseManager:
         if self.use_supabase and self.supabase:
             hashed_pw = hashlib.sha256(password.encode()).hexdigest()
             try:
-                result = self.supabase.table("users").select("*").eq("email", email).eq("password", hashed_pw).execute()
+                result = self.supabase.table("users").select("*").eq("email", email).execute()
                 if result.data and len(result.data) > 0:
-                    return result.data[0]
-            except:
+                    user = result.data[0]
+                    if user.get('password') == hashed_pw:
+                        return user
+            except Exception as e:
                 pass
             return None
         else:
