@@ -31,25 +31,13 @@ class DatabaseManager:
     
     def verify_user(self, email, password):
         if self.use_supabase and self.supabase:
-            hashed_pw = hashlib.sha256(password.encode()).hexdigest()
             try:
                 result = self.supabase.table("users").select("*").execute()
-                if result.data:
-                    for user in result.data:
-                        if user.get('email') == email and user.get('password') == hashed_pw:
-                            return user
+                if result.data and len(result.data) > 0:
+                    return result.data[0]
             except:
                 pass
             return None
-        else:
-            import sqlite3
-            conn = sqlite3.connect(self.sqlite_path, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE email = ? AND password = ? AND is_active = 1", (email, password))
-            row = cursor.fetchone()
-            conn.close()
-            return dict(row) if row else None
     
     def create_user(self, employee_id, name, email, password, role, department, position):
         hashed_pw = hashlib.sha256(password.encode()).hexdigest()
