@@ -2247,10 +2247,10 @@ def my_profile():
     c1, c2 = st.columns([1, 2])
     with c1:
         db_pic = None
-            if db.use_supabase:
-                db_pic = db.get_profile_picture(int(st.session_state.user['id']))
-            elif 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
-                db_pic = st.session_state['profile_pic']
+        if db.use_supabase:
+            db_pic = db.get_profile_picture(int(st.session_state.user['id']))
+        elif 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
+            db_pic = st.session_state['profile_pic']
         
         if db_pic is not None:
             st.image(db_pic, width=150)
