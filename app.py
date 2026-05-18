@@ -505,10 +505,8 @@ def login_section():
             with cb:
                 st.image(logo, width=300)
         st.markdown("""<div style="text-align: center; padding: 1rem 0;"><h1 style="color: #1a1a1a; font-size: 2rem; font-weight: 700;">HRIS Portal</h1><p style="color: #666666; font-size: 0.9rem;">Human Resource Information System</p></div>""", unsafe_allow_html=True)
-        if db.use_supabase:
-            st.success("✅ Connected to Supabase - Data is permanent!")
-        else:
-            st.error("⚠️ Local SQLite - Data lost on reboot!")
+        
+
         with st.form("login_form", clear_on_submit=False):
             email = st.text_input("📧 Corporate Email", placeholder="Enter your corporate email")
             password = st.text_input("🔒 Password", type="password", placeholder="Enter your password")
