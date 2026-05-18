@@ -535,7 +535,7 @@ def sidebar_navigation():
             initials = generate_initials(user['name'])
             db_pic = None
             try:
-                 if db.use_supabase:
+                if db.use_supabase:
                     db_pic = db.get_profile_picture(int(user['id']))
                 else:
                     conn = db.get_connection()
