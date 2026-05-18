@@ -1709,45 +1709,50 @@ def promotions():
         st.info("Complete 360-degree assessment. Weights: Performance (35%), Leadership (25%), Strategic (20%), Peer (10%), Junior (5%), Independent (5%).")
         
         if is_admin:
-            depts_with_players = [d for d, p in aplayers_data.items() if p] if [d for d, p in aplayers_data.items() if p] else all_depts
+            depts_with_players = all_depts
             if depts_with_players:
-                assess_dept = st.selectbox("Select Department", depts_with_players, key="assess_dept")
+                assess_dept = st.selectbox("Select Department", all_depts, key="assess_dept")
                 if assess_dept:
-                    player_names = [p['name'] for p in aplayers_data[assess_dept]]
-                    assess_player_name = st.selectbox("Select A-Player", player_names, key="assess_player")
-                    
-                    player_data = None
-                    for p in aplayers_data[assess_dept]:
-                        if p['name'] == assess_player_name:
-                            player_data = p
-                            break
-                    
-                    if player_data:
-                        st.markdown(f"### Assessing: {player_data['name']} - {player_data['position']}")
-                        with st.form("assessment_form"):
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                perf = st.slider("Performance Score (35%)", 0, 100, int(player_data['perf_score']))
-                                leadership = st.slider("Leadership Competency (25%)", 0, 100, int(player_data['leadership']))
-                                strategic = st.slider("Strategic Impact (20%)", 0, 100, int(player_data['strategic']))
-                            with c2:
-                                peer = st.slider("Peer Review (10%)", 0, 100, int(player_data['peer_review']))
-                                junior = st.slider("Junior Review (5%)", 0, 100, int(player_data['junior_review']))
-                                independent = st.slider("Independent Review (5%)", 0, 100, int(player_data['independent_review']))
-                            
-                            readiness_options = ['Ready Now', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Pending Assessment']
-                            current_readiness = player_data['readiness'] if player_data['readiness'] in readiness_options else 'Pending Assessment'
-                            readiness = st.selectbox("Readiness", readiness_options, index=readiness_options.index(current_readiness))
-                            gap = st.text_input("Competency Gap", player_data['gap'])
-                            risk = st.selectbox("Risk", ['Low', 'Medium', 'High'], index=['Low', 'Medium', 'High'].index(player_data['risk']) if player_data['risk'] in ['Low', 'Medium', 'High'] else 0)
-                            
-                            if st.form_submit_button("💾 Save Assessment", use_container_width=True):
-                                overall = int(perf * 0.35 + leadership * 0.25 + strategic * 0.20 + peer * 0.10 + junior * 0.05 + independent * 0.05)
-                                db.save_aplayer(player_data['name'], player_data['position'], assess_dept, player_data['nominated_by'], perf, leadership, strategic, peer, junior, independent, overall, readiness, gap, risk)
-                                st.success(f"✅ Assessment saved! Overall: {overall}%")
-                                st.balloons()
-                                time.sleep(1)
-                                st.rerun()
+                    player_names = [p['name'] for p in aplayers_data.get(assess_dept, [])]
+                    if player_names:
+                        assess_player_name = st.selectbox("Select A-Player", player_names, key="assess_player")
+                        
+                        player_data = None
+                        for p in aplayers_data.get(assess_dept, []):
+                            if p['name'] == assess_player_name:
+                                player_data = p
+                                break
+                        
+                        if player_data:
+                            st.markdown(f"### Assessing: {player_data['name']} - {player_data['position']}")
+                            with st.form("assessment_form"):
+                                c1, c2 = st.columns(2)
+                                with c1:
+                                    perf = st.slider("Performance Score (35%)", 0, 100, int(player_data['perf_score']))
+                                    leadership = st.slider("Leadership Competency (25%)", 0, 100, int(player_data['leadership']))
+                                    strategic = st.slider("Strategic Impact (20%)", 0, 100, int(player_data['strategic']))
+                                with c2:
+                                    peer = st.slider("Peer Review (10%)", 0, 100, int(player_data['peer_review']))
+                                    junior = st.slider("Junior Review (5%)", 0, 100, int(player_data['junior_review']))
+                                    independent = st.slider("Independent Review (5%)", 0, 100, int(player_data['independent_review']))
+                                
+                                readiness_options = ['Ready Now', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Pending Assessment']
+                                current_readiness = player_data['readiness'] if player_data['readiness'] in readiness_options else 'Pending Assessment'
+                                readiness = st.selectbox("Readiness", readiness_options, index=readiness_options.index(current_readiness))
+                                gap = st.text_input("Competency Gap", player_data['gap'])
+                                risk = st.selectbox("Risk", ['Low', 'Medium', 'High'], index=['Low', 'Medium', 'High'].index(player_data['risk']) if player_data['risk'] in ['Low', 'Medium', 'High'] else 0)
+                                
+                                if st.form_submit_button("💾 Save Assessment", use_container_width=True):
+                                    overall = int(perf * 0.35 + leadership * 0.25 + strategic * 0.20 + peer * 0.10 + junior * 0.05 + independent * 0.05)
+                                    db.save_aplayer(player_data['name'], player_data['position'], assess_dept, player_data['nominated_by'], perf, leadership, strategic, peer, junior, independent, overall, readiness, gap, risk)
+                                    st.success(f"✅ Assessment saved! Overall: {overall}%")
+                                    st.balloons()
+                                    time.sleep(1)
+                                    st.rerun()
+                    else:
+                        st.info(f"No A-Players found in {assess_dept}. Nominate first.")
+            else:
+                st.info("No A-Players available. Nominate first.")
             else:
                 st.info("No A-Players available for assessment.")
         else:
