@@ -1633,7 +1633,9 @@ def promotions():
                     </div>
                 </div>""", unsafe_allow_html=True)
                 if is_admin:
-                    if st.button(f"🗑️ Delete", key=f"del_{player_key}"):
+                    import random
+                    unique_key = f"del_{player_key}_{random.randint(1000,9999)}"
+                    if st.button(f"🗑️ Delete", key=unique_key):
                         db._delete("aplayers", {"name": player['name'], "department": player['department']})
                         st.success(f"🗑️ {player['name']} deleted!")
                         st.rerun()
