@@ -1709,7 +1709,7 @@ def promotions():
         st.info("Complete 360-degree assessment. Weights: Performance (35%), Leadership (25%), Strategic (20%), Peer (10%), Junior (5%), Independent (5%).")
         
         if is_admin:
-            depts_with_players = [d for d, p in aplayers_data.items() if p]
+            depts_with_players = [d for d, p in aplayers_data.items() if p] if [d for d, p in aplayers_data.items() if p] else all_depts
             if depts_with_players:
                 assess_dept = st.selectbox("Select Department", depts_with_players, key="assess_dept")
                 if assess_dept:
