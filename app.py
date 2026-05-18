@@ -1636,7 +1636,10 @@ def promotions():
                     import random
                     unique_key = f"del_{player_key}_{random.randint(1000,9999)}"
                     if st.button(f"🗑️ Delete", key=unique_key):
-                        db._delete("aplayers", {"name": player['name'], "department": player['department']})
+                        import requests
+                        url = f"{st.secrets['SUPABASE_URL']}/rest/v1/aplayers?name=eq.{player['name']}&department=eq.{player['department']}"
+                        headers = {"apikey": st.secrets['SUPABASE_KEY'], "Authorization": f"Bearer {st.secrets['SUPABASE_KEY']}"}
+                        requests.delete(url, headers=headers)
                         st.success(f"🗑️ {player['name']} deleted!")
                         st.rerun()
         else:
