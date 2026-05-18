@@ -1632,17 +1632,7 @@ def promotions():
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
-                if is_admin:
-                    import random
-                    unique_key = f"del_{player_key}_{random.randint(1000,9999)}"
-                    if st.button(f"🗑️ Delete", key=unique_key):
-                        # Delete ALL matching rows from Supabase
-                        try:
-                            result = db.supabase.table("aplayers").delete().eq("name", player['name']).eq("department", player['department']).execute()
-                            st.success(f"🗑️ {player['name']} deleted!")
-                        except:
-                            st.error("Delete failed - try again")
-                        st.rerun()
+                
         else:
             st.info("No A-Players found. Nominate using the 'Nominate A-Player' tab.")
     
