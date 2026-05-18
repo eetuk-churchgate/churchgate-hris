@@ -2271,11 +2271,7 @@ def my_profile():
             pass
         
         if db_pic is not None:
-            import base64 as b64
-            try:
-                st.image(b64.b64decode(db_pic) if isinstance(db_pic, str) else db_pic, width=150)
-            except:
-                st.image(db_pic, width=150)
+            st.image(db_pic, width=150)
         else:
             initials = generate_initials(user['name'])
             st.markdown(f"""<div style="text-align: center; padding: 1.5rem; background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);"><div style="width: 80px; height: 80px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; color: white; margin: 0 auto;">{initials}</div><h3 style="margin-top: 0.8rem;">{user['name']}</h3><p>{user.get('position', 'Employee')}</p><p style="color: #CC0000;">ID: {user.get('employee_id', 'N/A')}</p><p>🏢 {user.get('department', 'N/A')}</p><p>👤 Supervisor: Jerome Das (COO)</p></div>""", unsafe_allow_html=True)
