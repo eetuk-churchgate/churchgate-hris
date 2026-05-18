@@ -2263,10 +2263,10 @@ def my_profile():
                 conn = db.get_connection()
                 cursor = conn.cursor()
                 cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
-            row = cursor.fetchone()
-            if row and row['profile_picture']:
-                db_pic = row['profile_picture']
-            conn.close()
+                row = cursor.fetchone()
+                if row and row['profile_picture']:
+                    db_pic = row['profile_picture']
+                conn.close()
         except:
             pass
         
