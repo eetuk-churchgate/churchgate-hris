@@ -2261,20 +2261,23 @@ def my_profile():
         db_pic = None
         try:
             if db.use_supabase:
-                raw = db.get_profile_picture(int(user['id']))
-                if raw:
-                    import base64 as b64
-                    db_pic = b64.b64decode(raw) if isinstance(raw, str) else raw
-            else:
-                conn = db.get_connection()
-                cursor = conn.cursor()
-                cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
-                row = cursor.fetchone()
-                if row and row['profile_picture']:
-                    db_pic = row['profile_picture']
-                conn.close()
-        except:
-            pass
+                db_pic = None
+            try:
+                if db.use_supabase:
+                    raw = db.get_profile_picture(int(user['id']))
+                    if raw:
+                        import base64 as b64
+                        db_pic = b64.b64decode(raw) if isinstance(raw, str) else raw
+                else:
+                    conn = db.get_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
+                    row = cursor.fetchone()
+                    if row and row['profile_picture']:
+                        db_pic = row['profile_picture']
+                    conn.close()
+            except:
+                pass
         
         if db_pic is not None:
             st.image(db_pic, width=150)
