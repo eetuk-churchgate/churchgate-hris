@@ -534,10 +534,13 @@ def sidebar_navigation():
             user = st.session_state.user
             initials = generate_initials(user['name'])
             db_pic = None
-            try:
-                if db.use_supabase:
-                    db_pic = db.get_profile_picture(int(user['id']))
-                else:
+        try:
+            if db.use_supabase:
+                raw = db.get_profile_picture(int(user['id']))
+                if raw:
+                    import base64 as b64
+                    db_pic = b64.b64decode(raw) if isinstance(raw, str) else raw
+            else:
                     conn = db.get_connection()
                     cursor = conn.cursor()
                     cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
@@ -2258,7 +2261,10 @@ def my_profile():
         db_pic = None
         try:
             if db.use_supabase:
-                db_pic = db.get_profile_picture(int(user['id']))
+                raw = db.get_profile_picture(int(user['id']))
+                if raw:
+                    import base64 as b64
+                    db_pic = b64.b64decode(raw) if isinstance(raw, str) else raw
             else:
                 conn = db.get_connection()
                 cursor = conn.cursor()
