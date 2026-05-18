@@ -534,12 +534,12 @@ def sidebar_navigation():
             user = st.session_state.user
             initials = generate_initials(user['name'])
             db_pic = None
-        try:
-            if db.use_supabase:
-                raw = db.get_profile_picture(int(user['id']))
-                if raw:
-                    import base64 as b64
-                    db_pic = b64.b64decode(raw) if isinstance(raw, str) else raw
+            if 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
+                db_pic = st.session_state['profile_pic']
+            
+            if db_pic is not None:
+                import base64
+                profile_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic.read()).decode()}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">'
             else:
                     conn = db.get_connection()
                     cursor = conn.cursor()
@@ -2259,16 +2259,12 @@ def my_profile():
     c1, c2 = st.columns([1, 2])
     with c1:
         db_pic = None
-        try:
-            if db.use_supabase:
-                db_pic = None
-            try:
-                if db.use_supabase:
-                    raw = db.get_profile_picture(int(user['id']))
-                    if raw:
-                        import base64 as b64
-                        db_pic = b64.b64decode(raw) if isinstance(raw, str) else raw
-                else:
+        if 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
+            db_pic = st.session_state['profile_pic']
+        
+        if db_pic is not None:
+            st.image(db_pic, width=150)
+        else:
                     conn = db.get_connection()
                     cursor = conn.cursor()
                     cursor.execute("SELECT profile_picture FROM users WHERE id = ?", (user['id'],))
@@ -2291,7 +2287,10 @@ def my_profile():
                 user_id = st.session_state.user['id']
                 image_bytes = uploaded_pic.read()
                 if db.use_supabase:
-                    db.update_profile_picture(int(user_id), image_bytes)
+                    import base64
+                    b64_str = base64.b64encode(image_bytes).decode()
+                    db._patch("users", {"profile_picture": b64_str}, {"id": str(int(user_id))})
+                    st.session_state['profile_pic'] = uploaded_pic
                 else:
                     conn = db.get_connection()
                     cursor = conn.cursor()
