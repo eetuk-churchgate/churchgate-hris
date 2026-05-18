@@ -1527,7 +1527,7 @@ def promotions():
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     
-    # ALWAYS load from Supabase/database - never from session state
+    # ALWAYS load from database
     aplayers_data = {}
     try:
         db_players = db.get_all_aplayers()
@@ -1548,7 +1548,6 @@ def promotions():
     except:
         pass
     
-    # Ensure all departments exist
     all_depts = ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 
                  'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 
                  'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
@@ -1556,7 +1555,6 @@ def promotions():
         if dept not in aplayers_data:
             aplayers_data[dept] = []
     
-    # Load nominations from database
     try:
         nom_data = db.get_all_nominations()
         nominations_list = nom_data.to_dict('records') if not nom_data.empty else []
@@ -1573,11 +1571,7 @@ def promotions():
         
         if st.session_state.aplayer_nominations:
             pending_count = len(st.session_state.aplayer_nominations)
-            st.markdown(f"""
-            <div style="background: #fff3cd; padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #d69e2e;">
-                <strong>🔔 {pending_count} Pending Nomination{'s' if pending_count > 1 else ''}</strong>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="background: #fff3cd; padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #d69e2e;"><strong>🔔 {pending_count} Pending Nomination{'s' if pending_count > 1 else ''}</strong></div>""", unsafe_allow_html=True)
         
         all_players = []
         for dept, players in aplayers_data.items():
@@ -1607,27 +1601,43 @@ def promotions():
         
         if display_players:
             for player in display_players:
-                color = "#38a169" if player['readiness'] == 'Ready Now' else "#d69e2e"
+                color = "#38a169" if player['readiness'] == 'Ready Now' else "#d69e2e" if 'Q3' in str(player['readiness']) else "#3182ce" if 'Q4' in str(player['readiness']) else "#CC0000"
                 initials = generate_initials(player['name'])
                 st.markdown(f"""
-                <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 0.8rem; border-left: 5px solid {color};">
+                <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 0.8rem; border-left: 5px solid {color}; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
                     <div style="display: flex; align-items: center; gap: 1.2rem;">
                         <div style="width: 55px; height: 55px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.3rem; color: white; min-width: 55px;">{initials}</div>
                         <div style="flex: 1;">
-                            <strong style="font-size: 1.1rem;">{player['name']}</strong>
-                            <span style="color: #666; font-size: 0.85rem; margin-left: 0.5rem;">{player['department']}</span>
-                            <br><small>{player['position']} → Nominated by: {player['nominated_by']}</small>
-                            <br><span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-weight: 700; font-size: 0.85rem;">{player['readiness']}</span>
-                            <small> Overall: {player['overall']}% | Risk: {player['risk']}</small>
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="font-size: 1.1rem;">{player['name']}</strong>
+                                    <span style="color: #666; font-size: 0.85rem; margin-left: 0.5rem;">{player['department']}</span>
+                                    <br><small>{player['position']} → <strong>Nominated by: {player['nominated_by']}</strong></small>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-weight: 700; font-size: 0.85rem;">{player['readiness']}</span>
+                                    <br><small style="font-size: 0.8rem;">Overall: {player['overall']}% | Risk: {player['risk']}</small>
+                                </div>
+                            </div>
+                            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Perf: {player['perf_score']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Leadership: {player['leadership']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Strategic: {player['strategic']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Peer: {player['peer_review']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Junior: {player['junior_review']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Indep: {player['independent_review']}%</span>
+                            </div>
+                            <div style="margin-top: 0.3rem;"><small style="color: #CC0000;">Gap: {player['gap']}</small></div>
                         </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
+                </div>""", unsafe_allow_html=True)
         else:
             st.info("No A-Players found. Nominate using the 'Nominate A-Player' tab.")
     
     with tab2:
         st.subheader("📝 Nominate A-Player")
+        st.info("HODs and Line Managers can nominate top performers as A-Players for the 360-degree assessment process.")
+        
         with st.form("nominate_form"):
             c1, c2 = st.columns(2)
             with c1:
@@ -1635,75 +1645,240 @@ def promotions():
                 nominee_position = st.text_input("Current Position *")
                 nominee_dept = st.selectbox("Department *", all_depts)
             with c2:
-                nominated_by = st.text_input("Nominated By *")
+                nominated_by = st.text_input("Nominated By (HOD/Line Manager) *")
                 nomination_reason = st.text_area("Reason for Nomination")
             if st.form_submit_button("✅ Submit Nomination", use_container_width=True):
                 if nominee_name and nominee_dept and nominated_by:
-                    st.session_state.aplayer_nominations.append({
+                    nom_entry = {
                         'name': nominee_name, 'position': nominee_position, 'department': nominee_dept,
                         'nominated_by': nominated_by, 'reason': nomination_reason,
                         'date': datetime.now().strftime('%Y-%m-%d'),
                         'submitted_by': st.session_state.user['name'] if st.session_state.user else 'Unknown'
-                    })
+                    }
+                    st.session_state.aplayer_nominations.append(nom_entry)
                     db.save_nomination(nominee_name, nominee_position, nominee_dept, nominated_by, nomination_reason,
                                      st.session_state.user['name'] if st.session_state.user else 'Unknown',
                                      st.session_state.user['email'] if st.session_state.user else '')
-                    st.success(f"✅ {nominee_name} nominated!")
+                    st.success(f"✅ {nominee_name} nominated successfully!")
                     st.balloons()
+                    time.sleep(1)
                     st.rerun()
         
         if st.session_state.aplayer_nominations:
             st.markdown("---")
-            st.markdown("### 📋 Pending Nominations")
+            st.markdown("### 📋 Pending Nominations — Admin Review")
             for i, nom in enumerate(st.session_state.aplayer_nominations):
                 c1, c2 = st.columns([3, 1])
                 with c1:
-                    st.markdown(f"""
-                    <div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #d69e2e;">
-                        <strong>{nom['name']}</strong> - {nom['position']}<br>
-                        <small>{nom['department']} | By: {nom['nominated_by']} | {nom['date']}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f"""<div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #d69e2e;"><strong>{nom.get('name', '')}</strong> - {nom.get('position', '')}<br><small>{nom.get('department', '')} | By: {nom.get('nominated_by', '')} | {nom.get('date', nom.get('created_at', ''))}</small><br><small style="color: #666;">Reason: {nom.get('reason', 'N/A')}</small></div>""", unsafe_allow_html=True)
                 with c2:
                     if is_admin:
-                        if st.button(f"✅ Approve", key=f"app_{i}"):
-                            aplayers_data[nom['department']].append({
-                                'name': nom['name'], 'position': nom['position'],
-                                'nominated_by': nom['nominated_by'],
-                                'perf_score': 0, 'leadership': 0, 'strategic': 0,
-                                'peer_review': 0, 'junior_review': 0, 'independent_review': 0,
-                                'overall': 0, 'readiness': 'Pending Assessment', 'gap': 'TBD', 'risk': 'TBD'
-                            })
-                            db.save_aplayer(nom['name'], nom['position'], nom['department'], nom['nominated_by'],
-                                          0, 0, 0, 0, 0, 0, 0, 'Pending Assessment', 'TBD', 'TBD')
-                            st.session_state.aplayer_nominations.pop(i)
-                            st.success(f"✅ {nom['name']} approved!")
-                            st.rerun()
+                        action_key = f"action_{i}"
+                        if action_key not in st.session_state:
+                            st.session_state[action_key] = None
+                        
+                        col_btn1, col_btn2, col_btn3 = st.columns(3)
+                        with col_btn1:
+                            if st.button(f"✅", key=f"approve_{i}", use_container_width=True, help="Approve"):
+                                st.session_state[action_key] = 'approve'
+                        with col_btn2:
+                            if st.button(f"⏸️", key=f"hold_{i}", use_container_width=True, help="On Hold"):
+                                st.session_state[action_key] = 'hold'
+                        with col_btn3:
+                            if st.button(f"❌", key=f"reject_{i}", use_container_width=True, help="Reject"):
+                                st.session_state[action_key] = 'reject'
+                        
+                        if st.session_state[action_key]:
+                            reason = st.text_area(f"Reason for {st.session_state[action_key]}: *", key=f"reason_{i}", placeholder="Please provide a reason...")
+                            if st.button(f"✅ Confirm {st.session_state[action_key].title()}", key=f"confirm_{i}", use_container_width=True):
+                                if reason:
+                                    if st.session_state[action_key] == 'approve':
+                                        db.save_aplayer(nom['name'], nom['position'], nom['department'], nom['nominated_by'], 0, 0, 0, 0, 0, 0, 0, 'Pending Assessment', 'TBD', 'TBD')
+                                        st.session_state.aplayer_nominations.pop(i)
+                                        st.success(f"✅ {nom['name']} approved!")
+                                    elif st.session_state[action_key] == 'reject':
+                                        st.session_state.aplayer_nominations.pop(i)
+                                        st.error(f"❌ {nom['name']} rejected.")
+                                    st.session_state[action_key] = None
+                                    st.rerun()
     
     with tab3:
-        st.subheader("📊 360° Assessment")
-        st.info("Admin and Senior Management can assess A-Players here.")
+        st.subheader("📊 360° Assessment Scorecard")
+        st.info("Complete 360-degree assessment. Weights: Performance (35%), Leadership (25%), Strategic (20%), Peer (10%), Junior (5%), Independent (5%).")
+        
+        if is_admin:
+            depts_with_players = [d for d, p in aplayers_data.items() if p]
+            if depts_with_players:
+                assess_dept = st.selectbox("Select Department", depts_with_players, key="assess_dept")
+                if assess_dept:
+                    player_names = [p['name'] for p in aplayers_data[assess_dept]]
+                    assess_player_name = st.selectbox("Select A-Player", player_names, key="assess_player")
+                    
+                    player_data = None
+                    for p in aplayers_data[assess_dept]:
+                        if p['name'] == assess_player_name:
+                            player_data = p
+                            break
+                    
+                    if player_data:
+                        st.markdown(f"### Assessing: {player_data['name']} - {player_data['position']}")
+                        with st.form("assessment_form"):
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                perf = st.slider("Performance Score (35%)", 0, 100, int(player_data['perf_score']))
+                                leadership = st.slider("Leadership Competency (25%)", 0, 100, int(player_data['leadership']))
+                                strategic = st.slider("Strategic Impact (20%)", 0, 100, int(player_data['strategic']))
+                            with c2:
+                                peer = st.slider("Peer Review (10%)", 0, 100, int(player_data['peer_review']))
+                                junior = st.slider("Junior Review (5%)", 0, 100, int(player_data['junior_review']))
+                                independent = st.slider("Independent Review (5%)", 0, 100, int(player_data['independent_review']))
+                            
+                            readiness_options = ['Ready Now', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Pending Assessment']
+                            current_readiness = player_data['readiness'] if player_data['readiness'] in readiness_options else 'Pending Assessment'
+                            readiness = st.selectbox("Readiness", readiness_options, index=readiness_options.index(current_readiness))
+                            gap = st.text_input("Competency Gap", player_data['gap'])
+                            risk = st.selectbox("Risk", ['Low', 'Medium', 'High'], index=['Low', 'Medium', 'High'].index(player_data['risk']) if player_data['risk'] in ['Low', 'Medium', 'High'] else 0)
+                            
+                            if st.form_submit_button("💾 Save Assessment", use_container_width=True):
+                                overall = int(perf * 0.35 + leadership * 0.25 + strategic * 0.20 + peer * 0.10 + junior * 0.05 + independent * 0.05)
+                                db.save_aplayer(player_data['name'], player_data['position'], assess_dept, player_data['nominated_by'], perf, leadership, strategic, peer, junior, independent, overall, readiness, gap, risk)
+                                st.success(f"✅ Assessment saved! Overall: {overall}%")
+                                st.balloons()
+                                time.sleep(1)
+                                st.rerun()
+            else:
+                st.info("No A-Players available for assessment.")
+        else:
+            st.info("Assessment access restricted to Admin and Senior Management.")
     
     with tab4:
         st.subheader("📋 Succession Pipeline")
         pipeline_data = []
         for dept, players in aplayers_data.items():
             for p in players:
-                pipeline_data.append({'Department': dept, 'A-Player': p['name'], 'Position': p['position'],
-                                     'Readiness': p['readiness'], 'Score': p['overall'], 'Risk': p['risk']})
+                pipeline_data.append({'Department': dept, 'A-Player': p['name'], 'Position': p['position'], 'Readiness': p['readiness'], 'Score': p['overall'], 'Risk': p['risk'], 'Gap': p['gap']})
         if pipeline_data:
-            st.dataframe(pd.DataFrame(pipeline_data), use_container_width=True, hide_index=True)
+            df = pd.DataFrame(pipeline_data)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            
+            readiness_counts = df['Readiness'].value_counts()
+            fig = px.pie(values=readiness_counts.values, names=readiness_counts.index, hole=0.5, color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000'])
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
     
     with tab5:
-        st.subheader("📥 Reports")
-        if st.button("📊 Download CSV Report"):
-            csv_data = []
-            for dept, players in aplayers_data.items():
-                for p in players:
-                    csv_data.append({'Department': dept, 'Name': p['name'], 'Position': p['position'],
-                                    'Score': p['overall'], 'Readiness': p['readiness']})
-            if csv_data:
-                st.download_button("📥 Download", pd.DataFrame(csv_data).to_csv(index=False), "aplayers.csv", "text/csv")
+        st.subheader("📥 Promotion Reports")
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("📊 Generate CSV Report", use_container_width=True):
+                csv_data = []
+                for dept, players in aplayers_data.items():
+                    for p in players:
+                        csv_data.append({'Department': dept, 'Name': p['name'], 'Position': p['position'], 'Perf': p['perf_score'], 'Leadership': p['leadership'], 'Strategic': p['strategic'], 'Peer': p['peer_review'], 'Junior': p['junior_review'], 'Independent': p['independent_review'], 'Overall': p['overall'], 'Readiness': p['readiness'], 'Gap': p['gap'], 'Risk': p['risk']})
+                if csv_data:
+                    st.download_button("📥 Download CSV", pd.DataFrame(csv_data).to_csv(index=False), "aplayers_report.csv", "text/csv")
+        with c2:
+            if st.button("📕 Generate Executive PDF", use_container_width=True):
+                try:
+                    import fpdf
+                    FPDF = fpdf.FPDF
+                    pdf = FPDF(orientation='L', unit='mm', format='A4')
+                    pdf.set_auto_page_break(auto=True, margin=10)
+                    pdf.add_page()
+                    
+                    pdf.set_fill_color(55, 55, 55)
+                    pdf.rect(0, 0, 297, 35, 'F')
+                    pdf.set_fill_color(204, 0, 0)
+                    pdf.rect(0, 35, 297, 3, 'F')
+                    pdf.set_font('Helvetica', 'B', 22)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
+                    pdf.set_font('Helvetica', 'B', 12)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.cell(0, 8, 'A-PLAYERS & SUCCESSION PIPELINE - EXECUTIVE REPORT', ln=True, align='C')
+                    pdf.ln(10)
+                    
+                    total = len(all_players)
+                    ready = len(ready_now)
+                    avg = sum(p['overall'] for p in all_players) / total if total > 0 else 0
+                    
+                    pdf.set_fill_color(245, 245, 245)
+                    pdf.rect(10, pdf.get_y(), 277, 10, 'F')
+                    pdf.set_font('Helvetica', 'B', 9)
+                    pdf.set_text_color(26, 26, 26)
+                    pdf.cell(92, 10, f'  Total: {total}', 0, 0, 'L')
+                    pdf.cell(92, 10, f'Ready Now: {ready}', 0, 0, 'C')
+                    pdf.cell(93, 10, f'Avg Score: {avg:.1f}%  ', 0, 0, 'R')
+                    pdf.ln(14)
+                    
+                    cards_data = [('TOTAL', str(total), (26, 26, 26)), ('READY NOW', str(ready), (56, 161, 105)), ('AVG SCORE', f'{avg:.1f}%', (204, 0, 0)), ('DEPTS', str(len([d for d, p in aplayers_data.items() if p])), (49, 130, 206))]
+                    col_w = 65
+                    col_h = 16
+                    x_start = 14
+                    y_pos = pdf.get_y()
+                    for j, (label, value, color) in enumerate(cards_data):
+                        x = x_start + j * (col_w + 5)
+                        pdf.set_fill_color(*color)
+                        pdf.rect(x, y_pos, col_w, col_h, 'F')
+                        pdf.set_text_color(255, 255, 255)
+                        pdf.set_xy(x, y_pos + 1)
+                        pdf.set_font('Helvetica', 'B', 7)
+                        pdf.cell(col_w, 6, label, 0, 0, 'C')
+                        pdf.set_xy(x, y_pos + 7)
+                        pdf.set_font('Helvetica', 'B', 14)
+                        pdf.cell(col_w, 8, value, 0, 0, 'C')
+                    pdf.set_y(y_pos + col_h + 8)
+                    
+                    pdf.set_fill_color(26, 26, 26)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.set_font('Helvetica', 'B', 8)
+                    pdf.cell(6, 7, ' #', 1, 0, 'C', True)
+                    pdf.cell(42, 7, ' NAME', 1, 0, 'L', True)
+                    pdf.cell(42, 7, ' DEPARTMENT', 1, 0, 'L', True)
+                    pdf.cell(50, 7, ' POSITION', 1, 0, 'L', True)
+                    pdf.cell(18, 7, 'SCORE', 1, 0, 'C', True)
+                    pdf.cell(32, 7, 'READINESS', 1, 0, 'C', True)
+                    pdf.cell(22, 7, 'RISK', 1, 0, 'C', True)
+                    pdf.cell(65, 7, ' GAP', 1, 0, 'L', True)
+                    pdf.ln()
+                    
+                    row_num = 0
+                    pdf.set_font('Helvetica', '', 7)
+                    for dept, players in aplayers_data.items():
+                        for p in players:
+                            row_num += 1
+                            if p['overall'] >= 85:
+                                tc = (56, 161, 105)
+                            elif p['overall'] >= 70:
+                                tc = (214, 158, 46)
+                            else:
+                                tc = (204, 0, 0)
+                            pdf.set_text_color(26, 26, 26)
+                            pdf.cell(6, 6, str(row_num), 1, 0, 'C')
+                            pdf.cell(42, 6, f' {p["name"][:25]}', 1, 0, 'L')
+                            pdf.cell(42, 6, f' {dept[:25]}', 1, 0, 'L')
+                            pdf.cell(50, 6, f' {p["position"][:30]}', 1, 0, 'L')
+                            pdf.set_text_color(*tc)
+                            pdf.set_font('Helvetica', 'B', 7)
+                            pdf.cell(18, 6, f'{p["overall"]}%', 1, 0, 'C')
+                            pdf.set_text_color(26, 26, 26)
+                            pdf.set_font('Helvetica', '', 7)
+                            pdf.cell(32, 6, p['readiness'][:18], 1, 0, 'C')
+                            pdf.cell(22, 6, p['risk'], 1, 0, 'C')
+                            pdf.cell(65, 6, f' {p["gap"][:40]}', 1, 0, 'L')
+                            pdf.ln()
+                    
+                    pdf.set_y(-15)
+                    pdf.set_fill_color(26, 26, 26)
+                    pdf.rect(0, pdf.get_y()-2, 297, 17, 'F')
+                    pdf.set_font('Helvetica', 'I', 7)
+                    pdf.set_text_color(180, 180, 180)
+                    pdf.cell(0, 5, 'Churchgate Group - Confidential | hr@churchgate.com', ln=True, align='C')
+                    
+                    st.download_button("📥 Download PDF", bytes(pdf.output()), "aplayers_report.pdf", "application/pdf")
+                    st.success("✅ PDF generated!")
+                except Exception as e:
+                    st.warning(f"PDF Error: {str(e)}")
 
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Manage Jobs, Applications, and Recruitment Workflows</p></div>""", unsafe_allow_html=True)
