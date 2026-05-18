@@ -2263,8 +2263,9 @@ def my_profile():
                 if db.use_supabase:
                     import base64
                     b64_str = base64.b64encode(image_bytes).decode()
-                    db._patch("users", {"profile_picture": b64_str}, {"id": str(int(user_id))})
+                    db._post("profile_pics", {"user_id": str(int(user_id)), "image_data": b64_str})
                     st.session_state['profile_pic'] = uploaded_pic
+                    st.success("✅ Picture saved to Supabase!")
                 else:
                     conn = db.get_connection()
                     cursor = conn.cursor()
