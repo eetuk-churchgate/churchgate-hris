@@ -1601,6 +1601,7 @@ def promotions():
         
         if display_players:
             for player in display_players:
+                player_key = f"{player['name']}_{player['department']}"
                 color = "#38a169" if player['readiness'] == 'Ready Now' else "#d69e2e" if 'Q3' in str(player['readiness']) else "#3182ce" if 'Q4' in str(player['readiness']) else "#CC0000"
                 initials = generate_initials(player['name'])
                 st.markdown(f"""
@@ -1631,6 +1632,11 @@ def promotions():
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
+                if is_admin:
+                    if st.button(f"🗑️ Delete", key=f"del_{player_key}"):
+                        db._delete("aplayers", {"name": player['name'], "department": player['department']})
+                        st.success(f"🗑️ {player['name']} deleted!")
+                        st.rerun()
         else:
             st.info("No A-Players found. Nominate using the 'Nominate A-Player' tab.")
     
