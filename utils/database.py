@@ -43,13 +43,9 @@ class DatabaseManager:
         """Select data from Supabase table"""
         if self.use_supabase and self.supabase:
             try:
-                query = self.supabase.table(table).select("*")
-                if filters:
-                    for key, value in filters.items():
-                        query = query.eq(key, value)
-                result = query.execute()
+                result = self.supabase.table(table).select("*").execute()
                 return result.data if result.data else []
-            except:
+            except Exception as e:
                 return []
         return []
     
