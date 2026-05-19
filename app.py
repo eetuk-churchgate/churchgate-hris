@@ -1346,6 +1346,10 @@ def performance_okrs():
                         'action': 'Added', 'kpi': kpi_title, 'user': user_name,
                         'date': datetime.now().strftime('%Y-%m-%d %H:%M'), 'pillar': pillar_choice
                     })
+                    try:
+                        db.save_kpi_history('Added', kpi_title, user_name, pillar_choice)
+                    except:
+                        pass
                     pd_data = performance_data[user_dept][pillar_choice]
                     try:
                         db.save_performance_data(user_dept, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
@@ -1378,11 +1382,16 @@ def performance_okrs():
                     st.rerun()
         
         # KPI History Log
-        if st.session_state.kpi_history:
+        try:
+            history_data = db.get_kpi_history()
+        except:
+            history_data = []
+        
+        if history_data:
             st.markdown("---")
             with st.expander("📋 KPI History Log"):
-                for h in st.session_state.kpi_history[-10:]:
-                    st.markdown(f"- **{h['date']}**: {h['action']} — {h['kpi'][:50]} by {h['user']}")
+                for h in history_data[-10:]:
+                    st.markdown(f"- **{h.get('created_at', 'N/A')}**: {h.get('action', '')} — {h.get('kpi_name', '')[:50]} by {h.get('user_name', '')}")
     
     with tab3:
         st.subheader("📝 Self-Assessment")
