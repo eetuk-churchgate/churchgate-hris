@@ -1667,7 +1667,7 @@ def promotions():
     except:
         pass
     
-    all_depts = ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 
+    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 
                  'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 
                  'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     for dept in all_depts:
