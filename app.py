@@ -1434,11 +1434,9 @@ def performance_okrs():
                         for pillar_name, pillar_data in performance_data[user_dept].items():
                             if pillar_data['kpis']:
                                 st.markdown(f"**{pillar_name}** ({pillar_data['weight']}%)")
-                       for i, kpi in enumerate(pillar_data['kpis']):
-                        score_key = f"{pillar_name}_{i}"
-                        scores[score_key] = st.slider(kpi['kpi'][:60], 0, 100, 50, key=f"sa_{user_name}_{pillar_name}_{i}")         for kpi in pillar_data['kpis']:
-                                    score_key = f"{pillar_name}_{kpi['kpi']}"
-                                    scores[score_key] = st.slider(kpi['kpi'][:60], 0, 100, 50, key=f"sa_{score_key}")
+                                for i, kpi in enumerate(pillar_data['kpis']):
+                                    score_key = f"{pillar_name}_{i}"
+                                    scores[score_key] = st.slider(kpi['kpi'][:60], 0, 100, 50, key=f"sa_{user_name}_{pillar_name}_{i}")
                         
                         self_comments = st.text_area("Comments / Evidence *", placeholder="Required...")
                         if st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True):
