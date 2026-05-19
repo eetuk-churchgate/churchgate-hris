@@ -1092,7 +1092,7 @@ def performance_okrs():
         st.session_state.appraisal_cycle_active = False
     if 'appraisal_cycle_name' not in st.session_state:
         st.session_state.appraisal_cycle_name = "2026 Half-Year Appraisal"
-     if 'appraisal_start' not in st.session_state:
+    if 'appraisal_start' not in st.session_state:
         st.session_state.appraisal_start = "2026-06-01"
     if 'appraisal_end' not in st.session_state:
         st.session_state.appraisal_end = "2026-12-31"
