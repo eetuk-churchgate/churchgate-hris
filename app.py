@@ -1083,7 +1083,7 @@ def performance_okrs():
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     is_hod = is_admin or user_role in ['Manager', 'HOD']
     
-    all_depts = ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 
+    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 
                  'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 
                  'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     
@@ -1354,11 +1354,11 @@ def performance_okrs():
                     
                     if submit_continue:
                         st.success("✅ KPI saved! Add another below.")
+                        time.sleep(1.5)
                         st.rerun()
                     
                     if submit_final:
                         st.session_state.confirm_submit = True
-                        st.rerun()
         
         # Confirmation popup
         if st.session_state.confirm_submit:
