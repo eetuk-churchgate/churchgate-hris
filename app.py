@@ -1322,8 +1322,22 @@ def performance_okrs():
             if submit_continue or submit_final:
                 if not kpi_title or not kpi_target or not kpi_current or not kpi_description:
                     st.error("❌ All fields are required!")
-                elif user_dept not in performance_data:
-                    st.error("❌ Department not configured!")
+                 elif user_dept not in performance_data:
+                    # Auto-create department if missing
+                    performance_data[user_dept] = {}
+                    for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', 
+                                   '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                        performance_data[user_dept][pillar] = {
+                            'weight': 25, 'progress': 0, 'status': 'Not Started',
+                            'deadline': '2026-12-31', 'kpis': []
+                        }
+                    # Now save
+                    performance_data[user_dept][pillar_choice]['kpis'].append({
+                        'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
+                        'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
+                    })
+                    st.success("✅ KPI saved!")
+                    st.rerun()
                 else:
                     # Save KPI
                     performance_data[user_dept][pillar_choice]['kpis'].append({
