@@ -120,5 +120,43 @@ class DatabaseManager:
         data = self._get("kpi_history")
         return data if data else []
     
+    def save_appraisal(self, user_name, user_email, department, cycle_name, status, scores, comments, pillar_comments, hod_scores, hod_comments, hod_pillar_comments, acceptance, sr_decision, submitted_date):
+        existing = self._get("appraisals", {"user_name": user_name, "cycle_name": cycle_name})
+        if existing:
+            self._delete("appraisals", {"user_name": user_name, "cycle_name": cycle_name})
+        self._post("appraisals", {
+            "user_name": user_name, "user_email": user_email, "department": department,
+            "cycle_name": cycle_name, "status": status,
+            "scores": json.dumps(scores) if scores else "{}",
+            "comments": comments or "",
+            "pillar_comments": json.dumps(pillar_comments) if pillar_comments else "{}",
+            "hod_scores": json.dumps(hod_scores) if hod_scores else "{}",
+            "hod_comments": hod_comments or "",
+            "hod_pillar_comments": json.dumps(hod_pillar_comments) if hod_pillar_comments else "{}",
+            "acceptance": acceptance or "",
+            "sr_decision": sr_decision or "",
+            "submitted_date": submitted_date or ""
+        })
+    
+    def get_all_appraisals(self):
+        data = self._get("appraisals")
+        if data:
+            for item in data:
+                for key in ['scores', 'pillar_comments', 'hod_scores', 'hod_pillar_comments']:
+                    try:
+                        item[key] = json.loads(item[key]) if isinstance(item[key], str) else item[key]
+                    except:
+                        item[key] = {}
+            return data
+        return []
+    
+    def save_audit(self, action, details, user_name, timestamp_text):
+        self._post("audit_trail", {
+            "action": action, "details": details, "user_name": user_name, "timestamp_text": timestamp_text
+        })
+    
+    def get_audit_trail(self):
+        return self._get("audit_trail")
+
     def get_dashboard_stats(self):
         return {'total_employees': 48, 'open_positions': 5, 'new_candidates': 0, 'avg_performance': 85.0}
