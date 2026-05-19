@@ -1313,22 +1313,23 @@ def performance_okrs():
             
             kpi_description = st.text_area("Description / Key Results *", placeholder="How will you achieve this KPI?")
             
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             with col1:
                 submit_continue = st.form_submit_button("💾 Save & Add Another", use_container_width=True)
             with col2:
                 submit_final = st.form_submit_button("✅ Submit KPI", use_container_width=True)
-            with col3:
-                if st.session_state.confirm_submit:
-                    st.warning("⚠️ Please confirm submission")
             
-            if submit_continue:
-                if kpi_title and kpi_target and kpi_current and kpi_description and user_dept in performance_data:
+            if submit_continue or submit_final:
+                if not kpi_title or not kpi_target or not kpi_current or not kpi_description:
+                    st.error("❌ All fields are required!")
+                elif user_dept not in performance_data:
+                    st.error("❌ Department not configured!")
+                else:
+                    # Save KPI
                     performance_data[user_dept][pillar_choice]['kpis'].append({
                         'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
                         'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
                     })
-                    # Log history
                     st.session_state.kpi_history.append({
                         'action': 'Added', 'kpi': kpi_title, 'user': user_name,
                         'date': datetime.now().strftime('%Y-%m-%d %H:%M'), 'pillar': pillar_choice
@@ -1336,47 +1337,29 @@ def performance_okrs():
                     pd_data = performance_data[user_dept][pillar_choice]
                     try:
                         db.save_performance_data(user_dept, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
-                        st.success("✅ KPI saved! Add another below.")
                     except:
-                        st.error("Save failed")
-                    st.rerun()
-                else:
-                    st.error("❌ All fields are required!")
-            
-            if submit_final:
-                if kpi_title and kpi_target and kpi_current and kpi_description and user_dept in performance_data:
-                    st.session_state.confirm_submit = True
-                else:
-                    st.error("❌ All fields are required!")
+                        pass
+                    
+                    if submit_continue:
+                        st.success("✅ KPI saved! Add another below.")
+                        st.rerun()
+                    
+                    if submit_final:
+                        st.session_state.confirm_submit = True
+                        st.rerun()
         
         # Confirmation popup
         if st.session_state.confirm_submit:
             st.markdown("---")
             st.warning("### ⚠️ Confirm Final Submission")
-            st.markdown(f"**KPI:** {kpi_title if 'kpi_title' in dir() else 'Your KPI'}")
-            st.markdown(f"**Target:** {kpi_target if 'kpi_target' in dir() else 'N/A'}")
-            st.markdown("This will be submitted for appraisal review.")
+            st.markdown("Your KPI has been saved. It will be submitted for appraisal review.")
             c1, c2 = st.columns(2)
             with c1:
-                if st.button("✅ Yes, Submit", use_container_width=True):
-                    if user_dept in performance_data:
-                        performance_data[user_dept][pillar_choice]['kpis'].append({
-                            'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
-                            'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
-                        })
-                        st.session_state.kpi_history.append({
-                            'action': 'Submitted', 'kpi': kpi_title, 'user': user_name,
-                            'date': datetime.now().strftime('%Y-%m-%d %H:%M'), 'pillar': pillar_choice
-                        })
-                        pd_data = performance_data[user_dept][pillar_choice]
-                        try:
-                            db.save_performance_data(user_dept, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
-                        except:
-                            pass
-                        st.session_state.confirm_submit = False
-                        st.success("✅ KPI submitted successfully!")
-                        st.balloons()
-                        st.rerun()
+                if st.button("✅ Confirm & Finish", use_container_width=True):
+                    st.session_state.confirm_submit = False
+                    st.success("✅ KPI submitted successfully!")
+                    st.balloons()
+                    st.rerun()
             with c2:
                 if st.button("❌ Cancel", use_container_width=True):
                     st.session_state.confirm_submit = False
@@ -1389,7 +1372,6 @@ def performance_okrs():
                 for h in st.session_state.kpi_history[-10:]:
                     st.markdown(f"- **{h['date']}**: {h['action']} — {h['kpi'][:50]} by {h['user']}")
     
-    # ============ TAB 3: SELF-ASSESSMENT ============
     with tab3:
         st.subheader("📝 Self-Assessment")
         
