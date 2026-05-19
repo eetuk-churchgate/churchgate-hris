@@ -1299,7 +1299,7 @@ def performance_okrs():
                         st.warning("No KPIs in this pillar to copy.")
         
         # KPI Form with validation
-        with st.form("my_kpi_form", clear_on_submit=True):
+        with st.form("my_kpi_form"):
             st.markdown("### * Required Fields")
             c1, c2 = st.columns(2)
             with c1:
