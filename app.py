@@ -1074,442 +1074,288 @@ def employee_management():
         st.plotly_chart(fig, use_container_width=True)
 
 def performance_okrs():
-    st.markdown("""<div class="churchgate-header"><h1>📈 Performance & Strategic OKRs</h1><p>Corporate Strategy 2026-2027 | Enterprise Performance Management Console</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>📈 Performance & Appraisal Engine</h1><p>KPI Management | Self-Assessment | HOD Review | Half-Yearly Appraisal Cycles</p></div>""", unsafe_allow_html=True)
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
+    is_hod = is_admin or user_role == 'Manager'
     
-    # Initialize session state for performance data
-    if 'performance_data' not in st.session_state:
-        # Try loading from database
-        st.session_state.performance_data = {}
-        try:
-            db_perf = db.get_performance_data()
-            if not db_perf.empty:
-                for _, row in db_perf.iterrows():
-                    dept = row['department']
-                    pillar = row['pillar_name']
-                    if dept not in st.session_state.performance_data:
-                        st.session_state.performance_data[dept] = {}
-                    kpi_list = json.loads(row['kpi_data']) if row['kpi_data'] else []
-                    st.session_state.performance_data[dept][pillar] = {
-                        'weight': row['weight'], 'progress': row['progress'],
-                        'status': row['status'], 'deadline': row['deadline'], 'kpis': kpi_list
-                    }
-        except:
-            pass
-        
-        # If empty, load defaults
-        if not st.session_state.performance_data:
-            st.session_state.performance_data = {
-                'Technology Group': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 72, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Facility Management': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Sales & Marketing': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 65, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Accounts & Finance': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Human Resources': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 70, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 92, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Procurement': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 60, 'status': 'At Risk', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Security': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 55, 'status': 'At Risk', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Legal': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 70, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 50, 'status': 'At Risk', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Operations': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Engineering': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 83, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 70, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Central Stores': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 62, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 75, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Project Development': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-                'Trade Services': {
-                    '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                    '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                    '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                },
-            }
-        st.session_state.performance_data = {
-            'Technology Group': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
-                    {'kpi': 'Increase data centre revenue by 15%', 'target': '15%', 'current': '12%', 'status': 'On Track', 'deadline': '2026-12-31'},
-                    {'kpi': '100% revenue realisation as per budget', 'target': '100%', 'current': '95%', 'status': 'Near Target', 'deadline': '2026-12-31'},
-                    {'kpi': 'Nil O/S debts within 30 days', 'target': '0', 'current': '2', 'status': 'At Risk', 'deadline': '2026-06-30'},
-                    {'kpi': 'Retention of 90% customers', 'target': '90%', 'current': '88%', 'status': 'On Track', 'deadline': '2026-12-31'},
-                    {'kpi': '0% variance from budgeted costs', 'target': '0%', 'current': '2%', 'status': 'On Track', 'deadline': '2026-12-31'},
-                ]},
-                '2. Process Simplification': {'weight': 20, 'progress': 72, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': [
-                    {'kpi': 'AI implementation by FY end', 'target': '100%', 'current': '60%', 'status': 'In Progress', 'deadline': '2026-12-31'},
-                    {'kpi': 'BMS complete by 30.06.26', 'target': '100%', 'current': '75%', 'status': 'On Track', 'deadline': '2026-06-30'},
-                    {'kpi': '99% PPM compliance', 'target': '99%', 'current': '95%', 'status': 'On Track', 'deadline': '2026-12-31'},
-                ]},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': [
-                    {'kpi': '100% ELV assets assessed biannually', 'target': '100%', 'current': '100%', 'status': 'Completed', 'deadline': '2026-06-30'},
-                    {'kpi': '90% SMARTCHECK by 30.09.26', 'target': '90%', 'current': '85%', 'status': 'On Track', 'deadline': '2026-09-30'},
-                    {'kpi': '100% emergency readiness', 'target': '100%', 'current': '95%', 'status': 'On Track', 'deadline': '2026-12-31'},
-                ]},
-                '4. People & Culture': {'weight': 15, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
-                    {'kpi': '100% JDs by April 2026', 'target': '100%', 'current': '90%', 'status': 'On Track', 'deadline': '2026-04-30'},
-                    {'kpi': '100% appraised 2x yearly', 'target': '100%', 'current': '50%', 'status': 'On Track', 'deadline': '2026-12-31'},
-                    {'kpi': 'A-players identified', 'target': '2', 'current': '2', 'status': 'Completed', 'deadline': '2026-04-30'},
-                ]},
-            },
-            'Facility Management': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
-                    {'kpi': 'Tenant satisfaction above 85%', 'target': '85%', 'current': '82%', 'status': 'On Track', 'deadline': '2026-12-31'},
-                    {'kpi': 'Reduce facility operating costs by 10%', 'target': '10%', 'current': '8%', 'status': 'On Track', 'deadline': '2026-12-31'},
-                ]},
-                '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': [
-                    {'kpi': 'Preventive maintenance automation', 'target': '100%', 'current': '65%', 'status': 'In Progress', 'deadline': '2026-12-31'},
-                ]},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
-                    {'kpi': 'Critical assets uptime 99%', 'target': '99%', 'current': '98%', 'status': 'On Track', 'deadline': '2026-12-31'},
-                ]},
-                '4. People & Culture': {'weight': 15, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
-                    {'kpi': 'Staff training compliance', 'target': '100%', 'current': '85%', 'status': 'On Track', 'deadline': '2026-12-31'},
-                ]},
-            },
-            'Sales & Marketing': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': [
-                    {'kpi': 'Achieve sales target', 'target': '₦5B', 'current': '₦4.2B', 'status': 'On Track', 'deadline': '2026-12-31'},
-                ]},
-                '2. Process Simplification': {'weight': 20, 'progress': 65, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-            },
-            'Accounts & Finance': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
-                '2. Process Simplification': {'weight': 20, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-            },
-            'Human Resources': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '2. Process Simplification': {'weight': 20, 'progress': 70, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 92, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
-            },
-            'Procurement': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '2. Process Simplification': {'weight': 20, 'progress': 60, 'status': 'At Risk', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-            },
-            'Security': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '2. Process Simplification': {'weight': 20, 'progress': 55, 'status': 'At Risk', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-            },
-            'Legal': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 70, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '2. Process Simplification': {'weight': 20, 'progress': 50, 'status': 'At Risk', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-            },
-            'Operations': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-            },
-            'Engineering': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 83, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '2. Process Simplification': {'weight': 20, 'progress': 70, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-            },
-            'Central Stores': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '2. Process Simplification': {'weight': 20, 'progress': 62, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 75, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-            },
-            'Project Development': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 90, 'status': 'Exceeding', 'deadline': '2026-12-31', 'kpis': []},
-                '2. Process Simplification': {'weight': 20, 'progress': 75, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 85, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 88, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-            },
-            'Trade Services': {
-                '1. Occupancy & Revenue Growth': {'weight': 40, 'progress': 82, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '2. Process Simplification': {'weight': 20, 'progress': 68, 'status': 'In Progress', 'deadline': '2026-12-31', 'kpis': []},
-                '3. Asset Reliability & Digitalization': {'weight': 25, 'progress': 78, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-                '4. People & Culture': {'weight': 15, 'progress': 80, 'status': 'On Track', 'deadline': '2026-12-31', 'kpis': []},
-            },
-        }
+    all_depts = ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 
+                 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 
+                 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     
-    tab1, tab2, tab3 = st.tabs(["🎯 Strategic Pillars Console", "✏️ Set My KPIs", "📊 My Performance"])
+    # Initialize appraisal cycle state
+    if 'appraisal_cycle_active' not in st.session_state:
+        st.session_state.appraisal_cycle_active = False
+    if 'appraisal_cycle_name' not in st.session_state:
+        st.session_state.appraisal_cycle_name = "2026 Half-Year Appraisal"
+    if 'appraisal_start' not in st.session_state:
+        st.session_state.appraisal_start = "2026-01-06"
+    if 'appraisal_end' not in st.session_state:
+        st.session_state.appraisal_end = "2026-02-15"
+    
+    # Load performance data from database
+    performance_data = {}
+    try:
+        db_perf = db.get_performance_data()
+        if not db_perf.empty:
+            for _, row in db_perf.iterrows():
+                dept = row['department']
+                pillar = row['pillar_name']
+                if dept not in performance_data:
+                    performance_data[dept] = {}
+                kpi_list = json.loads(row['kpi_data']) if row['kpi_data'] else []
+                performance_data[dept][pillar] = {
+                    'weight': row['weight'], 'progress': row['progress'],
+                    'status': row['status'], 'deadline': row['deadline'], 'kpis': kpi_list
+                }
+    except:
+        pass
+    
+    # Ensure all departments exist
+    for dept in all_depts:
+        if dept not in performance_data:
+            performance_data[dept] = {}
+        for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', 
+                       '3. Asset Reliability & Digitalization', '4. People & Culture']:
+            if pillar not in performance_data[dept]:
+                performance_data[dept][pillar] = {
+                    'weight': 25, 'progress': 0, 'status': 'Not Started',
+                    'deadline': '2026-12-31', 'kpis': []
+                }
+    
+    # Initialize self-assessment storage
+    if 'self_assessments' not in st.session_state:
+        st.session_state.self_assessments = {}
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "📊 Dashboard"])
     
     with tab1:
-        st.subheader("🎯 Enterprise Performance Console — Corporate Strategy 2026-2027")
+        st.subheader("🎯 Strategic Pillars Console — Corporate Strategy 2026-2027")
         
         if is_admin:
-            st.markdown("""<div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #CC0000;"><strong>🔐 Admin Console Active</strong> — Full access to all departments. Edit KPIs, update progress, and manage deadlines.</div>""", unsafe_allow_html=True)
-            
-            # Department selector
-            all_depts = list(st.session_state.performance_data.keys())
+            st.markdown("""<div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #CC0000;"><strong>🔐 Admin Console</strong> — Manage all departments</div>""", unsafe_allow_html=True)
             selected_dept = st.selectbox("🏢 Select Department", all_depts)
-            
-            if selected_dept:
-                dept_data = st.session_state.performance_data[selected_dept]
-                
-                # Department overall scorecard
-                st.markdown(f"### 📊 {selected_dept} — Strategic Pillar Scorecard")
-                
-                # Calculate overall
-                total_weighted = sum(pillar['progress'] * pillar['weight'] / 100 for pillar in dept_data.values())
-                
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("Overall Score", f"{total_weighted:.1f}%")
-                
-                on_track = sum(1 for p in dept_data.values() if p['status'] in ['On Track', 'Exceeding'])
-                at_risk = sum(1 for p in dept_data.values() if p['status'] == 'At Risk')
-                completed = sum(1 for p in dept_data.values() if p['status'] == 'Completed')
-                c2.metric("On Track", f"{on_track}/{len(dept_data)}")
-                c3.metric("At Risk", str(at_risk))
-                c4.metric("Completed", str(completed))
-                
-                st.markdown("---")
-                
-                # Display each pillar with full management
-                for pillar_name, pillar_data in dept_data.items():
-                    color = "#38a169" if pillar_data['status'] in ['On Track', 'Exceeding'] else "#d69e2e" if pillar_data['status'] == 'In Progress' else "#CC0000" if pillar_data['status'] == 'At Risk' else "#3182ce"
-                    
-                    with st.expander(f"{pillar_name} | Weight: {pillar_data['weight']}% | Progress: {pillar_data['progress']}% | {pillar_data['status']}", expanded=False):
-                        # Progress bar
-                        st.progress(pillar_data['progress'] / 100)
-                        
-                        # Edit pillar progress
-                        if is_admin:
-                            c1, c2, c3 = st.columns(3)
-                            with c1:
-                                new_progress = st.slider(f"Progress %", 0, 100, pillar_data['progress'], key=f"prog_{selected_dept}_{pillar_name}")
-                            with c2:
-                                new_status = st.selectbox("Status", ['On Track', 'In Progress', 'At Risk', 'Exceeding', 'Completed'], 
-                                                          index=['On Track', 'In Progress', 'At Risk', 'Exceeding', 'Completed'].index(pillar_data['status']),
-                                                          key=f"stat_{selected_dept}_{pillar_name}")
-                            with c3:
-                                new_deadline = st.date_input("Deadline", datetime.strptime(pillar_data['deadline'], '%Y-%m-%d') if pillar_data['deadline'] else datetime.now(),
-                                                            key=f"dead_{selected_dept}_{pillar_name}")
-                            
-                            if st.button(f"💾 Update {pillar_name}", key=f"update_{selected_dept}_{pillar_name}"):
-                                st.session_state.performance_data[selected_dept][pillar_name]['progress'] = new_progress
-                                st.session_state.performance_data[selected_dept][pillar_name]['status'] = new_status
-                                st.session_state.performance_data[selected_dept][pillar_name]['deadline'] = new_deadline.strftime('%Y-%m-%d')
-                                # Save to database
-                                try:
-                                    db.save_performance_data(selected_dept, pillar_name, 
-                                        st.session_state.performance_data[selected_dept][pillar_name]['weight'],
-                                        new_progress, new_status, new_deadline.strftime('%Y-%m-%d'),
-                                        st.session_state.performance_data[selected_dept][pillar_name]['kpis'])
-                                except:
-                                    pass
-                                st.success("✅ Updated!")
-                                st.rerun()
-                        
-                        # KPIs table
-                        if pillar_data['kpis']:
-                            st.markdown("**KPIs:**")
-                            for i, kpi in enumerate(pillar_data['kpis']):
-                                kc = "#38a169" if kpi['status'] in ['On Track', 'Completed'] else "#d69e2e" if kpi['status'] == 'Near Target' else "#CC0000"
-                                st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid {kc}; display: flex; justify-content: space-between;"><div><strong>{kpi['kpi']}</strong><br><small>Target: {kpi['target']} | Current: {kpi['current']} | Deadline: {kpi['deadline']}</small></div><span class="status-active" style="background: {kc};">{kpi['status']}</span></div>""", unsafe_allow_html=True)
-                            
-                            # Edit KPI
-                            if is_admin:
-                                with st.expander("✏️ Edit KPIs"):
-                                    for i, kpi in enumerate(pillar_data['kpis']):
-                                        c1, c2, c3 = st.columns(3)
-                                        with c1:
-                                            st.session_state.performance_data[selected_dept][pillar_name]['kpis'][i]['current'] = st.text_input(f"Current ({kpi['kpi'][:30]}...)", kpi['current'], key=f"kpi_curr_{selected_dept}_{pillar_name}_{i}")
-                                        with c2:
-                                            st.session_state.performance_data[selected_dept][pillar_name]['kpis'][i]['status'] = st.selectbox(f"Status", ['On Track', 'Near Target', 'At Risk', 'Completed'], 
-                                                                                                                                            index=['On Track', 'Near Target', 'At Risk', 'Completed'].index(kpi['status']) if kpi['status'] in ['On Track', 'Near Target', 'At Risk', 'Completed'] else 0,
-                                                                                                                                            key=f"kpi_stat_{selected_dept}_{pillar_name}_{i}")
-                                        with c3:
-                                            st.session_state.performance_data[selected_dept][pillar_name]['kpis'][i]['deadline'] = st.date_input(f"Deadline", 
-                                                                                                                                                datetime.strptime(kpi['deadline'], '%Y-%m-%d') if kpi['deadline'] else datetime.now(),
-                                                                                                                                                key=f"kpi_dead_{selected_dept}_{pillar_name}_{i}").strftime('%Y-%m-%d')
-                        
-                        # Add new KPI
-                        if is_admin:
-                            st.markdown("---")
-                            st.markdown("**➕ Add New KPI:**")
-                            with st.form(f"add_kpi_{selected_dept}_{pillar_name}"):
-                                nc1, nc2, nc3 = st.columns(3)
-                                with nc1:
-                                    new_kpi_title = st.text_input("KPI Title", key=f"nk_t_{selected_dept}_{pillar_name}")
-                                    new_kpi_target = st.text_input("Target", key=f"nk_ta_{selected_dept}_{pillar_name}")
-                                with nc2:
-                                    new_kpi_current = st.text_input("Current Value", key=f"nk_c_{selected_dept}_{pillar_name}")
-                                    new_kpi_status = st.selectbox("Status", ['On Track', 'Near Target', 'At Risk', 'In Progress'], key=f"nk_s_{selected_dept}_{pillar_name}")
-                                with nc3:
-                                    new_kpi_deadline = st.date_input("Deadline", key=f"nk_d_{selected_dept}_{pillar_name}")
-                                
-                                if st.form_submit_button("➕ Add KPI"):
-                                    if new_kpi_title:
-                                        st.session_state.performance_data[selected_dept][pillar_name]['kpis'].append({
-                                            'kpi': new_kpi_title, 'target': new_kpi_target, 'current': new_kpi_current,
-                                            'status': new_kpi_status, 'deadline': new_kpi_deadline.strftime('%Y-%m-%d')
-                                        })
-                                        st.success("✅ KPI Added!")
-                                        st.rerun()
-                
-                # Download reports
-                st.markdown("---")
-                st.markdown("### 📥 Download Reports")
-                c1, c2, c3, c4 = st.columns(4)
-                
-                # Use the correct department name
-                dl_name = working_dept_name if 'working_dept_name' in dir() else selected_dept
-                
-                # Prepare data
-                report_data = []
-                for pn, pdata in dept_data.items():
-                    for kpi in pdata.get('kpis', []):
-                        report_data.append({'Pillar': pn, 'KPI': kpi['kpi'], 'Target': kpi['target'], 'Current': kpi['current'], 'Status': kpi['status'], 'Deadline': kpi['deadline']})
-                
-                summary = []
-                for pn, pdata in dept_data.items():
-                    summary.append({'Pillar': pn, 'Weight': pdata['weight'], 'Progress': pdata['progress'], 'Status': pdata['status'], 'Deadline': pdata['deadline']})
-                
-                with c1:
-                    if report_data:
-                        df = pd.DataFrame(report_data)
-                        st.download_button(f"📥 Report (CSV)", df.to_csv(index=False), f"{dl_name}_report.csv", "text/csv")
-                with c2:
-                    if summary:
-                        st.download_button(f"📊 Summary (CSV)", pd.DataFrame(summary).to_csv(index=False), f"{dl_name}_summary.csv", "text/csv")
-                with c3:
-                    if report_data:
-                        pdf_bytes = generate_performance_pdf(dl_name, dept_data, report_data)
-                        st.download_button(f"📕 Report (PDF)", pdf_bytes, f"{dl_name}_report.pdf", "application/pdf", key=f"pdf_report_{dl_name}")
-                    else:
-                        st.info("Add KPIs to download report")
-                with c4:
-                    if summary:
-                        pdf_bytes = generate_summary_pdf(dl_name, dept_data, summary)
-                        st.download_button(f"📕 Summary (PDF)", pdf_bytes, f"{dl_name}_summary.pdf", "application/pdf", key=f"pdf_summary_{dl_name}")
-                    else:
-                        st.info("Add KPIs to download summary")
         else:
-            # Non-admin view - show own department
-            if user_dept in st.session_state.performance_data:
-                dept_data = st.session_state.performance_data[user_dept]
-                st.markdown(f"### 📊 {user_dept} — Strategic Pillar Scorecard")
+            selected_dept = user_dept if user_dept in all_depts else all_depts[0]
+        
+        if selected_dept in performance_data:
+            dept_data = performance_data[selected_dept]
+            st.markdown(f"### 📊 {selected_dept} — Strategic Pillar Scorecard")
+            
+            total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values()) if dept_data else 0
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Overall Score", f"{total_weighted:.1f}%")
+            c2.metric("On Track", str(sum(1 for p in dept_data.values() if p['status'] in ['On Track', 'Exceeding'])))
+            c3.metric("At Risk", str(sum(1 for p in dept_data.values() if p['status'] == 'At Risk')))
+            c4.metric("Completed", str(sum(1 for p in dept_data.values() if p['status'] == 'Completed')))
+            
+            st.markdown("---")
+            
+            for pillar_name, pillar_data in dept_data.items():
+                color = "#38a169" if pillar_data['status'] in ['On Track', 'Exceeding'] else "#d69e2e" if pillar_data['status'] == 'In Progress' else "#CC0000"
                 
-                total_weighted = sum(pillar['progress'] * pillar['weight'] / 100 for pillar in dept_data.values())
-                st.metric("Overall Department Score", f"{total_weighted:.1f}%")
-                
-                for pillar_name, pillar_data in dept_data.items():
-                    color = "#38a169" if pillar_data['status'] in ['On Track', 'Exceeding'] else "#d69e2e" if pillar_data['status'] == 'In Progress' else "#CC0000"
-                    with st.expander(f"{pillar_name} | {pillar_data['progress']}% | {pillar_data['status']}", expanded=True):
-                        st.progress(pillar_data['progress'] / 100)
+                with st.expander(f"{pillar_name} | {pillar_data['progress']}% | {pillar_data['status']}", expanded=False):
+                    st.progress(pillar_data['progress'] / 100)
+                    
+                    if is_admin:
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
+                            new_progress = st.slider("Progress %", 0, 100, int(pillar_data['progress']), key=f"prog_{selected_dept}_{pillar_name}")
+                        with c2:
+                            new_status = st.selectbox("Status", ['On Track', 'In Progress', 'At Risk', 'Exceeding', 'Completed'], index=0, key=f"stat_{selected_dept}_{pillar_name}")
+                        with c3:
+                            new_weight = st.slider("Weight %", 0, 100, int(pillar_data['weight']), key=f"wgt_{selected_dept}_{pillar_name}")
+                        
+                        if st.button(f"💾 Update", key=f"upd_{selected_dept}_{pillar_name}"):
+                            performance_data[selected_dept][pillar_name]['progress'] = new_progress
+                            performance_data[selected_dept][pillar_name]['status'] = new_status
+                            performance_data[selected_dept][pillar_name]['weight'] = new_weight
+                            try:
+                                db.save_performance_data(selected_dept, pillar_name, new_weight, new_progress, new_status, pillar_data['deadline'], pillar_data['kpis'])
+                                st.success("✅ Saved!")
+                            except:
+                                pass
+                            st.rerun()
+                    
+                    if pillar_data['kpis']:
                         for kpi in pillar_data['kpis']:
                             kc = "#38a169" if kpi['status'] in ['On Track', 'Completed'] else "#d69e2e"
-                            st.markdown(f"✅ {kpi['kpi']} — Target: {kpi['target']} | Current: {kpi['current']} | {kpi['status']}")
-            else:
-                st.info("Your department data is being configured. Please contact HR.")
+                            st.markdown(f"""<div style="background: white; padding: 0.5rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid {kc};"><strong>{kpi['kpi']}</strong><br><small>Target: {kpi['target']} | Current: {kpi['current']} | {kpi['status']}</small></div>""", unsafe_allow_html=True)
     
     with tab2:
-        st.subheader("✏️ Set My KPIs & Objectives")
-        with st.form("set_kpi_form"):
+        st.subheader("✏️ My KPIs & Objectives")
+        st.info("Set your KPIs aligned to the 4 strategic pillars. These will be reviewed during your appraisal.")
+        
+        with st.form("my_kpi_form"):
             c1, c2 = st.columns(2)
             with c1:
-                st.selectbox("Strategic Pillar", ["Occupancy & Revenue Growth", "Process Simplification", "Asset Reliability & Digitalization", "People & Culture"])
-                st.text_input("KPI Title *", placeholder="e.g., Increase data centre revenue")
-                st.text_area("Description", placeholder="Describe what this KPI measures...")
-                st.slider("Weight (%)", 0, 100, 25)
+                pillar_choice = st.selectbox("Strategic Pillar", ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture'])
+                kpi_title = st.text_input("KPI Title *", placeholder="What will you achieve?")
+                kpi_target = st.text_input("Target", placeholder="e.g., 15% increase")
             with c2:
-                st.number_input("Target Value", min_value=0, value=100)
-                st.number_input("Current Value", min_value=0, value=0)
-                st.date_input("Start Date")
-                st.date_input("End Date")
-                st.selectbox("Unit", ["Percentage (%)", "Number (#)", "Currency (₦)", "Days", "Score (/5)"])
-            st.text_area("Key Results (one per line)", height=100, placeholder="e.g.,\nRevenue increased by 15%\n5 new customers acquired")
-            sc1, sc2 = st.columns(2)
-            with sc1:
-                if st.form_submit_button("💾 Save KPI", use_container_width=True):
-                    st.success("✅ KPI saved successfully!")
-                    st.balloons()
-            with sc2:
-                if st.form_submit_button("📋 Save & Add Another", use_container_width=True):
-                    st.success("✅ KPI saved! Add another below.")
+                kpi_weight = st.slider("Weight (%)", 0, 100, 25)
+                kpi_deadline = st.date_input("Target Deadline")
+                kpi_current = st.text_input("Current Progress", placeholder="e.g., 10%")
+            
+            kpi_description = st.text_area("Description / Key Results", placeholder="How will you achieve this KPI?")
+            
+            if st.form_submit_button("💾 Save My KPI", use_container_width=True):
+                if kpi_title:
+                    if user_dept in performance_data:
+                        performance_data[user_dept][pillar_choice]['kpis'].append({
+                            'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
+                            'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'),
+                            'owner': user_name
+                        })
+                        try:
+                            pd_data = performance_data[user_dept][pillar_choice]
+                            db.save_performance_data(user_dept, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
+                            st.success("✅ KPI saved!")
+                            st.balloons()
+                        except:
+                            st.error("Save failed")
+                        st.rerun()
+                    else:
+                        st.warning("Your department is not configured yet. Contact Admin.")
     
     with tab3:
-        st.subheader("📊 My Performance Scorecard")
-        my_kpis = [
-            {"title": "Increase data centre revenue", "pillar": "Occupancy & Revenue", "target": "15%", "current": "12%", "progress": 80, "status": "On Track"},
-            {"title": "100% revenue realisation", "pillar": "Occupancy & Revenue", "target": "100%", "current": "95%", "progress": 95, "status": "Near Target"},
-            {"title": "Nil O/S debts within 30 days", "pillar": "Occupancy & Revenue", "target": "0", "current": "2", "progress": 60, "status": "At Risk"},
-            {"title": "BMS Installation complete", "pillar": "Process Simplification", "target": "100%", "current": "75%", "progress": 75, "status": "On Track"},
-            {"title": "Preventive Maintenance compliance", "pillar": "Asset Reliability", "target": "99%", "current": "95%", "progress": 96, "status": "On Track"},
-        ]
-        for kpi in my_kpis:
-            if kpi['progress'] >= 85:
-                color, badge = "#38a169", "status-active"
-            elif kpi['progress'] >= 65:
-                color, badge = "#d69e2e", "status-pending"
+        st.subheader("📝 Self-Assessment")
+        
+        # Admin controls for appraisal cycle
+        if is_admin:
+            with st.expander("⚙️ Appraisal Cycle Settings (Admin)"):
+                st.session_state.appraisal_cycle_active = st.checkbox("Activate Appraisal Cycle", value=st.session_state.appraisal_cycle_active)
+                st.session_state.appraisal_cycle_name = st.text_input("Cycle Name", st.session_state.appraisal_cycle_name)
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.session_state.appraisal_start = st.text_input("Start Date", st.session_state.appraisal_start)
+                with c2:
+                    st.session_state.appraisal_end = st.text_input("End Date", st.session_state.appraisal_end)
+                if st.button("💾 Save Cycle Settings"):
+                    st.success("✅ Cycle settings saved!")
+        
+        if st.session_state.appraisal_cycle_active:
+            st.success(f"🔓 Appraisal Cycle Active: {st.session_state.appraisal_cycle_name} ({st.session_state.appraisal_start} to {st.session_state.appraisal_end})")
+            
+            st.markdown("### Rate Yourself Against Your KPIs")
+            st.info("Score yourself honestly (0-100%). Add comments to support your rating.")
+            
+            if user_dept in performance_data:
+                with st.form("self_assessment_form"):
+                    scores = {}
+                    total_pillars = 0
+                    for pillar_name, pillar_data in performance_data[user_dept].items():
+                        if pillar_data['kpis']:
+                            st.markdown(f"**{pillar_name}** (Weight: {pillar_data['weight']}%)")
+                            for kpi in pillar_data['kpis']:
+                                if kpi.get('owner') == user_name or is_admin:
+                                    score_key = f"{pillar_name}_{kpi['kpi']}"
+                                    scores[score_key] = st.slider(f"{kpi['kpi']} (Target: {kpi['target']})", 0, 100, 50, key=f"sa_{score_key}")
+                                    total_pillars += 1
+                    
+                    self_comments = st.text_area("Overall Comments / Evidence", placeholder="Provide evidence and justification for your scores...")
+                    
+                    if st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True):
+                        if scores:
+                            st.session_state.self_assessments[user_name] = {
+                                'scores': scores,
+                                'comments': self_comments,
+                                'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
+                                'status': 'Submitted',
+                                'department': user_dept
+                            }
+                            st.success("✅ Self-assessment submitted! Awaiting HOD review.")
+                            st.balloons()
+                        else:
+                            st.warning("No KPIs found. Set your KPIs first in 'My KPIs' tab.")
             else:
-                color, badge = "#CC0000", "status-at-risk"
-            st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem; border-left: 4px solid {color}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"><div style="display: flex; justify-content: space-between; align-items: center;"><div><strong>{kpi['title']}</strong><br><small style="color: #666;">{kpi['pillar']} | Target: {kpi['target']} | Current: {kpi['current']}</small></div><div style="text-align: right;"><span class="{badge}">{kpi['status']}</span><br><small>{kpi['progress']}%</small></div></div><div style="background: #e0e0e0; height: 6px; border-radius: 3px; margin-top: 0.5rem;"><div style="background: {color}; width: {kpi['progress']}%; height: 6px; border-radius: 3px;"></div></div></div>""", unsafe_allow_html=True)
+                st.warning("Your department KPIs are not configured yet.")
+        else:
+            st.info("⏳ Appraisal cycle is not active. Admin will activate it during appraisal period.")
+        
+        # Show submitted assessment
+        if user_name in st.session_state.self_assessments:
+            st.markdown("---")
+            st.markdown("### 📋 Your Submitted Assessment")
+            assessment = st.session_state.self_assessments[user_name]
+            st.markdown(f"**Status:** {assessment['status']} | **Submitted:** {assessment['date']}")
+            st.markdown(f"**Comments:** {assessment.get('comments', 'N/A')}")
+    
+    with tab4:
+        st.subheader("👔 HOD Review & Approval")
+        
+        if is_hod:
+            st.info("Review self-assessments submitted by your team. Adjust scores where necessary.")
+            
+            # Show all submitted assessments for this HOD's department
+            submitted = {k: v for k, v in st.session_state.self_assessments.items() if v.get('department') == user_dept and v['status'] == 'Submitted'}
+            
+            if submitted:
+                for staff_name, assessment in submitted.items():
+                    with st.expander(f"📋 {staff_name} — Submitted {assessment['date']}", expanded=False):
+                        st.markdown(f"**Staff Comments:** {assessment.get('comments', 'N/A')}")
+                        st.markdown("---")
+                        st.markdown("### Side-by-Side Review")
+                        
+                        hod_scores = {}
+                        for score_key, staff_score in assessment['scores'].items():
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.markdown(f"**Staff Score:** {staff_score}%")
+                            with c2:
+                                hod_scores[score_key] = st.slider(f"HOD Score", 0, 100, staff_score, key=f"hod_{staff_name}_{score_key}")
+                        
+                        hod_comments = st.text_area(f"HOD Comments for {staff_name}", key=f"hod_comments_{staff_name}")
+                        
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button(f"✅ Approve {staff_name}", key=f"app_{staff_name}"):
+                                st.session_state.self_assessments[staff_name]['status'] = 'Approved'
+                                st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores
+                                st.session_state.self_assessments[staff_name]['hod_comments'] = hod_comments
+                                st.success(f"✅ {staff_name}'s appraisal approved!")
+                                st.rerun()
+                        with c2:
+                            if st.button(f"🔄 Request Revision", key=f"rev_{staff_name}"):
+                                st.session_state.self_assessments[staff_name]['status'] = 'Revision Requested'
+                                st.warning(f"🔄 Revision requested from {staff_name}")
+                                st.rerun()
+            else:
+                st.info("No pending assessments for your team.")
+        else:
+            st.info("HOD Review section is for Managers, HODs, Admin, and Senior Management.")
+    
+    with tab5:
+        st.subheader("📊 My Performance Dashboard")
+        
+        if user_dept in performance_data:
+            dept_data = performance_data[user_dept]
+            
+            # Check if user has an approved assessment
+            user_assessment = st.session_state.self_assessments.get(user_name, {})
+            
+            if user_assessment.get('status') == 'Approved':
+                st.success("✅ Your appraisal has been approved!")
+                final_scores = user_assessment.get('hod_scores', user_assessment.get('scores', {}))
+                if final_scores:
+                    avg_score = sum(final_scores.values()) / len(final_scores) if final_scores else 0
+                    st.metric("Final Appraisal Score", f"{avg_score:.1f}%")
+            
+            for pillar_name, pillar_data in dept_data.items():
+                color = "#38a169" if pillar_data['progress'] >= 85 else "#d69e2e" if pillar_data['progress'] >= 65 else "#CC0000"
+                st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem; border-left: 4px solid {color};"><strong>{pillar_name}</strong> ({pillar_data['weight']}%)<br><small>Progress: {pillar_data['progress']}% | Status: {pillar_data['status']}</small><div style="background: #e0e0e0; height: 6px; border-radius: 3px; margin-top: 0.5rem;"><div style="background: {color}; width: {pillar_data['progress']}%; height: 6px; border-radius: 3px;"></div></div></div>""", unsafe_allow_html=True)
+        else:
+            st.info("No performance data yet.")
+        
         c1, c2, c3 = st.columns(3)
-        c1.metric("Overall Score", "81.2%", "↑ 3.5%")
-        c2.metric("KPIs On Track", "3/5", "60%")
-        c3.metric("KPIs At Risk", "1/5", "Needs attention")
+        total_prog = sum(p['progress'] * p['weight'] / 100 for p in performance_data.get(user_dept, {}).values()) if user_dept in performance_data else 0
+        c1.metric("Weighted Score", f"{total_prog:.1f}%")
+        c2.metric("On Track", str(sum(1 for p in performance_data.get(user_dept, {}).values() if p['status'] in ['On Track', 'Exceeding'])))
+        c3.metric("At Risk", str(sum(1 for p in performance_data.get(user_dept, {}).values() if p['status'] == 'At Risk')))
 
 def promotions():
     st.markdown("""<div class="churchgate-header"><h1>🚀 Promotions & Career Progression Console</h1><p>360° A-Player Assessment | Succession Planning | Talent Pipeline Management</p></div>""", unsafe_allow_html=True)
