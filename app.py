@@ -1092,10 +1092,10 @@ def performance_okrs():
         st.session_state.appraisal_cycle_active = False
     if 'appraisal_cycle_name' not in st.session_state:
         st.session_state.appraisal_cycle_name = "2026 Half-Year Appraisal"
-    if 'appraisal_start' not in st.session_state:
-        st.session_state.appraisal_start = "2026-01-06"
+     if 'appraisal_start' not in st.session_state:
+        st.session_state.appraisal_start = "2026-06-01"
     if 'appraisal_end' not in st.session_state:
-        st.session_state.appraisal_end = "2026-02-15"
+        st.session_state.appraisal_end = "2026-12-31"
     if 'appraisal_locked' not in st.session_state:
         st.session_state.appraisal_locked = False
     if 'self_assessments' not in st.session_state:
@@ -1434,7 +1434,9 @@ def performance_okrs():
                         for pillar_name, pillar_data in performance_data[user_dept].items():
                             if pillar_data['kpis']:
                                 st.markdown(f"**{pillar_name}** ({pillar_data['weight']}%)")
-                                for kpi in pillar_data['kpis']:
+                       for i, kpi in enumerate(pillar_data['kpis']):
+                        score_key = f"{pillar_name}_{i}"
+                        scores[score_key] = st.slider(kpi['kpi'][:60], 0, 100, 50, key=f"sa_{user_name}_{pillar_name}_{i}")         for kpi in pillar_data['kpis']:
                                     score_key = f"{pillar_name}_{kpi['kpi']}"
                                     scores[score_key] = st.slider(kpi['kpi'][:60], 0, 100, 50, key=f"sa_{score_key}")
                         
