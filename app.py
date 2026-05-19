@@ -1074,11 +1074,12 @@ def employee_management():
         st.plotly_chart(fig, use_container_width=True)
 
 def performance_okrs():
-    st.markdown("""<div class="churchgate-header"><h1>📈 Performance & Appraisal Engine</h1><p>KPI Management | Self-Assessment | HOD Review | Half-Yearly Appraisal Cycles</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>📈 Performance & Appraisal Engine</h1><p>KPI Management | Self-Assessment | HOD Review | Half-Yearly Appraisal Cycles | Export Reports</p></div>""", unsafe_allow_html=True)
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_email = st.session_state.user['email'] if st.session_state.user else ''
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     is_hod = is_admin or user_role == 'Manager'
     
@@ -1086,7 +1087,7 @@ def performance_okrs():
                  'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 
                  'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     
-    # Initialize appraisal cycle state
+    # Appraisal cycle state
     if 'appraisal_cycle_active' not in st.session_state:
         st.session_state.appraisal_cycle_active = False
     if 'appraisal_cycle_name' not in st.session_state:
@@ -1095,6 +1096,12 @@ def performance_okrs():
         st.session_state.appraisal_start = "2026-01-06"
     if 'appraisal_end' not in st.session_state:
         st.session_state.appraisal_end = "2026-02-15"
+    if 'appraisal_locked' not in st.session_state:
+        st.session_state.appraisal_locked = False
+    if 'self_assessments' not in st.session_state:
+        st.session_state.self_assessments = {}
+    if 'appraisal_history' not in st.session_state:
+        st.session_state.appraisal_history = []
     
     # Load performance data from database
     performance_data = {}
@@ -1114,7 +1121,6 @@ def performance_okrs():
     except:
         pass
     
-    # Ensure all departments exist
     for dept in all_depts:
         if dept not in performance_data:
             performance_data[dept] = {}
@@ -1126,10 +1132,7 @@ def performance_okrs():
                     'deadline': '2026-12-31', 'kpis': []
                 }
     
-    # Initialize self-assessment storage
-    if 'self_assessments' not in st.session_state:
-        st.session_state.self_assessments = {}
-    
+    # ============ TAB 1: STRATEGIC PILLARS ============
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "📊 Dashboard"])
     
     with tab1:
@@ -1186,6 +1189,7 @@ def performance_okrs():
                             kc = "#38a169" if kpi['status'] in ['On Track', 'Completed'] else "#d69e2e"
                             st.markdown(f"""<div style="background: white; padding: 0.5rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid {kc};"><strong>{kpi['kpi']}</strong><br><small>Target: {kpi['target']} | Current: {kpi['current']} | {kpi['status']}</small></div>""", unsafe_allow_html=True)
     
+    # ============ TAB 2: MY KPIs ============
     with tab2:
         st.subheader("✏️ My KPIs & Objectives")
         st.info("Set your KPIs aligned to the 4 strategic pillars. These will be reviewed during your appraisal.")
@@ -1204,28 +1208,24 @@ def performance_okrs():
             kpi_description = st.text_area("Description / Key Results", placeholder="How will you achieve this KPI?")
             
             if st.form_submit_button("💾 Save My KPI", use_container_width=True):
-                if kpi_title:
-                    if user_dept in performance_data:
-                        performance_data[user_dept][pillar_choice]['kpis'].append({
-                            'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
-                            'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'),
-                            'owner': user_name
-                        })
-                        try:
-                            pd_data = performance_data[user_dept][pillar_choice]
-                            db.save_performance_data(user_dept, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
-                            st.success("✅ KPI saved!")
-                            st.balloons()
-                        except:
-                            st.error("Save failed")
-                        st.rerun()
-                    else:
-                        st.warning("Your department is not configured yet. Contact Admin.")
+                if kpi_title and user_dept in performance_data:
+                    performance_data[user_dept][pillar_choice]['kpis'].append({
+                        'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
+                        'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
+                    })
+                    pd_data = performance_data[user_dept][pillar_choice]
+                    try:
+                        db.save_performance_data(user_dept, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
+                        st.success("✅ KPI saved!")
+                        st.balloons()
+                    except:
+                        st.error("Save failed")
+                    st.rerun()
     
+    # ============ TAB 3: SELF-ASSESSMENT ============
     with tab3:
         st.subheader("📝 Self-Assessment")
         
-        # Admin controls for appraisal cycle
         if is_admin:
             with st.expander("⚙️ Appraisal Cycle Settings (Admin)"):
                 st.session_state.appraisal_cycle_active = st.checkbox("Activate Appraisal Cycle", value=st.session_state.appraisal_cycle_active)
@@ -1235,68 +1235,79 @@ def performance_okrs():
                     st.session_state.appraisal_start = st.text_input("Start Date", st.session_state.appraisal_start)
                 with c2:
                     st.session_state.appraisal_end = st.text_input("End Date", st.session_state.appraisal_end)
+                st.session_state.appraisal_locked = st.checkbox("Lock Scores (No more edits)", value=st.session_state.appraisal_locked)
                 if st.button("💾 Save Cycle Settings"):
                     st.success("✅ Cycle settings saved!")
+                    # Email notification would go here
         
         if st.session_state.appraisal_cycle_active:
-            st.success(f"🔓 Appraisal Cycle Active: {st.session_state.appraisal_cycle_name} ({st.session_state.appraisal_start} to {st.session_state.appraisal_end})")
+            st.success(f"🔓 Appraisal Active: {st.session_state.appraisal_cycle_name} ({st.session_state.appraisal_start} to {st.session_state.appraisal_end})")
             
-            st.markdown("### Rate Yourself Against Your KPIs")
-            st.info("Score yourself honestly (0-100%). Add comments to support your rating.")
-            
-            if user_dept in performance_data:
-                with st.form("self_assessment_form"):
-                    scores = {}
-                    total_pillars = 0
-                    for pillar_name, pillar_data in performance_data[user_dept].items():
-                        if pillar_data['kpis']:
-                            st.markdown(f"**{pillar_name}** (Weight: {pillar_data['weight']}%)")
-                            for kpi in pillar_data['kpis']:
-                                if kpi.get('owner') == user_name or is_admin:
+            if st.session_state.appraisal_locked:
+                st.warning("🔒 Scores are locked. No further edits allowed.")
+            else:
+                st.markdown("### Rate Yourself Against Your KPIs")
+                st.info("Score yourself honestly (0-100%). Add comments to support your rating.")
+                
+                if user_dept in performance_data:
+                    with st.form("self_assessment_form"):
+                        scores = {}
+                        for pillar_name, pillar_data in performance_data[user_dept].items():
+                            if pillar_data['kpis']:
+                                st.markdown(f"**{pillar_name}** (Weight: {pillar_data['weight']}%)")
+                                for kpi in pillar_data['kpis']:
                                     score_key = f"{pillar_name}_{kpi['kpi']}"
                                     scores[score_key] = st.slider(f"{kpi['kpi']} (Target: {kpi['target']})", 0, 100, 50, key=f"sa_{score_key}")
-                                    total_pillars += 1
-                    
-                    self_comments = st.text_area("Overall Comments / Evidence", placeholder="Provide evidence and justification for your scores...")
-                    
-                    if st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True):
-                        if scores:
-                            st.session_state.self_assessments[user_name] = {
-                                'scores': scores,
-                                'comments': self_comments,
-                                'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
-                                'status': 'Submitted',
-                                'department': user_dept
-                            }
-                            st.success("✅ Self-assessment submitted! Awaiting HOD review.")
-                            st.balloons()
-                        else:
-                            st.warning("No KPIs found. Set your KPIs first in 'My KPIs' tab.")
-            else:
-                st.warning("Your department KPIs are not configured yet.")
+                        
+                        self_comments = st.text_area("Overall Comments / Evidence", placeholder="Provide evidence and justification for your scores...")
+                        
+                        if st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True):
+                            if scores:
+                                st.session_state.self_assessments[user_name] = {
+                                    'scores': scores, 'comments': self_comments,
+                                    'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
+                                    'status': 'Submitted', 'department': user_dept, 'email': user_email
+                                }
+                                st.success("✅ Self-assessment submitted! Awaiting HOD review.")
+                                st.balloons()
+                            else:
+                                st.warning("No KPIs found. Set your KPIs first in 'My KPIs' tab.")
         else:
             st.info("⏳ Appraisal cycle is not active. Admin will activate it during appraisal period.")
         
-        # Show submitted assessment
         if user_name in st.session_state.self_assessments:
             st.markdown("---")
             st.markdown("### 📋 Your Submitted Assessment")
             assessment = st.session_state.self_assessments[user_name]
             st.markdown(f"**Status:** {assessment['status']} | **Submitted:** {assessment['date']}")
             st.markdown(f"**Comments:** {assessment.get('comments', 'N/A')}")
+            if assessment.get('hod_scores'):
+                st.markdown("**HOD Review:** Complete")
     
+    # ============ TAB 4: HOD REVIEW ============
     with tab4:
         st.subheader("👔 HOD Review & Approval")
         
         if is_hod:
+            # Cycle status dashboard
+            st.markdown("### 📊 Appraisal Cycle Status")
+            submitted_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Submitted'])
+            approved_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Approved'])
+            pending_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Revision Requested'])
+            
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Submitted", submitted_count)
+            c2.metric("Approved", approved_count)
+            c3.metric("Pending Revision", pending_count)
+            
+            st.markdown("---")
             st.info("Review self-assessments submitted by your team. Adjust scores where necessary.")
             
-            # Show all submitted assessments for this HOD's department
-            submitted = {k: v for k, v in st.session_state.self_assessments.items() if v.get('department') == user_dept and v['status'] == 'Submitted'}
+            submitted = {k: v for k, v in st.session_state.self_assessments.items() if v.get('department') == user_dept and v['status'] in ['Submitted', 'Revision Requested']}
             
             if submitted:
                 for staff_name, assessment in submitted.items():
-                    with st.expander(f"📋 {staff_name} — Submitted {assessment['date']}", expanded=False):
+                    with st.expander(f"📋 {staff_name} — {assessment['date']} — {assessment['status']}", expanded=False):
                         st.markdown(f"**Staff Comments:** {assessment.get('comments', 'N/A')}")
                         st.markdown("---")
                         st.markdown("### Side-by-Side Review")
@@ -1307,9 +1318,9 @@ def performance_okrs():
                             with c1:
                                 st.markdown(f"**Staff Score:** {staff_score}%")
                             with c2:
-                                hod_scores[score_key] = st.slider(f"HOD Score", 0, 100, staff_score, key=f"hod_{staff_name}_{score_key}")
+                                hod_scores[score_key] = st.slider(f"HOD Score for: {score_key[:50]}...", 0, 100, staff_score, key=f"hod_{staff_name}_{score_key}")
                         
-                        hod_comments = st.text_area(f"HOD Comments for {staff_name}", key=f"hod_comments_{staff_name}")
+                        hod_comments = st.text_area(f"HOD Comments for {staff_name}", key=f"hod_com_{staff_name}")
                         
                         c1, c2 = st.columns(2)
                         with c1:
@@ -1318,6 +1329,7 @@ def performance_okrs():
                                 st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores
                                 st.session_state.self_assessments[staff_name]['hod_comments'] = hod_comments
                                 st.success(f"✅ {staff_name}'s appraisal approved!")
+                                # Email notification would go here
                                 st.rerun()
                         with c2:
                             if st.button(f"🔄 Request Revision", key=f"rev_{staff_name}"):
@@ -1329,33 +1341,138 @@ def performance_okrs():
         else:
             st.info("HOD Review section is for Managers, HODs, Admin, and Senior Management.")
     
+    # ============ TAB 5: DASHBOARD & REPORTS ============
     with tab5:
         st.subheader("📊 My Performance Dashboard")
         
+        user_assessment = st.session_state.self_assessments.get(user_name, {})
+        
+        if user_assessment.get('status') == 'Approved':
+            st.success("✅ Your appraisal has been approved!")
+            final_scores = user_assessment.get('hod_scores', user_assessment.get('scores', {}))
+            if final_scores:
+                valid_scores = [s for s in final_scores.values() if isinstance(s, (int, float))]
+                avg_score = sum(valid_scores) / len(valid_scores) if valid_scores else 0
+                st.metric("Final Appraisal Score", f"{avg_score:.1f}%")
+        
         if user_dept in performance_data:
             dept_data = performance_data[user_dept]
-            
-            # Check if user has an approved assessment
-            user_assessment = st.session_state.self_assessments.get(user_name, {})
-            
-            if user_assessment.get('status') == 'Approved':
-                st.success("✅ Your appraisal has been approved!")
-                final_scores = user_assessment.get('hod_scores', user_assessment.get('scores', {}))
-                if final_scores:
-                    avg_score = sum(final_scores.values()) / len(final_scores) if final_scores else 0
-                    st.metric("Final Appraisal Score", f"{avg_score:.1f}%")
-            
             for pillar_name, pillar_data in dept_data.items():
                 color = "#38a169" if pillar_data['progress'] >= 85 else "#d69e2e" if pillar_data['progress'] >= 65 else "#CC0000"
                 st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem; border-left: 4px solid {color};"><strong>{pillar_name}</strong> ({pillar_data['weight']}%)<br><small>Progress: {pillar_data['progress']}% | Status: {pillar_data['status']}</small><div style="background: #e0e0e0; height: 6px; border-radius: 3px; margin-top: 0.5rem;"><div style="background: {color}; width: {pillar_data['progress']}%; height: 6px; border-radius: 3px;"></div></div></div>""", unsafe_allow_html=True)
-        else:
-            st.info("No performance data yet.")
         
         c1, c2, c3 = st.columns(3)
         total_prog = sum(p['progress'] * p['weight'] / 100 for p in performance_data.get(user_dept, {}).values()) if user_dept in performance_data else 0
         c1.metric("Weighted Score", f"{total_prog:.1f}%")
         c2.metric("On Track", str(sum(1 for p in performance_data.get(user_dept, {}).values() if p['status'] in ['On Track', 'Exceeding'])))
         c3.metric("At Risk", str(sum(1 for p in performance_data.get(user_dept, {}).values() if p['status'] == 'At Risk')))
+        
+        # Performance History
+        st.markdown("---")
+        st.markdown("### 📋 Performance History")
+        if st.session_state.appraisal_history:
+            for h in st.session_state.appraisal_history:
+                st.markdown(f"- **{h['cycle']}**: {h['score']}% — {h['status']}")
+        else:
+            st.info("No past appraisals on record. Complete your first appraisal cycle.")
+        
+        # Export Reports
+        st.markdown("---")
+        st.markdown("### 📥 Appraisal Reports")
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("📊 My Appraisal (CSV)", use_container_width=True):
+                if user_assessment.get('scores'):
+                    report = []
+                    for k, v in user_assessment['scores'].items():
+                        hod = user_assessment.get('hod_scores', {}).get(k, 'Pending')
+                        report.append({'KPI': k[:80], 'Self Score': f"{v}%", 'HOD Score': f"{hod}%" if isinstance(hod, (int, float)) else 'Pending'})
+                    st.download_button("📥 Download CSV", pd.DataFrame(report).to_csv(index=False), f"{user_name}_appraisal.csv", "text/csv")
+                else:
+                    st.info("No appraisal data yet")
+        with c2:
+            if st.button("📕 My Appraisal (PDF)", use_container_width=True):
+                try:
+                    import fpdf
+                    FPDF = fpdf.FPDF
+                    pdf = FPDF(orientation='P', unit='mm', format='A4')
+                    pdf.add_page()
+                    
+                    pdf.set_fill_color(55, 55, 55)
+                    pdf.rect(0, 0, 210, 35, 'F')
+                    pdf.set_fill_color(204, 0, 0)
+                    pdf.rect(0, 35, 210, 3, 'F')
+                    pdf.set_font('Helvetica', 'B', 20)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
+                    pdf.set_font('Helvetica', 'B', 11)
+                    pdf.set_text_color(255, 255, 255)
+                    pdf.cell(0, 8, 'PERFORMANCE APPRAISAL REPORT', ln=True, align='C')
+                    pdf.ln(10)
+                    
+                    pdf.set_font('Helvetica', 'B', 12)
+                    pdf.set_text_color(26, 26, 26)
+                    pdf.cell(0, 8, f'Employee: {user_name}', ln=True)
+                    pdf.cell(0, 8, f'Department: {user_dept}', ln=True)
+                    pdf.cell(0, 8, f'Cycle: {st.session_state.appraisal_cycle_name}', ln=True)
+                    pdf.cell(0, 8, f'Status: {user_assessment.get("status", "Not Submitted")}', ln=True)
+                    pdf.ln(5)
+                    
+                    if user_assessment.get('scores'):
+                        pdf.set_fill_color(26, 26, 26)
+                        pdf.set_text_color(255, 255, 255)
+                        pdf.set_font('Helvetica', 'B', 9)
+                        pdf.cell(95, 7, ' KPI', 1, 0, 'L', True)
+                        pdf.cell(45, 7, 'SELF SCORE', 1, 0, 'C', True)
+                        pdf.cell(50, 7, 'HOD SCORE', 1, 0, 'C', True)
+                        pdf.ln()
+                        
+                        pdf.set_font('Helvetica', '', 8)
+                        pdf.set_text_color(26, 26, 26)
+                        for k, v in user_assessment['scores'].items():
+                            hod = user_assessment.get('hod_scores', {}).get(k, 'Pending')
+                            pdf.cell(95, 6, f' {k[:55]}', 1, 0, 'L')
+                            pdf.cell(45, 6, f'{v}%', 1, 0, 'C')
+                            pdf.cell(50, 6, f'{hod}%' if isinstance(hod, (int, float)) else str(hod), 1, 0, 'C')
+                            pdf.ln()
+                        
+                        all_scores = list(user_assessment['scores'].values())
+                        avg = sum(all_scores) / len(all_scores) if all_scores else 0
+                        pdf.ln(3)
+                        pdf.set_font('Helvetica', 'B', 12)
+                        pdf.set_text_color(204, 0, 0)
+                        pdf.cell(0, 8, f'Overall Self Score: {avg:.1f}%', ln=True, align='C')
+                        
+                        if user_assessment.get('hod_scores'):
+                            hod_scores = [s for s in user_assessment['hod_scores'].values() if isinstance(s, (int, float))]
+                            hod_avg = sum(hod_scores) / len(hod_scores) if hod_scores else 0
+                            pdf.cell(0, 8, f'Overall HOD Score: {hod_avg:.1f}%', ln=True, align='C')
+                    
+                    pdf.set_y(-20)
+                    pdf.set_font('Helvetica', 'I', 7)
+                    pdf.set_text_color(150, 150, 150)
+                    pdf.cell(0, 10, 'Churchgate Group - Confidential | hr@churchgate.com', align='C')
+                    
+                    st.download_button("📥 Download PDF", bytes(pdf.output()), f"{user_name}_appraisal.pdf", "application/pdf")
+                    st.success("✅ PDF generated!")
+                except Exception as e:
+                    st.warning(f"PDF Error: {str(e)}")
+        
+        # Department Report (Admin only)
+        if is_admin:
+            st.markdown("---")
+            st.markdown("### 📊 Department Appraisal Report (Admin)")
+            if st.button("📊 Generate Department Summary", use_container_width=True):
+                dept_report = []
+                for name, assessment in st.session_state.self_assessments.items():
+                    if assessment.get('department') == user_dept:
+                        dept_report.append({
+                            'Employee': name, 'Status': assessment['status'],
+                            'Date': assessment['date'], 'Comments': assessment.get('comments', '')[:50]
+                        })
+                if dept_report:
+                    st.dataframe(pd.DataFrame(dept_report), use_container_width=True, hide_index=True)
+                    st.download_button("📥 Download Dept Report", pd.DataFrame(dept_report).to_csv(index=False), f"{user_dept}_appraisal_report.csv", "text/csv")
 
 def promotions():
     st.markdown("""<div class="churchgate-header"><h1>🚀 Promotions & Career Progression Console</h1><p>360° A-Player Assessment | Succession Planning | Talent Pipeline Management</p></div>""", unsafe_allow_html=True)
