@@ -113,5 +113,12 @@ class DatabaseManager:
     def get_user_notifications(self, user_id, unread_only=False):
         return pd.DataFrame()
     
+    def save_kpi_history(self, action, kpi_name, user, pillar):
+        self._post("kpi_history", {"action": action, "kpi_name": kpi_name, "user_name": user, "pillar": pillar, "created_at": datetime.now().strftime('%Y-%m-%d %H:%M')})
+    
+    def get_kpi_history(self):
+        data = self._get("kpi_history")
+        return data if data else []
+    
     def get_dashboard_stats(self):
         return {'total_employees': 48, 'open_positions': 5, 'new_candidates': 0, 'avg_performance': 85.0}
