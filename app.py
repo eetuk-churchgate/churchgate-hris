@@ -1514,27 +1514,27 @@ def performance_okrs():
             if a.get('hod_scores'):
                     st.success("✅ HOD review complete")
                     if not a.get('acceptance'):
-                    st.markdown("### 🔍 HOD Review Pending Your Acceptance")
-                    st.markdown(f"**HOD Comments:** {a.get('hod_comments', 'N/A')}")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("✅ Accept HOD Review", use_container_width=True):
-                            st.session_state.self_assessments[user_name]['acceptance'] = 'Accepted'
-                            log_audit('Appraisal Accepted', f'{user_name} accepted HOD review')
-                            st.success("✅ Appraisal accepted! Cycle complete.")
-                            st.balloons()
-                            st.rerun()
-                    with c2:
-                        if st.button("❌ Reject - Request Re-review", use_container_width=True):
-                            st.session_state.self_assessments[user_name]['acceptance'] = 'Rejected'
-                            st.session_state.self_assessments[user_name]['status'] = 'Revision Requested'
-                            log_audit('Appraisal Rejected', f'{user_name} rejected HOD review - escalated')
-                            st.warning("⚠️ Rejected. Escalated to HOD and Sr. Management.")
-                            st.rerun()
-                elif a.get('acceptance') == 'Accepted':
-                    st.success("🎉 Appraisal Complete! Cycle closed.")
-                elif a.get('acceptance') == 'Rejected':
-                    st.warning("⚠️ Under review by Sr. Management.")
+                        st.markdown("### 🔍 HOD Review Pending Your Acceptance")
+                        st.markdown(f"**HOD Comments:** {a.get('hod_comments', 'N/A')}")
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("✅ Accept HOD Review", use_container_width=True):
+                                st.session_state.self_assessments[user_name]['acceptance'] = 'Accepted'
+                                log_audit('Appraisal Accepted', f'{user_name} accepted HOD review')
+                                st.success("✅ Appraisal accepted! Cycle complete.")
+                                st.balloons()
+                                st.rerun()
+                        with c2:
+                            if st.button("❌ Reject - Request Re-review", use_container_width=True):
+                                st.session_state.self_assessments[user_name]['acceptance'] = 'Rejected'
+                                st.session_state.self_assessments[user_name]['status'] = 'Revision Requested'
+                                log_audit('Appraisal Rejected', f'{user_name} rejected HOD review - escalated')
+                                st.warning("⚠️ Rejected. Escalated to HOD and Sr. Management.")
+                                st.rerun()
+                    elif a.get('acceptance') == 'Accepted':
+                        st.success("🎉 Appraisal Complete! Cycle closed.")
+                    elif a.get('acceptance') == 'Rejected':
+                        st.warning("⚠️ Under review by Sr. Management.")
     
     # ============ TAB 4: HOD REVIEW (UPDATED) ============
     with tab4:
