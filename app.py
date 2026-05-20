@@ -1106,25 +1106,25 @@ def performance_okrs():
         st.session_state.appraisal_locked = False
     if 'self_assessments' not in st.session_state:
         st.session_state.self_assessments = {}
-        try:
-            all_appraisals = db.get_all_appraisals()
-            for a in all_appraisals:
-                st.session_state.self_assessments[a['user_name']] = {
-                    'scores': a.get('scores', {}),
-                    'comments': a.get('comments', ''),
-                    'pillar_comments': a.get('pillar_comments', {}),
-                    'date': a.get('submitted_date', ''),
-                    'status': a.get('status', 'Submitted'),
-                    'department': a.get('department', ''),
-                    'email': a.get('user_email', ''),
-                    'hod_scores': a.get('hod_scores'),
-                    'hod_comments': a.get('hod_comments'),
-                    'hod_pillar_comments': a.get('hod_pillar_comments'),
-                    'acceptance': a.get('acceptance'),
-                    'sr_decision': a.get('sr_decision')
-                }
-        except:
-            pass
+    try:
+        all_appraisals = db.get_all_appraisals()
+        for a in all_appraisals:
+            st.session_state.self_assessments[a['user_name']] = {
+                'scores': a.get('scores', {}),
+                'comments': a.get('comments', ''),
+                'pillar_comments': a.get('pillar_comments', {}),
+                'date': a.get('submitted_date', ''),
+                'status': a.get('status', 'Submitted'),
+                'department': a.get('department', ''),
+                'email': a.get('user_email', ''),
+                'hod_scores': a.get('hod_scores'),
+                'hod_comments': a.get('hod_comments'),
+                'hod_pillar_comments': a.get('hod_pillar_comments'),
+                'acceptance': a.get('acceptance'),
+                'sr_decision': a.get('sr_decision')
+            }
+    except:
+        pass
     if 'kpi_history' not in st.session_state:
         st.session_state.kpi_history = []
     if 'confirm_submit' not in st.session_state:
