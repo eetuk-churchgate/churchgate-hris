@@ -1577,7 +1577,12 @@ def performance_okrs():
                         for pk in pillar_keys:
                             pillar_name = pk
                             st.markdown(f"**{pillar_name}**")
-                            for score_key, staff_score in sorted(assessment['scores'].items()):
+                            import re
+                        def natural_sort_key(item):
+                            key = item[0]
+                            parts = re.split(r'(\d+)', key)
+                            return [int(p) if p.isdigit() else p for p in parts]
+                        for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key):
                                 if score_key.startswith(pillar_name):
                                     c1, c2 = st.columns(2)
                                     with c1:
