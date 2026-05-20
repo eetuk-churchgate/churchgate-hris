@@ -158,5 +158,28 @@ class DatabaseManager:
     def get_audit_trail(self):
         return self._get("audit_trail")
 
+    def archive_appraisal(self, user_name, user_email, department, cycle_name, final_status, scores, hod_scores, comments, hod_comments, completed_date):
+        self._post("appraisal_history", {
+            "user_name": user_name, "user_email": user_email, "department": department,
+            "cycle_name": cycle_name, "final_status": final_status,
+            "scores": json.dumps(scores) if scores else "{}",
+            "hod_scores": json.dumps(hod_scores) if hod_scores else "{}",
+            "comments": comments or "",
+            "hod_comments": hod_comments or "",
+            "completed_date": completed_date or ""
+        })
+    
+    def get_appraisal_history(self, user_name=None):
+        if user_name:
+            return self._get("appraisal_history", {"user_name": user_name})
+        return self._get("appraisal_history")
+    
+    def send_status_email(self, to_email, subject, message):
+        try:
+            email_service.send_email(to_email, subject, message)
+            return True
+        except:
+            return False
+
     def get_dashboard_stats(self):
         return {'total_employees': 48, 'open_positions': 5, 'new_candidates': 0, 'avg_performance': 85.0}
