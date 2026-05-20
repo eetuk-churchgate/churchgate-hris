@@ -1422,10 +1422,15 @@ def performance_okrs():
                 st.info("Provide justification for each pillar. Attach evidence if available.")
                 
                 if user_dept in performance_data:
+                    # File uploaders OUTSIDE form
+                    pillar_evidence = {}
+                    for pillar_name, pillar_data in performance_data[user_dept].items():
+                        if pillar_data['kpis']:
+                            pillar_evidence[pillar_name] = st.file_uploader(f"Attach Evidence for {pillar_name} (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'xlsx'], key=f"pe_{pillar_name}")
+                    
                     with st.form("self_assessment_form"):
                         scores = {}
                         pillar_comments = {}
-                        pillar_evidence = {}
                         
                         for pillar_name, pillar_data in performance_data[user_dept].items():
                             if pillar_data['kpis']:
@@ -1434,8 +1439,7 @@ def performance_okrs():
                                     score_key = f"{pillar_name}_{i}"
                                     scores[score_key] = st.slider(kpi['kpi'][:60], 0, 100, 50, key=f"sa_{user_name}_{pillar_name}_{i}")
                                 
-                                pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", placeholder=f"Why did you score yourself this way for {pillar_name}?", key=f"pc_{pillar_name}")
-                                pillar_evidence[pillar_name] = st.file_uploader(f"Attach Evidence for {pillar_name} (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'xlsx'], key=f"pe_{pillar_name}")
+                                pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", key=f"pc_{pillar_name}")
                                 st.markdown("---")
                         
                         overall_comments = st.text_area("Overall Comments *", placeholder="Summarize your overall performance...")
