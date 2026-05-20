@@ -1515,24 +1515,105 @@ def performance_okrs():
                     st.success("✅ HOD review complete")
                     if not a.get('acceptance'):
                         st.markdown("### 🔍 HOD Review Pending Your Acceptance")
+                        st.markdown("#### 📊 Side-by-Side Score Comparison")
+                        import re
+                        def natural_sort_key(item):
+                            key = item[0]
+                            parts = re.split(r'(\d+)', key)
+                            return [int(p) if p.isdigit() else p for p in parts]
+                        for score_key, staff_score in sorted(a['scores'].items(), key=natural_sort_key):
+                            hod_score = a['hod_scores'].get(score_key, 'N/A')
+                            c1, c2, c3 = st.columns([1, 1, 2])
+                            with c1:
+                                st.markdown(f"**You:** {staff_score}%")
+                            with c2:
+                                st.markdown(f"**HOD:** {hod_score}%")
+                            with c3:
+                                st.markdown(f"*{score_key}*")
+                        st.markdown("---")
+                        st.markdown(f"**Your Comments:** {a.get('comments', 'N/A')}")
                         st.markdown(f"**HOD Comments:** {a.get('hod_comments', 'N/A')}")
+                        st.markdown("---")
                         c1, c2 = st.columns(2)
                         with c1:
                             if st.button("✅ Accept HOD Review", use_container_width=True):
                                 st.session_state.self_assessments[user_name]['acceptance'] = 'Accepted'
+                                # Archive to history
+                                try:
+                                    db.archive_appraisal(user_name, user_email, user_dept,
+                                        st.session_state.appraisal_cycle_name, 'Accepted',
+                                        a['scores'], a['hod_scores'], a.get('comments', ''), a.get('hod_comments', ''),
+                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                except:
+                                    pass
+                                # Email notification
+                                try:
+                                    db.send_status_email(user_email, "Appraisal Accepted - Churchgate Group",
+                                        f"Dear {user_name},\n\nYour appraisal for {st.session_state.appraisal_cycle_name} has been accepted.\n\nFinal scores have been archived.\n\nLogin to view: https://churchgate-hris.streamlit.app")
+                                except:
+                                    pass
                                 log_audit('Appraisal Accepted', f'{user_name} accepted HOD review')
-                                st.success("✅ Appraisal accepted! Cycle complete.")
+                                st.success("✅ Appraisal accepted! Cycle complete. Certificate available in reports.")
                                 st.balloons()
                                 st.rerun()
                         with c2:
                             if st.button("❌ Reject - Request Re-review", use_container_width=True):
                                 st.session_state.self_assessments[user_name]['acceptance'] = 'Rejected'
                                 st.session_state.self_assessments[user_name]['status'] = 'Revision Requested'
+                                # Email HOD
+                                try:
+                                    db.send_status_email("hod@churchgate.com", f"Appraisal Rejected - {user_name}",
+                                        f"{user_name} has rejected the HOD review for {st.session_state.appraisal_cycle_name}.\n\nPlease review and take action.\n\nLogin: https://churchgate-hris.streamlit.app")
+                                except:
+                                    pass
                                 log_audit('Appraisal Rejected', f'{user_name} rejected HOD review - escalated')
                                 st.warning("⚠️ Rejected. Escalated to HOD and Sr. Management.")
                                 st.rerun()
                     elif a.get('acceptance') == 'Accepted':
                         st.success("🎉 Appraisal Complete! Cycle closed.")
+                        # Show final certificate download
+                        if st.button("📜 Download Appraisal Certificate (PDF)", use_container_width=True):
+                            try:
+                                import fpdf
+                                FPDF = fpdf.FPDF
+                                pdf = FPDF(orientation='P', unit='mm', format='A4')
+                                pdf.add_page()
+                                pdf.set_fill_color(55, 55, 55)
+                                pdf.rect(0, 0, 210, 35, 'F')
+                                pdf.set_fill_color(204, 0, 0)
+                                pdf.rect(0, 35, 210, 3, 'F')
+                                pdf.set_font('Helvetica', 'B', 20)
+                                pdf.set_text_color(255, 255, 255)
+                                pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
+                                pdf.set_font('Helvetica', 'B', 11)
+                                pdf.set_text_color(255, 255, 255)
+                                pdf.cell(0, 8, 'APPRAISAL COMPLETION CERTIFICATE', ln=True, align='C')
+                                pdf.ln(10)
+                                pdf.set_font('Helvetica', 'B', 14)
+                                pdf.set_text_color(38, 161, 105)
+                                pdf.cell(0, 10, 'APPRAISAL SUCCESSFULLY COMPLETED', ln=True, align='C')
+                                pdf.ln(5)
+                                pdf.set_font('Helvetica', '', 11)
+                                pdf.set_text_color(26, 26, 26)
+                                pdf.cell(0, 8, f'Employee: {user_name}', ln=True)
+                                pdf.cell(0, 8, f'Department: {user_dept}', ln=True)
+                                pdf.cell(0, 8, f'Cycle: {st.session_state.appraisal_cycle_name}', ln=True)
+                                pdf.cell(0, 8, f'Date: {now_wat.strftime("%Y-%m-%d %H:%M WAT")}', ln=True)
+                                pdf.ln(5)
+                                pdf.set_font('Helvetica', 'B', 9)
+                                pdf.set_text_color(26, 26, 26)
+                                pdf.cell(0, 8, 'Final Scores:', ln=True)
+                                for score_key, staff_score in sorted(a['scores'].items()):
+                                    hod_score = a['hod_scores'].get(score_key, 'N/A')
+                                    pdf.set_font('Helvetica', '', 8)
+                                    pdf.cell(0, 6, f'{score_key}: Staff={staff_score}% | HOD={hod_score}%', ln=True)
+                                pdf.set_y(-20)
+                                pdf.set_font('Helvetica', 'I', 7)
+                                pdf.set_text_color(150, 150, 150)
+                                pdf.cell(0, 10, 'Churchgate Group - Official Document | hr@churchgate.com', align='C')
+                                st.download_button("📥 Download Certificate", bytes(pdf.output()), f"{user_name}_certificate.pdf", "application/pdf")
+                            except:
+                                pass
                     elif a.get('acceptance') == 'Rejected':
                         st.warning("⚠️ Under review by Sr. Management.")
     
@@ -1695,6 +1776,19 @@ def performance_okrs():
                     st.markdown(f"- **{entry['timestamp']}**: {entry['action']} — {entry['details']} by {entry['user']}")
             else:
                 st.info("No audit entries yet.")
+        
+        # Appraisal History
+        st.markdown("---")
+        st.markdown("### 📜 Appraisal History")
+        try:
+            history = db.get_appraisal_history(user_name)
+            if history:
+                for h in history[-5:]:
+                    st.markdown(f"- **{h.get('cycle_name', 'N/A')}**: {h.get('final_status', 'N/A')} on {h.get('completed_date', 'N/A')}")
+            else:
+                st.info("No completed appraisals yet.")
+        except:
+            st.info("History loading...")
         
         # Appraisal Reports
         st.markdown("---")
