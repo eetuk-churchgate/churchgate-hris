@@ -1586,7 +1586,7 @@ def performance_okrs():
                                         hod_scores[score_key] = st.slider(f"HOD Score", 0, 100, staff_score, key=f"hod_{staff_name}_{score_key}")
                             
                             hod_pillar_comments[pillar_name] = st.text_area(f"HOD Justification for {pillar_name} *", key=f"hpc_{staff_name}_{pillar_name}")
-                            hod_pillar_evidence[pillar_name] = st.file_uploader(f"HOD Evidence for {pillar_name} (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'xlsx'], key=f"hpe_{staff_name}_{pillar_name}")
+                            
                             st.markdown("---")
                         
                         hod_overall = st.text_area(f"HOD Overall Comments for {staff_name} *", key=f"hod_com_{staff_name}")
