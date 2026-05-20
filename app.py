@@ -1667,7 +1667,7 @@ def performance_okrs():
                             with c1:
                                 st.markdown(f"Staff: {staff_score}%")
                             with c2:
-                                hod_scores[score_key] = st.slider(f"HOD Score", 0, 100, staff_score, key=f"hod_{staff_name}_{score_key}")
+                                hod_scores[score_key] = st.number_input(f"HOD Score", 0, 100, staff_score, key=f"hod_{staff_name}_{score_key}")
                         
                         st.markdown("---")
                         hod_overall = st.text_area(f"HOD Overall Comments for {staff_name} *", key=f"hod_com_{staff_name}")
@@ -2633,7 +2633,7 @@ def my_profile():
                 st.success("✅ Profile updated!")
 
 def main():
-    if st.session_state.user is None:
+    if 'user' not in st.session_state or st.session_state.user is None:
         login_section()
     else:
         page = sidebar_navigation()
