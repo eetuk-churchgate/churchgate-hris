@@ -1572,7 +1572,7 @@ def performance_okrs():
                     elif a.get('acceptance') == 'Accepted':
                         st.success("🎉 Appraisal Complete! Cycle closed.")
                         # Show final certificate download
-                        if st.button("📜 Download Appraisal Certificate (PDF)", use_container_width=True):
+                        if st.button("📜 Download Appraisal Certificate (PDF)", use_container_width=True, key=f"cert_{user_name}"):
                             try:
                                 import fpdf
                                 FPDF = fpdf.FPDF
