@@ -1512,8 +1512,8 @@ def performance_okrs():
             a = st.session_state.self_assessments[user_name]
             st.markdown(f"**Status:** {a['status']} | **Date:** {a['date']}")
             if a.get('hod_scores'):
-                st.success("✅ HOD review complete")
-                if a.get('acceptance') is None:
+                    st.success("✅ HOD review complete")
+                    if not a.get('acceptance'):
                     st.markdown("### 🔍 HOD Review Pending Your Acceptance")
                     st.markdown(f"**HOD Comments:** {a.get('hod_comments', 'N/A')}")
                     c1, c2 = st.columns(2)
@@ -1599,6 +1599,7 @@ def performance_okrs():
                                     st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores
                                     st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall
                                     st.session_state.self_assessments[staff_name]['hod_pillar_comments'] = hod_pillar_comments
+                                    st.session_state.self_assessments[staff_name]['acceptance'] = None
                                     log_audit('Appraisal Approved', f'{staff_name} approved by HOD {user_name}')
                                     st.success(f"✅ {staff_name} approved!")
                                     st.rerun()
