@@ -1451,7 +1451,6 @@ def performance_okrs():
                 st.info("Provide justification for each pillar. Attach evidence if available.")
                 
                 if user_dept in performance_data:
-                    # File uploaders OUTSIDE form
                     pillar_evidence = {}
                     for pillar_name, pillar_data in performance_data[user_dept].items():
                         if pillar_data['kpis']:
@@ -1482,7 +1481,6 @@ def performance_okrs():
                             if not scores or not overall_comments or not all_comments_filled:
                                 st.error("❌ All scores, pillar justifications, and overall comments are required!")
                             else:
-                                # Save to Supabase FIRST
                                 try:
                                     db.save_appraisal(user_name, user_email, user_dept, 
                                         st.session_state.appraisal_cycle_name, 'Submitted',
@@ -1490,20 +1488,18 @@ def performance_okrs():
                                         now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                                 except:
                                     pass
-                                # Then update session
                                 st.session_state.self_assessments[user_name] = {
                                     'scores': scores, 'comments': overall_comments,
                                     'pillar_comments': pillar_comments,
                                     'pillar_evidence': {k: v.name if v else None for k, v in pillar_evidence.items()},
                                     'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
                                     'status': 'Submitted', 'department': user_dept, 'email': user_email,
-                                    'hod_scores': None, 'hod_comments': None, 'acceptance': None
+                                    'hod_scores': None, 'hod_comments': None, 'acceptance': None,
+                                    'reject_count': 0
                                 }
                                 log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
                                 st.success("✅ Submitted! Saved to database. Awaiting HOD review.")
                                 st.balloons()
-                        with c2:
-                            st.markdown("")  # spacer
         else:
             st.info("⏳ Appraisal cycle not active.")
         
@@ -1512,133 +1508,136 @@ def performance_okrs():
             st.markdown("### 📋 Your Submission")
             a = st.session_state.self_assessments[user_name]
             st.markdown(f"**Status:** {a['status']} | **Date:** {a['date']}")
+            
             if a.get('hod_scores'):
-                    st.success("✅ HOD review complete")
-                    if not a.get('acceptance'):
-                        st.markdown("### 🔍 HOD Review Pending Your Acceptance")
-                        st.markdown("#### 📊 Side-by-Side Score Comparison")
-                        import re
-                        def natural_sort_key(item):
-                            key = item[0]
-                            parts = re.split(r'(\d+)', key)
-                            return [int(p) if p.isdigit() else p for p in parts]
-                        for score_key, staff_score in sorted(a['scores'].items(), key=natural_sort_key):
-                            hod_score = a['hod_scores'].get(score_key, 'N/A')
-                            c1, c2, c3 = st.columns([1, 1, 2])
-                            with c1:
-                                st.markdown(f"**You:** {staff_score}%")
-                            with c2:
-                                st.markdown(f"**HOD:** {hod_score}%")
-                            with c3:
-                                st.markdown(f"*{score_key}*")
-                        st.markdown("---")
-                        st.markdown(f"**Your Comments:** {a.get('comments', 'N/A')}")
-                        st.markdown(f"**HOD Comments:** {a.get('hod_comments', 'N/A')}")
-                        st.markdown("---")
-                        c1, c2 = st.columns(2)
+                st.success("✅ HOD review complete")
+                if not a.get('acceptance'):
+                    st.markdown("### 🔍 HOD Review Pending Your Acceptance")
+                    st.markdown("#### 📊 Side-by-Side Score Comparison")
+                    import re
+                    def natural_sort_key(item):
+                        key = item[0]
+                        parts = re.split(r'(\d+)', key)
+                        return [int(p) if p.isdigit() else p for p in parts]
+                    for score_key, staff_score in sorted(a['scores'].items(), key=natural_sort_key):
+                        hod_score = a['hod_scores'].get(score_key, 'N/A') if a['hod_scores'] else 'N/A'
+                        c1, c2, c3 = st.columns([1, 1, 2])
                         with c1:
-                            if st.button("✅ Accept HOD Review", use_container_width=True):
-                                st.session_state.self_assessments[user_name]['acceptance'] = 'Accepted'
-                                # Archive to history
-                                try:
-                                    db.archive_appraisal(user_name, user_email, user_dept,
-                                        st.session_state.appraisal_cycle_name, 'Accepted',
-                                        a['scores'], a['hod_scores'], a.get('comments', ''), a.get('hod_comments', ''),
-                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                                except:
-                                    pass
-                                # Email notification
-                                try:
-                                    db.send_status_email(user_email, "Appraisal Accepted - Churchgate Group",
-                                        f"Dear {user_name},\n\nYour appraisal for {st.session_state.appraisal_cycle_name} has been accepted.\n\nFinal scores have been archived.\n\nLogin to view: https://churchgate-hris.streamlit.app")
-                                except:
-                                    pass
-                                log_audit('Appraisal Accepted', f'{user_name} accepted HOD review')
-                                st.success("✅ Appraisal accepted! Cycle complete. Certificate available in reports.")
-                                st.balloons()
-                                st.rerun()
+                            st.markdown(f"**You:** {staff_score}%")
                         with c2:
-                            if st.button("❌ Reject - Request Re-review", use_container_width=True):
-                                st.session_state.self_assessments[user_name]['acceptance'] = 'Rejected'
-                                st.session_state.self_assessments[user_name]['status'] = 'Revision Requested'
-                                # Email HOD
-                                try:
-                                    db.send_status_email("hod@churchgate.com", f"Appraisal Rejected - {user_name}",
-                                        f"{user_name} has rejected the HOD review for {st.session_state.appraisal_cycle_name}.\n\nPlease review and take action.\n\nLogin: https://churchgate-hris.streamlit.app")
-                                except:
-                                    pass
-                                log_audit('Appraisal Rejected', f'{user_name} rejected HOD review - escalated')
-                                st.warning("⚠️ Rejected. Escalated to HOD and Sr. Management.")
-                                st.rerun()
-                    elif a.get('acceptance') == 'Accepted':
-                        st.success("🎉 Appraisal Complete! Cycle closed.")
-                        # Show final certificate download
-                        if st.button("📜 Download Appraisal Certificate (PDF)", use_container_width=True, key=f"cert_{user_name}"):
+                            st.markdown(f"**HOD:** {hod_score}%")
+                        with c3:
+                            st.markdown(f"*{score_key}*")
+                    st.markdown("---")
+                    st.markdown(f"**Your Comments:** {a.get('comments', 'N/A')}")
+                    st.markdown(f"**HOD Comments:** {a.get('hod_comments', 'N/A')}")
+                    
+                    if a.get('hod_pillar_comments'):
+                        st.markdown("**HOD Pillar Justifications:**")
+                        for pillar, comment in a['hod_pillar_comments'].items():
+                            st.markdown(f"- **{pillar}:** {comment}")
+                    
+                    st.markdown("---")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("✅ Accept HOD Review", use_container_width=True):
+                            st.session_state.self_assessments[user_name]['acceptance'] = 'Accepted'
                             try:
-                                import fpdf
-                                FPDF = fpdf.FPDF
-                                pdf = FPDF(orientation='P', unit='mm', format='A4')
-                                pdf.add_page()
-                                pdf.set_fill_color(55, 55, 55)
-                                pdf.rect(0, 0, 210, 35, 'F')
-                                pdf.set_fill_color(204, 0, 0)
-                                pdf.rect(0, 35, 210, 3, 'F')
-                                pdf.set_font('Helvetica', 'B', 20)
-                                pdf.set_text_color(255, 255, 255)
-                                pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
-                                pdf.set_font('Helvetica', 'B', 11)
-                                pdf.set_text_color(255, 255, 255)
-                                pdf.cell(0, 8, 'APPRAISAL COMPLETION CERTIFICATE', ln=True, align='C')
-                                pdf.ln(10)
-                                pdf.set_font('Helvetica', 'B', 14)
-                                pdf.set_text_color(38, 161, 105)
-                                pdf.cell(0, 10, 'APPRAISAL SUCCESSFULLY COMPLETED', ln=True, align='C')
-                                pdf.ln(5)
-                                pdf.set_font('Helvetica', '', 11)
-                                pdf.set_text_color(26, 26, 26)
-                                pdf.cell(0, 8, f'Employee: {user_name}', ln=True)
-                                pdf.cell(0, 8, f'Department: {user_dept}', ln=True)
-                                pdf.cell(0, 8, f'Cycle: {st.session_state.appraisal_cycle_name}', ln=True)
-                                pdf.cell(0, 8, f'Date: {now_wat.strftime("%Y-%m-%d %H:%M WAT")}', ln=True)
-                                pdf.ln(5)
-                                pdf.set_font('Helvetica', 'B', 9)
-                                pdf.set_text_color(26, 26, 26)
-                                pdf.cell(0, 8, 'Final Scores:', ln=True)
-                                for score_key, staff_score in sorted(a['scores'].items()):
-                                    hod_score = a['hod_scores'].get(score_key, 'N/A')
-                                    pdf.set_font('Helvetica', '', 8)
-                                    pdf.cell(0, 6, f'{score_key}: Staff={staff_score}% | HOD={hod_score}%', ln=True)
-                                pdf.set_y(-20)
-                                pdf.set_font('Helvetica', 'I', 7)
-                                pdf.set_text_color(150, 150, 150)
-                                pdf.cell(0, 10, 'Churchgate Group - Official Document | hr@churchgate.com', align='C')
-                                st.download_button("📥 Download Certificate", bytes(pdf.output()), f"{user_name}_certificate.pdf", "application/pdf")
+                                db.archive_appraisal(user_name, user_email, user_dept,
+                                    st.session_state.appraisal_cycle_name, 'Accepted',
+                                    a['scores'], a['hod_scores'], a.get('comments', ''), a.get('hod_comments', ''),
+                                    now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                             except:
                                 pass
-                    elif a.get('acceptance') == 'Rejected':
+                            log_audit('Appraisal Accepted', f'{user_name} accepted HOD review')
+                            st.success("✅ Appraisal accepted! Cycle complete. Certificate available below.")
+                            st.balloons()
+                            st.rerun()
+                    with c2:
+                        if st.button("❌ Reject - Request Re-review", use_container_width=True):
+                            st.session_state.self_assessments[user_name]['acceptance'] = 'Rejected'
+                            st.session_state.self_assessments[user_name]['status'] = 'Awaiting HOD Re-review'
+                            st.session_state.self_assessments[user_name]['reject_count'] = a.get('reject_count', 0) + 1
+                            log_audit('Appraisal Rejected', f'{user_name} rejected - sent back to HOD')
+                            st.warning("⚠️ Rejected. Sent back to HOD for re-review.")
+                            st.rerun()
+                elif a.get('acceptance') == 'Accepted':
+                    st.success("🎉 Appraisal Complete! Cycle closed.")
+                    if st.button("📜 Download Appraisal Certificate (PDF)", use_container_width=True, key=f"cert_{user_name}"):
+                        try:
+                            import fpdf
+                            FPDF = fpdf.FPDF
+                            pdf = FPDF(orientation='P', unit='mm', format='A4')
+                            pdf.add_page()
+                            pdf.set_fill_color(55, 55, 55)
+                            pdf.rect(0, 0, 210, 35, 'F')
+                            pdf.set_fill_color(204, 0, 0)
+                            pdf.rect(0, 35, 210, 3, 'F')
+                            pdf.set_font('Helvetica', 'B', 20)
+                            pdf.set_text_color(255, 255, 255)
+                            pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
+                            pdf.set_font('Helvetica', 'B', 11)
+                            pdf.set_text_color(255, 255, 255)
+                            pdf.cell(0, 8, 'APPRAISAL COMPLETION CERTIFICATE', ln=True, align='C')
+                            pdf.ln(10)
+                            pdf.set_font('Helvetica', 'B', 14)
+                            pdf.set_text_color(38, 161, 105)
+                            pdf.cell(0, 10, 'APPRAISAL SUCCESSFULLY COMPLETED', ln=True, align='C')
+                            pdf.ln(5)
+                            pdf.set_font('Helvetica', '', 11)
+                            pdf.set_text_color(26, 26, 26)
+                            pdf.cell(0, 8, f'Employee: {user_name}', ln=True)
+                            pdf.cell(0, 8, f'Department: {user_dept}', ln=True)
+                            pdf.cell(0, 8, f'Cycle: {st.session_state.appraisal_cycle_name}', ln=True)
+                            pdf.cell(0, 8, f'Date: {now_wat.strftime("%Y-%m-%d %H:%M WAT")}', ln=True)
+                            pdf.ln(5)
+                            pdf.set_font('Helvetica', 'B', 9)
+                            pdf.cell(0, 8, 'Final Scores:', ln=True)
+                            for score_key, staff_score in sorted(a['scores'].items()):
+                                hod_score = a['hod_scores'].get(score_key, 'N/A') if a['hod_scores'] else 'N/A'
+                                pdf.set_font('Helvetica', '', 8)
+                                pdf.cell(0, 6, f'{score_key}: Staff={staff_score}% | HOD={hod_score}%', ln=True)
+                            pdf.set_y(-20)
+                            pdf.set_font('Helvetica', 'I', 7)
+                            pdf.set_text_color(150, 150, 150)
+                            pdf.cell(0, 10, 'Churchgate Group - Official Document | hr@churchgate.com', align='C')
+                            st.download_button("📥 Download Certificate", bytes(pdf.output()), f"{user_name}_certificate.pdf", "application/pdf")
+                        except:
+                            pass
+                elif a.get('acceptance') == 'Rejected':
+                    if a.get('status') == 'Awaiting HOD Re-review':
+                        st.warning("⚠️ Awaiting HOD re-review.")
+                    else:
                         st.warning("⚠️ Under review by Sr. Management.")
     
-    # ============ TAB 4: HOD REVIEW (UPDATED) ============
     with tab4:
         st.subheader("👔 HOD Review & Approval")
         
         if is_hod:
             st.markdown("### 📊 Cycle Status")
             submitted_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Submitted'])
+            re_review_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Awaiting HOD Re-review'])
             approved_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Approved'])
-            escalated_count = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected'])
+            escalated_count = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected' and v.get('status') != 'Awaiting HOD Re-review'])
             
-            c1, c2, c3 = st.columns(3)
+            c1, c2, c3, c4 = st.columns(4)
             c1.metric("Submitted", submitted_count)
-            c2.metric("Approved", approved_count)
-            c3.metric("Escalated", escalated_count)
+            c2.metric("Re-Review", re_review_count)
+            c3.metric("Approved", approved_count)
+            c4.metric("Escalated", escalated_count)
             
             st.markdown("---")
-            submitted = {k: v for k, v in st.session_state.self_assessments.items() if v.get('department') == user_dept and v['status'] in ['Submitted', 'Revision Requested']}
+            submitted = {k: v for k, v in st.session_state.self_assessments.items() if v.get('department') == user_dept and v['status'] in ['Submitted', 'Awaiting HOD Re-review']}
             
             if submitted:
                 for staff_name, assessment in submitted.items():
-                    with st.expander(f"📋 {staff_name} — {assessment['date']} — {assessment['status']}", expanded=False):
+                    is_re_review = assessment.get('status') == 'Awaiting HOD Re-review'
+                    expander_title = f"{'🔄 RE-REVIEW: ' if is_re_review else '📋 '}{staff_name} — {assessment['date']} — {assessment['status']}"
+                    
+                    with st.expander(expander_title, expanded=is_re_review):
+                        if is_re_review:
+                            st.warning(f"⚠️ {staff_name} has rejected your initial review (Rejection #{assessment.get('reject_count', 1)}). Please re-review.")
+                        
                         st.markdown(f"**Overall Comments:** {assessment.get('comments', 'N/A')}")
                         
                         if assessment.get('pillar_comments'):
@@ -1646,17 +1645,24 @@ def performance_okrs():
                             for pillar, comment in sorted(assessment['pillar_comments'].items()):
                                 st.markdown(f"- **{pillar}:** {comment}")
                         
+                        # Show previous HOD scores if re-review
+                        if is_re_review and assessment.get('hod_scores'):
+                            st.markdown("---")
+                            st.markdown("**📋 Your Previous Scores (for reference):**")
+                            import re
+                            def natural_sort_key(item):
+                                key = item[0]
+                                parts = re.split(r'(\d+)', key)
+                                return [int(p) if p.isdigit() else p for p in parts]
+                            for score_key, prev_hod_score in sorted(assessment['hod_scores'].items(), key=natural_sort_key):
+                                staff_score = assessment['scores'].get(score_key, 'N/A')
+                                st.markdown(f"- {score_key}: Staff={staff_score}% / Your Previous={prev_hod_score}%")
+                        
                         st.markdown("---")
                         st.markdown("### Side-by-Side Review")
                         
                         hod_scores = {}
                         hod_pillar_comments = {}
-                        
-                        import re
-                        def natural_sort_key(item):
-                            key = item[0]
-                            parts = re.split(r'(\d+)', key)
-                            return [int(p) if p.isdigit() else p for p in parts]
                         
                         for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key):
                             pillar_name = '_'.join(score_key.split('_')[:2])
@@ -1664,62 +1670,160 @@ def performance_okrs():
                                 st.markdown(f"**{pillar_name}**")
                                 hod_pillar_comments[pillar_name] = st.text_area(f"HOD Justification for {pillar_name} *", key=f"hpc_{staff_name}_{pillar_name}")
                             
+                            # Pre-fill with previous HOD score if re-review
+                            default_hod = assessment.get('hod_scores', {}).get(score_key, staff_score) if is_re_review else staff_score
                             c1, c2 = st.columns(2)
                             with c1:
                                 st.markdown(f"Staff: {staff_score}%")
                             with c2:
-                                hod_scores[score_key] = st.number_input(f"HOD Score", 0, 100, staff_score, key=f"hod_{staff_name}_{score_key}")
+                                hod_scores[score_key] = st.number_input(f"HOD Score", 0, 100, int(default_hod) if default_hod else staff_score, key=f"hod_{staff_name}_{score_key}")
                         
                         st.markdown("---")
                         hod_overall = st.text_area(f"HOD Overall Comments for {staff_name} *", key=f"hod_com_{staff_name}")
                         
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            if st.button(f"✅ Approve {staff_name}", key=f"app_{staff_name}"):
-                                if all(hod_pillar_comments.values()) and hod_overall:
+                        if is_re_review:
+                            c1, c2, c3 = st.columns(3)
+                            with c1:
+                                if st.button(f"🔄 Revise & Resubmit to {staff_name}", key=f"revise_{staff_name}"):
+                                    if all(hod_pillar_comments.values()) and hod_overall:
+                                        st.session_state.self_assessments[staff_name]['status'] = 'Approved'
+                                        st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores
+                                        st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall
+                                        st.session_state.self_assessments[staff_name]['hod_pillar_comments'] = hod_pillar_comments
+                                        st.session_state.self_assessments[staff_name]['acceptance'] = None
+                                        log_audit('HOD Revised', f'{staff_name} scores revised by HOD')
+                                        try:
+                                            db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
+                                                st.session_state.appraisal_cycle_name, 'Approved',
+                                                assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}),
+                                                hod_scores, hod_overall, hod_pillar_comments, None, None,
+                                                assessment.get('date', ''))
+                                        except:
+                                            pass
+                                        st.success(f"✅ Scores revised! Sent back to {staff_name} for acceptance.")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ All justifications required!")
+                            with c2:
+                                if st.button(f"✋ Stand Firm - Escalate to Sr. Mgmt", key=f"standfirm_{staff_name}"):
                                     st.session_state.self_assessments[staff_name]['status'] = 'Approved'
-                                    st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores
-                                    st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall
-                                    st.session_state.self_assessments[staff_name]['hod_pillar_comments'] = hod_pillar_comments
-                                    st.session_state.self_assessments[staff_name]['acceptance'] = None
-                                    log_audit('Appraisal Approved', f'{staff_name} approved by HOD {user_name}')
-                                    st.success(f"✅ {staff_name} approved!")
+                                    st.session_state.self_assessments[staff_name]['acceptance'] = 'Rejected'
+                                    st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores if hod_scores else assessment.get('hod_scores', {})
+                                    st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall if hod_overall else assessment.get('hod_comments', '')
+                                    st.session_state.self_assessments[staff_name]['hod_pillar_comments'] = hod_pillar_comments if hod_pillar_comments else assessment.get('hod_pillar_comments', {})
+                                    log_audit('HOD Stands Firm', f'{staff_name} escalated to Sr. Management after {assessment.get("reject_count", 1)} rejection(s)')
+                                    try:
+                                        db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
+                                            st.session_state.appraisal_cycle_name, 'Approved',
+                                            assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}),
+                                            assessment.get('hod_scores', {}), assessment.get('hod_comments', ''), assessment.get('hod_pillar_comments', {}),
+                                            'Rejected', None,
+                                            assessment.get('date', ''))
+                                    except:
+                                        pass
+                                    st.warning(f"✋ Standing firm. Escalated to Sr. Management.")
                                     st.rerun()
-                                else:
-                                    st.error("❌ All justifications required!")
-                        with c2:
-                            if st.button(f"🔄 Request Revision", key=f"rev_{staff_name}"):
-                                st.session_state.self_assessments[staff_name]['status'] = 'Revision Requested'
-                                log_audit('Revision Requested', f'Revision requested for {staff_name}')
-                                st.warning(f"🔄 Revision requested")
-                                st.rerun()
+                        else:
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                if st.button(f"✅ Approve {staff_name}", key=f"app_{staff_name}"):
+                                    if all(hod_pillar_comments.values()) and hod_overall:
+                                        st.session_state.self_assessments[staff_name]['status'] = 'Approved'
+                                        st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores
+                                        st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall
+                                        st.session_state.self_assessments[staff_name]['hod_pillar_comments'] = hod_pillar_comments
+                                        try:
+                                            db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
+                                                st.session_state.appraisal_cycle_name, 'Approved',
+                                                assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}),
+                                                hod_scores, hod_overall, hod_pillar_comments, None, None,
+                                                assessment.get('date', ''))
+                                        except:
+                                            pass
+                                        log_audit('Appraisal Approved', f'{staff_name} approved by HOD {user_name}')
+                                        st.success(f"✅ {staff_name} approved!")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ All justifications required!")
+                            with c2:
+                                if st.button(f"🔄 Request Revision", key=f"rev_{staff_name}"):
+                                    st.session_state.self_assessments[staff_name]['status'] = 'Revision Requested'
+                                    log_audit('Revision Requested', f'Revision requested for {staff_name}')
+                                    st.warning(f"🔄 Revision requested from {staff_name}")
+                                    st.rerun()
             else:
-                st.info("No pending assessments.")
+                st.info("No pending assessments for your team.")
         
         if is_sr_mgmt:
             st.markdown("---")
             st.markdown("### ⚖️ Escalated Appraisals (Final Committee)")
-            escalated = {k: v for k, v in st.session_state.self_assessments.items() if v.get('acceptance') == 'Rejected'}
+            escalated = {k: v for k, v in st.session_state.self_assessments.items() if v.get('acceptance') == 'Rejected' and v.get('status') != 'Awaiting HOD Re-review'}
             if escalated:
                 for staff_name, assessment in escalated.items():
-                    with st.expander(f"🚨 {staff_name} — Rejected", expanded=True):
-                        st.markdown(f"**Staff:** {assessment.get('comments', 'N/A')}")
-                        st.markdown(f"**HOD:** {assessment.get('hod_comments', 'N/A')}")
+                    with st.expander(f"🚨 {staff_name} — Escalated — {assessment.get('reject_count', 1)} rejection(s)", expanded=True):
+                        st.markdown(f"**Staff Comments:** {assessment.get('comments', 'N/A')}")
+                        st.markdown(f"**HOD Comments:** {assessment.get('hod_comments', 'N/A')}")
+                        st.markdown("---")
+                        st.markdown("#### 📊 Full Side-by-Side Score Comparison")
+                        import re
+                        def natural_sort_key_sr(item):
+                            key = item[0]
+                            parts = re.split(r'(\d+)', key)
+                            return [int(p) if p.isdigit() else p for p in parts]
+                        for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key_sr):
+                            hod_score = assessment.get('hod_scores', {}).get(score_key, 'N/A') if assessment.get('hod_scores') else 'N/A'
+                            c1, c2, c3 = st.columns([1, 1, 2])
+                            with c1:
+                                st.markdown(f"**Staff:** {staff_score}%")
+                            with c2:
+                                st.markdown(f"**HOD:** {hod_score}%")
+                            with c3:
+                                st.markdown(f"*{score_key}*")
+                        
+                        # Show pillar justifications from both sides
+                        if assessment.get('pillar_comments') or assessment.get('hod_pillar_comments'):
+                            st.markdown("---")
+                            st.markdown("#### 💬 Justifications Comparison")
+                            for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                                staff_just = assessment.get('pillar_comments', {}).get(pillar, 'N/A')
+                                hod_just = assessment.get('hod_pillar_comments', {}).get(pillar, 'N/A') if assessment.get('hod_pillar_comments') else 'N/A'
+                                if staff_just != 'N/A' or hod_just != 'N/A':
+                                    st.markdown(f"**{pillar}**")
+                                    st.markdown(f"- Staff: {staff_just}")
+                                    st.markdown(f"- HOD: {hod_just}")
+                        
+                        st.markdown("---")
                         c1, c2 = st.columns(2)
                         with c1:
-                            if st.button(f"✅ Uphold HOD - {staff_name}", key=f"up_{staff_name}"):
+                            if st.button(f"✅ Uphold HOD Decision - {staff_name}", key=f"up_{staff_name}"):
                                 st.session_state.self_assessments[staff_name]['acceptance'] = 'Accepted'
                                 st.session_state.self_assessments[staff_name]['sr_decision'] = 'HOD Upheld'
-                                log_audit('Sr Mgmt', f'HOD upheld for {staff_name}')
-                                st.success(f"✅ Upheld")
+                                log_audit('Sr Mgmt Decision', f'HOD upheld for {staff_name}')
+                                try:
+                                    db.archive_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
+                                        st.session_state.appraisal_cycle_name, 'Accepted - HOD Upheld',
+                                        assessment['scores'], assessment.get('hod_scores', {}), 
+                                        assessment.get('comments', ''), assessment.get('hod_comments', ''),
+                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                except:
+                                    pass
+                                st.success(f"✅ HOD decision upheld. Appraisal complete.")
                                 st.rerun()
                         with c2:
-                            if st.button(f"🔄 Overturn - {staff_name}", key=f"ov_{staff_name}"):
+                            if st.button(f"🔄 Overturn - Favor {staff_name}", key=f"ov_{staff_name}"):
                                 st.session_state.self_assessments[staff_name]['acceptance'] = 'Accepted'
                                 st.session_state.self_assessments[staff_name]['hod_scores'] = assessment['scores']
-                                st.session_state.self_assessments[staff_name]['sr_decision'] = 'Overturned'
-                                log_audit('Sr Mgmt', f'Overturned for {staff_name}')
-                                st.success(f"🔄 Overturned")
+                                st.session_state.self_assessments[staff_name]['sr_decision'] = 'Overturned in Favor of Staff'
+                                log_audit('Sr Mgmt Overturn', f'HOD overturned for {staff_name}')
+                                try:
+                                    db.archive_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
+                                        st.session_state.appraisal_cycle_name, 'Accepted - Overturned',
+                                        assessment['scores'], assessment['scores'],
+                                        assessment.get('comments', ''), assessment.get('hod_comments', ''),
+                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                except:
+                                    pass
+                                st.success(f"🔄 Decision overturned in favor of {staff_name}. Appraisal complete.")
                                 st.rerun()
             else:
                 st.info("No escalated appraisals.")
