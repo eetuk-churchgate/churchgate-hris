@@ -1577,7 +1577,7 @@ def performance_okrs():
                         for pk in pillar_keys:
                             pillar_name = pk
                             st.markdown(f"**{pillar_name}**")
-                            for score_key, staff_score in assessment['scores'].items():
+                            for score_key, staff_score in sorted(assessment['scores'].items()):
                                 if score_key.startswith(pillar_name):
                                     c1, c2 = st.columns(2)
                                     with c1:
