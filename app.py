@@ -1446,29 +1446,33 @@ def performance_okrs():
                         
                         c1, c2 = st.columns(2)
                         with c1:
-                            if st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True):
-                                all_comments_filled = all(pillar_comments.values())
-                                if scores and overall_comments and all_comments_filled:
-                                    st.session_state.self_assessments[user_name] = {
-                                        'scores': scores, 'comments': overall_comments,
-                                        'pillar_comments': pillar_comments,
-                                        'pillar_evidence': {k: v.name if v else None for k, v in pillar_evidence.items()},
-                                        'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
-                                        'status': 'Submitted', 'department': user_dept, 'email': user_email,
-                                        'hod_scores': None, 'hod_comments': None, 'acceptance': None
-                                    }
-                                    try:
-                                        db.save_appraisal(user_name, user_email, user_dept, 
-                                            st.session_state.appraisal_cycle_name, 'Submitted',
-                                            scores, overall_comments, pillar_comments, None, None, None, None, None,
-                                            now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                                    except:
-                                        pass
-                                    log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
-                                    st.success("✅ Submitted! Awaiting HOD review. HOD has been notified.")
-                                    st.balloons()
-                                else:
-                                    st.error("❌ All scores, pillar justifications, and overall comments are required!")
+                            submitted = st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True)
+                        
+                        if submitted:
+                            all_comments_filled = all(pillar_comments.values())
+                            if not scores or not overall_comments or not all_comments_filled:
+                                st.error("❌ All scores, pillar justifications, and overall comments are required!")
+                            else:
+                                # Save to Supabase FIRST
+                                try:
+                                    db.save_appraisal(user_name, user_email, user_dept, 
+                                        st.session_state.appraisal_cycle_name, 'Submitted',
+                                        scores, overall_comments, pillar_comments, None, None, None, None, None,
+                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                except:
+                                    pass
+                                # Then update session
+                                st.session_state.self_assessments[user_name] = {
+                                    'scores': scores, 'comments': overall_comments,
+                                    'pillar_comments': pillar_comments,
+                                    'pillar_evidence': {k: v.name if v else None for k, v in pillar_evidence.items()},
+                                    'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
+                                    'status': 'Submitted', 'department': user_dept, 'email': user_email,
+                                    'hod_scores': None, 'hod_comments': None, 'acceptance': None
+                                }
+                                log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
+                                st.success("✅ Submitted! Saved to database. Awaiting HOD review.")
+                                st.balloons()
                         with c2:
                             st.markdown("")  # spacer
         else:
