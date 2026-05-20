@@ -1559,41 +1559,36 @@ def performance_okrs():
                     with st.expander(f"📋 {staff_name} — {assessment['date']} — {assessment['status']}", expanded=False):
                         st.markdown(f"**Overall Comments:** {assessment.get('comments', 'N/A')}")
                         
-                        # Show per-pillar staff comments
                         if assessment.get('pillar_comments'):
                             st.markdown("**Staff Justifications by Pillar:**")
-                            for pillar, comment in assessment['pillar_comments'].items():
+                            for pillar, comment in sorted(assessment['pillar_comments'].items()):
                                 st.markdown(f"- **{pillar}:** {comment}")
                         
                         st.markdown("---")
                         st.markdown("### Side-by-Side Review")
-                        st.markdown("*Provide your HOD score and justification for each pillar.*")
                         
                         hod_scores = {}
                         hod_pillar_comments = {}
-                        hod_pillar_evidence = {}
                         
-                        pillar_keys = list(set(['_'.join(k.split('_')[:2]) for k in assessment['scores'].keys()]))
-                        for pk in pillar_keys:
-                            pillar_name = pk
-                            st.markdown(f"**{pillar_name}**")
-                            import re
+                        import re
                         def natural_sort_key(item):
                             key = item[0]
                             parts = re.split(r'(\d+)', key)
                             return [int(p) if p.isdigit() else p for p in parts]
-                        for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key):
-                                if score_key.startswith(pillar_name):
-                                    c1, c2 = st.columns(2)
-                                    with c1:
-                                        st.markdown(f"Staff: {staff_score}%")
-                                    with c2:
-                                        hod_scores[score_key] = st.slider(f"HOD Score", 0, 100, staff_score, key=f"hod_{staff_name}_{score_key}")
-                            
-                            hod_pillar_comments[pillar_name] = st.text_area(f"HOD Justification for {pillar_name} *", key=f"hpc_{staff_name}_{pillar_name}")
-                            
-                            st.markdown("---")
                         
+                        for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key):
+                            pillar_name = '_'.join(score_key.split('_')[:2])
+                            if pillar_name not in hod_pillar_comments:
+                                st.markdown(f"**{pillar_name}**")
+                                hod_pillar_comments[pillar_name] = st.text_area(f"HOD Justification for {pillar_name} *", key=f"hpc_{staff_name}_{pillar_name}")
+                            
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.markdown(f"Staff: {staff_score}%")
+                            with c2:
+                                hod_scores[score_key] = st.slider(f"HOD Score", 0, 100, staff_score, key=f"hod_{staff_name}_{score_key}")
+                        
+                        st.markdown("---")
                         hod_overall = st.text_area(f"HOD Overall Comments for {staff_name} *", key=f"hod_com_{staff_name}")
                         
                         c1, c2 = st.columns(2)
@@ -1605,58 +1600,49 @@ def performance_okrs():
                                     st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall
                                     st.session_state.self_assessments[staff_name]['hod_pillar_comments'] = hod_pillar_comments
                                     log_audit('Appraisal Approved', f'{staff_name} approved by HOD {user_name}')
-                                    st.success(f"✅ {staff_name} approved! Staff has been notified.")
+                                    st.success(f"✅ {staff_name} approved!")
                                     st.rerun()
                                 else:
-                                    st.error("❌ All pillar justifications and overall comments required!")
+                                    st.error("❌ All justifications required!")
                         with c2:
                             if st.button(f"🔄 Request Revision", key=f"rev_{staff_name}"):
                                 st.session_state.self_assessments[staff_name]['status'] = 'Revision Requested'
                                 log_audit('Revision Requested', f'Revision requested for {staff_name}')
-                                st.warning(f"🔄 Revision requested from {staff_name}")
+                                st.warning(f"🔄 Revision requested")
                                 st.rerun()
             else:
-                st.info("No pending assessments for your team.")
+                st.info("No pending assessments.")
         
-        # Sr. Management Escalation View
         if is_sr_mgmt:
             st.markdown("---")
             st.markdown("### ⚖️ Escalated Appraisals (Final Committee)")
             escalated = {k: v for k, v in st.session_state.self_assessments.items() if v.get('acceptance') == 'Rejected'}
             if escalated:
                 for staff_name, assessment in escalated.items():
-                    with st.expander(f"🚨 {staff_name} — Rejected HOD Review — {assessment['date']}", expanded=True):
-                        st.markdown(f"**Staff Comments:** {assessment.get('comments', 'N/A')}")
-                        st.markdown(f"**HOD Comments:** {assessment.get('hod_comments', 'N/A')}")
-                        st.markdown("**Staff Scores:**")
-                        for k, v in assessment['scores'].items():
-                            st.markdown(f"- {k}: {v}%")
-                        st.markdown("**HOD Scores:**")
-                        for k, v in assessment.get('hod_scores', {}).items():
-                            st.markdown(f"- {k}: {v}%")
-                        
+                    with st.expander(f"🚨 {staff_name} — Rejected", expanded=True):
+                        st.markdown(f"**Staff:** {assessment.get('comments', 'N/A')}")
+                        st.markdown(f"**HOD:** {assessment.get('hod_comments', 'N/A')}")
                         c1, c2 = st.columns(2)
                         with c1:
-                            if st.button(f"✅ Uphold HOD Decision - {staff_name}", key=f"up_{staff_name}"):
+                            if st.button(f"✅ Uphold HOD - {staff_name}", key=f"up_{staff_name}"):
                                 st.session_state.self_assessments[staff_name]['acceptance'] = 'Accepted'
                                 st.session_state.self_assessments[staff_name]['sr_decision'] = 'HOD Upheld'
-                                log_audit('Sr Mgmt Decision', f'HOD decision upheld for {staff_name}')
-                                st.success(f"✅ HOD decision upheld for {staff_name}")
+                                log_audit('Sr Mgmt', f'HOD upheld for {staff_name}')
+                                st.success(f"✅ Upheld")
                                 st.rerun()
                         with c2:
-                            if st.button(f"🔄 Overturn - Favor Staff - {staff_name}", key=f"ov_{staff_name}"):
+                            if st.button(f"🔄 Overturn - {staff_name}", key=f"ov_{staff_name}"):
                                 st.session_state.self_assessments[staff_name]['acceptance'] = 'Accepted'
                                 st.session_state.self_assessments[staff_name]['hod_scores'] = assessment['scores']
-                                st.session_state.self_assessments[staff_name]['sr_decision'] = 'Overturned in favor of Staff'
-                                log_audit('Sr Mgmt Overturn', f'HOD decision overturned for {staff_name}')
-                                st.success(f"🔄 Decision overturned in favor of {staff_name}")
+                                st.session_state.self_assessments[staff_name]['sr_decision'] = 'Overturned'
+                                log_audit('Sr Mgmt', f'Overturned for {staff_name}')
+                                st.success(f"🔄 Overturned")
                                 st.rerun()
             else:
                 st.info("No escalated appraisals.")
         elif not is_hod:
             st.info("HOD Review section is for Managers, HODs, Admin, and Senior Management.")
     
-    # ============ TAB 5: DASHBOARD (UPDATED) ============
     with tab5:
         st.subheader("📊 My Performance Dashboard")
         
