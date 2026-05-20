@@ -1106,12 +1106,40 @@ def performance_okrs():
         st.session_state.appraisal_locked = False
     if 'self_assessments' not in st.session_state:
         st.session_state.self_assessments = {}
+        try:
+            all_appraisals = db.get_all_appraisals()
+            for a in all_appraisals:
+                st.session_state.self_assessments[a['user_name']] = {
+                    'scores': a.get('scores', {}),
+                    'comments': a.get('comments', ''),
+                    'pillar_comments': a.get('pillar_comments', {}),
+                    'date': a.get('submitted_date', ''),
+                    'status': a.get('status', 'Submitted'),
+                    'department': a.get('department', ''),
+                    'email': a.get('user_email', ''),
+                    'hod_scores': a.get('hod_scores'),
+                    'hod_comments': a.get('hod_comments'),
+                    'hod_pillar_comments': a.get('hod_pillar_comments'),
+                    'acceptance': a.get('acceptance'),
+                    'sr_decision': a.get('sr_decision')
+                }
+        except:
+            pass
     if 'kpi_history' not in st.session_state:
         st.session_state.kpi_history = []
     if 'confirm_submit' not in st.session_state:
         st.session_state.confirm_submit = False
     if 'audit_trail' not in st.session_state:
         st.session_state.audit_trail = []
+        try:
+            db_audit = db.get_audit_trail()
+            for a in db_audit:
+                st.session_state.audit_trail.append({
+                    'action': a.get('action', ''), 'details': a.get('details', ''),
+                    'user': a.get('user_name', ''), 'timestamp': a.get('timestamp_text', '')
+                })
+        except:
+            pass
     
     def log_audit(action, details):
         entry = {'action': action, 'details': details, 'user': user_name, 'timestamp': now_wat.strftime('%Y-%m-%d %H:%M WAT')}
