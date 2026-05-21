@@ -1183,8 +1183,14 @@ def performance_okrs():
         if progress >= 85: return 'On Track', "#38a169"
         elif progress >= 65: return 'Near Target', "#d69e2e"
         else: return 'At Risk', "#CC0000"
+
+    import re
+    def natural_sort_key(item):
+        key = item[0]
+        parts = re.split(r'(\d+)', key)
+        return [int(p) if p.isdigit() else p for p in parts]
     
-    # ============ TAB 1: STRATEGIC PILLARS (unchanged) ============
+    # ============ TAB 1: STRATEGIC PILLARS ============ (unchanged) ============
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "📊 Dashboard"])
     
     with tab1:
@@ -1466,7 +1472,6 @@ def performance_okrs():
                                 for i, kpi in enumerate(pillar_data['kpis']):
                                     score_key = f"{pillar_name}_{i}"
                                     scores[score_key] = st.slider(kpi['kpi'][:60], 0, 100, 50, key=f"sa_{user_name}_{pillar_name}_{i}")
-                                
                                 pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", key=f"pc_{pillar_name}")
                                 st.markdown("---")
                         
@@ -1514,11 +1519,6 @@ def performance_okrs():
                 if not a.get('acceptance'):
                     st.markdown("### 🔍 HOD Review Pending Your Acceptance")
                     st.markdown("#### 📊 Side-by-Side Score Comparison")
-                    import re
-                    def natural_sort_key(item):
-                        key = item[0]
-                        parts = re.split(r'(\d+)', key)
-                        return [int(p) if p.isdigit() else p for p in parts]
                     for score_key, staff_score in sorted(a['scores'].items(), key=natural_sort_key):
                         hod_score = a['hod_scores'].get(score_key, 'N/A') if a['hod_scores'] else 'N/A'
                         c1, c2, c3 = st.columns([1, 1, 2])
@@ -1580,9 +1580,13 @@ def performance_okrs():
                             pdf.set_text_color(255, 255, 255)
                             pdf.cell(0, 8, 'APPRAISAL COMPLETION CERTIFICATE', ln=True, align='C')
                             pdf.ln(10)
+                            avg_score = sum(a['hod_scores'].values()) / len(a['hod_scores']) if a['hod_scores'] else 0
+                            if avg_score >= 85: rating = "GOLD"
+                            elif avg_score >= 70: rating = "SILVER"
+                            else: rating = "BRONZE"
                             pdf.set_font('Helvetica', 'B', 14)
                             pdf.set_text_color(38, 161, 105)
-                            pdf.cell(0, 10, 'APPRAISAL SUCCESSFULLY COMPLETED', ln=True, align='C')
+                            pdf.cell(0, 10, f'RATING: {rating} ({avg_score:.1f}%)', ln=True, align='C')
                             pdf.ln(5)
                             pdf.set_font('Helvetica', '', 11)
                             pdf.set_text_color(26, 26, 26)
@@ -1590,13 +1594,6 @@ def performance_okrs():
                             pdf.cell(0, 8, f'Department: {user_dept}', ln=True)
                             pdf.cell(0, 8, f'Cycle: {st.session_state.appraisal_cycle_name}', ln=True)
                             pdf.cell(0, 8, f'Date: {now_wat.strftime("%Y-%m-%d %H:%M WAT")}', ln=True)
-                            pdf.ln(5)
-                            pdf.set_font('Helvetica', 'B', 9)
-                            pdf.cell(0, 8, 'Final Scores:', ln=True)
-                            for score_key, staff_score in sorted(a['scores'].items()):
-                                hod_score = a['hod_scores'].get(score_key, 'N/A') if a['hod_scores'] else 'N/A'
-                                pdf.set_font('Helvetica', '', 8)
-                                pdf.cell(0, 6, f'{score_key}: Staff={staff_score}% | HOD={hod_score}%', ln=True)
                             pdf.set_y(-20)
                             pdf.set_font('Helvetica', 'I', 7)
                             pdf.set_text_color(150, 150, 150)
@@ -1645,15 +1642,9 @@ def performance_okrs():
                             for pillar, comment in sorted(assessment['pillar_comments'].items()):
                                 st.markdown(f"- **{pillar}:** {comment}")
                         
-                        # Show previous HOD scores if re-review
                         if is_re_review and assessment.get('hod_scores'):
                             st.markdown("---")
                             st.markdown("**📋 Your Previous Scores (for reference):**")
-                            import re
-                            def natural_sort_key(item):
-                                key = item[0]
-                                parts = re.split(r'(\d+)', key)
-                                return [int(p) if p.isdigit() else p for p in parts]
                             for score_key, prev_hod_score in sorted(assessment['hod_scores'].items(), key=natural_sort_key):
                                 staff_score = assessment['scores'].get(score_key, 'N/A')
                                 st.markdown(f"- {score_key}: Staff={staff_score}% / Your Previous={prev_hod_score}%")
@@ -1670,7 +1661,6 @@ def performance_okrs():
                                 st.markdown(f"**{pillar_name}**")
                                 hod_pillar_comments[pillar_name] = st.text_area(f"HOD Justification for {pillar_name} *", key=f"hpc_{staff_name}_{pillar_name}")
                             
-                            # Pre-fill with previous HOD score if re-review
                             default_hod = assessment.get('hod_scores', {}).get(score_key, staff_score) if is_re_review else staff_score
                             c1, c2 = st.columns(2)
                             with c1:
@@ -1684,7 +1674,7 @@ def performance_okrs():
                         if is_re_review:
                             c1, c2, c3 = st.columns(3)
                             with c1:
-                                if st.button(f"🔄 Revise & Resubmit to {staff_name}", key=f"revise_{staff_name}"):
+                                if st.button(f"🔄 Revise & Resubmit", key=f"revise_{staff_name}"):
                                     if all(hod_pillar_comments.values()) and hod_overall:
                                         st.session_state.self_assessments[staff_name]['status'] = 'Approved'
                                         st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores
@@ -1700,18 +1690,18 @@ def performance_okrs():
                                                 assessment.get('date', ''))
                                         except:
                                             pass
-                                        st.success(f"✅ Scores revised! Sent back to {staff_name} for acceptance.")
+                                        st.success(f"✅ Scores revised! Sent back to {staff_name}.")
                                         st.rerun()
                                     else:
                                         st.error("❌ All justifications required!")
                             with c2:
-                                if st.button(f"✋ Stand Firm - Escalate to Sr. Mgmt", key=f"standfirm_{staff_name}"):
+                                if st.button(f"✋ Stand Firm - Escalate", key=f"standfirm_{staff_name}"):
                                     st.session_state.self_assessments[staff_name]['status'] = 'Approved'
                                     st.session_state.self_assessments[staff_name]['acceptance'] = 'Rejected'
                                     st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores if hod_scores else assessment.get('hod_scores', {})
                                     st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall if hod_overall else assessment.get('hod_comments', '')
                                     st.session_state.self_assessments[staff_name]['hod_pillar_comments'] = hod_pillar_comments if hod_pillar_comments else assessment.get('hod_pillar_comments', {})
-                                    log_audit('HOD Stands Firm', f'{staff_name} escalated to Sr. Management after {assessment.get("reject_count", 1)} rejection(s)')
+                                    log_audit('HOD Stands Firm', f'{staff_name} escalated to Sr. Management')
                                     try:
                                         db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
                                             st.session_state.appraisal_cycle_name, 'Approved',
@@ -1765,12 +1755,7 @@ def performance_okrs():
                         st.markdown(f"**HOD Comments:** {assessment.get('hod_comments', 'N/A')}")
                         st.markdown("---")
                         st.markdown("#### 📊 Full Side-by-Side Score Comparison")
-                        import re
-                        def natural_sort_key_sr(item):
-                            key = item[0]
-                            parts = re.split(r'(\d+)', key)
-                            return [int(p) if p.isdigit() else p for p in parts]
-                        for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key_sr):
+                        for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key):
                             hod_score = assessment.get('hod_scores', {}).get(score_key, 'N/A') if assessment.get('hod_scores') else 'N/A'
                             c1, c2, c3 = st.columns([1, 1, 2])
                             with c1:
@@ -1780,7 +1765,6 @@ def performance_okrs():
                             with c3:
                                 st.markdown(f"*{score_key}*")
                         
-                        # Show pillar justifications from both sides
                         if assessment.get('pillar_comments') or assessment.get('hod_pillar_comments'):
                             st.markdown("---")
                             st.markdown("#### 💬 Justifications Comparison")
