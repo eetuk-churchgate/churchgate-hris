@@ -1109,7 +1109,7 @@ def performance_okrs():
     try:
         all_appraisals = db.get_all_appraisals()
         for a in all_appraisals:
-            if a['user_name'] not in st.session_state.self_assessments:
+            if a['user_name'] not in st.session_state.self_assessments or st.session_state.self_assessments[a['user_name']].get('status') != a.get('status'):
                 st.session_state.self_assessments[a['user_name']] = {
                 'scores': a.get('scores', {}),
                 'comments': a.get('comments', ''),
