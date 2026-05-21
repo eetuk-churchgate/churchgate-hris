@@ -1895,17 +1895,28 @@ def performance_okrs():
                                 except:
                                     pass
                                 try:
-                                    db.save_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
-                                        st.session_state.appraisal_cycle_name, 'Completed',
-                                        assessment['scores'], assessment.get('hod_scores', {}),
-                                        assessment.get('comments', ''), assessment.get('hod_comments', ''),
-                                        assessment.get('hod_pillar_comments', {}), 'Accepted', 'HOD Upheld',
-                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                    db._delete("appraisals", {"user_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                    db._post("appraisals", {
+                                        "user_name": staff_name, "user_email": assessment.get('email', ''),
+                                        "department": assessment.get('department', ''),
+                                        "cycle_name": st.session_state.appraisal_cycle_name,
+                                        "status": "Completed",
+                                        "scores": json.dumps(assessment['scores']),
+                                        "comments": assessment.get('comments', ''),
+                                        "pillar_comments": json.dumps(assessment.get('pillar_comments', {})),
+                                        "hod_scores": json.dumps(assessment.get('hod_scores', {})),
+                                        "hod_comments": assessment.get('hod_comments', ''),
+                                        "hod_pillar_comments": json.dumps(assessment.get('hod_pillar_comments', {})),
+                                        "acceptance": "Accepted",
+                                        "sr_decision": "HOD Upheld",
+                                        "submitted_date": assessment.get('date', '')
+                                    })
                                 except:
                                     pass
                                 st.success(f"✅ HOD decision upheld. Appraisal complete.")
                                 st.balloons()
                                 time.sleep(1.5)
+                                st.rerun()
                         with c2:
                             if st.button(f"🔄 Overturn - Favor {staff_name}", key=f"ov_{staff_name}"):
                                 st.session_state.self_assessments[staff_name]['acceptance'] = 'Accepted'
@@ -1922,17 +1933,28 @@ def performance_okrs():
                                 except:
                                     pass
                                 try:
-                                    db.save_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
-                                        st.session_state.appraisal_cycle_name, 'Completed',
-                                        assessment['scores'], assessment['scores'],
-                                        assessment.get('comments', ''), assessment.get('hod_comments', ''),
-                                        assessment.get('hod_pillar_comments', {}), 'Accepted', 'Overturned in Favor of Staff',
-                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                    db._delete("appraisals", {"user_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                    db._post("appraisals", {
+                                        "user_name": staff_name, "user_email": assessment.get('email', ''),
+                                        "department": assessment.get('department', ''),
+                                        "cycle_name": st.session_state.appraisal_cycle_name,
+                                        "status": "Completed",
+                                        "scores": json.dumps(assessment['scores']),
+                                        "comments": assessment.get('comments', ''),
+                                        "pillar_comments": json.dumps(assessment.get('pillar_comments', {})),
+                                        "hod_scores": json.dumps(assessment['scores']),
+                                        "hod_comments": assessment.get('hod_comments', ''),
+                                        "hod_pillar_comments": json.dumps(assessment.get('hod_pillar_comments', {})),
+                                        "acceptance": "Accepted",
+                                        "sr_decision": "Overturned in Favor of Staff",
+                                        "submitted_date": assessment.get('date', '')
+                                    })
                                 except:
                                     pass
                                 st.success(f"🔄 Decision overturned in favor of {staff_name}. Appraisal complete.")
                                 st.balloons()
                                 time.sleep(1.5)
+                                st.rerun()
             else:
                 st.info("No escalated appraisals.")
         elif not is_hod:
