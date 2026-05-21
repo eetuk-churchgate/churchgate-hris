@@ -1906,7 +1906,6 @@ def performance_okrs():
                                 st.success(f"✅ HOD decision upheld. Appraisal complete.")
                                 st.balloons()
                                 time.sleep(1.5)
-                                st.rerun()
                         with c2:
                             if st.button(f"🔄 Overturn - Favor {staff_name}", key=f"ov_{staff_name}"):
                                 st.session_state.self_assessments[staff_name]['acceptance'] = 'Accepted'
@@ -1934,7 +1933,6 @@ def performance_okrs():
                                 st.success(f"🔄 Decision overturned in favor of {staff_name}. Appraisal complete.")
                                 st.balloons()
                                 time.sleep(1.5)
-                                st.rerun()
             else:
                 st.info("No escalated appraisals.")
         elif not is_hod:
