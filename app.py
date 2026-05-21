@@ -1567,40 +1567,140 @@ def performance_okrs():
                         try:
                             import fpdf
                             FPDF = fpdf.FPDF
-                            pdf = FPDF(orientation='P', unit='mm', format='A4')
+                            pdf = FPDF(orientation='L', unit='mm', format='A4')
+                            pdf.set_auto_page_break(auto=True, margin=10)
                             pdf.add_page()
-                            pdf.set_fill_color(55, 55, 55)
-                            pdf.rect(0, 0, 210, 35, 'F')
-                            pdf.set_fill_color(204, 0, 0)
-                            pdf.rect(0, 35, 210, 3, 'F')
+                            
+                            # GOLD BORDER
+                            avg_score = sum(a['hod_scores'].values()) / len(a['hod_scores']) if a['hod_scores'] else 0
+                            if avg_score >= 85:
+                                rating, rating_color, border_color = "GOLD", (212, 175, 55), (212, 175, 55)
+                            elif avg_score >= 70:
+                                rating, rating_color, border_color = "SILVER", (192, 192, 192), (150, 150, 150)
+                            else:
+                                rating, rating_color, border_color = "BRONZE", (205, 127, 50), (180, 100, 40)
+                            
+                            pdf.set_draw_color(*border_color)
+                            pdf.set_line_width(1.5)
+                            pdf.rect(5, 5, 287, 200)
+                            pdf.set_line_width(0.5)
+                            pdf.set_draw_color(*border_color)
+                            pdf.rect(8, 8, 281, 194)
+                            
+                            # HEADER
+                            pdf.set_fill_color(26, 26, 26)
+                            pdf.rect(0, 0, 297, 40, 'F')
+                            pdf.set_fill_color(*rating_color)
+                            pdf.rect(0, 40, 297, 4, 'F')
+                            
+                            # Logo placeholder
+                            pdf.set_font('Helvetica', 'B', 28)
+                            pdf.set_text_color(255, 255, 255)
+                            pdf.cell(0, 22, 'CHURCHGATE GROUP', ln=True, align='C')
+                            pdf.set_font('Helvetica', 'B', 13)
+                            pdf.set_text_color(*rating_color)
+                            pdf.cell(0, 10, 'OFFICIAL APPRAISAL CERTIFICATE', ln=True, align='C')
+                            pdf.ln(10)
+                            
+                            # RATING BADGE
+                            pdf.set_fill_color(*rating_color)
+                            badge_x = 100
+                            badge_y = pdf.get_y()
+                            pdf.rect(badge_x, badge_y, 97, 18, 'F')
                             pdf.set_font('Helvetica', 'B', 20)
                             pdf.set_text_color(255, 255, 255)
-                            pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
-                            pdf.set_font('Helvetica', 'B', 11)
-                            pdf.set_text_color(255, 255, 255)
-                            pdf.cell(0, 8, 'APPRAISAL COMPLETION CERTIFICATE', ln=True, align='C')
-                            pdf.ln(10)
-                            avg_score = sum(a['hod_scores'].values()) / len(a['hod_scores']) if a['hod_scores'] else 0
-                            if avg_score >= 85: rating = "GOLD"
-                            elif avg_score >= 70: rating = "SILVER"
-                            else: rating = "BRONZE"
-                            pdf.set_font('Helvetica', 'B', 14)
-                            pdf.set_text_color(38, 161, 105)
-                            pdf.cell(0, 10, f'RATING: {rating} ({avg_score:.1f}%)', ln=True, align='C')
-                            pdf.ln(5)
-                            pdf.set_font('Helvetica', '', 11)
+                            pdf.set_xy(badge_x, badge_y + 2)
+                            pdf.cell(97, 14, f'{rating} RATING', 0, 0, 'C')
+                            pdf.set_y(badge_y + 22)
+                            pdf.ln(6)
+                            
+                            # EMPLOYEE DETAILS
+                            pdf.set_font('Helvetica', 'B', 16)
                             pdf.set_text_color(26, 26, 26)
-                            pdf.cell(0, 8, f'Employee: {user_name}', ln=True)
-                            pdf.cell(0, 8, f'Department: {user_dept}', ln=True)
-                            pdf.cell(0, 8, f'Cycle: {st.session_state.appraisal_cycle_name}', ln=True)
-                            pdf.cell(0, 8, f'Date: {now_wat.strftime("%Y-%m-%d %H:%M WAT")}', ln=True)
-                            pdf.set_y(-20)
+                            pdf.cell(0, 10, f'Presented to: {user_name}', ln=True, align='C')
+                            pdf.ln(2)
+                            pdf.set_font('Helvetica', '', 12)
+                            pdf.set_text_color(80, 80, 80)
+                            pdf.cell(0, 8, f'Department: {user_dept}', ln=True, align='C')
+                            pdf.cell(0, 8, f'Appraisal Cycle: {st.session_state.appraisal_cycle_name}', ln=True, align='C')
+                            pdf.cell(0, 8, f'Date: {now_wat.strftime("%B %d, %Y - %H:%M WAT")}', ln=True, align='C')
+                            pdf.ln(4)
+                            
+                            # SCORE SUMMARY TABLE
+                            pdf.set_fill_color(26, 26, 26)
+                            pdf.set_text_color(255, 255, 255)
+                            pdf.set_font('Helvetica', 'B', 9)
+                            table_x = 25
+                            pdf.set_x(table_x)
+                            pdf.cell(90, 7, ' PERFORMANCE PILLAR', 1, 0, 'L', True)
+                            pdf.cell(35, 7, 'STAFF SCORE', 1, 0, 'C', True)
+                            pdf.cell(35, 7, 'HOD SCORE', 1, 0, 'C', True)
+                            pdf.cell(35, 7, 'FINAL', 1, 0, 'C', True)
+                            pdf.cell(52, 7, ' RATING', 1, 0, 'C', True)
+                            pdf.ln()
+                            
+                            pillar_scores = {}
+                            for score_key, staff_score in sorted(a['scores'].items(), key=natural_sort_key):
+                                pillar = '_'.join(score_key.split('_')[:2])
+                                if pillar not in pillar_scores:
+                                    pillar_scores[pillar] = {'staff': [], 'hod': []}
+                                pillar_scores[pillar]['staff'].append(staff_score)
+                                hod_score = a['hod_scores'].get(score_key, staff_score) if a['hod_scores'] else staff_score
+                                pillar_scores[pillar]['hod'].append(hod_score)
+                            
+                            pdf.set_font('Helvetica', '', 8)
+                            pdf.set_text_color(60, 60, 60)
+                            for pillar, scores in pillar_scores.items():
+                                avg_staff = sum(scores['staff']) / len(scores['staff'])
+                                avg_hod = sum(scores['hod']) / len(scores['hod'])
+                                final = avg_hod
+                                if final >= 85: pr = 'GOLD'
+                                elif final >= 70: pr = 'SILVER'
+                                else: pr = 'BRONZE'
+                                
+                                pdf.set_x(table_x)
+                                pdf.cell(90, 6, f' {pillar[:50]}', 1, 0, 'L')
+                                pdf.cell(35, 6, f'{avg_staff:.1f}%', 1, 0, 'C')
+                                pdf.cell(35, 6, f'{avg_hod:.1f}%', 1, 0, 'C')
+                                pdf.cell(35, 6, f'{final:.1f}%', 1, 0, 'C')
+                                pdf.cell(52, 6, f' {pr}', 1, 0, 'C')
+                                pdf.ln()
+                            
+                            pdf.ln(4)
+                            pdf.set_font('Helvetica', 'B', 14)
+                            pdf.set_text_color(*rating_color)
+                            pdf.cell(0, 8, f'OVERALL FINAL SCORE: {avg_score:.1f}% - {rating}', ln=True, align='C')
+                            
+                            # SIGNATURE LINES
+                            pdf.ln(8)
+                            pdf.set_draw_color(150, 150, 150)
+                            pdf.set_line_width(0.3)
+                            sig_y = pdf.get_y()
+                            pdf.line(30, sig_y + 15, 110, sig_y + 15)
+                            pdf.line(130, sig_y + 15, 240, sig_y + 15)
+                            pdf.line(250, sig_y + 15, 280, sig_y + 15)
+                            pdf.set_font('Helvetica', '', 8)
+                            pdf.set_text_color(100, 100, 100)
+                            pdf.set_xy(30, sig_y + 16)
+                            pdf.cell(80, 5, 'HOD / Line Manager', 0, 0, 'C')
+                            pdf.set_xy(130, sig_y + 16)
+                            pdf.cell(110, 5, 'Human Resources Director', 0, 0, 'C')
+                            pdf.set_xy(250, sig_y + 16)
+                            pdf.cell(30, 5, 'Date', 0, 0, 'C')
+                            
+                            # FOOTER
+                            pdf.set_y(-22)
+                            pdf.set_fill_color(26, 26, 26)
+                            pdf.rect(0, pdf.get_y()-2, 297, 24, 'F')
                             pdf.set_font('Helvetica', 'I', 7)
-                            pdf.set_text_color(150, 150, 150)
-                            pdf.cell(0, 10, 'Churchgate Group - Official Document | hr@churchgate.com', align='C')
-                            st.download_button("📥 Download Certificate", bytes(pdf.output()), f"{user_name}_certificate.pdf", "application/pdf")
-                        except:
-                            pass
+                            pdf.set_text_color(180, 180, 180)
+                            pdf.cell(0, 5, 'Churchgate Group - Official Appraisal Document', ln=True, align='C')
+                            pdf.cell(0, 5, 'World Trade Center, Abuja | hr@churchgate.com | This certificate is system-generated and valid without signature.', ln=True, align='C')
+                            pdf.cell(0, 5, f'Certificate ID: CG-APP-{user_name[:3].upper()}-{datetime.now().strftime("%Y%m%d%H%M")}', ln=True, align='C')
+                            
+                            st.download_button("📥 Download World-Class Certificate", bytes(pdf.output()), f"{user_name}_certificate.pdf", "application/pdf")
+                        except Exception as e:
+                            st.warning(f"Certificate error: {str(e)}")
                 elif a.get('acceptance') == 'Rejected':
                     if a.get('status') == 'Awaiting HOD Re-review':
                         st.warning("⚠️ Awaiting HOD re-review.")
@@ -1731,7 +1831,9 @@ def performance_okrs():
                                         except:
                                             pass
                                         log_audit('Appraisal Approved', f'{staff_name} approved by HOD {user_name}')
-                                        st.success(f"✅ {staff_name} approved!")
+                                        st.success(f"✅ {staff_name} approved! Staff has been notified.")
+                                        st.balloons()
+                                        time.sleep(1.5)
                                         st.rerun()
                                     else:
                                         st.error("❌ All justifications required!")
@@ -1782,6 +1884,7 @@ def performance_okrs():
                             if st.button(f"✅ Uphold HOD Decision - {staff_name}", key=f"up_{staff_name}"):
                                 st.session_state.self_assessments[staff_name]['acceptance'] = 'Accepted'
                                 st.session_state.self_assessments[staff_name]['sr_decision'] = 'HOD Upheld'
+                                st.session_state.self_assessments[staff_name]['status'] = 'Completed'
                                 log_audit('Sr Mgmt Decision', f'HOD upheld for {staff_name}')
                                 try:
                                     db.archive_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
@@ -1798,6 +1901,7 @@ def performance_okrs():
                                 st.session_state.self_assessments[staff_name]['acceptance'] = 'Accepted'
                                 st.session_state.self_assessments[staff_name]['hod_scores'] = assessment['scores']
                                 st.session_state.self_assessments[staff_name]['sr_decision'] = 'Overturned in Favor of Staff'
+                                st.session_state.self_assessments[staff_name]['status'] = 'Completed'
                                 log_audit('Sr Mgmt Overturn', f'HOD overturned for {staff_name}')
                                 try:
                                     db.archive_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
