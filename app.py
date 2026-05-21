@@ -1894,7 +1894,18 @@ def performance_okrs():
                                         now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                                 except:
                                     pass
+                                try:
+                                    db.save_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
+                                        st.session_state.appraisal_cycle_name, 'Completed',
+                                        assessment['scores'], assessment.get('hod_scores', {}),
+                                        assessment.get('comments', ''), assessment.get('hod_comments', ''),
+                                        assessment.get('hod_pillar_comments', {}), 'Accepted', 'HOD Upheld',
+                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                except:
+                                    pass
                                 st.success(f"✅ HOD decision upheld. Appraisal complete.")
+                                st.balloons()
+                                time.sleep(1.5)
                                 st.rerun()
                         with c2:
                             if st.button(f"🔄 Overturn - Favor {staff_name}", key=f"ov_{staff_name}"):
@@ -1911,7 +1922,18 @@ def performance_okrs():
                                         now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                                 except:
                                     pass
+                                try:
+                                    db.save_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
+                                        st.session_state.appraisal_cycle_name, 'Completed',
+                                        assessment['scores'], assessment['scores'],
+                                        assessment.get('comments', ''), assessment.get('hod_comments', ''),
+                                        assessment.get('hod_pillar_comments', {}), 'Accepted', 'Overturned in Favor of Staff',
+                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                except:
+                                    pass
                                 st.success(f"🔄 Decision overturned in favor of {staff_name}. Appraisal complete.")
+                                st.balloons()
+                                time.sleep(1.5)
                                 st.rerun()
             else:
                 st.info("No escalated appraisals.")
