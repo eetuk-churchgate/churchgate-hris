@@ -31,7 +31,7 @@ from utils.email_service import EmailService
 from utils.chat_service import ChatService
 from utils.training_service import TrainingService
 
-logo_icon = Path(__file__).parent / "churchgate_logo.png"
+logo_icon = Path(__file__).parent / "churchgate-logo.png"
 if logo_icon.exists():
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon=str(logo_icon), layout="wide", initial_sidebar_state="expanded")
 else:
