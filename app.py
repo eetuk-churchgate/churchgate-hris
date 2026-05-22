@@ -2573,7 +2573,7 @@ def recruitment_hub():
                                     st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
                                     st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
                                     job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{len(st.session_state.active_jobs)+1:03d}"
-                                    public_url = f"{STREAMLIT_URL}/7_🌐_Careers?job={job_ref}"
+                                    public_url = f"{STREAMLIT_URL}/7_Careers?job={job_ref}"
                                     st.session_state.active_jobs.append({
                                         'ref': job_ref, 'title': req['title'], 'department': req['department'],
                                         'location': req['location'], 'type': req['type'], 'salary': req['salary'],
