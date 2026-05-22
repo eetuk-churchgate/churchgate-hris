@@ -2471,8 +2471,6 @@ def recruitment_hub():
         st.session_state.offer_letters = []
     if 'referrals' not in st.session_state:
         st.session_state.referrals = []
-    if 'approval_comments' not in st.session_state:
-        st.session_state.approval_comments = {}
     
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
         "📋 Job Requisition", "📢 Active Jobs", "🌐 Candidate Portal", 
@@ -2542,7 +2540,6 @@ def recruitment_hub():
             st.markdown("---")
             st.markdown("### 📋 Requisition Approval Dashboard")
             for i, req in enumerate(st.session_state.job_requisitions):
-                status_color = "#d69e2e" if 'Pending' in req['status'] else "#38a169" if 'Approved' in req['status'] else "#CC0000"
                 with st.expander(f"{req['id']} - {req['title']} | {req['status']}", expanded=True):
                     st.markdown(f"**By:** {req['submitted_by']} | **Dept:** {req['department']} | **Location:** {req['location']}")
                     
@@ -2576,7 +2573,7 @@ def recruitment_hub():
                                     st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
                                     st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
                                     job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{len(st.session_state.active_jobs)+1:03d}"
-                                    public_url = f"{STREAMLIT_URL}/careers?job={job_ref}"
+                                    public_url = f"{STREAMLIT_URL}/7_🌐_Careers?job={job_ref}"
                                     st.session_state.active_jobs.append({
                                         'ref': job_ref, 'title': req['title'], 'department': req['department'],
                                         'location': req['location'], 'type': req['type'], 'salary': req['salary'],
@@ -2614,29 +2611,28 @@ def recruitment_hub():
         with st.expander("📝 Preview Application Form", expanded=True):
             c1, c2 = st.columns(2)
             with c1:
-                st.text_input("First Name *", disabled=True)
-                st.text_input("Last Name *", disabled=True)
-                st.text_input("Email *", disabled=True)
-                st.text_input("Phone *", disabled=True)
-                st.text_input("LinkedIn URL", disabled=True)
+                st.text_input("First Name *", key="prev_fn", disabled=True)
+                st.text_input("Last Name *", key="prev_ln", disabled=True)
+                st.text_input("Email *", key="prev_em", disabled=True)
+                st.text_input("Phone *", key="prev_ph", disabled=True)
+                st.text_input("LinkedIn URL", key="prev_li", disabled=True)
             with c2:
-                st.text_input("GitHub URL", disabled=True)
-                st.text_input("Portfolio URL", disabled=True)
-                st.text_input("Current Position", disabled=True)
-                st.text_input("Years of Experience", disabled=True)
-            st.text_area("Cover Letter (Optional)", disabled=True)
-            st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'], disabled=True)
+                st.text_input("GitHub URL", key="prev_gh", disabled=True)
+                st.text_input("Portfolio URL", key="prev_pf", disabled=True)
+                st.text_input("Current Position", key="prev_cp", disabled=True)
+                st.text_input("Years of Experience", key="prev_ye", disabled=True)
+            st.text_area("Cover Letter (Optional)", key="prev_cl", disabled=True)
+            st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'], key="prev_cv", disabled=True)
             st.markdown("### Screening Questions (Auto-generated per role)")
-            st.text_area("Q1: Relevant Experience *", disabled=True)
-            st.text_area("Q2: Key Achievement *", disabled=True)
-            st.text_area("Q3: Why Churchgate Group? *", disabled=True)
+            st.text_area("Q1: Relevant Experience *", key="prev_q1", disabled=True)
+            st.text_area("Q2: Key Achievement *", key="prev_q2", disabled=True)
+            st.text_area("Q3: Why Churchgate Group? *", key="prev_q3", disabled=True)
     
     # ============ TAB 4: AI SCREENING ============
     with tab4:
         st.subheader("🤖 AI Candidate Screening & Tiering")
         st.info("Real candidate applications from the Careers Page appear here. AI auto-screens and tiers them.")
         
-        # Load real candidates from database
         try:
             candidates = db.get_all_candidates()
             if not candidates.empty:
@@ -2758,21 +2754,22 @@ def recruitment_hub():
         st.subheader("🎯 Onboarding")
         with st.expander("📋 Onboarding Checklist", expanded=True):
             steps = [
-                ("📧", "Offer Letter Sent", False),
-                ("✅", "Offer Accepted", False),
-                ("📄", "Document Collection", False),
-                ("💻", "IT Setup (Email, Laptop, Access)", False),
-                ("🏢", "Workspace Assignment", False),
-                ("👤", "Buddy Assignment", False),
-                ("📅", "Orientation Scheduled", False),
-                ("📚", "Training Enrollment", False),
-                ("🔑", "Access Cards Issued", False),
-                ("🎉", "First Day Welcome", False)
+                ("📧", "Offer Letter Sent"),
+                ("✅", "Offer Accepted"),
+                ("📄", "Document Collection"),
+                ("💻", "IT Setup (Email, Laptop, Access)"),
+                ("🏢", "Workspace Assignment"),
+                ("👤", "Buddy Assignment"),
+                ("📅", "Orientation Scheduled"),
+                ("📚", "Training Enrollment"),
+                ("🔑", "Access Cards Issued"),
+                ("🎉", "First Day Welcome")
             ]
-            for emoji, step, done in steps:
-                icon = "✅" if done else "⏳"
+            for emoji, step in steps:
+                done = st.checkbox(f"{emoji} {step}", key=f"onboard_{step}")
                 color = "#38a169" if done else "#d69e2e"
-                st.markdown(f"{emoji} {icon} **{step}** <span style='color: {color};'> - {'Complete' if done else 'Pending'}</span>", unsafe_allow_html=True)
+                icon = "✅" if done else "⏳"
+                st.markdown(f"{icon} **{step}** <span style='color: {color};'>{'Complete' if done else 'Pending'}</span>", unsafe_allow_html=True)
         
         st.markdown("---")
         with st.form("add_onboarding"):
