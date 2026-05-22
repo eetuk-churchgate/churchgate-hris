@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.database import DatabaseManager
 
 # Churchgate logo as page icon
-logo_path = Path(__file__).parent.parent / "churchgate_logo.png"
+logo_path = Path(__file__).parent.parent / "churchgate-logo.png"
 if logo_path.exists():
     st.set_page_config(page_title="Careers - Churchgate Group", page_icon=str(logo_path), layout="wide", initial_sidebar_state="collapsed")
 else:
@@ -387,7 +387,10 @@ else:
                 <span class="tag">{days_text}</span>
                 """, unsafe_allow_html=True)
                 st.markdown("---")
-                st.markdown(f'<div class="jd-content animate-fade-in">{job["jd"]}</div>', unsafe_allow_html=True)
+                # Format JD with proper paragraphs
+formatted_jd = job["jd"].replace('\n\n', '</p><p>').replace('\n', '<br>')
+formatted_jd = f'<p>{formatted_jd}</p>'
+st.markdown(f'<div class="jd-content animate-fade-in">{formatted_jd}</div>', unsafe_allow_html=True)
                 st.markdown(f"<small style='color: #888;'>📅 Closes: {job['closing']} | Ref: {job['ref']}</small>", unsafe_allow_html=True)
                 
                 c1, c2 = st.columns([1, 1])
@@ -400,7 +403,7 @@ else:
                     st.markdown(f"""
                     <div style="margin-top: 0.5rem;">
                         <a href="https://www.linkedin.com/sharing/share-offsite/?url={share_url}" target="_blank" class="share-btn">🔗 LinkedIn</a>
-                        <a href="https://wa.me/?text=Job%20Opening:%20{job['title']}%20at%20Churchgate%20Group%20-%20{share_url}" target="_blank" class="share-btn">💬 WhatsApp</a>
+                        <a href="https://wa.me/?text=Job%20Opening:%20{job['title']}%20at%20Churchgate%20Group%20-%20Apply%20here:%20{share_url}" target="_blank" class="share-btn">💬 WhatsApp</a>
                         <a href="https://twitter.com/intent/tweet?text=Job%20Opening:%20{job['title']}%20at%20Churchgate%20Group&url={share_url}" target="_blank" class="share-btn">🐦 Twitter</a>
                     </div>
                     """, unsafe_allow_html=True)
@@ -424,7 +427,7 @@ else:
     st.markdown("## 🎁 Why Choose Churchgate Group?")
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown('<div class="benefit-card animate-fade-in-up"><div class="benefit-icon">🏥</div><h4>Health Insurance</h4><p style="font-size:0.85rem;color:#666;">Comprehensive HMO coverage for you and your family</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="benefit-card animate-fade-in-up"><div class="benefit-icon">🏥</div><h4>Health Insurance</h4><p style="font-size:0.85rem;color:#666;">Comprehensive HMO coverage</p></div>', unsafe_allow_html=True)
     with c2:
         st.markdown('<div class="benefit-card animate-fade-in-up"><div class="benefit-icon">💰</div><h4>Pension Plan</h4><p style="font-size:0.85rem;color:#666;">Secure retirement with contributory pension scheme</p></div>', unsafe_allow_html=True)
     with c3:
@@ -445,7 +448,7 @@ else:
     
     # Social Proof
     st.markdown("---")
-    st.markdown('<div class="social-proof"><h3>🏆 Recognized Excellence</h3><p style="color:#666;">Featured in Forbes Africa | LinkedIn Top Employer | NIOB Excellence Award | Africa Real Estate Summit</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="social-proof"><h3>🏆 Recognized Excellence</h3><p style="color:#666;">EDGE Certified | Premier Accredited — Business & Member Services, Commercial Real Estate & Services, Trade Development by <a href="https://www.wtca.org" target="_blank" style="color: #CC0000;">WTCA</a></p></div>', unsafe_allow_html=True)
     
     # Status Checker
     st.markdown("---")
