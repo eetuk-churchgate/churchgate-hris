@@ -7,7 +7,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from utils.database import DatabaseManager
 
-st.set_page_config(page_title="Careers - Churchgate Group", page_icon="🌐", layout="wide")
+st.set_page_config(page_title="Careers - Churchgate Group", page_icon="🌐", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>
@@ -101,7 +101,7 @@ if selected_job:
                         first_name, last_name, email, phone,
                         linkedin, current_position, current_company, years_exp,
                         "", "", "", f"Resume_{first_name}_{last_name}.pdf", resume_text[:5000],
-                        None, "Career Portal", "New"
+                        selected_job, "Career Portal", "New"
                     )
                     db.add_candidate(candidate_data)
                     st.success(f"✅ Thank you, {first_name}! Your application has been submitted successfully.")
