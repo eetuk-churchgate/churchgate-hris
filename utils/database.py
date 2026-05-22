@@ -199,5 +199,17 @@ class DatabaseManager:
         data = self._get("job_requisitions")
         return data if data else []
 
+    def add_candidate(self, candidate_data):
+        self._post("candidates", {
+            "candidate_ref": candidate_data[0], "first_name": candidate_data[1],
+            "last_name": candidate_data[2], "email": candidate_data[3],
+            "phone": candidate_data[4], "linkedin_url": candidate_data[5],
+            "current_position": candidate_data[6], "current_company": candidate_data[7],
+            "years_of_experience": candidate_data[8], "education_level": candidate_data[9],
+            "skills": candidate_data[10], "location": candidate_data[11],
+            "resume_filename": candidate_data[12], "resume_text": candidate_data[13],
+            "job_id": candidate_data[14], "source": candidate_data[15], "status": candidate_data[16]
+        })
+
     def get_dashboard_stats(self):
         return {'total_employees': 48, 'open_positions': 5, 'new_candidates': 0, 'avg_performance': 85.0}
