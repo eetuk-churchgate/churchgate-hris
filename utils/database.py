@@ -10,9 +10,12 @@ import requests
 class DatabaseManager:
     def __init__(self):
         self.use_supabase = False
+        self.supabase = None
         try:
             self.url = st.secrets["SUPABASE_URL"]
             self.key = st.secrets["SUPABASE_KEY"]
+            from supabase import create_client
+            self.supabase = create_client(self.url, self.key)
             self.use_supabase = True
         except:
             import sqlite3
