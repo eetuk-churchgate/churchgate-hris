@@ -2482,6 +2482,25 @@ def recruitment_hub():
     
     if 'active_jobs' not in st.session_state:
         st.session_state.active_jobs = []
+        # Load from database
+        try:
+            all_reqs = db.get_all_job_requisitions()
+            for r in all_reqs:
+                if r.get('status') == 'Approved - Live':
+                    job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{len(st.session_state.active_jobs)+1:03d}"
+                    public_url = f"{STREAMLIT_URL}/_Careers?job={job_ref}"
+                    st.session_state.active_jobs.append({
+                        'ref': job_ref, 'title': r.get('title', ''),
+                        'department': r.get('department', ''), 'location': r.get('location', ''),
+                        'type': r.get('job_type', ''), 'salary': r.get('salary', ''),
+                        'jd': r.get('jd', ''), 'closing': r.get('closing', ''),
+                        'screening': json.loads(r.get('screening', '[]')),
+                        'posts': json.loads(r.get('posts', '{}')),
+                        'date': r.get('date', ''), 'applications': 0,
+                        'public_url': public_url
+                    })
+        except:
+            pass
     if 'onboarding_list' not in st.session_state:
         st.session_state.onboarding_list = []
     if 'interviews_scheduled' not in st.session_state:
