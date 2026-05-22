@@ -11,16 +11,18 @@ sys.path.append(str(Path(__file__).parent.parent))
 from utils.database import DatabaseManager
 
 # Churchgate logo as page icon - using churchgate-logo.png
-logo_path = Path(__file__).parent.parent / "churchgate-logo.png"
+logo_path = Path(__file__).parent.parent / "churchgate-logo.jpeg"
 if logo_path.exists():
     st.set_page_config(page_title="Careers - Churchgate Group", page_icon=str(logo_path), layout="wide", initial_sidebar_state="collapsed")
 else:
     st.set_page_config(page_title="Careers - Churchgate Group", page_icon="🏢", layout="wide", initial_sidebar_state="collapsed")
 
 def get_logo_base64():
-    if logo_path.exists():
-        with open(logo_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
+    for ext in ['.jpeg', '.jpg', '.png']:
+        path = Path(__file__).parent.parent / f"churchgate-logo{ext}"
+        if path.exists():
+            with open(path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
     return None
 
 logo_b64 = get_logo_base64()
@@ -106,13 +108,12 @@ if selected_job:
     
     position_name = job_details.get('title', selected_job) if job_details else selected_job
     
-    st.markdown(f"""
-    <div class="career-hero animate-fade-in">
-        {f'<img src="data:image/png;base64,{logo_b64}" style="height: 50px; margin-bottom: 1rem; position: relative;" alt="Churchgate Group">' if logo_b64 else ''}
-        <h1>📝 Apply for {position_name}</h1>
-        <p>{job_details.get('department', '')} | {job_details.get('location', '')} | {job_details.get('job_type', '')}</p>
-    </div>
-    """, unsafe_allow_html=True)
+    hero_html = f"""<div class="career-hero animate-fade-in">
+        {f'<img src="data:image/png;base64,{logo_b64}" style="height: 60px; margin-bottom: 1.5rem; position: relative;" alt="Churchgate Group">' if logo_b64 else ''}
+        <h1>🚀 Build Your Career at Churchgate Group</h1>
+        <p>Join a team of innovators, leaders, and changemakers shaping Africa's real estate and infrastructure future.</p>
+    </div>"""
+    st.markdown(hero_html, unsafe_allow_html=True)
     
     if job_details:
         with st.expander("📋 View Full Job Description", expanded=True):
