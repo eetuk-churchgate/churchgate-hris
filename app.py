@@ -2488,7 +2488,7 @@ def recruitment_hub():
             for r in all_reqs:
                 if r.get('status') == 'Approved - Live':
                     job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{len(st.session_state.active_jobs)+1:03d}"
-                    public_url = f"{STREAMLIT_URL}/_Careers?job={job_ref}"
+                    public_url = f"{STREAMLIT_URL}/Careers?job={job_ref}"
                     st.session_state.active_jobs.append({
                         'ref': job_ref, 'title': r.get('title', ''),
                         'department': r.get('department', ''), 'location': r.get('location', ''),
