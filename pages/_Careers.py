@@ -3,36 +3,63 @@ import sys
 from pathlib import Path
 from datetime import datetime
 import random
+import base64
 
 sys.path.append(str(Path(__file__).parent.parent))
 
 from utils.database import DatabaseManager
 
-st.set_page_config(page_title="Careers - Churchgate Group", page_icon="🌐", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Careers - Churchgate Group", page_icon="🏢", layout="wide", initial_sidebar_state="collapsed")
 
-# Custom CSS for world-class careers page
-st.markdown("""
+# Load Churchgate logo
+def get_logo_base64():
+    logo_path = Path(__file__).parent.parent / "churchgate_logo.png"
+    if logo_path.exists():
+        with open(logo_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return None
+
+logo_b64 = get_logo_base64()
+
+# World-class CSS
+st.markdown(f"""
 <style>
-    .career-hero {
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    * {{ font-family: 'Inter', sans-serif; }}
+    
+    .career-hero {{
         background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
-        padding: 4rem 2rem;
+        padding: 3rem 2rem;
         text-align: center;
         color: white;
         border-bottom: 4px solid #CC0000;
-        margin-bottom: 0;
-    }
-    .career-hero h1 { font-size: 3rem; font-weight: 900; margin: 0; letter-spacing: -1px; }
-    .career-hero p { font-size: 1.3rem; margin-top: 1rem; opacity: 0.9; max-width: 700px; margin-left: auto; margin-right: auto; }
-    .company-badge {
-        background: rgba(204,0,0,0.2);
-        border: 1px solid #CC0000;
-        padding: 0.5rem 1.5rem;
-        border-radius: 30px;
-        display: inline-block;
-        margin-top: 1.5rem;
-        font-size: 0.9rem;
-    }
-    .search-bar {
+        position: relative;
+        overflow: hidden;
+    }}
+    .career-hero::before {{
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: url('https://images.unsplash.com/photo-1497366216548-37526070297c?w=1920&q=80') center/cover;
+        opacity: 0.08;
+    }}
+    .career-hero h1 {{ font-size: 3rem; font-weight: 900; margin: 0; position: relative; }}
+    .career-hero p {{ font-size: 1.2rem; margin-top: 1rem; opacity: 0.9; position: relative; max-width: 700px; margin-left: auto; margin-right: auto; }}
+    
+    .stats-bar {{
+        background: linear-gradient(135deg, #3d3d3d 0%, #2d2d2d 100%);
+        padding: 2rem;
+        text-align: center;
+        color: white;
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+    }}
+    .stat-item {{ text-align: center; padding: 1rem; }}
+    .stat-number {{ font-size: 2.5rem; font-weight: 900; color: #CC0000; }}
+    .stat-label {{ font-size: 0.9rem; color: #aaa; margin-top: 0.3rem; }}
+    
+    .search-bar {{
         background: white;
         padding: 1.5rem;
         border-radius: 15px;
@@ -40,58 +67,65 @@ st.markdown("""
         margin: -2rem 2rem 2rem 2rem;
         position: relative;
         z-index: 10;
-    }
-    .job-card {
+    }}
+    
+    .job-card {{
         background: white;
-        padding: 2rem;
+        padding: 0;
         border-radius: 12px;
         margin-bottom: 1.2rem;
         border-left: 4px solid #CC0000;
         box-shadow: 0 2px 10px rgba(0,0,0,0.06);
         transition: all 0.3s ease;
-    }
-    .job-card:hover { 
-        transform: translateX(8px); 
-        box-shadow: 0 8px 25px rgba(204,0,0,0.15);
-    }
-    .job-title { font-size: 1.3rem; font-weight: 700; color: #1a1a1a; }
-    .job-meta { color: #666; font-size: 0.9rem; margin-top: 0.3rem; }
-    .tag { 
-        display: inline-block; 
-        background: #f0f0f0; 
-        padding: 0.3rem 0.8rem; 
-        border-radius: 20px; 
-        font-size: 0.8rem; 
-        margin-right: 0.5rem;
-        margin-top: 0.5rem;
-    }
-    .stButton > button {
+        overflow: hidden;
+    }}
+    .job-card:hover {{ transform: translateX(8px); box-shadow: 0 8px 25px rgba(204,0,0,0.15); }}
+    .job-card-header {{
+        padding: 1.5rem 2rem;
+        cursor: pointer;
+    }}
+    .job-title {{ font-size: 1.3rem; font-weight: 700; color: #1a1a1a; }}
+    .job-meta {{ color: #666; font-size: 0.9rem; margin-top: 0.3rem; }}
+    
+    .tag {{ 
+        display: inline-block; background: #f0f0f0; padding: 0.3rem 0.8rem; 
+        border-radius: 20px; font-size: 0.8rem; margin-right: 0.5rem; margin-top: 0.5rem;
+    }}
+    
+    .stButton > button {{
         background: #CC0000 !important; color: white !important;
-        border: none !important; padding: 0.6rem 2rem !important;
+        border: none !important; padding: 0.8rem 2.5rem !important;
         border-radius: 8px !important; font-weight: 600 !important;
-        font-size: 1rem !important;
-        transition: all 0.3s ease !important;
-    }
-    .stButton > button:hover {
-        background: #aa0000 !important;
-        transform: translateY(-2px) !important;
+        font-size: 1rem !important; transition: all 0.3s ease !important;
+    }}
+    .stButton > button:hover {{
+        background: #aa0000 !important; transform: translateY(-2px) !important;
         box-shadow: 0 5px 15px rgba(204,0,0,0.3) !important;
-    }
-    .footer {
-        background: #1a1a1a;
-        color: #888;
-        padding: 3rem 2rem;
-        text-align: center;
-        margin-top: 3rem;
-    }
-    .form-container {
-        max-width: 800px;
-        margin: 0 auto;
-        background: white;
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-    }
+    }}
+    
+    .footer {{
+        background: #1a1a1a; color: #888; padding: 3rem 2rem; text-align: center; margin-top: 3rem;
+    }}
+    
+    .form-container {{
+        max-width: 800px; margin: 0 auto; background: white; padding: 2rem;
+        border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    }}
+    
+    .success-box {{
+        background: linear-gradient(135deg, #f0f8f0, #e8f5e9);
+        padding: 2rem; border-radius: 15px; margin-top: 1rem;
+        border: 2px solid #38a169; text-align: center;
+    }}
+    
+    .testimonial-card {{
+        background: white; padding: 2rem; border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.06); text-align: center;
+    }}
+    .testimonial-card img {{
+        width: 70px; height: 70px; border-radius: 50%; margin-bottom: 1rem;
+        border: 3px solid #CC0000;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -101,12 +135,30 @@ selected_job = query_params.get('job', None)
 
 # ============ APPLICATION FORM PAGE ============
 if selected_job:
+    # Get job details from database
+    job_details = None
+    try:
+        all_reqs = db.get_all_job_requisitions()
+        for r in all_reqs:
+            job_ref = f"JOB-{r.get('req_id', '')[-6:]}"
+            if job_ref == selected_job:
+                job_details = r
+                break
+    except:
+        pass
+    
     st.markdown(f"""
     <div class="career-hero">
-        <h1>📝 Apply for Position</h1>
-        <p>Reference: {selected_job}</p>
+        {f'<img src="data:image/png;base64,{logo_b64}" style="height: 50px; margin-bottom: 1rem; position: relative;">' if logo_b64 else '<h2 style="color: #CC0000; position: relative;">CHURCHGATE GROUP</h2>'}
+        <h1>📝 Apply for {job_details.get('title', selected_job) if job_details else selected_job}</h1>
+        <p>{job_details.get('department', '')} | {job_details.get('location', '')} | {job_details.get('job_type', '')}</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Show full JD
+    if job_details:
+        with st.expander("📋 View Full Job Description", expanded=True):
+            st.markdown(job_details.get('jd', ''))
     
     st.markdown("<div class='form-container'>", unsafe_allow_html=True)
     
@@ -125,21 +177,17 @@ if selected_job:
             years_exp = st.selectbox("Years of Experience", ["0-1", "1-3", "3-5", "5-7", "7-10", "10+", "15+", "20+"])
         
         st.markdown("---")
-        st.markdown("### Cover Letter (Optional)")
-        cover_letter = st.text_area("Tell us why you're the best fit", height=120)
+        cover_letter = st.text_area("Cover Letter (Optional)", height=120, placeholder="Tell us why you're the best fit...")
         
         st.markdown("---")
-        st.markdown("### Resume/CV *")
-        resume = st.file_uploader("Upload your CV (PDF or DOCX)", type=['pdf', 'docx'])
+        resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'])
         
         st.markdown("---")
         st.markdown("### Screening Questions")
-        st.info("Please answer honestly - these help us evaluate your fit for the role.")
-        q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80, placeholder="Be specific about projects, achievements, and technologies used...")
-        q2 = st.text_area("2. What is your proudest professional achievement? *", height=80, placeholder="Share a specific accomplishment with measurable results...")
-        q3 = st.text_area("3. Why do you want to join Churchgate Group? *", height=80, placeholder="Tell us what excites you about this opportunity...")
+        q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80)
+        q2 = st.text_area("2. What is your proudest professional achievement? *", height=80)
+        q3 = st.text_area("3. Why do you want to join Churchgate Group? *", height=80)
         
-        st.markdown("---")
         st.markdown("*All fields marked with * are required.*")
         
         submitted = st.form_submit_button("📤 Submit Application", use_container_width=True)
@@ -147,7 +195,6 @@ if selected_job:
         if submitted:
             if first_name and last_name and email and phone and resume and q1 and q2 and q3:
                 try:
-                    # Parse CV text
                     resume_text = ""
                     if resume.type == "application/pdf":
                         import PyPDF2
@@ -159,51 +206,60 @@ if selected_job:
                         doc = docx.Document(resume)
                         resume_text = "\n".join([p.text for p in doc.paragraphs])
                     
-                    # Generate tracking ID
                     tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
+                    position_name = job_details.get('title', selected_job) if job_details else selected_job
                     
-                    # Save candidate
-                    candidate_data = (
-                        tracking_id, first_name, last_name, email, phone,
-                        linkedin, current_position, "", 
-                        years_exp.replace("+","").split("-")[0] if "-" in years_exp else years_exp.replace("+",""),
-                        "", "", "", f"CV_{first_name}_{last_name}.pdf", resume_text[:5000],
-                        selected_job, "Career Portal", "New"
-                    )
-                    db.add_candidate(candidate_data)
+                    # Save to candidates table with full data
+                    candidate_ref = tracking_id
+                    db._post("candidates", {
+                        "candidate_ref": candidate_ref,
+                        "first_name": first_name, "last_name": last_name,
+                        "email": email, "phone": phone,
+                        "linkedin_url": linkedin, "current_position": current_position,
+                        "current_company": "", "years_of_experience": years_exp.replace("+","").split("-")[0] if "-" in years_exp else years_exp.replace("+",""),
+                        "education_level": "", "skills": "", "location": "",
+                        "resume_filename": f"CV_{first_name}_{last_name}.pdf",
+                        "resume_text": resume_text[:10000],
+                        "job_id": selected_job, "source": "Career Portal", "status": "New",
+                        "ai_score": 0, "ai_tier": "Pending"
+                    })
                     
-                    # Save application to database
+                    # Save application for status tracking
+                    db._post("applications", {
+                        "tracking_id": tracking_id,
+                        "first_name": first_name, "last_name": last_name,
+                        "email": email, "phone": phone,
+                        "job_ref": selected_job,
+                        "position_name": position_name,
+                        "status": "Received",
+                        "applied_date": datetime.now().strftime('%Y-%m-%d %H:%M WAT')
+                    })
+                    
+                    # Try to send email
                     try:
-                        db._post("applications", {
-                            "tracking_id": tracking_id,
-                            "first_name": first_name, "last_name": last_name,
-                            "email": email, "phone": phone,
-                            "job_ref": selected_job, "status": "Received",
-                            "applied_date": datetime.now().strftime('%Y-%m-%d %H:%M WAT')
-                        })
+                        from utils.email_service import EmailService
+                        email_svc = EmailService()
+                        email_svc.send_email(email, "Application Received - Churchgate Group",
+                            f"Dear {first_name},\n\nThank you for applying for {position_name} at Churchgate Group.\n\nYour Tracking ID: {tracking_id}\n\nWe will review your application and get back to you.\n\nBest regards,\nChurchgate Group HR")
                     except:
                         pass
                     
-                    st.success(f"✅ Thank you, {first_name}! Your application has been submitted successfully.")
+                    st.success(f"✅ Thank you, {first_name}! Your application has been submitted.")
                     st.balloons()
                     
                     st.markdown(f"""
-                    <div style="background: #f0f8f0; padding: 1.5rem; border-radius: 10px; margin-top: 1rem; border: 1px solid #38a169;">
-                        <h4 style="color: #38a169;">📋 Application Received!</h4>
-                        <p><strong>Tracking ID:</strong> {tracking_id}</p>
-                        <p><strong>Position:</strong> {selected_job}</p>
-                        <p>📧 A confirmation email will be sent to <strong>{email}</strong></p>
-                        <p>🔍 You can check your application status using your Tracking ID on our careers page.</p>
-                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
-                            Churchgate Group is an equal opportunity employer. All stages of employment are based on merit, competence, and performance.
-                        </p>
+                    <div class="success-box">
+                        <h2 style="color: #38a169;">📋 Application Received!</h2>
+                        <p style="font-size: 1.2rem;"><strong>Tracking ID:</strong> {tracking_id}</p>
+                        <p style="font-size: 1.1rem;"><strong>Position:</strong> {position_name}</p>
+                        <p>📧 Confirmation sent to <strong>{email}</strong></p>
+                        <p>🔍 Check status anytime with your Tracking ID</p>
+                        <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">Churchgate Group is an equal opportunity employer.</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Email notification would go here
-                    
                 except Exception as e:
-                    st.error(f"Submission error: {str(e)}")
+                    st.error(f"Error: {str(e)}")
             else:
                 st.error("❌ Please fill all required fields marked with *")
     
@@ -211,51 +267,50 @@ if selected_job:
 
 # ============ JOB LISTING PAGE ============
 else:
-    st.markdown("""
+    # Hero
+    st.markdown(f"""
     <div class="career-hero">
+        {f'<img src="data:image/png;base64,{logo_b64}" style="height: 60px; margin-bottom: 1.5rem; position: relative;">' if logo_b64 else '<h2 style="color: #CC0000; position: relative;">CHURCHGATE GROUP</h2>'}
         <h1>🚀 Build Your Career at Churchgate Group</h1>
         <p>Join a team of innovators, leaders, and changemakers shaping Africa's real estate and infrastructure future.</p>
-        <div class="company-badge">🏢 Equal Opportunity Employer | Merit-Based | Performance-Driven</div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Search bar
-    with st.container():
-        st.markdown("<div class='search-bar'>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns([2, 1, 1])
-        with c1:
-            search_query = st.text_input("🔍 Search jobs", placeholder="Search by title, skill, department...", label_visibility="collapsed")
-        with c2:
-            dept_filter = st.selectbox("Department", ["All Departments", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations"], label_visibility="collapsed")
-        with c3:
-            type_filter = st.selectbox("Type", ["All Types", "Full-time", "Contract", "Part-time", "Intern"], label_visibility="collapsed")
-        st.markdown("</div>", unsafe_allow_html=True)
+    # Stats bar
+    st.markdown("""
+    <div class="stats-bar">
+        <div class="stat-item"><div class="stat-number">12+</div><div class="stat-label">Offices Across Africa</div></div>
+        <div class="stat-item"><div class="stat-number">1,200+</div><div class="stat-label">Team Members</div></div>
+        <div class="stat-item"><div class="stat-number">30+</div><div class="stat-label">Years of Excellence</div></div>
+        <div class="stat-item"><div class="stat-number">4.5/5</div><div class="stat-label">Employee Satisfaction</div></div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Load real approved jobs from database
+    # Search
+    st.markdown("<div class='search-bar'>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([2, 1, 1])
+    with c1:
+        search_query = st.text_input("🔍 Search jobs", placeholder="Search by title, skill, department...", label_visibility="collapsed")
+    with c2:
+        dept_filter = st.selectbox("Department", ["All Departments", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations"], label_visibility="collapsed")
+    with c3:
+        type_filter = st.selectbox("Type", ["All Types", "Full-time", "Contract", "Part-time", "Intern"], label_visibility="collapsed")
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Load jobs
     jobs = []
     try:
         all_reqs = db.get_all_job_requisitions()
         for r in all_reqs:
             if r.get('status') == 'Approved - Live':
                 job_ref = f"JOB-{r.get('req_id', '')[-6:]}"
-                
-                # Apply filters
                 if search_query and search_query.lower() not in r.get('title', '').lower():
                     continue
                 if dept_filter != "All Departments" and r.get('department', '') != dept_filter:
                     continue
                 if type_filter != "All Types" and r.get('job_type', '') != type_filter:
                     continue
-                
-                jobs.append({
-                    "ref": job_ref,
-                    "title": r.get('title', ''),
-                    "dept": r.get('department', ''),
-                    "location": r.get('location', ''),
-                    "type": r.get('job_type', ''),
-                    "closing": r.get('closing', ''),
-                    "jd": r.get('jd', '')[:300] + "..." if len(r.get('jd', '')) > 300 else r.get('jd', '')
-                })
+                jobs.append({"ref": job_ref, "title": r.get('title', ''), "dept": r.get('department', ''), "location": r.get('location', ''), "type": r.get('job_type', ''), "closing": r.get('closing', ''), "jd": r.get('jd', '')})
     except:
         pass
     
@@ -263,9 +318,7 @@ else:
     
     if jobs:
         st.markdown(f"### 📋 {len(jobs)} Open Position{'s' if len(jobs) > 1 else ''}")
-        
         for job in jobs:
-            # Calculate days remaining
             try:
                 closing_date = datetime.strptime(job['closing'], '%Y-%m-%d')
                 days_left = (closing_date - datetime.now()).days
@@ -275,23 +328,46 @@ else:
             
             with st.expander(f"**{job['title']}** — {job['dept']} | {job['location']}", expanded=False):
                 st.markdown(f"""
-                <div class="job-card">
-                    <div>
-                        <span class="tag">💼 {job['type']}</span>
-                        <span class="tag">📍 {job['location']}</span>
-                        <span class="tag">🏢 {job['dept']}</span>
-                        <span class="tag">{days_text}</span>
-                    </div>
-                    <p style="margin-top: 1rem; color: #555; line-height: 1.6;">{job['jd']}</p>
-                    <p style="font-size: 0.85rem; color: #888;">📅 Closes: {job['closing']} | Ref: {job['ref']}</p>
-                </div>
+                <span class="tag">💼 {job['type']}</span>
+                <span class="tag">📍 {job['location']}</span>
+                <span class="tag">🏢 {job['dept']}</span>
+                <span class="tag">{days_text}</span>
                 """, unsafe_allow_html=True)
+                st.markdown("---")
+                st.markdown(job['jd'])
+                st.markdown(f"<small style='color: #888;'>📅 Closes: {job['closing']} | Ref: {job['ref']}</small>", unsafe_allow_html=True)
                 
                 if st.button(f"📝 Apply Now - {job['title']}", key=f"apply_{job['ref']}"):
                     st.query_params['job'] = job['ref']
                     st.rerun()
     else:
-        st.info("🎯 No open positions at the moment. Please check back later or follow us on LinkedIn for future opportunities.")
+        st.info("🎯 No open positions at the moment. Please check back later.")
+    
+    # Testimonials
+    st.markdown("---")
+    st.markdown("### 🌟 Why Join Churchgate Group?")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown("""
+        <div class="testimonial-card">
+            <h4>🎯 Career Growth</h4>
+            <p style="font-size: 0.9rem; color: #666;">Continuous learning, mentorship programs, and clear career progression paths.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with c2:
+        st.markdown("""
+        <div class="testimonial-card">
+            <h4>💡 Innovation</h4>
+            <p style="font-size: 0.9rem; color: #666;">Work with cutting-edge technology and innovative solutions in real estate.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with c3:
+        st.markdown("""
+        <div class="testimonial-card">
+            <h4>🤝 Culture</h4>
+            <p style="font-size: 0.9rem; color: #666;">Inclusive, collaborative environment where every voice matters.</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Status checker
     st.markdown("---")
@@ -300,12 +376,12 @@ else:
         if tracking_input:
             try:
                 apps = db._get("applications", {"tracking_id": tracking_input})
-                if apps:
+                if apps and len(apps) > 0:
                     app = apps[0]
-                    st.success(f"✅ Application Found!")
+                    st.success("✅ Application Found!")
                     st.markdown(f"**Status:** {app.get('status', 'Received')}")
+                    st.markdown(f"**Position:** {app.get('position_name', app.get('job_ref', 'N/A'))}")
                     st.markdown(f"**Applied:** {app.get('applied_date', 'N/A')}")
-                    st.markdown(f"**Position:** {app.get('job_ref', 'N/A')}")
                 else:
                     st.warning("No application found with that Tracking ID.")
             except:
@@ -316,10 +392,8 @@ st.markdown("""
 <div class="footer">
     <h3 style="color: #CC0000;">Churchgate Group</h3>
     <p>World Trade Center, Abuja, Nigeria</p>
-    <p>📧 careers@churchgate.com | 📞 +234 800 000 0000</p>
-    <p style="margin-top: 1rem; font-size: 0.85rem;">
-        Churchgate Group is an equal opportunity employer. All employment decisions are based on merit, competence, and business needs.
-    </p>
+    <p>📧 careers@churchgate.com</p>
+    <p style="margin-top: 1rem; font-size: 0.85rem;">Churchgate Group is an equal opportunity employer. All employment decisions are based on merit, competence, and business needs.</p>
     <p style="font-size: 0.8rem;">© 2026 Churchgate Group. All rights reserved.</p>
 </div>
 """, unsafe_allow_html=True)
