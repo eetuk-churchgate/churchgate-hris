@@ -150,7 +150,30 @@ if selected_job:
                     
                     tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
                     
+                    # Upload original file to Supabase Storage
+                    cv_url = ""
+                    try:
+                        resume.seek(0)
+                        file_content = resume.read()
+                        file_ext = "pdf" if "pdf" in resume.type else "docx"
+                        file_name = f"{tracking_id}_{first_name}_{last_name}.{file_ext}"
+                        db.supabase.storage.from_("cvs").upload(file_name, file_content)
+                        cv_url = db.supabase.storage.from_("cvs").get_public_url(file_name)
+                    except Exception as e:
+                        pass
+                    
                     db._post("candidates", {
+                        "candidate_ref": tracking_id, "first_name": first_name, "last_name": last_name,
+                        "email": email, "phone": phone, "linkedin_url": linkedin,
+                        "current_position": current_position, "current_company": "",
+                        "years_of_experience": years_exp.replace("+","").split("-")[0] if "-" in years_exp else years_exp.replace("+",""),
+                        "education_level": "", "skills": "", "location": "",
+                        "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
+                        "resume_text": resume_text[:10000],
+                        "cv_url": cv_url,
+                        "job_id": selected_job,
+                        "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
+                    })
                         "candidate_ref": tracking_id, "first_name": first_name, "last_name": last_name,
                         "email": email, "phone": phone, "linkedin_url": linkedin,
                         "current_position": current_position, "current_company": "",
