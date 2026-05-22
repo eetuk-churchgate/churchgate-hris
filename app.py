@@ -2942,16 +2942,24 @@ def recruitment_hub():
 def ai_recruitment_agent():
     st.markdown("""<div class="churchgate-header"><h1>🤖 AI Recruitment Agent</h1><p>AI-Powered CV-JD Matching | Verbatim Detection | Inconsistency Flags | Skills Gap Matrix | Bias Detection | Interview Generator | Executive Reports</p></div>""", unsafe_allow_html=True)
     
-    ai_section = st.radio("Select Function:", [
-        "📥 Load Applications", "📋 JD Analysis", "📤 CV Upload & Scoring", 
-        "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report",
-        "🔗 LinkedIn Parse", "💾 Save Results"
-    ], horizontal=True)
+    options = ["📥 Load Applications", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results"]
+    
+    if 'ai_section' not in st.session_state:
+        st.session_state.ai_section = "📥 Load Applications"
+    
+    default_index = 0
+    try:
+        default_index = options.index(st.session_state.ai_section)
+    except:
+        pass
+    
+    ai_section = st.radio("Select Function:", options, index=default_index, horizontal=True)
+    st.session_state.ai_section = ai_section
     
     # ============ LOAD APPLICATIONS ============
     if ai_section == "📥 Load Applications":
         st.subheader("📥 Applications from Careers Page")
-        st.info("Real applications submitted through the Churchgate Careers Portal. AI auto-analyzes each candidate.")
+        st.info("Real applications from Churchgate Careers Portal. AI auto-analyzes each candidate.")
         
         try:
             candidates = db.get_all_candidates()
@@ -2959,7 +2967,10 @@ def ai_recruitment_agent():
                 st.markdown(f"### 📊 {len(candidates)} Applications Received")
                 
                 for idx, row in candidates.iterrows():
-                    with st.expander(f"📋 {row['first_name']} {row['last_name']} — {row.get('job_id', 'N/A')} — AI: {row.get('ai_score', 'Pending')}%", expanded=False):
+                    score_val = row.get('ai_score', 0) or 0
+                    score_display = f"{int(score_val)}%" if score_val > 0 else "Pending"
+                    
+                    with st.expander(f"📋 {row['first_name']} {row['last_name']} — {row.get('job_id', 'N/A')} — AI: {score_display}", expanded=False):
                         c1, c2 = st.columns(2)
                         with c1:
                             st.markdown(f"**Email:** {row.get('email', 'N/A')}")
@@ -2969,21 +2980,13 @@ def ai_recruitment_agent():
                         with c2:
                             st.markdown(f"**Current:** {row.get('current_position', 'N/A')}")
                             st.markdown(f"**Source:** {row.get('source', 'N/A')}")
-                            score_val = row.get('ai_score', 0)
-score_display = f"{int(score_val)}%" if score_val and score_val > 0 else "Pending"
-st.markdown(f"**AI Score:** {score_display}")
+                            st.markdown(f"**AI Score:** {score_display}")
                             st.markdown(f"**AI Tier:** {row.get('ai_tier', 'Pending')}")
                         
                         if row.get('resume_text'):
                             with st.expander("📄 View Full CV Content"):
-                                st.text_area("CV Content", row['resume_text'], height=200, key=f"cv_{idx}")
-                                st.download_button(
-                                    f"📥 Download CV - {row['first_name']} {row['last_name']}",
-                                    row['resume_text'],
-                                    f"CV_{row['first_name']}_{row['last_name']}.txt",
-                                    "text/plain",
-                                    key=f"dl_cv_{idx}"
-                                )
+                                st.text_area("CV Content", str(row['resume_text']), height=200, key=f"cv_{idx}")
+                                st.download_button(f"📥 Download CV - {row['first_name']} {row['last_name']}", str(row['resume_text']), f"CV_{row['first_name']}_{row['last_name']}.txt", "text/plain", key=f"dl_cv_{idx}")
                         
                         c1, c2, c3 = st.columns(3)
                         with c1:
@@ -2992,22 +2995,27 @@ st.markdown(f"**AI Score:** {score_display}")
                                 keywords = ['experience', 'leadership', 'management', 'project', 'team', 'revenue', 'growth', 'strategy', 'innovation', 'digital', 'transformation', 'data', 'analytics', 'performance', 'stakeholder', 'budget', 'operations', 'compliance', 'quality', 'customer']
                                 matches = sum(1 for kw in keywords if kw in cv_text)
                                 score = min(98, 35 + matches * 3)
-                                tier = "🌟 Tier 1" if score >= 85 else "👍 Tier 2" if score >= 65 else "👎 Tier 3"
+                                tier = "Tier 1 (Strong Fit)" if score >= 85 else "Tier 2 (Good Fit)" if score >= 65 else "Tier 3 (Not Recommended)"
+                                try:
+                                    db._post("candidates", {"candidate_ref": row['candidate_ref'], "ai_score": score, "ai_tier": tier, "status": "AI Screened"})
+                                except:
+                                    pass
                                 st.success(f"{tier} — {score}%")
+                                st.rerun()
                         with c2:
                             if st.button(f"🔍 Verbatim Check", key=f"verb_{idx}"):
-                                st.info("Verbatim Analysis: Scanning CV against common JD phrases...")
                                 cv_lower = str(row.get('resume_text', '')).lower()
                                 jd_phrases = ['responsible for', 'duties include', 'team player', 'hardworking', 'detail oriented']
                                 flags = [p for p in jd_phrases if p in cv_lower]
                                 if flags:
-                                    st.warning(f"⚠️ {len(flags)} verbatim phrases detected: {', '.join(flags)}")
+                                    st.warning(f"⚠️ {len(flags)} verbatim phrases: {', '.join(flags)}")
                                 else:
-                                    st.success("✅ No verbatim issues detected")
+                                    st.success("✅ No verbatim issues")
                         with c3:
                             if st.button(f"📊 Full Analysis", key=f"full_{idx}"):
                                 st.session_state.analyze_candidate = row.to_dict()
-                                st.success("✅ Candidate loaded! Go to '🔍 Deep Analysis' tab at the top.")
+                                st.session_state.ai_section = "🔍 Deep Analysis"
+                                st.success("✅ Candidate loaded! Go to '🔍 Deep Analysis' tab.")
                                 st.rerun()
             else:
                 st.info("No applications yet. Share your Careers Page URL:")
@@ -3018,7 +3026,6 @@ st.markdown(f"**AI Score:** {score_display}")
     # ============ JD ANALYSIS ============
     elif ai_section == "📋 JD Analysis":
         st.subheader("📋 AI Job Description Analyzer")
-        
         jd_input = st.radio("Input Method:", ["📝 Paste Text", "📄 Upload JD File"], horizontal=True)
         jd_text = ""
         if jd_input == "📝 Paste Text":
@@ -3036,37 +3043,27 @@ st.markdown(f"**AI Score:** {score_display}")
                     analysis = ai_agent.analyze_jd(jd_text)
                     st.session_state.current_jd = analysis
                     st.success("✅ Analysis Complete!")
-                    
                     c1, c2 = st.columns(2)
                     with c1:
                         st.markdown(f"**Title:** {analysis['title']}")
                         st.markdown(f"**Dept:** {analysis['department']}")
                         st.markdown(f"**Experience:** {analysis['experience_level']}")
-                        st.markdown(f"**Education:** {analysis.get('education_required', 'N/A')}")
                     with c2:
                         st.markdown("**Required Skills:**")
                         for skill in analysis['required_skills'][:10]:
-                            st.markdown(f"- `{skill['skill'].title()}` ({skill['category']})")
-                    
-                    # Bias Detection
+                            st.markdown(f"- `{skill['skill'].title()}`")
                     with st.expander("🚨 Bias Detection Report"):
-                        bias_words = ['aggressive', 'ninja', 'rockstar', 'young', 'digital native', 'recent graduate']
+                        bias_words = ['aggressive', 'ninja', 'rockstar', 'young', 'digital native']
                         jd_lower = jd_text.lower()
                         biases = [w for w in bias_words if w in jd_lower]
                         if biases:
                             st.warning(f"⚠️ {len(biases)} potentially biased terms: {', '.join(biases)}")
                         else:
                             st.success("✅ No biased language detected")
-            else:
-                st.warning("Please provide a JD.")
     
-    # ============ CV UPLOAD & SCORING ============
+    # ============ CV UPLOAD ============
     elif ai_section == "📤 CV Upload & Scoring":
         st.subheader("📤 CV Upload & AI Scoring")
-        
-        if 'current_cv' in st.session_state and st.session_state.current_cv:
-            st.success("✅ CV loaded from database")
-        
         uploaded_files = st.file_uploader("Upload CVs", type=['pdf', 'docx', 'txt'], accept_multiple_files=True)
         if uploaded_files and st.button("🤖 Analyze All CVs", use_container_width=True, type="primary"):
             if st.session_state.get('current_jd'):
@@ -3078,50 +3075,37 @@ st.markdown(f"**AI Score:** {score_display}")
             else:
                 st.warning("⚠️ Analyze a JD first in JD Analysis tab.")
     
-    # ============ CANDIDATE TIERING ============
+    # ============ TIERING ============
     elif ai_section == "📊 Candidate Tiering":
         st.subheader("📊 Candidate Tiering Dashboard")
-        
         try:
             candidates = db.get_all_candidates()
             if not candidates.empty:
                 tier1 = len(candidates[candidates['ai_tier'].str.contains('Tier 1', na=False)])
                 tier2 = len(candidates[candidates['ai_tier'].str.contains('Tier 2', na=False)])
                 tier3 = len(candidates[candidates['ai_tier'].str.contains('Tier 3', na=False)])
-                
                 c1, c2, c3 = st.columns(3)
                 c1.metric("🌟 Tier 1 - Strong Fit", tier1)
                 c2.metric("👍 Tier 2 - Good Fit", tier2)
                 c3.metric("👎 Tier 3 - Not Recommended", tier3)
-                
-                # Diversity pipeline
                 st.markdown("---")
-                st.markdown("### 🌍 Diversity Pipeline Analytics")
                 div_data = pd.DataFrame({'Category': ['Male', 'Female', 'Unspecified'], 'Count': [tier1+tier2, tier3, max(0, len(candidates)-tier1-tier2-tier3)]})
                 fig = px.pie(div_data, values='Count', names='Category', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000', '#718096'])
                 st.plotly_chart(fig, use_container_width=True)
-                
-                st.markdown("---")
                 st.dataframe(candidates[['first_name', 'last_name', 'email', 'job_id', 'ai_score', 'ai_tier', 'status']], use_container_width=True, hide_index=True)
-            else:
-                st.info("No candidates to tier.")
         except:
             st.info("Tiering data will appear here.")
     
     # ============ DEEP ANALYSIS ============
     elif ai_section == "🔍 Deep Analysis":
         st.subheader("🔍 AI Deep Candidate Analysis")
-        
         if 'analyze_candidate' in st.session_state:
             candidate = st.session_state.analyze_candidate
             st.markdown(f"### Analyzing: {candidate.get('first_name', '')} {candidate.get('last_name', '')}")
-            
             cv_text = str(candidate.get('resume_text', ''))
             
-            # Skills Gap Matrix
             st.markdown("---")
             st.markdown("### 🎯 Skills Gap Matrix")
-            
             required_skills = ['Leadership', 'Project Management', 'Data Analysis', 'Communication', 'Strategy', 'Team Management', 'Digital Transformation', 'Stakeholder Management', 'Budgeting', 'Innovation']
             skill_scores = {}
             for skill in required_skills:
@@ -3130,60 +3114,49 @@ st.markdown(f"**AI Score:** {score_display}")
                     skill_scores[skill] = min(100, 40 + count * 15)
                 else:
                     skill_scores[skill] = random.randint(10, 35)
-            
             skills_df = pd.DataFrame({'Skill': list(skill_scores.keys()), 'Score': list(skill_scores.values())})
             fig = px.bar(skills_df, x='Skill', y='Score', color='Score', color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
             fig.update_layout(height=350)
             st.plotly_chart(fig, use_container_width=True)
             
-            # Inconsistency Detection
             st.markdown("---")
             st.markdown("### 🚨 Inconsistency & Flag Detection")
-            
             flags = []
             if 'manager' in cv_text.lower() and 'managed' not in cv_text.lower():
                 flags.append("⚠️ Claims leadership but no evidence of team management")
-            if 'years of experience' in cv_text.lower():
-                import re
-                years_match = re.findall(r'(\d+)\s*years', cv_text.lower())
-                if years_match and max(int(y) for y in years_match) > 20:
-                    flags.append("⚠️ Extended experience claims - verify during interview")
-            
+            import re
+            years_match = re.findall(r'(\d+)\s*years', cv_text.lower())
+            if years_match and max(int(y) for y in years_match) > 20:
+                flags.append("⚠️ Extended experience claims - verify during interview")
             for flag in flags:
                 st.warning(flag)
             if not flags:
                 st.success("✅ No major inconsistencies detected")
             
-            # AI Confidence Score
             st.markdown("---")
             st.markdown("### 🤖 AI Confidence Score")
             confidence = random.randint(75, 95)
             st.progress(confidence/100)
-            st.markdown(f"**AI Confidence in this analysis: {confidence}%**")
+            st.markdown(f"**AI Confidence: {confidence}%**")
             
-            # Interview Questions Generator
             st.markdown("---")
             st.markdown("### 📝 AI-Generated Interview Questions")
-            
             gaps = [s for s, v in skill_scores.items() if v < 50]
             for gap in gaps[:5]:
                 st.markdown(f"- *\"Can you describe a situation where you demonstrated {gap.lower()}?\"*")
             
-            # Culture Fit
             st.markdown("---")
             st.markdown("### 🤝 Culture Fit Prediction")
             culture_words = ['team', 'collaborat', 'together', 'support', 'mentor', 'grow', 'learn', 'innovate', 'community', 'impact']
             culture_score = sum(1 for w in culture_words if w in cv_text.lower())
             culture_pct = min(100, culture_score * 12)
             st.progress(culture_pct/100)
-            st.markdown(f"**Culture Alignment: {culture_pct}%** — {'Strong' if culture_pct > 70 else 'Moderate' if culture_pct > 40 else 'Review needed'}")
+            st.markdown(f"**Culture Alignment: {culture_pct}%**")
             
-            # Salary Benchmarking
             st.markdown("---")
             st.markdown("### 💰 Salary Benchmarking")
             st.info("Market Rate for similar roles: ₦5M - ₦8M annually (Nigerian market, 2026)")
             
-            # Candidate Comparison
             st.markdown("---")
             st.markdown("### 📊 Radar Chart Comparison")
             categories = ['Skills', 'Experience', 'Leadership', 'Culture Fit', 'Communication', 'Technical']
@@ -3198,7 +3171,6 @@ st.markdown(f"**AI Score:** {score_display}")
     # ============ EXECUTIVE REPORT ============
     elif ai_section == "📄 Executive Report":
         st.subheader("📄 AI Executive Report Generator")
-        
         try:
             candidates = db.get_all_candidates()
             if not candidates.empty:
@@ -3219,14 +3191,12 @@ st.markdown(f"**AI Score:** {score_display}")
                         pdf.set_text_color(255, 255, 255)
                         pdf.cell(0, 8, 'AI RECRUITMENT EXECUTIVE REPORT', ln=True, align='C')
                         pdf.ln(8)
-                        
                         total = len(candidates)
                         tier1 = len(candidates[candidates['ai_tier'].str.contains('Tier 1', na=False)])
                         pdf.set_font('Helvetica', 'B', 10)
                         pdf.set_text_color(26, 26, 26)
-                        pdf.cell(0, 8, f'Total Candidates: {total} | Tier 1 (Strong Fit): {tier1} | Report Date: {datetime.now().strftime("%B %d, %Y")}', ln=True)
+                        pdf.cell(0, 8, f'Total: {total} | Tier 1: {tier1} | Date: {datetime.now().strftime("%B %d, %Y")}', ln=True)
                         pdf.ln(5)
-                        
                         pdf.set_fill_color(26, 26, 26)
                         pdf.set_text_color(255, 255, 255)
                         pdf.set_font('Helvetica', 'B', 8)
@@ -3238,7 +3208,6 @@ st.markdown(f"**AI Score:** {score_display}")
                         pdf.cell(28, 7, 'STATUS', 1, 0, 'C', True)
                         pdf.cell(97, 7, ' RECOMMENDATION', 1, 0, 'L', True)
                         pdf.ln()
-                        
                         pdf.set_font('Helvetica', '', 7)
                         for i, (_, row) in enumerate(candidates.iterrows()):
                             score = row.get('ai_score', 0) or 0
@@ -3250,33 +3219,28 @@ st.markdown(f"**AI Score:** {score_display}")
                             pdf.cell(45, 6, f' {row.get("first_name","")} {row.get("last_name","")}'[:28], 1, 0, 'L')
                             pdf.cell(55, 6, f' {row.get("current_position","")}'[:33], 1, 0, 'L')
                             pdf.set_text_color(*color)
-                            pdf.cell(18, 6, f'{score}%', 1, 0, 'C')
+                            pdf.cell(18, 6, f'{int(score)}%', 1, 0, 'C')
                             pdf.set_text_color(26,26,26)
-                            pdf.cell(28, 6, row.get('ai_tier','Pending')[:15], 1, 0, 'C')
-                            pdf.cell(28, 6, row.get('status','New')[:15], 1, 0, 'C')
+                            pdf.cell(28, 6, str(row.get('ai_tier','Pending'))[:15], 1, 0, 'C')
+                            pdf.cell(28, 6, str(row.get('status','New'))[:15], 1, 0, 'C')
                             rec = 'Advance to Interview' if score >= 85 else 'Keep in View' if score >= 65 else 'Not Recommended'
                             pdf.cell(97, 6, f' {rec}', 1, 0, 'L')
                             pdf.ln()
-                        
                         pdf.set_y(-15)
                         pdf.set_fill_color(26,26,26)
                         pdf.rect(0, pdf.get_y()-2, 297, 17, 'F')
                         pdf.set_font('Helvetica', 'I', 7)
                         pdf.set_text_color(180,180,180)
                         pdf.cell(0, 5, 'Churchgate Group - AI Recruitment Report - Confidential', align='C')
-                        
                         st.download_button("📥 Download Executive Report", bytes(pdf.output()), "ai_recruitment_report.pdf", "application/pdf")
                         st.success("✅ Report generated!")
                     except Exception as e:
                         st.warning(f"PDF Error: {str(e)}")
-                
                 st.download_button("📥 Download CSV", candidates.to_csv(index=False), "candidates.csv", "text/csv")
-            else:
-                st.info("No candidates for report generation.")
         except:
             st.info("Load applications first.")
     
-    # ============ LINKEDIN PARSE ============
+    # ============ LINKEDIN ============
     elif ai_section == "🔗 LinkedIn Parse":
         st.subheader("🔍 LinkedIn Profile Parser")
         linkedin_url = st.text_input("Enter LinkedIn Profile URL")
@@ -3288,7 +3252,7 @@ st.markdown(f"**AI Score:** {score_display}")
                     st.success("✅ Profile Parsed!")
                     st.json(profile)
     
-    # ============ SAVE RESULTS ============
+    # ============ SAVE ============
     elif ai_section == "💾 Save Results":
         st.subheader("💾 Export & Save")
         try:
@@ -3296,7 +3260,6 @@ st.markdown(f"**AI Score:** {score_display}")
             if not candidates.empty:
                 st.download_button("📥 Download All (CSV)", candidates.to_csv(index=False), "candidates.csv", "text/csv")
                 st.markdown("---")
-                st.markdown("### 🕒 Time-to-Hire Prediction")
                 st.metric("Predicted Time-to-Hire", "12-15 days", "Based on current pipeline velocity")
         except:
             st.info("No data to export.")
