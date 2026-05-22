@@ -114,15 +114,22 @@ if selected_job:
 else:
     st.markdown("### 📋 Open Positions")
     
-    # Load real active jobs from session state
+    # Load real approved jobs from database
     jobs = []
-    if 'active_jobs' in st.session_state and st.session_state.active_jobs:
-        for job in st.session_state.active_jobs:
-            jobs.append({
-                "ref": job['ref'], "title": job['title'], 
-                "dept": job['department'], "location": job['location'], 
-                "type": job['type']
-            })
+    try:
+        all_reqs = db.get_all_job_requisitions()
+        for r in all_reqs:
+            if r.get('status') == 'Approved - Live':
+                job_ref = f"JOB-{r.get('req_id', '')[-6:]}"
+                jobs.append({
+                    "ref": job_ref,
+                    "title": r.get('title', ''),
+                    "dept": r.get('department', ''),
+                    "location": r.get('location', ''),
+                    "type": r.get('job_type', '')
+                })
+    except:
+        pass
     
     if not jobs:
         st.info("No open positions at the moment. Please check back later.")
