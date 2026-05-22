@@ -215,5 +215,11 @@ class DatabaseManager:
             "job_id": candidate_data[14], "source": candidate_data[15], "status": candidate_data[16]
         })
 
+    def upload_file(self, bucket, file_name, file_content, content_type="application/pdf"):
+        if self.use_supabase and self.supabase:
+            self.supabase.storage.from_(bucket).upload(file_name, file_content, {"content-type": content_type})
+            return self.supabase.storage.from_(bucket).get_public_url(file_name)
+        return ""
+
     def get_dashboard_stats(self):
         return {'total_employees': 48, 'open_positions': 5, 'new_candidates': 0, 'avg_performance': 85.0}
