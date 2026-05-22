@@ -2969,12 +2969,21 @@ def ai_recruitment_agent():
                         with c2:
                             st.markdown(f"**Current:** {row.get('current_position', 'N/A')}")
                             st.markdown(f"**Source:** {row.get('source', 'N/A')}")
-                            st.markdown(f"**AI Score:** {row.get('ai_score', 'Pending')}%")
+                            score_val = row.get('ai_score', 0)
+score_display = f"{int(score_val)}%" if score_val and score_val > 0 else "Pending"
+st.markdown(f"**AI Score:** {score_display}")
                             st.markdown(f"**AI Tier:** {row.get('ai_tier', 'Pending')}")
                         
                         if row.get('resume_text'):
-                            with st.expander("📄 View CV Content"):
-                                st.text_area("CV", row['resume_text'][:3000], height=150, key=f"cv_{idx}")
+                            with st.expander("📄 View Full CV Content"):
+                                st.text_area("CV Content", row['resume_text'], height=200, key=f"cv_{idx}")
+                                st.download_button(
+                                    f"📥 Download CV - {row['first_name']} {row['last_name']}",
+                                    row['resume_text'],
+                                    f"CV_{row['first_name']}_{row['last_name']}.txt",
+                                    "text/plain",
+                                    key=f"dl_cv_{idx}"
+                                )
                         
                         c1, c2, c3 = st.columns(3)
                         with c1:
@@ -2998,7 +3007,7 @@ def ai_recruitment_agent():
                         with c3:
                             if st.button(f"📊 Full Analysis", key=f"full_{idx}"):
                                 st.session_state.analyze_candidate = row.to_dict()
-                                st.success("✅ Candidate loaded for Deep Analysis tab!")
+                                st.success("✅ Candidate loaded! Go to '🔍 Deep Analysis' tab at the top.")
                                 st.rerun()
             else:
                 st.info("No applications yet. Share your Careers Page URL:")
