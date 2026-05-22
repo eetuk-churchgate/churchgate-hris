@@ -181,7 +181,7 @@ class DatabaseManager:
         except:
             return False
 
-   def save_job_requisition(self, req_id, title, department, location, job_type, salary, level, positions, closing, jd, screening, posts, status, submitted_by, date, lm_comment, admin_comment, coo_comment):
+    def save_job_requisition(self, req_id, title, department, location, job_type, salary, level, positions, closing, jd, screening, posts, status, submitted_by, date, lm_comment, admin_comment, coo_comment):
         existing = self._get("job_requisitions", {"req_id": req_id})
         if existing:
             self._delete("job_requisitions", {"req_id": req_id})
