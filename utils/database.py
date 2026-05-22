@@ -199,6 +199,10 @@ class DatabaseManager:
         data = self._get("job_requisitions")
         return data if data else []
 
+    def get_all_candidates(self):
+        data = self._get("candidates")
+        return pd.DataFrame(data) if data else pd.DataFrame()
+
     def add_candidate(self, candidate_data):
         self._post("candidates", {
             "candidate_ref": candidate_data[0], "first_name": candidate_data[1],
