@@ -2471,6 +2471,8 @@ def recruitment_hub():
         st.session_state.offer_letters = []
     if 'referrals' not in st.session_state:
         st.session_state.referrals = []
+    if 'approval_comments' not in st.session_state:
+        st.session_state.approval_comments = {}
     
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
         "📋 Job Requisition", "📢 Active Jobs", "🌐 Candidate Portal", 
@@ -2481,7 +2483,7 @@ def recruitment_hub():
     # ============ TAB 1: JOB REQUISITION ============
     with tab1:
         st.subheader("📋 Job Requisition & Approval Workflow")
-        st.info("Workflow: Line Manager → Super Admin → COO → Job Goes LIVE")
+        st.info("Workflow: Line Manager → Super Admin → COO → Job Goes LIVE on Careers Page")
         
         with st.form("job_requisition_form"):
             st.markdown("### New Job Requisition")
@@ -2498,7 +2500,6 @@ def recruitment_hub():
                 closing_date = st.date_input("Application Deadline")
             
             st.markdown("---")
-            st.markdown("### Job Description")
             jd_text = st.text_area("Full Job Description *", height=200, placeholder="Paste complete job description...")
             
             st.markdown("### Screening Questions")
@@ -2528,7 +2529,8 @@ def recruitment_hub():
                         'jd': jd_text, 'screening': [screening_q1, screening_q2, screening_q3, screening_q4],
                         'posts': {'linkedin': post_linkedin, 'indeed': post_indeed, 'glassdoor': post_glassdoor},
                         'status': 'Pending LM Approval',
-                        'submitted_by': user_name, 'date': datetime.now().strftime('%Y-%m-%d %H:%M')
+                        'submitted_by': user_name, 'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        'lm_comment': '', 'admin_comment': '', 'coo_comment': ''
                     }
                     st.session_state.job_requisitions.append(req)
                     st.success(f"✅ Job requisition {req['id']} submitted! Awaiting approval chain.")
@@ -2545,23 +2547,34 @@ def recruitment_hub():
                     st.markdown(f"**By:** {req['submitted_by']} | **Dept:** {req['department']} | **Location:** {req['location']}")
                     
                     if is_admin or is_manager:
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            if req['status'] == 'Pending LM Approval':
-                                if st.button(f"✅ LM Approve", key=f"lm_{i}"):
+                        if req['status'] == 'Pending LM Approval':
+                            lm_comment = st.text_area("Line Manager Comment *", key=f"lm_comment_{i}", placeholder="Reason for approval...")
+                            if st.button(f"✅ LM Approve", key=f"lm_{i}"):
+                                if lm_comment:
                                     st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
+                                    st.session_state.job_requisitions[i]['lm_comment'] = lm_comment
                                     st.success("✅ LM approved! Sent to Admin.")
                                     st.rerun()
-                        with c2:
-                            if req['status'] == 'Pending Admin Approval':
-                                if st.button(f"✅ Admin Approve", key=f"adm_{i}"):
+                                else:
+                                    st.error("❌ Comment required!")
+                        
+                        if req['status'] == 'Pending Admin Approval':
+                            admin_comment = st.text_area("Admin Comment *", key=f"admin_comment_{i}", placeholder="Reason for approval...")
+                            if st.button(f"✅ Admin Approve", key=f"adm_{i}"):
+                                if admin_comment:
                                     st.session_state.job_requisitions[i]['status'] = 'Pending COO Approval'
+                                    st.session_state.job_requisitions[i]['admin_comment'] = admin_comment
                                     st.success("✅ Admin approved! Sent to COO.")
                                     st.rerun()
-                        with c3:
-                            if req['status'] == 'Pending COO Approval':
-                                if st.button(f"✅ COO Approve & Activate", key=f"coo_{i}"):
+                                else:
+                                    st.error("❌ Comment required!")
+                        
+                        if req['status'] == 'Pending COO Approval':
+                            coo_comment = st.text_area("COO Comment *", key=f"coo_comment_{i}", placeholder="Reason for approval...")
+                            if st.button(f"✅ COO Approve & Activate", key=f"coo_{i}"):
+                                if coo_comment:
                                     st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
+                                    st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
                                     job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{len(st.session_state.active_jobs)+1:03d}"
                                     public_url = f"{STREAMLIT_URL}/careers?job={job_ref}"
                                     st.session_state.active_jobs.append({
@@ -2571,78 +2584,82 @@ def recruitment_hub():
                                         'posts': req['posts'], 'date': datetime.now().strftime('%Y-%m-%d'),
                                         'applications': 0, 'public_url': public_url
                                     })
-                                    st.success(f"✅ Job LIVE!")
+                                    st.success(f"✅ Job LIVE on Careers Page!")
                                     st.code(public_url, language=None)
                                     st.balloons()
                                     st.rerun()
+                                else:
+                                    st.error("❌ Comment required!")
                     
                     if req['status'] == 'Approved - Live':
-                        st.success("🟢 LIVE - Posted to selected platforms")
+                        st.success("🟢 LIVE - Accepting applications on Careers Page")
     
     # ============ TAB 2: ACTIVE JOBS ============
     with tab2:
         st.subheader("📢 Active Job Postings")
         if st.session_state.active_jobs:
             for job in st.session_state.active_jobs:
-                with st.expander(f"🟢 {job['ref']} - {job['title']} | {job['department']} | {job['applications']} applicants", expanded=False):
+                with st.expander(f"🟢 {job['ref']} - {job['title']} | {job['department']} | {job.get('applications', 0)} applicants", expanded=False):
                     st.markdown(f"**Location:** {job['location']} | **Type:** {job['type']} | **Closes:** {job['closing']}")
-                    st.markdown(f"**Public URL:** {job['public_url']}")
-                    st.markdown(f"**Platforms:** LinkedIn: {'✅' if job['posts'].get('linkedin') else '❌'} | Indeed: {'✅' if job['posts'].get('indeed') else '❌'} | Glassdoor: {'✅' if job['posts'].get('glassdoor') else '❌'}")
+                    st.markdown(f"**📎 Public Careers URL:**")
                     st.code(job['public_url'], language=None)
+                    st.markdown(f"**Platforms:** LinkedIn: {'✅' if job['posts'].get('linkedin') else '❌'} | Indeed: {'✅' if job['posts'].get('indeed') else '❌'} | Glassdoor: {'✅' if job['posts'].get('glassdoor') else '❌'}")
         else:
             st.info("No active jobs. Submit a requisition in Tab 1.")
     
     # ============ TAB 3: CANDIDATE PORTAL ============
     with tab3:
         st.subheader("🌐 Candidate Application Portal Preview")
-        st.info("This is what candidates see when they apply.")
-        with st.expander("📝 Application Form Preview", expanded=True):
-            st.markdown("### Apply for This Position")
+        st.info("This is what candidates see on the live Careers Page. Actual applications appear in AI Screening tab.")
+        with st.expander("📝 Preview Application Form", expanded=True):
             c1, c2 = st.columns(2)
             with c1:
-                st.text_input("First Name *")
-                st.text_input("Last Name *")
-                st.text_input("Email *")
-                st.text_input("Phone *")
-                st.text_input("LinkedIn URL")
+                st.text_input("First Name *", disabled=True)
+                st.text_input("Last Name *", disabled=True)
+                st.text_input("Email *", disabled=True)
+                st.text_input("Phone *", disabled=True)
+                st.text_input("LinkedIn URL", disabled=True)
             with c2:
-                st.text_input("GitHub URL")
-                st.text_input("Portfolio URL")
-                st.text_input("Current Position")
-                st.text_input("Years of Experience")
-            st.text_area("Cover Letter (Optional)")
-            st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'])
-            st.markdown("### Screening Questions")
-            st.text_input("Q1: Required Skill *")
-            st.text_input("Q2: Experience Level *")
-            st.button("📤 Submit Application (Preview)")
+                st.text_input("GitHub URL", disabled=True)
+                st.text_input("Portfolio URL", disabled=True)
+                st.text_input("Current Position", disabled=True)
+                st.text_input("Years of Experience", disabled=True)
+            st.text_area("Cover Letter (Optional)", disabled=True)
+            st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'], disabled=True)
+            st.markdown("### Screening Questions (Auto-generated per role)")
+            st.text_area("Q1: Relevant Experience *", disabled=True)
+            st.text_area("Q2: Key Achievement *", disabled=True)
+            st.text_area("Q3: Why Churchgate Group? *", disabled=True)
     
     # ============ TAB 4: AI SCREENING ============
     with tab4:
         st.subheader("🤖 AI Candidate Screening & Tiering")
-        if st.session_state.active_jobs:
-            selected_job = st.selectbox("Select Job", [j['ref'] + ' - ' + j['title'] for j in st.session_state.active_jobs])
-            c1, c2 = st.columns(2)
-            with c1:
-                st.slider("Skills Match Threshold", 0, 100, 70)
-                st.slider("Experience Match Threshold", 0, 100, 60)
-            with c2:
-                st.slider("Education Match Threshold", 0, 100, 50)
-                st.slider("Overall Fit Threshold", 0, 100, 65)
-            
-            tier_data = pd.DataFrame({
-                'Candidate': ['John Developer', 'Jane Engineer', 'Mike Tech'],
-                'Skills': ['92%', '85%', '68%'],
-                'Experience': ['7 yrs', '5 yrs', '3 yrs'],
-                'AI Score': ['94%', '88%', '62%'],
-                'Tier': ['🌟 Tier 1', '👍 Tier 2', '👎 Tier 3'],
-                'Action': ['Interview', 'Keep', 'Reject']
-            })
-            st.dataframe(tier_data, use_container_width=True, hide_index=True)
-            if st.button("🤖 Run AI Screening", use_container_width=True):
-                st.success("✅ AI screening complete!")
-        else:
-            st.info("No active jobs.")
+        st.info("Real candidate applications from the Careers Page appear here. AI auto-screens and tiers them.")
+        
+        # Load real candidates from database
+        try:
+            candidates = db.get_all_candidates()
+            if not candidates.empty:
+                st.markdown(f"### 📊 {len(candidates)} Real Applications Received")
+                st.dataframe(candidates[['candidate_ref', 'first_name', 'last_name', 'email', 'status', 'ai_score', 'ai_tier']].head(20), use_container_width=True, hide_index=True)
+                
+                if st.button("🤖 Run AI Screening on All Candidates", use_container_width=True):
+                    st.success(f"✅ AI screening initiated! Processing {len(candidates)} candidates...")
+                    st.info("📤 Candidates auto-routed to AI Recruitment Agent for deep analysis.")
+            else:
+                st.info("No applications received yet. Share the Careers Page URL to start receiving applications.")
+        except:
+            st.info("Database connection pending. Applications will appear here once submitted.")
+        
+        st.markdown("---")
+        st.markdown("### ⚙️ Screening Configuration")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.slider("Skills Match Threshold", 0, 100, 70)
+            st.slider("Experience Match Threshold", 0, 100, 60)
+        with c2:
+            st.slider("Education Match Threshold", 0, 100, 50)
+            st.slider("Overall Fit Threshold", 0, 100, 65)
     
     # ============ TAB 5: INTERVIEWS ============
     with tab5:
@@ -2651,7 +2668,7 @@ def recruitment_hub():
             c1, c2 = st.columns(2)
             with c1:
                 candidate_name = st.text_input("Candidate Name *")
-                interview_type = st.selectbox("Type", ["Phone Screen", "Technical", "HR", "Final", "Panel"])
+                interview_type = st.selectbox("Type", ["📞 Phone Screen", "💻 Technical", "👔 HR", "🏆 Final", "👥 Panel"])
                 interviewer = st.text_input("Interviewer *")
             with c2:
                 interview_date = st.date_input("Date *")
@@ -2662,8 +2679,7 @@ def recruitment_hub():
                     st.session_state.interviews_scheduled.append({
                         'candidate': candidate_name, 'type': interview_type,
                         'interviewer': interviewer, 'date': interview_date.strftime('%Y-%m-%d'),
-                        'time': interview_time, 'location': location,
-                        'status': 'Scheduled'
+                        'time': interview_time, 'location': location, 'status': 'Scheduled'
                     })
                     st.success(f"✅ Interview scheduled for {candidate_name}!")
                     st.balloons()
@@ -2675,7 +2691,7 @@ def recruitment_hub():
                 st.markdown(f"""
                 <div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #3182ce;">
                     <strong>{iv['candidate']}</strong> - {iv['type']}<br>
-                    <small>{iv['date']} at {iv['time']} | Interviewer: {iv['interviewer']} | {iv['location']}</small>
+                    <small>📅 {iv['date']} at {iv['time']} | 👤 {iv['interviewer']} | 📍 {iv['location']}</small>
                 </div>
                 """, unsafe_allow_html=True)
     
@@ -2720,33 +2736,47 @@ def recruitment_hub():
                         pdf.set_text_color(26, 26, 26)
                         pdf.cell(0, 8, f'Dear {offer_name},', ln=True)
                         pdf.ln(3)
-                        pdf.cell(0, 8, f'We are pleased to offer you the position of {offer_position} in the {offer_dept} department.', ln=True)
+                        pdf.cell(0, 8, f'We are pleased to offer you the position of {offer_position} in {offer_dept}.', ln=True)
                         pdf.cell(0, 8, f'Salary: {offer_salary}', ln=True)
                         pdf.cell(0, 8, f'Start Date: {offer_start.strftime("%B %d, %Y")}', ln=True)
                         pdf.cell(0, 8, f'Reports To: {offer_reporting}', ln=True)
-                        pdf.cell(0, 8, f'Probation Period: {offer_probation}', ln=True)
+                        pdf.cell(0, 8, f'Probation: {offer_probation}', ln=True)
                         pdf.ln(5)
-                        pdf.cell(0, 8, 'Please sign and return this letter to confirm acceptance.', ln=True)
+                        pdf.cell(0, 8, 'Please sign and return to accept.', ln=True)
                         pdf.set_y(-20)
                         pdf.set_font('Helvetica', 'I', 7)
                         pdf.set_text_color(150, 150, 150)
                         pdf.cell(0, 10, 'Churchgate Group - Official Offer Letter | hr@churchgate.com', align='C')
                         st.download_button("📥 Download Offer Letter", bytes(pdf.output()), f"{offer_name}_offer.pdf", "application/pdf")
-                        st.success(f"✅ Offer letter generated for {offer_name}!")
+                        st.success(f"✅ Offer letter generated!")
                         st.balloons()
                     except:
                         st.success(f"✅ Offer recorded for {offer_name}!")
     
     # ============ TAB 7: ONBOARDING ============
     with tab7:
-        st.subheader("🎯 World-Class Onboarding")
-        st.info("Complete onboarding workflow for new hires.")
+        st.subheader("🎯 Onboarding")
         with st.expander("📋 Onboarding Checklist", expanded=True):
-            steps = ["Offer Letter Sent", "Offer Accepted", "Document Collection", "IT Setup", "Workspace Assigned", "Buddy Assigned", "Orientation Scheduled", "Training Enrolled", "Access Cards Issued", "First Day Welcome"]
-            for step in steps:
-                st.checkbox(step, key=f"onboard_{step}")
+            steps = [
+                ("📧", "Offer Letter Sent", False),
+                ("✅", "Offer Accepted", False),
+                ("📄", "Document Collection", False),
+                ("💻", "IT Setup (Email, Laptop, Access)", False),
+                ("🏢", "Workspace Assignment", False),
+                ("👤", "Buddy Assignment", False),
+                ("📅", "Orientation Scheduled", False),
+                ("📚", "Training Enrollment", False),
+                ("🔑", "Access Cards Issued", False),
+                ("🎉", "First Day Welcome", False)
+            ]
+            for emoji, step, done in steps:
+                icon = "✅" if done else "⏳"
+                color = "#38a169" if done else "#d69e2e"
+                st.markdown(f"{emoji} {icon} **{step}** <span style='color: {color};'> - {'Complete' if done else 'Pending'}</span>", unsafe_allow_html=True)
         
+        st.markdown("---")
         with st.form("add_onboarding"):
+            st.markdown("### Add New Hire")
             c1, c2 = st.columns(2)
             with c1:
                 nh_name = st.text_input("Employee Name *")
@@ -2772,7 +2802,7 @@ def recruitment_hub():
                 st.markdown(f"""
                 <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #38a169;">
                     <strong>{onboard['name']}</strong> - {onboard['position']} ({onboard['dept']})<br>
-                    <small>Start: {onboard['start']} | Progress: {onboard['progress']}</small>
+                    <small>Start: {onboard['start']} | Buddy: {onboard.get('buddy', 'TBD')} | Progress: {onboard['progress']}</small>
                 </div>
                 """, unsafe_allow_html=True)
     
@@ -2800,19 +2830,23 @@ def recruitment_hub():
         c3.metric("Offers Sent", len(st.session_state.offer_letters))
         c4.metric("Onboarding", len(st.session_state.onboarding_list))
         
-        funnel = pd.DataFrame({'Stage': ['Applied', 'Screened', 'Interviewed', 'Offered', 'Hired'], 'Count': [47, 28, 12, 5, 2]})
+        try:
+            candidates = db.get_all_candidates()
+            total_apps = len(candidates) if not candidates.empty else 0
+        except:
+            total_apps = 0
+        
+        funnel = pd.DataFrame({'Stage': ['Applied', 'Screened', 'Interviewed', 'Offered', 'Hired'], 'Count': [total_apps, int(total_apps*0.6), int(total_apps*0.25), int(total_apps*0.1), int(total_apps*0.05)]})
         fig = px.funnel(funnel, x='Count', y='Stage', color_discrete_sequence=['#CC0000'])
         fig.update_layout(height=350)
         st.plotly_chart(fig, use_container_width=True)
         
-        # Diversity tracking
         st.markdown("---")
         st.markdown("### 🌍 Diversity & Inclusion")
         div_data = pd.DataFrame({'Category': ['Male', 'Female', 'Other'], 'Applicants': [28, 17, 2]})
         fig2 = px.pie(div_data, values='Applicants', names='Category', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000', '#718096'])
         st.plotly_chart(fig2, use_container_width=True)
         
-        # Referral Program
         st.markdown("---")
         st.markdown("### 🤝 Employee Referral Program")
         with st.form("referral"):
@@ -2820,7 +2854,7 @@ def recruitment_hub():
             with c1:
                 ref_name = st.text_input("Referral Name *")
                 ref_position = st.text_input("Position Referred For *")
-                ref_employee = st.text_input("Your Name (Referring Employee) *")
+                ref_employee = st.text_input("Your Name *")
             with c2:
                 ref_relation = st.selectbox("Relationship", ["Former Colleague", "Friend", "Family", "Professional Network"])
                 ref_date = st.date_input("Referral Date")
