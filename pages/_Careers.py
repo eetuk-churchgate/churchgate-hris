@@ -117,9 +117,32 @@ if selected_job:
     
     if job_details:
         with st.expander("📋 View Full Job Description", expanded=True):
-            formatted_jd = job_details.get("jd", "").replace('\n\n', '</p><p>').replace('\n', '<br>')
-            formatted_jd = f'<p>{formatted_jd}</p>'
-            st.markdown(f'<div class="jd-content animate-fade-in-up">{formatted_jd}</div>', unsafe_allow_html=True)
+            # Enhanced JD formatting
+                jd_text = job["jd"]
+                # Bold section headers
+                import re
+                section_headers = [
+                    'About the Role', 'What You Will Do', 'What Success Looks Like',
+                    'What We Are Looking For', 'Preferred Background', 'Key Responsibilities',
+                    'Requirements', 'Experience', 'Education', 'Skills & Competencies',
+                    'Working Conditions', 'Why Join Churchgate', 'How to Apply',
+                    'Strategic Marketing & Brand Leadership', 'Digital Marketing & Performance Management',
+                    'Traditional & Corporate Marketing', 'Content, Communications & PR',
+                    'Customer & Market Intelligence', 'Sales Enablement', 'Events & Partnerships',
+                    'Team Leadership & Vendor Management', 'What We Are NOT Looking For',
+                    'Job Summary', 'Job Details', 'About Company'
+                ]
+                for header in section_headers:
+                    jd_text = jd_text.replace(header, f'<br><br><strong style="font-size:1.15rem;color:#1a1a1a;border-bottom:2px solid #CC0000;padding-bottom:3px;">{header}</strong><br>')
+                
+                # Format bullet points
+                jd_text = jd_text.replace('• ', '<br>🔹 ').replace('● ', '<br>🔹 ')
+                # Format dashes that start lines
+                jd_text = re.sub(r'(?<=\n)- ', '<br>🔹 ', jd_text)
+                # Add line breaks
+                jd_text = jd_text.replace('\n\n', '<br><br>').replace('\n', '<br>')
+                
+                st.markdown(f'<div class="jd-content animate-fade-in" style="line-height:2;font-size:0.95rem;">{jd_text}</div>', unsafe_allow_html=True)
     
     st.markdown("<div class='form-container animate-slide-in'>", unsafe_allow_html=True)
     
@@ -253,7 +276,7 @@ else:
             
             dept_icon = dept_icons.get(job['dept'], "🏢")
             
-            with st.expander(f"{dept_icon} **{job['title']}** — {job['dept']} | {job['location']}", expanded=False):
+           with st.expander(f"{dept_icon} **{job['title']}** — {job['dept']} | {job['location']}", expanded=False):
                 st.markdown(f"""
                 <span class="tag">💼 {job['type']}</span>
                 <span class="tag">📍 {job['location']}</span>
@@ -261,9 +284,30 @@ else:
                 <span class="tag">{days_text}</span>
                 """, unsafe_allow_html=True)
                 st.markdown("---")
-                formatted_jd = job["jd"].replace('\n\n', '</p><p>').replace('\n', '<br>')
-                formatted_jd = f'<p>{formatted_jd}</p>'
-                st.markdown(f'<div class="jd-content animate-fade-in">{formatted_jd}</div>', unsafe_allow_html=True)
+                
+                # Format JD beautifully
+                jd_text = job["jd"]
+                # Bold the headers
+                import re
+                headers = ['About the Role', 'What You Will Do', 'What Success Looks Like', 
+                          'What We Are Looking For', 'Preferred Background', 'Key Responsibilities',
+                          'Requirements', 'Experience', 'Education', 'Skills & Competencies',
+                          'Working Conditions', 'Why Join Churchgate', 'How to Apply',
+                          'Strategic Marketing', 'Digital Marketing', 'Traditional & Corporate',
+                          'Content, Communications', 'Customer & Market', 'Sales Enablement',
+                          'Events & Partnerships', 'Team Leadership', 'What We Are NOT Looking For']
+                
+                for header in headers:
+                    jd_text = jd_text.replace(header, f'<br><strong style="font-size:1.1rem;color:#1a1a1a;">{header}</strong>')
+                
+                # Format bullet points
+                jd_text = jd_text.replace('• ', '<br>🔹 ').replace('● ', '<br>🔹 ').replace('- ', '<br>🔹 ')
+                # Format numbered items
+                jd_text = re.sub(r'(\d+)\.\s', r'<br><strong>\1.</strong> ', jd_text)
+                # Add proper paragraph breaks
+                jd_text = jd_text.replace('\n\n', '<br><br>').replace('\n', '<br>')
+                
+                st.markdown(f'<div class="jd-content animate-fade-in" style="line-height:2;font-size:0.95rem;">{jd_text}</div>', unsafe_allow_html=True)
                 st.markdown(f"<small style='color: #888;'>📅 Closes: {job['closing']} | Ref: {job['ref']}</small>", unsafe_allow_html=True)
                 
                 c1, c2 = st.columns([1, 1])
@@ -324,7 +368,9 @@ else:
         tracking_input = st.text_input("Enter your Tracking ID", placeholder="e.g., CG-20260522-1234")
         if tracking_input:
             try:
-                apps = db._get("applications", {"tracking_id": tracking_input})
+                # Try direct Supabase query
+                result = db.supabase.table("applications").select("*").eq("tracking_id", tracking_input).execute()
+                apps = result.data if result.data else []
                 if apps and len(apps) > 0:
                     app = apps[0]
                     st.success("✅ Application Found!")
