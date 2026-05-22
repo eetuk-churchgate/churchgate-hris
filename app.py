@@ -2459,8 +2459,27 @@ def recruitment_hub():
     
     STREAMLIT_URL = "https://churchgate-hris.streamlit.app"
     
+    # CHANGE 1: Load from database
     if 'job_requisitions' not in st.session_state:
         st.session_state.job_requisitions = []
+        try:
+            db_reqs = db.get_all_job_requisitions()
+            for r in db_reqs:
+                st.session_state.job_requisitions.append({
+                    'id': r.get('req_id', ''), 'title': r.get('title', ''),
+                    'department': r.get('department', ''), 'location': r.get('location', ''),
+                    'type': r.get('job_type', ''), 'salary': r.get('salary', ''),
+                    'level': r.get('level', ''), 'positions': r.get('positions', 1),
+                    'closing': r.get('closing', ''), 'jd': r.get('jd', ''),
+                    'screening': json.loads(r.get('screening', '[]')),
+                    'posts': json.loads(r.get('posts', '{}')),
+                    'status': r.get('status', ''), 'submitted_by': r.get('submitted_by', ''),
+                    'date': r.get('date', ''), 'lm_comment': r.get('lm_comment', ''),
+                    'admin_comment': r.get('admin_comment', ''), 'coo_comment': r.get('coo_comment', '')
+                })
+        except:
+            pass
+    
     if 'active_jobs' not in st.session_state:
         st.session_state.active_jobs = []
     if 'onboarding_list' not in st.session_state:
@@ -2531,6 +2550,14 @@ def recruitment_hub():
                         'lm_comment': '', 'admin_comment': '', 'coo_comment': ''
                     }
                     st.session_state.job_requisitions.append(req)
+                    # CHANGE 2: Save to database
+                    try:
+                        db.save_job_requisition(req['id'], req['title'], req['department'], req['location'],
+                            req['type'], req['salary'], req['level'], req['positions'], req['closing'],
+                            req['jd'], req['screening'], req['posts'], req['status'], req['submitted_by'], req['date'],
+                            req['lm_comment'], req['admin_comment'], req['coo_comment'])
+                    except:
+                        pass
                     st.success(f"✅ Job requisition {req['id']} submitted! Awaiting approval chain.")
                     st.balloons()
                 else:
@@ -2550,6 +2577,15 @@ def recruitment_hub():
                                 if lm_comment:
                                     st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
                                     st.session_state.job_requisitions[i]['lm_comment'] = lm_comment
+                                    # CHANGE 2: Save to database
+                                    try:
+                                        r = st.session_state.job_requisitions[i]
+                                        db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                            r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                            r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                            r['lm_comment'], r['admin_comment'], r['coo_comment'])
+                                    except:
+                                        pass
                                     st.success("✅ LM approved! Sent to Admin.")
                                     st.rerun()
                                 else:
@@ -2561,6 +2597,15 @@ def recruitment_hub():
                                 if admin_comment:
                                     st.session_state.job_requisitions[i]['status'] = 'Pending COO Approval'
                                     st.session_state.job_requisitions[i]['admin_comment'] = admin_comment
+                                    # CHANGE 2: Save to database
+                                    try:
+                                        r = st.session_state.job_requisitions[i]
+                                        db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                            r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                            r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                            r['lm_comment'], r['admin_comment'], r['coo_comment'])
+                                    except:
+                                        pass
                                     st.success("✅ Admin approved! Sent to COO.")
                                     st.rerun()
                                 else:
@@ -2573,7 +2618,8 @@ def recruitment_hub():
                                     st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
                                     st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
                                     job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{len(st.session_state.active_jobs)+1:03d}"
-                                    public_url = f"{STREAMLIT_URL}/7_Careers?job={job_ref}"
+                                    # CHANGE 3: URL fix
+                                    public_url = f"{STREAMLIT_URL}/Careers?job={job_ref}"
                                     st.session_state.active_jobs.append({
                                         'ref': job_ref, 'title': req['title'], 'department': req['department'],
                                         'location': req['location'], 'type': req['type'], 'salary': req['salary'],
@@ -2581,6 +2627,15 @@ def recruitment_hub():
                                         'posts': req['posts'], 'date': datetime.now().strftime('%Y-%m-%d'),
                                         'applications': 0, 'public_url': public_url
                                     })
+                                    # CHANGE 2: Save to database
+                                    try:
+                                        r = st.session_state.job_requisitions[i]
+                                        db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                            r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                            r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                            r['lm_comment'], r['admin_comment'], r['coo_comment'])
+                                    except:
+                                        pass
                                     st.success(f"✅ Job LIVE on Careers Page!")
                                     st.code(public_url, language=None)
                                     st.balloons()
