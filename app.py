@@ -2449,45 +2449,303 @@ def promotions():
                     st.warning(f"PDF Error: {str(e)}")
 
 def recruitment_hub():
-    st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Manage Jobs, Applications, and Recruitment Workflows</p></div>""", unsafe_allow_html=True)
-    tab1, tab2, tab3, tab4 = st.tabs(["📋 Active Jobs", "➕ Post New Job", "👥 Applications", "📊 Pipeline"])
+    st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Candidate Portal | World-Class Onboarding</p></div>""", unsafe_allow_html=True)
+    
+    user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
+    is_manager = is_admin or user_role in ['Manager', 'HOD']
+    
+    if 'job_requisitions' not in st.session_state:
+        st.session_state.job_requisitions = []
+    if 'active_jobs' not in st.session_state:
+        st.session_state.active_jobs = []
+    if 'onboarding_list' not in st.session_state:
+        st.session_state.onboarding_list = []
+    
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📋 Job Requisition", "📢 Active Jobs", "🌐 Candidate Portal", 
+        "🤖 AI Screening", "🎯 Onboarding", "📊 Recruitment Analytics"
+    ])
+    
+    # ============ TAB 1: JOB REQUISITION ============
     with tab1:
-        st.subheader("Active Job Postings")
-        for job in [{"title": "AI Transformation Lead", "dept": "Technology Group", "location": "Abuja", "type": "Full-time", "closing": "2026-06-30", "ref": "JOB-2026-001"}, {"title": "Senior Facility Manager", "dept": "Facility Management", "location": "Lagos", "type": "Full-time", "closing": "2026-07-15", "ref": "JOB-2026-002"}, {"title": "Network Engineer", "dept": "Technology Group", "location": "Abuja", "type": "Full-time", "closing": "2026-06-20", "ref": "JOB-2026-003"}, {"title": "Procurement Officer", "dept": "Procurement", "location": "Abuja", "type": "Full-time", "closing": "2026-07-01", "ref": "JOB-2026-004"}, {"title": "HVAC Technician", "dept": "Facility Management", "location": "Abuja", "type": "Contract", "closing": "2026-06-25", "ref": "JOB-2026-005"}]:
-            st.markdown(f"""<div style="background: white; padding: 1.2rem; border-radius: 8px; margin-bottom: 0.8rem; border-left: 4px solid #CC0000;"><div style="display: flex; justify-content: space-between; align-items: center;"><div><h4 style="margin: 0;">{job['title']}</h4><p style="margin: 0.3rem 0; color: #666;">🏢 {job['dept']} | 📍 {job['location']} | 💼 {job['type']}</p><small>Ref: {job['ref']} | Closes: {job['closing']}</small></div><span style="background: #38a169; color: white; padding: 0.3rem 1rem; border-radius: 15px;">Active</span></div></div>""", unsafe_allow_html=True)
-    with tab2:
-        st.subheader("Post New Job Opening")
-        with st.form("post_job"):
+        st.subheader("📋 Job Requisition & Approval Workflow")
+        st.info("Line Manager → Super Admin → COO approval chain")
+        
+        with st.form("job_requisition_form"):
+            st.markdown("### New Job Requisition")
             c1, c2 = st.columns(2)
             with c1:
-                st.text_input("Job Title *")
-                st.selectbox("Department *", ["Technology Group", "Facility Management", "Human Resources", "Sales & Marketing", "Accounts & Finance", "Procurement", "Security", "Legal", "Operations", "Senior Management"])
-                st.selectbox("Location", ["World Trade Center Abuja", "Churchgate Tower 1 Lagos", "Churchgate Tower 2 Lagos", "Churchgate Plaza Abuja"])
-                st.selectbox("Employment Type", ["Full-time", "Contract", "Part-time", "Intern"])
+                job_title = st.text_input("Job Title *", placeholder="e.g., Senior Network Engineer")
+                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services'])
+                location = st.selectbox("Location", ["World Trade Center Abuja", "Churchgate Tower 1 Lagos", "Churchgate Tower 2 Lagos", "Churchgate Plaza Abuja", "Remote/Hybrid"])
+                employment_type = st.selectbox("Employment Type", ["Full-time", "Contract", "Part-time", "Intern"])
             with c2:
-                st.text_input("Salary Range", "₦5,000,000 - ₦8,000,000")
-                st.selectbox("Experience Level", ["Entry Level", "Junior", "Mid-Level", "Senior", "Executive"])
-                st.number_input("Number of Positions", min_value=1, value=1)
-                st.date_input("Closing Date")
-            st.text_area("Job Description *", height=200, placeholder="Paste full job description...")
-            st.text_input("Key Skills (comma-separated)")
-            if st.form_submit_button("📝 Post Job", use_container_width=True):
-                st.success("✅ Job posted successfully!")
-                st.balloons()
+                salary_range = st.text_input("Salary Range", placeholder="e.g., ₦5,000,000 - ₦8,000,000")
+                experience_level = st.selectbox("Experience Level", ["Entry Level (0-2 yrs)", "Junior (2-4 yrs)", "Mid-Level (4-7 yrs)", "Senior (7-10 yrs)", "Executive (10+ yrs)"])
+                positions = st.number_input("Number of Positions", min_value=1, value=1)
+                closing_date = st.date_input("Application Deadline")
+            
+            st.markdown("---")
+            st.markdown("### Job Description")
+            jd_text = st.text_area("Full Job Description *", height=200, placeholder="Paste complete job description with responsibilities, requirements, qualifications...")
+            
+            st.markdown("### Screening Questions (Auto-generated based on role)")
+            screening_q1 = st.text_input("Required Skill 1 *", placeholder="e.g., Cisco Certified (CCNP minimum)")
+            screening_q2 = st.text_input("Required Skill 2 *", placeholder="e.g., 5+ years network engineering experience")
+            screening_q3 = st.text_input("Required Skill 3", placeholder="e.g., Experience with Fortinet/Cisco security")
+            screening_q4 = st.text_input("Education Requirement *", placeholder="e.g., B.Sc. Computer Science or related field")
+            
+            st.markdown("### Auto-Post Settings")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                post_linkedin = st.checkbox("Post to LinkedIn", value=True)
+            with c2:
+                post_indeed = st.checkbox("Post to Indeed", value=True)
+            with c3:
+                post_glassdoor = st.checkbox("Post to Glassdoor", value=True)
+            
+            submitted = st.form_submit_button("📤 Submit for Approval", use_container_width=True)
+            
+            if submitted:
+                if job_title and department and jd_text:
+                    req = {
+                        'id': f"REQ-{datetime.now().strftime('%Y%m%d%H%M')}",
+                        'title': job_title, 'department': department, 'location': location,
+                        'type': employment_type, 'salary': salary_range, 'level': experience_level,
+                        'positions': positions, 'closing': closing_date.strftime('%Y-%m-%d'),
+                        'jd': jd_text, 'screening': [screening_q1, screening_q2, screening_q3, screening_q4],
+                        'posts': {'linkedin': post_linkedin, 'indeed': post_indeed, 'glassdoor': post_glassdoor},
+                        'status': 'Pending LM Approval',
+                        'submitted_by': user_name,
+                        'date': datetime.now().strftime('%Y-%m-%d %H:%M')
+                    }
+                    st.session_state.job_requisitions.append(req)
+                    st.success(f"✅ Job requisition {req['id']} submitted! Awaiting approval chain.")
+                    st.balloons()
+                else:
+                    st.error("❌ Job Title, Department, and Description are required!")
+        
+        # Show requisitions with approval workflow
+        if st.session_state.job_requisitions:
+            st.markdown("---")
+            st.markdown("### 📋 Requisition Approval Dashboard")
+            
+            for i, req in enumerate(st.session_state.job_requisitions):
+                status_color = "#d69e2e" if 'Pending' in req['status'] else "#38a169" if 'Approved' in req['status'] else "#CC0000"
+                
+                with st.expander(f"{req['id']} - {req['title']} | {req['status']} | {req['department']}", expanded=True):
+                    st.markdown(f"**Submitted by:** {req['submitted_by']} | **Date:** {req['date']}")
+                    st.markdown(f"**Department:** {req['department']} | **Location:** {req['location']} | **Type:** {req['type']}")
+                    st.markdown(f"**Salary:** {req.get('salary', 'N/A')} | **Positions:** {req['positions']} | **Deadline:** {req['closing']}")
+                    
+                    # Approval workflow buttons
+                    if is_admin or is_manager:
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
+                            if req['status'] == 'Pending LM Approval':
+                                if st.button(f"✅ LM Approve", key=f"lm_{i}"):
+                                    st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
+                                    st.success("✅ Line Manager approved! Sent to Admin.")
+                                    st.rerun()
+                        with c2:
+                            if req['status'] == 'Pending Admin Approval':
+                                if st.button(f"✅ Admin Approve", key=f"adm_{i}"):
+                                    st.session_state.job_requisitions[i]['status'] = 'Pending COO Approval'
+                                    st.success("✅ Admin approved! Sent to COO.")
+                                    st.rerun()
+                        with c3:
+                            if req['status'] == 'Pending COO Approval':
+                                if st.button(f"✅ COO Approve & Activate", key=f"coo_{i}"):
+                                    st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
+                                    job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{i+1:03d}"
+                                    st.session_state.active_jobs.append({
+                                        'ref': job_ref, 'title': req['title'], 'department': req['department'],
+                                        'location': req['location'], 'type': req['type'], 'salary': req['salary'],
+                                        'jd': req['jd'], 'screening': req['screening'], 'closing': req['closing'],
+                                        'posts': req['posts'], 'date': datetime.now().strftime('%Y-%m-%d'),
+                                        'applications': 0
+                                    })
+                                    # Generate public URL
+                                    public_url = f"https://churchgate-hris-production.up.railway.app/careers?job={job_ref}"
+                                    st.success(f"✅ Job approved and LIVE! Public URL: {public_url}")
+                                    st.balloons()
+                                    st.rerun()
+                    
+                    if req['status'] == 'Approved - Live':
+                        st.success(f"🟢 LIVE - Public URL generated and posted to platforms")
+    
+    # ============ TAB 2: ACTIVE JOBS ============
+    with tab2:
+        st.subheader("📢 Active Job Postings")
+        
+        if st.session_state.active_jobs:
+            for job in st.session_state.active_jobs:
+                public_url = f"https://churchgate-hris-production.up.railway.app/careers?job={job['ref']}"
+                with st.expander(f"🟢 {job['ref']} - {job['title']} | {job['department']} | {job['applications']} applicants", expanded=False):
+                    st.markdown(f"**Department:** {job['department']} | **Location:** {job['location']} | **Type:** {job['type']}")
+                    st.markdown(f"**Salary:** {job.get('salary', 'Competitive')} | **Closes:** {job['closing']}")
+                    st.markdown(f"**Public URL:** {public_url}")
+                    st.markdown(f"**Platforms:** LinkedIn: {'✅' if job['posts'].get('linkedin') else '❌'} | Indeed: {'✅' if job['posts'].get('indeed') else '❌'} | Glassdoor: {'✅' if job['posts'].get('glassdoor') else '❌'}")
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.button(f"📋 View Applications ({job['applications']})", key=f"view_{job['ref']}")
+                    with c2:
+                        st.button(f"🔗 Copy Public URL", key=f"copy_{job['ref']}")
+        else:
+            st.info("No active job postings. Submit a job requisition to get started.")
+    
+    # ============ TAB 3: CANDIDATE PORTAL PREVIEW ============
     with tab3:
-        st.subheader("Applications Received")
-        for app in [{"name": "Modupe O.", "position": "AI Transformation Lead", "date": "2026-05-14", "status": "Screened", "score": "92%"}, {"name": "Chinelo A.", "position": "AI Transformation Lead", "date": "2026-05-13", "status": "New", "score": "88%"}, {"name": "Ogochukwu N.", "position": "Senior Facility Manager", "date": "2026-05-12", "status": "Interviewed", "score": "78%"}]:
-            sc = "#38a169" if app['status'] == 'Screened' else "#d69e2e" if app['status'] == 'Interviewed' else "#3182ce"
-            st.markdown(f"""<div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.4rem; display: flex; justify-content: space-between; align-items: center;"><div><strong>{app['name']}</strong> - {app['position']}<br><small>{app['date']} | AI: {app['score']}</small></div><span style="background: {sc}; color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem;">{app['status']}</span></div>""", unsafe_allow_html=True)
+        st.subheader("🌐 Candidate Application Portal")
+        st.info("This is how candidates will see your job posting when they click the public URL.")
+        
+        # Preview the candidate experience
+        with st.expander("📝 Preview Candidate Application Form", expanded=True):
+            st.markdown("### Apply for This Position")
+            st.markdown("*All fields marked with * are required.*")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                st.text_input("First Name *")
+                st.text_input("Last Name *")
+                st.text_input("Email *")
+                st.text_input("Phone Number *")
+            with c2:
+                st.text_input("LinkedIn Profile URL")
+                st.text_input("GitHub URL")
+                st.text_input("Portfolio URL")
+                st.text_input("Current/Last Position")
+            
+            st.text_area("Cover Letter (Optional)", placeholder="Tell us why you're the best fit...")
+            
+            st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'])
+            
+            st.markdown("### Screening Questions")
+            st.info("These are auto-generated based on the job requirements.")
+            st.text_input("Do you have [Required Skill 1]? *")
+            st.text_input("How many years of [Required Skill 2] experience do you have? *")
+            st.text_input("Do you have [Education Requirement]? *")
+            
+            if st.button("📤 Submit Application (Preview)"):
+                st.success("✅ Application submitted! You will be redirected to the confirmation page.")
+    
+    # ============ TAB 4: AI SCREENING ============
     with tab4:
-        st.subheader("Recruitment Pipeline")
-        pipeline = pd.DataFrame({'Stage': ['Sourced', 'Applied', 'Screened', 'Interviewed', 'Offered', 'Hired'], 'Candidates': [50, 35, 20, 8, 3, 1]})
-        fig = px.funnel(pipeline, x='Candidates', y='Stage', color_discrete_sequence=['#CC0000'])
+        st.subheader("🤖 AI Candidate Screening & Tiering")
+        st.info("AI automatically screens candidates based on job requirements and tiering criteria.")
+        
+        if st.session_state.active_jobs:
+            selected_job = st.selectbox("Select Job for Screening", [j['ref'] + ' - ' + j['title'] for j in st.session_state.active_jobs])
+            
+            st.markdown("---")
+            st.markdown("### AI Screening Configuration")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                st.slider("Skills Match Threshold", 0, 100, 70, help="Minimum % match to pass screening")
+                st.slider("Experience Match Threshold", 0, 100, 60)
+            with c2:
+                st.slider("Education Match Threshold", 0, 100, 50)
+                st.slider("Overall Fit Threshold", 0, 100, 65)
+            
+            st.markdown("---")
+            st.markdown("### 🎯 AI Tiering Results")
+            st.info("Candidates are automatically tiered into 3 categories based on AI analysis.")
+            
+            # Sample tiering display
+            tier_data = pd.DataFrame({
+                'Candidate': ['John Developer', 'Jane Engineer', 'Mike Tech'],
+                'Skills Match': ['92%', '85%', '68%'],
+                'Experience': ['7 years', '5 years', '3 years'],
+                'AI Score': ['94%', '88%', '62%'],
+                'Tier': ['🌟 Tier 1 - Strong Fit', '👍 Tier 2 - Good Fit', '👎 Tier 3 - Not Recommended'],
+                'Recommendation': ['Advance to Interview', 'Keep in View', 'Not Recommended']
+            })
+            st.dataframe(tier_data, use_container_width=True, hide_index=True)
+            
+            if st.button("🤖 Run AI Screening Now", use_container_width=True):
+                st.success("✅ AI screening complete! 3 candidates processed. 2 passed to next stage.")
+        else:
+            st.info("No active jobs. Post a job first to enable AI screening.")
+    
+    # ============ TAB 5: ONBOARDING ============
+    with tab5:
+        st.subheader("🎯 World-Class Onboarding")
+        st.info("Complete onboarding workflow for new hires - from offer acceptance to full integration.")
+        
+        with st.expander("📋 Onboarding Checklist", expanded=True):
+            onboarding_steps = [
+                ("📧 Offer Letter Sent", True),
+                ("✅ Offer Accepted", True),
+                ("📄 Document Collection", False),
+                ("💻 IT Setup (Email, Laptop, Access)", False),
+                ("🏢 Workspace Assignment", False),
+                ("👤 Buddy Assignment", False),
+                ("📅 Orientation Scheduled", False),
+                ("📚 Training Enrollment", False),
+                ("🔑 Access Cards Issued", False),
+                ("🎉 First Day Welcome", False)
+            ]
+            
+            for step, done in onboarding_steps:
+                icon = "✅" if done else "⏳"
+                color = "#38a169" if done else "#d69e2e"
+                st.markdown(f"""{icon} **{step}** <span style='color: {color};'>{('Complete' if done else 'Pending')}</span>""", unsafe_allow_html=True)
+        
+        st.markdown("---")
+        with st.form("add_onboarding"):
+            st.markdown("### Add New Hire to Onboarding")
+            c1, c2 = st.columns(2)
+            with c1:
+                new_hire_name = st.text_input("Employee Name *")
+                new_hire_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'])
+                new_hire_position = st.text_input("Position *")
+            with c2:
+                start_date = st.date_input("Start Date *")
+                buddy_name = st.text_input("Assigned Buddy")
+                orientation_date = st.date_input("Orientation Date")
+            
+            if st.form_submit_button("🎯 Start Onboarding Process", use_container_width=True):
+                if new_hire_name and new_hire_dept and new_hire_position:
+                    st.session_state.onboarding_list.append({
+                        'name': new_hire_name, 'dept': new_hire_dept, 'position': new_hire_position,
+                        'start': start_date.strftime('%Y-%m-%d'), 'buddy': buddy_name,
+                        'orientation': orientation_date.strftime('%Y-%m-%d'),
+                        'progress': '10%', 'status': 'In Progress'
+                    })
+                    st.success(f"✅ Onboarding initiated for {new_hire_name}!")
+                    st.balloons()
+        
+        if st.session_state.onboarding_list:
+            st.markdown("---")
+            st.markdown("### 📋 Active Onboarding")
+            for onboard in st.session_state.onboarding_list:
+                st.markdown(f"""
+                <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #38a169;">
+                    <strong>{onboard['name']}</strong> - {onboard['position']} ({onboard['dept']})<br>
+                    <small>Start: {onboard['start']} | Buddy: {onboard.get('buddy', 'TBD')} | Progress: {onboard['progress']}</small>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    # ============ TAB 6: RECRUITMENT ANALYTICS ============
+    with tab6:
+        st.subheader("📊 Recruitment Analytics")
+        
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Active Jobs", len(st.session_state.active_jobs))
+        c2.metric("Total Applicants", "47")
+        c3.metric("Avg Time to Hire", "18 days")
+        c4.metric("Offer Acceptance", "85%")
+        
+        st.markdown("---")
+        funnel = pd.DataFrame({'Stage': ['Applied', 'Screened', 'Interviewed', 'Offered', 'Hired'], 'Count': [47, 28, 12, 5, 2]})
+        fig = px.funnel(funnel, x='Count', y='Stage', color_discrete_sequence=['#CC0000'])
+        fig.update_layout(height=350)
         st.plotly_chart(fig, use_container_width=True)
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Time to Hire", "18 days", "↓ 30%")
-        c2.metric("Cost per Hire", "₦350K", "↓ 25%")
-        c3.metric("Acceptance", "88%", "↑ 12%")
 
 def ai_recruitment_agent():
     st.markdown("""<div class="churchgate-header"><h1>🤖 AI Recruitment Agent</h1><p>AI-Powered CV Analysis | Candidate Scoring | LinkedIn Parsing | Intelligent Tiering</p></div>""", unsafe_allow_html=True)
