@@ -159,10 +159,11 @@ if selected_job:
                         resume.seek(0)
                         file_content = resume.read()
                         file_name = f"{tracking_id}_{first_name}_{last_name}.{file_ext}"
-                        db.supabase.storage.from_("cvs").upload(file_name, file_content)
+                        db.supabase.storage.from_("cvs").upload(file_name, file_content, {"content-type": resume.type})
                         cv_url = db.supabase.storage.from_("cvs").get_public_url(file_name)
-                    except:
-                        pass
+                        st.success(f"✅ CV uploaded to storage!")
+                    except Exception as e:
+                        st.warning(f"Storage upload: {str(e)}")
                     
                     db._post("candidates", {
                         "candidate_ref": tracking_id, "first_name": first_name, "last_name": last_name,
