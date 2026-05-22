@@ -31,7 +31,11 @@ from utils.email_service import EmailService
 from utils.chat_service import ChatService
 from utils.training_service import TrainingService
 
-st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
+logo_icon = Path(__file__).parent / "churchgate_logo.png"
+if logo_icon.exists():
+    st.set_page_config(page_title="Churchgate Group HRIS", page_icon=str(logo_icon), layout="wide", initial_sidebar_state="expanded")
+else:
+    st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
 
 CHURCHGATE_RED = "#CC0000"
 CHURCHGATE_DARK = "#1a1a1a"
