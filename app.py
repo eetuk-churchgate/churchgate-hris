@@ -2967,7 +2967,10 @@ def ai_recruitment_agent():
                 st.markdown(f"### 📊 {len(candidates)} Applications Received")
                 
                 for idx, row in candidates.iterrows():
-                    first = str(row.get('first_name') or 'Candidate')
+                    first = str(row.get('first_name') or '')
+                    if not first or first == 'nan' or first == 'None':
+                        continue
+                    first = first if first else 'Candidate'
                     last = str(row.get('last_name') or '')
                     job = str(row.get('job_id') or 'N/A')
                     email_val = str(row.get('email') or 'N/A')
@@ -2997,7 +3000,10 @@ def ai_recruitment_agent():
                         if resume_val and resume_val != 'None' and len(resume_val) > 10:
                             with st.expander("📄 View Full CV Content"):
                                 st.text_area("CV Content", resume_val, height=200, key=f"cv_{idx}")
-                                st.download_button(f"📥 Download CV - {first} {last}", resume_val, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
+                                st.download_button(f"📥 Download CV Text - {first} {last}", resume_val, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
+                                cv_url = str(row.get('cv_url') or '')
+                                if cv_url:
+                                    st.markdown(f"[📥 Download Original CV File]({cv_url})")
                         
                         c1, c2, c3 = st.columns(3)
                         with c1:
@@ -3217,6 +3223,10 @@ def ai_recruitment_agent():
                         pdf.set_font('Helvetica', '', 7)
                         for i, (_, row) in enumerate(candidates.iterrows()):
                             score = row.get('ai_score', 0) or 0
+                            try:
+                                score = int(float(score))
+                            except:
+                                score = 0
                             if score >= 85: color = (56,161,105)
                             elif score >= 65: color = (214,158,46)
                             else: color = (204,0,0)
