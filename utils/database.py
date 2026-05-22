@@ -181,5 +181,23 @@ class DatabaseManager:
         except:
             return False
 
+   def save_job_requisition(self, req_id, title, department, location, job_type, salary, level, positions, closing, jd, screening, posts, status, submitted_by, date, lm_comment, admin_comment, coo_comment):
+        existing = self._get("job_requisitions", {"req_id": req_id})
+        if existing:
+            self._delete("job_requisitions", {"req_id": req_id})
+        self._post("job_requisitions", {
+            "req_id": req_id, "title": title, "department": department,
+            "location": location, "job_type": job_type, "salary": salary,
+            "level": level, "positions": positions, "closing": closing,
+            "jd": jd, "screening": json.dumps(screening),
+            "posts": json.dumps(posts), "status": status,
+            "submitted_by": submitted_by, "date": date,
+            "lm_comment": lm_comment, "admin_comment": admin_comment, "coo_comment": coo_comment
+        })
+    
+    def get_all_job_requisitions(self):
+        data = self._get("job_requisitions")
+        return data if data else []
+
     def get_dashboard_stats(self):
         return {'total_employees': 48, 'open_positions': 5, 'new_candidates': 0, 'avg_performance': 85.0}
