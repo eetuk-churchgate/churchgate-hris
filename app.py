@@ -2967,44 +2967,50 @@ def ai_recruitment_agent():
                 st.markdown(f"### 📊 {len(candidates)} Applications Received")
                 
                 for idx, row in candidates.iterrows():
+                    first = str(row.get('first_name') or 'Candidate')
+                    last = str(row.get('last_name') or '')
+                    job = str(row.get('job_id') or 'N/A')
+                    email_val = str(row.get('email') or 'N/A')
+                    phone_val = str(row.get('phone') or 'N/A')
+                    linkedin_val = str(row.get('linkedin_url') or 'N/A')
+                    experience_val = str(row.get('years_of_experience') or 'N/A')
+                    current_val = str(row.get('current_position') or 'N/A')
+                    source_val = str(row.get('source') or 'N/A')
                     score_val = row.get('ai_score', 0) or 0
                     score_display = f"{int(score_val)}%" if score_val > 0 else "Pending"
+                    tier_val = str(row.get('ai_tier') or 'Pending')
+                    resume_val = str(row.get('resume_text') or '')
                     
-                    with st.expander(f"📋 {row['first_name']} {row['last_name']} — {row.get('job_id', 'N/A')} — AI: {score_display}", expanded=False):
+                    with st.expander(f"📋 {first} {last} — {job} — AI: {score_display}", expanded=False):
                         c1, c2 = st.columns(2)
                         with c1:
-                            st.markdown(f"**Email:** {row.get('email', 'N/A')}")
-                            st.markdown(f"**Phone:** {row.get('phone', 'N/A')}")
-                            st.markdown(f"**LinkedIn:** {row.get('linkedin_url', 'N/A')}")
-                            st.markdown(f"**Experience:** {row.get('years_of_experience', 'N/A')} years")
+                            st.markdown(f"**Email:** {email_val}")
+                            st.markdown(f"**Phone:** {phone_val}")
+                            st.markdown(f"**LinkedIn:** {linkedin_val}")
+                            st.markdown(f"**Experience:** {experience_val} years")
                         with c2:
-                            st.markdown(f"**Current:** {row.get('current_position', 'N/A')}")
-                            st.markdown(f"**Source:** {row.get('source', 'N/A')}")
+                            st.markdown(f"**Current:** {current_val}")
+                            st.markdown(f"**Source:** {source_val}")
                             st.markdown(f"**AI Score:** {score_display}")
-                            st.markdown(f"**AI Tier:** {row.get('ai_tier', 'Pending')}")
+                            st.markdown(f"**AI Tier:** {tier_val}")
                         
-                        if row.get('resume_text'):
+                        if resume_val and resume_val != 'None' and len(resume_val) > 10:
                             with st.expander("📄 View Full CV Content"):
-                                st.text_area("CV Content", str(row['resume_text']), height=200, key=f"cv_{idx}")
-                                st.download_button(f"📥 Download CV - {row['first_name']} {row['last_name']}", str(row['resume_text']), f"CV_{row['first_name']}_{row['last_name']}.txt", "text/plain", key=f"dl_cv_{idx}")
+                                st.text_area("CV Content", resume_val, height=200, key=f"cv_{idx}")
+                                st.download_button(f"📥 Download CV - {first} {last}", resume_val, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
                         
                         c1, c2, c3 = st.columns(3)
                         with c1:
                             if st.button(f"🤖 Quick AI Score", key=f"qscore_{idx}"):
-                                cv_text = str(row.get('resume_text', '')).lower()
+                                cv_text = resume_val.lower()
                                 keywords = ['experience', 'leadership', 'management', 'project', 'team', 'revenue', 'growth', 'strategy', 'innovation', 'digital', 'transformation', 'data', 'analytics', 'performance', 'stakeholder', 'budget', 'operations', 'compliance', 'quality', 'customer']
                                 matches = sum(1 for kw in keywords if kw in cv_text)
                                 score = min(98, 35 + matches * 3)
                                 tier = "Tier 1 (Strong Fit)" if score >= 85 else "Tier 2 (Good Fit)" if score >= 65 else "Tier 3 (Not Recommended)"
-                                try:
-                                    db._post("candidates", {"candidate_ref": row['candidate_ref'], "ai_score": score, "ai_tier": tier, "status": "AI Screened"})
-                                except:
-                                    pass
                                 st.success(f"{tier} — {score}%")
-                                st.rerun()
                         with c2:
                             if st.button(f"🔍 Verbatim Check", key=f"verb_{idx}"):
-                                cv_lower = str(row.get('resume_text', '')).lower()
+                                cv_lower = resume_val.lower()
                                 jd_phrases = ['responsible for', 'duties include', 'team player', 'hardworking', 'detail oriented']
                                 flags = [p for p in jd_phrases if p in cv_lower]
                                 if flags:
@@ -3216,8 +3222,8 @@ def ai_recruitment_agent():
                             else: color = (204,0,0)
                             pdf.set_text_color(26,26,26)
                             pdf.cell(6, 6, str(i+1), 1, 0, 'C')
-                            pdf.cell(45, 6, f' {row.get("first_name","")} {row.get("last_name","")}'[:28], 1, 0, 'L')
-                            pdf.cell(55, 6, f' {row.get("current_position","")}'[:33], 1, 0, 'L')
+                            pdf.cell(45, 6, f' {str(row.get("first_name",""))} {str(row.get("last_name",""))}'[:28], 1, 0, 'L')
+                            pdf.cell(55, 6, f' {str(row.get("current_position",""))}'[:33], 1, 0, 'L')
                             pdf.set_text_color(*color)
                             pdf.cell(18, 6, f'{int(score)}%', 1, 0, 'C')
                             pdf.set_text_color(26,26,26)
