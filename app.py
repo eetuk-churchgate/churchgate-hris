@@ -1623,32 +1623,28 @@ def employee_management():
                                 current_dept = str(emp.get('department', 'Technology Group'))
                                 dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
                                 dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 1
-                                new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}")
+                                new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
                                 current_grade = str(emp.get('grade', 'Junior'))
                                 grade_options = ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level']
                                 grade_idx = grade_options.index(current_grade) if current_grade in grade_options else 0
-                                new_grade = st.selectbox("Grade", grade_options, index=grade_idx, key=f"grd_{emp['employee_id']}")
+                                new_grade = st.selectbox("Grade", grade_options, index=grade_idx, key=f"grd_{emp['employee_id']}_{st.session_state.dir_page}")
                             with ec2:
-                                new_position = st.text_input("Position", value=str(emp.get('position', '')), key=f"pos_{emp['employee_id']}")
+                                new_position = st.text_input("Position", value=str(emp.get('position', '')), key=f"pos_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
                                 current_status = str(emp.get('status', 'Active'))
                                 status_options = ['Active', 'On Leave', 'Probation', 'Terminated']
                                 status_idx = status_options.index(current_status) if current_status in status_options else 0
-                                new_status = st.selectbox("Status", status_options, index=status_idx, key=f"sts_{emp['employee_id']}")
+                                new_status = st.selectbox("Status", status_options, index=status_idx, key=f"sts_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
                                 current_gender = str(emp.get('gender', 'Male'))
                                 gender_options = ['Male', 'Female']
                                 gender_idx = 0 if current_gender == 'Male' else 1
-                                new_gender = st.selectbox("Gender", gender_options, index=gender_idx, key=f"gen_{emp['employee_id']}")
+                                new_gender = st.selectbox("Gender", gender_options, index=gender_idx, key=f"gen_{emp['employee_id']}_{st.session_state.dir_page}")
                             with ec3:
                                 new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'],
                                     key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
-                                new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}")
-                            with ec3:
-                                new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'],
-                                    key=f"role_{emp['employee_id']}")
-                                new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}")
+                                new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}_{st.session_state.dir_page}")
                             
                             if st.form_submit_button("💾 Save Changes", use_container_width=True):
                                 try:
