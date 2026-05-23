@@ -4848,8 +4848,8 @@ def my_profile():
     with c1:
         initials = generate_initials(user_name)
         
-        db_pic = None
-        if 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
+        db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
+        if db_pic is None and 'profile_pic' in st.session_state:
             db_pic = st.session_state['profile_pic']
         
         if db_pic is not None:
