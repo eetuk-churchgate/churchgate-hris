@@ -778,10 +778,6 @@ def employee_dashboard():
     if db_pic is not None:
         import base64
         greeting_pic_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
-                except:
-                    pass
-    except:
-        pass
     
     st.markdown(f"""
     <div class="greeting-header animate-fade-in">
