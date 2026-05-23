@@ -229,5 +229,18 @@ class DatabaseManager:
             return self.supabase.storage.from_(bucket).get_public_url(file_name)
         return ""
 
+    def save_portfolio_metric(self, name, value):
+        existing = self._get("portfolio_metrics", {"metric_name": name})
+        if existing:
+            self._patch("portfolio_metrics", {"metric_value": str(value)}, {"metric_name": name})
+        else:
+            self._post("portfolio_metrics", {"metric_name": name, "metric_value": str(value)})
+    
+    def get_portfolio_metrics(self):
+        data = self._get("portfolio_metrics")
+        if data:
+            return {item['metric_name']: item['metric_value'] for item in data}
+        return {}
+
     def get_dashboard_stats(self):
         return {'total_employees': 48, 'open_positions': 5, 'new_candidates': 0, 'avg_performance': 85.0}
