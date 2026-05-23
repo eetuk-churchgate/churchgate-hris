@@ -708,14 +708,16 @@ def sidebar_navigation():
             
             initials = generate_initials(user['name'])
             db_pic = None
-            db_pic = None
             try:
                 user_record = db._get("users", {"email": user.get('email', '')})
                 if user_record and len(user_record) > 0:
                     pic_data = user_record[0].get('profile_picture')
-                    if pic_data:
+                    if pic_data and len(pic_data) > 10:
                         import base64
-                        db_pic = base64.b64decode(pic_data) if isinstance(pic_data, str) else pic_data
+                        try:
+                            db_pic = base64.b64decode(pic_data)
+                        except:
+                            db_pic = None
             except:
                 pass
             
@@ -788,13 +790,13 @@ def employee_dashboard():
         user_record = db._get("users", {"email": user_email})
         if user_record and len(user_record) > 0:
             pic_data = user_record[0].get('profile_picture')
-            if pic_data:
-                if pic_data.startswith('http'):
-                    greeting_pic_html = f'<img src="{pic_data}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
-                else:
-                    import base64
-                    db_pic = base64.b64decode(pic_data) if isinstance(pic_data, str) else pic_data
+            if pic_data and len(pic_data) > 10:
+                import base64
+                try:
+                    db_pic = base64.b64decode(pic_data)
                     greeting_pic_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
+                except:
+                    pass
     except:
         pass
     
@@ -4889,23 +4891,21 @@ def my_profile():
         
         uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'])
         if uploaded_pic is not None:
-            st.session_state['profile_pic'] = uploaded_pic
             try:
                 image_bytes = uploaded_pic.getvalue()
                 import base64
                 b64_str = base64.b64encode(image_bytes).decode()
                 
-                # Save to Supabase Storage (this WORKS - same as CV uploads)
-                file_name = f"profile_{user_id}_{int(time.time())}.jpg"
-                db.supabase.storage.from_("cvs").upload(file_name, image_bytes, {"content-type": "image/jpeg"})
-                cv_url = db.supabase.storage.from_("cvs").get_public_url(file_name)
-                
-                # Also save URL to users table
-                db._patch("users", {"profile_picture": cv_url}, {"id": str(user.get('id', 0))})
-                
-                st.success("✅ Profile picture saved permanently!")
+                # Save to users table as base64
+                user_record = db._get("users", {"email": user_email})
+                if user_record and len(user_record) > 0:
+                    uid = user_record[0].get('id')
+                    db._patch("users", {"profile_picture": b64_str}, {"id": str(uid)})
+                    st.session_state['profile_pic'] = uploaded_pic
+                    st.success("✅ Profile picture saved!")
+                    st.rerun()
             except Exception as e:
-                st.warning(f"Could not save: {str(e)}")
+                st.warning(f"Error: {str(e)}")
         
         # Profile Completeness
         st.markdown("---")
