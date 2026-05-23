@@ -827,7 +827,6 @@ def employee_management():
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     
-    # Load employees from database
     @st.cache_data(ttl=60)
     def load_employees():
         try:
@@ -840,6 +839,14 @@ def employee_management():
     
     employees_df = load_employees()
     
+    # Department colors for visual distinction
+    dept_colors = {
+        'Senior Management': '#CC0000', 'Technology Group': '#3182ce', 'Facility Management': '#38a169',
+        'Human Resources': '#d69e2e', 'Accounts & Finance': '#805ad5', 'Sales & Marketing': '#dd6b20',
+        'Procurement': '#2b6cb0', 'Security': '#718096', 'Legal': '#e53e3e', 'Operations': '#319795',
+        'Engineering': '#d53f8c'
+    }
+    
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "📋 Directory", "➕ Add Employee", "📤 Bulk Upload", 
         "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📥 Export"
@@ -849,10 +856,27 @@ def employee_management():
     with tab1:
         st.subheader("📋 Employee Directory")
         
-        # Advanced Search & Filters
+        # Stats bar
+        total_emp = len(employees_df)
+        active_emp = len(employees_df[employees_df['status'] == 'Active']) if not employees_df.empty else 0
+        
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric("👥 Total Employees", total_emp)
+        with c2:
+            st.metric("✅ Active", active_emp)
+        with c3:
+            dept_count = len(employees_df['department'].unique()) if not employees_df.empty else 0
+            st.metric("🏢 Departments", dept_count)
+        with c4:
+            st.metric("📍 Locations", "3")
+        
+        st.markdown("---")
+        
+        # Search & Filters
         c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
         with c1:
-            search = st.text_input("🔍 Search", placeholder="Name, ID, email, department...")
+            search = st.text_input("🔍 Search", placeholder="Name, ID, email, department, position...")
         with c2:
             all_depts = ['All'] + sorted(list(employees_df['department'].dropna().unique())) if not employees_df.empty else ['All']
             dept_filter = st.selectbox("Department", all_depts)
@@ -882,39 +906,81 @@ def employee_management():
             if status_filter != 'All':
                 filtered_df = filtered_df[filtered_df['status'] == status_filter]
         
-        # Stats
-        total_emp = len(employees_df)
-        active_emp = len(employees_df[employees_df['status'] == 'Active']) if not employees_df.empty else 0
-        
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Total Employees", total_emp)
-        c2.metric("Active", active_emp)
-        c3.metric("Showing", len(filtered_df))
-        
-        st.markdown("---")
+        st.markdown(f"**Showing {len(filtered_df)} of {total_emp} employees**")
         
         if not filtered_df.empty:
-            for _, emp in filtered_df.iterrows():
+            # Pagination
+            items_per_page = 10
+            total_pages = max(1, (len(filtered_df) + items_per_page - 1) // items_per_page)
+            
+            if 'dir_page' not in st.session_state:
+                st.session_state.dir_page = 1
+            
+            # Pagination controls
+            pg_col1, pg_col2, pg_col3 = st.columns([1, 2, 1])
+            with pg_col1:
+                if st.button("⬅️ Previous", disabled=st.session_state.dir_page <= 1, use_container_width=True):
+                    st.session_state.dir_page -= 1
+                    st.rerun()
+            with pg_col2:
+                st.markdown(f"<p style='text-align:center;color:#666;'>Page <strong>{st.session_state.dir_page}</strong> of <strong>{total_pages}</strong></p>", unsafe_allow_html=True)
+            with pg_col3:
+                if st.button("Next ➡️", disabled=st.session_state.dir_page >= total_pages, use_container_width=True):
+                    st.session_state.dir_page += 1
+                    st.rerun()
+            
+            start_idx = (st.session_state.dir_page - 1) * items_per_page
+            end_idx = min(start_idx + items_per_page, len(filtered_df))
+            
+            # Employee cards
+            for _, emp in filtered_df.iloc[start_idx:end_idx].iterrows():
                 initials = generate_initials(f"{emp['first_name']} {emp['last_name']}")
                 status_color = "#38a169" if emp.get('status') == 'Active' else "#d69e2e" if emp.get('status') == 'On Leave' else "#CC0000"
+                status_bg = "#e6f9e6" if emp.get('status') == 'Active' else "#fff8e6" if emp.get('status') == 'On Leave' else "#ffe6e6"
+                border_color = dept_colors.get(emp.get('department', ''), '#CC0000')
                 
-                with st.expander(f"{initials} {emp['first_name']} {emp['last_name']} — {emp.get('position', 'N/A')}", expanded=False):
-                    c1, c2 = st.columns(2)
+                with st.expander(f"👤 {emp['first_name']} {emp['last_name']} • {emp.get('position', 'N/A')}", expanded=False):
+                    col1, col2, col3 = st.columns([1, 3, 1])
+                    with col1:
+                        st.markdown(f"""
+                        <div style="width:55px;height:55px;border-radius:50%;background:linear-gradient(135deg,{border_color},#e53e3e);
+                                    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;color:white;">
+                            {initials}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with col2:
+                        st.markdown(f"""
+                        <div style="line-height:1.6;">
+                            <strong style="font-size:1.1rem;">{emp['first_name']} {emp['last_name']}</strong><br>
+                            <span style="color:#666;">💼 {emp.get('position', 'N/A')}</span><br>
+                            <span style="color:#888;font-size:0.85rem;">🏢 {emp.get('department', 'N/A')} • 🆔 {emp.get('employee_id', 'N/A')}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with col3:
+                        st.markdown(f"""
+                        <div style="text-align:right;">
+                            <span style="background:{status_bg};color:{status_color};padding:0.3rem 0.8rem;border-radius:20px;font-size:0.8rem;font-weight:600;border:1px solid {status_color};">
+                                {emp.get('status', 'Active')}
+                            </span>
+                            <br><small style="color:#888;">📅 {emp.get('join_date', 'N/A')}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    c1, c2, c3, c4 = st.columns(4)
                     with c1:
-                        st.markdown(f"**🆔 ID:** {emp.get('employee_id', 'N/A')}")
-                        st.markdown(f"**📧 Email:** {emp.get('email', 'N/A')}")
-                        st.markdown(f"**📱 Phone:** {emp.get('phone', 'N/A')}")
-                        st.markdown(f"**🏢 Department:** {emp.get('department', 'N/A')}")
+                        st.markdown(f"📧 <small>{emp.get('email', 'N/A')}</small>", unsafe_allow_html=True)
                     with c2:
-                        st.markdown(f"**💼 Position:** {emp.get('position', 'N/A')}")
-                        st.markdown(f"**📊 Grade:** {emp.get('grade', 'N/A')}")
-                        st.markdown(f"**📅 Joined:** {emp.get('join_date', 'N/A')}")
-                        st.markdown(f"**Status:** <span style='color:{status_color};font-weight:600;'>{emp.get('status', 'N/A')}</span>", unsafe_allow_html=True)
+                        st.markdown(f"📱 <small>{emp.get('phone', 'N/A')}</small>", unsafe_allow_html=True)
+                    with c3:
+                        st.markdown(f"📊 <small>Grade: {emp.get('grade', 'N/A')}</small>", unsafe_allow_html=True)
+                    with c4:
+                        st.markdown(f"💼 <small>{emp.get('employment_type', 'N/A')}</small>", unsafe_allow_html=True)
                     
                     if is_admin:
                         st.markdown("---")
-                        st.markdown("### ✏️ Quick Edit")
                         with st.form(f"edit_{emp['employee_id']}"):
+                            st.markdown("#### ✏️ Quick Edit")
                             ec1, ec2, ec3 = st.columns(3)
                             with ec1:
                                 new_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'],
@@ -930,15 +996,10 @@ def employee_management():
                                     key=f"role_{emp['employee_id']}")
                                 new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}")
                             
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                if st.form_submit_button("💾 Save Changes", use_container_width=True):
-                                    st.success(f"✅ {emp['first_name']} updated!")
-                                    st.cache_data.clear()
-                                    st.rerun()
-                            with c2:
-                                if st.form_submit_button("🗑️ Delete Employee", use_container_width=True, type="secondary"):
-                                    st.warning("Delete functionality requires confirmation.")
+                            if st.form_submit_button("💾 Save Changes", use_container_width=True):
+                                st.success(f"✅ {emp['first_name']} updated!")
+                                st.cache_data.clear()
+                                st.rerun()
         else:
             st.info("No employees match your search criteria.")
     
@@ -973,7 +1034,7 @@ def employee_management():
                             "position": position, "grade": grade, "employment_type": employment_type,
                             "join_date": join_date.strftime('%Y-%m-%d'), "status": status
                         })
-                        st.success(f"✅ {first_name} {last_name} added successfully!")
+                        st.success(f"✅ {first_name} {last_name} added!")
                         st.balloons()
                         st.cache_data.clear()
                         st.rerun()
@@ -986,32 +1047,24 @@ def employee_management():
     with tab3:
         st.subheader("📤 Bulk Employee Upload")
         st.info("Upload CSV with columns: employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date")
-        
         template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date'])
         st.download_button("📥 Download Template", template_df.to_csv(index=False), "employee_template.csv", "text/csv")
-        
         uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
         if uploaded_file:
             df = pd.read_csv(uploaded_file)
             st.write(f"**{len(df)} employees in file**")
             st.dataframe(df.head(), use_container_width=True)
-            
             if st.button("📤 Upload All", use_container_width=True):
                 success, fail = 0, 0
                 for _, row in df.iterrows():
                     try:
                         db._post("employees", {
-                            "employee_id": str(row.get('employee_id', '')),
-                            "first_name": str(row.get('first_name', '')),
-                            "last_name": str(row.get('last_name', '')),
-                            "email": str(row.get('email', '')),
-                            "phone": str(row.get('phone', '')),
-                            "department": str(row.get('department', '')),
-                            "position": str(row.get('position', '')),
-                            "grade": str(row.get('grade', 'Junior')),
+                            "employee_id": str(row.get('employee_id', '')), "first_name": str(row.get('first_name', '')),
+                            "last_name": str(row.get('last_name', '')), "email": str(row.get('email', '')),
+                            "phone": str(row.get('phone', '')), "department": str(row.get('department', '')),
+                            "position": str(row.get('position', '')), "grade": str(row.get('grade', 'Junior')),
                             "employment_type": str(row.get('employment_type', 'Full-time')),
-                            "join_date": str(row.get('join_date', '')),
-                            "status": "Active"
+                            "join_date": str(row.get('join_date', '')), "status": "Active"
                         })
                         success += 1
                     except:
@@ -1024,22 +1077,15 @@ def employee_management():
     with tab4:
         st.subheader("🔑 Generate Employee Login Credentials")
         st.info("One-click login generation for all employees.")
-        
         if not employees_df.empty:
             default_pw = st.text_input("Default Password", value="churchgate2026")
-            
             emp_list = []
             for _, emp in employees_df.iterrows():
                 emp_list.append({
-                    'Name': f"{emp['first_name']} {emp['last_name']}",
-                    'ID': emp['employee_id'],
-                    'Email': emp.get('email', 'N/A'),
-                    'Department': emp.get('department', ''),
-                    'Role': 'Employee'
+                    'Name': f"{emp['first_name']} {emp['last_name']}", 'ID': emp['employee_id'],
+                    'Email': emp.get('email', 'N/A'), 'Department': emp.get('department', ''), 'Role': 'Employee'
                 })
-            
             st.dataframe(pd.DataFrame(emp_list), use_container_width=True, hide_index=True)
-            
             if st.button("🔑 Generate Logins for All Employees", use_container_width=True):
                 count = 0
                 for emp in emp_list:
@@ -1060,13 +1106,17 @@ def employee_management():
         st.subheader("🏢 Department Analytics")
         if not employees_df.empty:
             dept_counts = employees_df['department'].value_counts()
-            for dept, count in dept_counts.items():
-                st.markdown(f"""
-                <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #CC0000; display: flex; justify-content: space-between;">
-                    <div><strong>{dept}</strong></div>
-                    <div><span style="font-size: 1.5rem; font-weight: 700;">{count}</span><br><small>staff</small></div>
-                </div>
-                """, unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            for i, (dept, count) in enumerate(dept_counts.items()):
+                color = dept_colors.get(dept, '#CC0000')
+                with (c1 if i % 2 == 0 else c2):
+                    st.markdown(f"""
+                    <div style="background:white;padding:1.2rem;border-radius:10px;margin-bottom:0.8rem;border-left:4px solid {color};box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                        <strong>{dept}</strong>
+                        <span style="float:right;font-size:1.5rem;font-weight:700;color:{color};">{count}</span>
+                        <br><small style="color:#888;">staff members</small>
+                    </div>
+                    """, unsafe_allow_html=True)
     
     # ============ TAB 6: ORG CHART ============
     with tab6:
@@ -1077,7 +1127,6 @@ def employee_management():
             sources = [0] * len(dept_list)
             targets = list(range(1, len(dept_list)+1))
             values = [len(employees_df[employees_df['department'] == d]) for d in dept_list]
-            
             if len(sources) == len(targets) == len(values):
                 fig = go.Figure(data=[go.Sankey(
                     node=dict(pad=20, thickness=20, label=labels, color=['#CC0000'] + ['#4a4a4a']*len(dept_list)),
@@ -1092,7 +1141,7 @@ def employee_management():
         if not employees_df.empty:
             st.download_button("📥 Download Full Directory (CSV)", employees_df.to_csv(index=False), "churchgate_employees.csv", "text/csv")
             st.markdown("---")
-            st.markdown("### Quick Stats")
+            st.markdown("### 📊 Quick Stats")
             st.dataframe(employees_df.describe(), use_container_width=True)
 
 def performance_okrs():
