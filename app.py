@@ -1232,6 +1232,7 @@ def employee_management():
             'Engineering/MEP', 'HR', 'Accounts & Finance',
             'Sales & Marketing', 'Procurement', 'Security',
             'Legal', 'Operations',
+            'Heads of Department',
             'Sr. Managers', 'Managers', 'Team Leads', 'Team Members'
         ]
         
@@ -1242,6 +1243,7 @@ def employee_management():
             '#d53f8c', '#d69e2e', '#805ad5',
             '#dd6b20', '#2b6cb0', '#718096',
             '#e53e3e', '#319795',
+            '#FF6B35',
             '#38a169', '#d69e2e', '#2b6cb0', '#718096'
         ]
         
@@ -1249,14 +1251,20 @@ def employee_management():
         targets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 11, 15]
         values  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         
-        # Add chain from each department to team members
+        # Departments → HODs
         for i in range(4, 16):
             sources.append(i)
             targets.append(16)
             values.append(1)
         
-        sources += [16, 16, 17, 17]
-        targets += [17, 18, 18, 19]
+        # HODs → Sr. Managers
+        sources.append(16)
+        targets.append(17)
+        values.append(11)
+        
+        # Sr. Managers → Managers → Team Leads → Team Members
+        sources += [17, 17, 18, 18]
+        targets += [18, 19, 19, 20]
         values += [10, 5, 12, 30]
         
         fig = go.Figure(data=[go.Sankey(
