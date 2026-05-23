@@ -1643,7 +1643,7 @@ def employee_management():
                                 new_gender = st.selectbox("Gender", gender_options, index=gender_idx, key=f"gen_{emp['employee_id']}")
                             with ec3:
                                 new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'],
-                                    key=f"role_{emp['employee_id']}")
+                                    key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}")
                             with ec3:
                                 new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'],
@@ -2200,7 +2200,9 @@ def performance_okrs():
         return [int(p) if p.isdigit() else p for p in parts]
     
     # ============ TAB 1: STRATEGIC PILLARS ============ (unchanged) ============
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "📊 Dashboard"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "🌟 Exceptional Achievements", "📊 Dashboard"
+    ])
     
     with tab1:
         st.subheader("🎯 Strategic Pillars Console — Corporate Strategy 2026-2027")
