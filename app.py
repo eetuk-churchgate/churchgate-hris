@@ -99,7 +99,7 @@ st.markdown("""
     .stImage { display: flex; justify-content: center; }
     .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
 .greeting-header {
-        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        background: #d5d5d5;
         padding: 1rem 2rem;
         border-radius: 10px;
         margin-bottom: 1rem;
@@ -108,8 +108,8 @@ st.markdown("""
         align-items: center;
         justify-content: space-between;
     }
-    .greeting-header h1 { color: white; font-size: 1.5rem; font-weight: 700; margin: 0; }
-    .greeting-header p { color: #ccc; font-size: 0.85rem; margin: 0.2rem 0 0 0; }
+    .greeting-header h1 { color: #1a1a1a; font-size: 1.5rem; font-weight: 700; margin: 0; }
+    .greeting-header p { color: #555; font-size: 0.85rem; margin: 0.2rem 0 0 0; }
     
     .mission-banner {
         background: #d5d5d5;
@@ -673,7 +673,7 @@ def employee_dashboard():
     ]
     ticker_text = " • ".join(announcements)
     st.markdown(f"""
-    <div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);color:white;padding:0.6rem 1.5rem;border-radius:8px;margin-bottom:1rem;overflow:hidden;white-space:nowrap;">
+    <div style="background:#d5d5d5;color:#333;padding:0.6rem 1.5rem;border-radius:8px;margin-bottom:1rem;overflow:hidden;white-space:nowrap;">
         <marquee behavior="scroll" direction="left" scrollamount="3">{ticker_text}</marquee>
     </div>
     """, unsafe_allow_html=True)
