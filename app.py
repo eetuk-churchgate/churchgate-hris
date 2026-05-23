@@ -4885,21 +4885,24 @@ def my_profile():
             st.rerun()
         
         uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'])
-        if uploaded_pic is not None and not st.session_state.get('pic_processed', False):
+        if uploaded_pic is not None:
+            st.session_state['profile_pic'] = uploaded_pic
             try:
                 image_bytes = uploaded_pic.getvalue()
                 import base64
                 b64_str = base64.b64encode(image_bytes).decode()
                 
-                user_record = db._get("users", {"email": user_email})
-                if user_record and len(user_record) > 0:
-                    uid = user_record[0].get('id')
-                    db._patch("users", {"profile_picture": b64_str}, {"id": str(uid)})
-                    st.session_state['profile_pic'] = uploaded_pic
-                    st.session_state['pic_processed'] = True
-                    st.success("✅ Profile picture saved!")
+                # Save to Supabase Storage (this WORKS - same as CV uploads)
+                file_name = f"profile_{user_id}.jpg"
+                db.supabase.storage.from_("cvs").upload(file_name, image_bytes, {"content-type": "image/jpeg"})
+                cv_url = db.supabase.storage.from_("cvs").get_public_url(file_name)
+                
+                # Also save URL to users table
+                db._patch("users", {"profile_picture": cv_url}, {"id": str(user.get('id', 0))})
+                
+                st.success("✅ Profile picture saved permanently!")
             except Exception as e:
-                st.warning(f"Error: {str(e)}")
+                st.warning(f"Could not save: {str(e)}")
         
         # Profile Completeness
         st.markdown("---")
