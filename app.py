@@ -4903,7 +4903,6 @@ def my_profile():
                     db._patch("users", {"profile_picture": b64_str}, {"id": str(uid)})
                     st.session_state['profile_pic'] = uploaded_pic
                     st.success("✅ Profile picture saved!")
-                    st.rerun()
             except Exception as e:
                 st.warning(f"Error: {str(e)}")
         
