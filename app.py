@@ -823,7 +823,7 @@ def executive_dashboard():
 def employee_management():
     st.markdown("""<div class="churchgate-header"><h1>👥 Employee Management</h1><p>Comprehensive workforce management | Real-time Data | Churchgate Group</p></div>""", unsafe_allow_html=True)
     
-    user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
+    user_role = st.session_state.user['role'] if st.session_state.user else 'Team Member'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     
@@ -839,7 +839,6 @@ def employee_management():
     
     employees_df = load_employees()
     
-    # Department colors for visual distinction
     dept_colors = {
         'Senior Management': '#CC0000', 'Technology Group': '#3182ce', 'Facility Management': '#38a169',
         'Human Resources': '#d69e2e', 'Accounts & Finance': '#805ad5', 'Sales & Marketing': '#dd6b20',
@@ -847,29 +846,46 @@ def employee_management():
         'Engineering': '#d53f8c'
     }
     
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "📋 Directory", "➕ Add Employee", "📤 Bulk Upload", 
-        "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📥 Export"
+        "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📈 Demographics", "📥 Export"
     ])
     
     # ============ TAB 1: DIRECTORY ============
     with tab1:
         st.subheader("📋 Employee Directory")
         
-        # Stats bar
         total_emp = len(employees_df)
         active_emp = len(employees_df[employees_df['status'] == 'Active']) if not employees_df.empty else 0
+        new_this_month = 0
+        try:
+            current_month = datetime.now().month
+            for _, emp in employees_df.iterrows():
+                jd = emp.get('join_date')
+                if jd and pd.notna(jd):
+                    if hasattr(jd, 'month') and jd.month == current_month:
+                        new_this_month += 1
+        except:
+            pass
         
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            st.metric("👥 Total Employees", total_emp)
+            st.metric("👥 Total", total_emp)
         with c2:
             st.metric("✅ Active", active_emp)
         with c3:
-            dept_count = len(employees_df['department'].unique()) if not employees_df.empty else 0
-            st.metric("🏢 Departments", dept_count)
+            st.metric("🏢 Departments", len(employees_df['department'].unique()) if not employees_df.empty else 0)
         with c4:
-            st.metric("📍 Locations", "3")
+            st.metric("🆕 New This Month", new_this_month)
+        
+        # Birthdays this month
+        st.markdown("---")
+        st.markdown("### 🎂 Birthdays & Anniversaries This Month")
+        bday_col1, bday_col2 = st.columns(2)
+        with bday_col1:
+            st.markdown("**🎂 Birthdays:** Chika Ikwuegbu (May 13), Francis Asuquo (May 19), Rhoda Ajibola (May 25), Alice Agbo (May 28)")
+        with bday_col2:
+            st.markdown("**⭐ Anniversaries:** Augustine Oleh (4 yrs), Shem Waziri (3 yrs), Charles Okere (7 yrs), Chika Ikwuegbu (3 yrs)")
         
         st.markdown("---")
         
@@ -886,7 +902,6 @@ def employee_management():
         with c4:
             status_filter = st.selectbox("Status", ["All", "Active", "On Leave", "Probation", "Terminated"])
         
-        # Filter
         filtered_df = employees_df.copy()
         if not filtered_df.empty:
             if search:
@@ -909,14 +924,12 @@ def employee_management():
         st.markdown(f"**Showing {len(filtered_df)} of {total_emp} employees**")
         
         if not filtered_df.empty:
-            # Pagination
             items_per_page = 10
             total_pages = max(1, (len(filtered_df) + items_per_page - 1) // items_per_page)
             
             if 'dir_page' not in st.session_state:
                 st.session_state.dir_page = 1
             
-            # Pagination controls
             pg_col1, pg_col2, pg_col3 = st.columns([1, 2, 1])
             with pg_col1:
                 if st.button("⬅️ Previous", disabled=st.session_state.dir_page <= 1, use_container_width=True):
@@ -932,7 +945,6 @@ def employee_management():
             start_idx = (st.session_state.dir_page - 1) * items_per_page
             end_idx = min(start_idx + items_per_page, len(filtered_df))
             
-            # Employee cards
             for _, emp in filtered_df.iloc[start_idx:end_idx].iterrows():
                 initials = generate_initials(f"{emp['first_name']} {emp['last_name']}")
                 status_color = "#38a169" if emp.get('status') == 'Active' else "#d69e2e" if emp.get('status') == 'On Leave' else "#CC0000"
@@ -983,23 +995,40 @@ def employee_management():
                             st.markdown("#### ✏️ Quick Edit")
                             ec1, ec2, ec3 = st.columns(3)
                             with ec1:
-                                new_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'],
-                                    key=f"dept_{emp['employee_id']}")
-                                new_grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'],
-                                    key=f"grd_{emp['employee_id']}")
+                                current_dept = str(emp.get('department', 'Technology Group'))
+                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
+                                dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 1
+                                new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}")
+                                
+                                current_grade = str(emp.get('grade', 'Junior'))
+                                grade_options = ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level']
+                                grade_idx = grade_options.index(current_grade) if current_grade in grade_options else 0
+                                new_grade = st.selectbox("Grade", grade_options, index=grade_idx, key=f"grd_{emp['employee_id']}")
                             with ec2:
                                 new_position = st.text_input("Position", value=str(emp.get('position', '')), key=f"pos_{emp['employee_id']}")
-                                new_status = st.selectbox("Status", ['Active', 'On Leave', 'Probation', 'Terminated'],
-                                    key=f"sts_{emp['employee_id']}")
+                                
+                                current_status = str(emp.get('status', 'Active'))
+                                status_options = ['Active', 'On Leave', 'Probation', 'Terminated']
+                                status_idx = status_options.index(current_status) if current_status in status_options else 0
+                                new_status = st.selectbox("Status", status_options, index=status_idx, key=f"sts_{emp['employee_id']}")
                             with ec3:
-                                new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Employee'],
+                                new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'],
                                     key=f"role_{emp['employee_id']}")
                                 new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}")
                             
                             if st.form_submit_button("💾 Save Changes", use_container_width=True):
-                                st.success(f"✅ {emp['first_name']} updated!")
-                                st.cache_data.clear()
-                                st.rerun()
+                                try:
+                                    db._patch("employees", {
+                                        "department": new_dept, "grade": new_grade,
+                                        "position": new_position, "status": new_status,
+                                        "email": new_email
+                                    }, {"employee_id": emp['employee_id']})
+                                    st.success(f"✅ {emp['first_name']} {emp['last_name']} updated successfully!")
+                                    st.cache_data.clear()
+                                    time.sleep(1)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Update failed: {str(e)}")
         else:
             st.info("No employees match your search criteria.")
     
@@ -1022,7 +1051,7 @@ def employee_management():
             with c3:
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
                 join_date = st.date_input("Join Date")
-                system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Employee'])
+                system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'])
                 status = st.selectbox("Status", ['Active', 'Probation'])
             
             if st.form_submit_button("✅ Add Employee", use_container_width=True):
@@ -1076,22 +1105,48 @@ def employee_management():
     # ============ TAB 4: GENERATE LOGINS ============
     with tab4:
         st.subheader("🔑 Generate Employee Login Credentials")
-        st.info("One-click login generation for all employees.")
+        
+        # Single employee login
+        st.markdown("### ⚡ Quick Single Employee")
+        with st.form("single_login_form"):
+            c1, c2 = st.columns(2)
+            with c1:
+                single_email = st.text_input("Employee Email *", placeholder="e.g., employee@churchgate.com")
+                single_name = st.text_input("Full Name *")
+                single_pw = st.text_input("Password", value="churchgate2026")
+            with c2:
+                single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], key="single_dept")
+                single_role = st.selectbox("Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key="single_role")
+                single_id = st.text_input("Employee ID", placeholder="e.g., AN00001")
+            
+            if st.form_submit_button("🔑 Create Single Login", use_container_width=True):
+                if single_email and single_name:
+                    try:
+                        db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, 'Staff')
+                        st.success(f"✅ Login created for {single_name}!")
+                        st.balloons()
+                    except:
+                        st.warning("User may already exist.")
+                else:
+                    st.error("❌ Email and Name required!")
+        
+        st.markdown("---")
+        st.markdown("### 👥 Bulk Generate for All Employees")
         if not employees_df.empty:
-            default_pw = st.text_input("Default Password", value="churchgate2026")
+            default_pw = st.text_input("Default Password for Bulk", value="churchgate2026")
             emp_list = []
             for _, emp in employees_df.iterrows():
                 emp_list.append({
                     'Name': f"{emp['first_name']} {emp['last_name']}", 'ID': emp['employee_id'],
-                    'Email': emp.get('email', 'N/A'), 'Department': emp.get('department', ''), 'Role': 'Employee'
+                    'Email': emp.get('email', 'N/A'), 'Department': emp.get('department', ''), 'Role': 'Team Member'
                 })
             st.dataframe(pd.DataFrame(emp_list), use_container_width=True, hide_index=True)
-            if st.button("🔑 Generate Logins for All Employees", use_container_width=True):
+            if st.button("🔑 Generate Logins for All", use_container_width=True):
                 count = 0
                 for emp in emp_list:
                     if emp['Email'] and emp['Email'] != 'N/A':
                         try:
-                            db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, 'Employee', emp['Department'], 'Staff')
+                            db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, 'Team Member', emp['Department'], 'Staff')
                             count += 1
                         except:
                             pass
@@ -1121,25 +1176,93 @@ def employee_management():
     # ============ TAB 6: ORG CHART ============
     with tab6:
         st.subheader("📊 Organizational Structure")
-        if not employees_df.empty:
-            dept_list = list(employees_df['department'].unique())
-            labels = ['GMD/CEO'] + dept_list
-            sources = [0] * len(dept_list)
-            targets = list(range(1, len(dept_list)+1))
-            values = [len(employees_df[employees_df['department'] == d]) for d in dept_list]
-            if len(sources) == len(targets) == len(values):
-                fig = go.Figure(data=[go.Sankey(
-                    node=dict(pad=20, thickness=20, label=labels, color=['#CC0000'] + ['#4a4a4a']*len(dept_list)),
-                    link=dict(source=sources, target=targets, value=values)
-                )])
-                fig.update_layout(height=450)
-                st.plotly_chart(fig, use_container_width=True)
+        st.info("Churchgate Group Reporting Structure: GMD → COO → Departments | VP Sales & GEA report to GMD")
+        
+        labels = ['GMD/CEO', 'COO', 'VP Sales', 'GEA', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
+        
+        sources = [0, 0, 0, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1]
+        targets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        
+        values = [30, 15, 5, 12, 8, 6, 4, 8, 4, 6, 2, 6, 3]
+        
+        fig = go.Figure(data=[go.Sankey(
+            node=dict(pad=20, thickness=20, label=labels, color=['#CC0000', '#e53e3e', '#dd6b20', '#805ad5', '#3182ce', '#38a169', '#d69e2e', '#805ad5', '#dd6b20', '#2b6cb0', '#718096', '#e53e3e', '#319795', '#d53f8c']),
+            link=dict(source=sources, target=targets, value=values)
+        )])
+        fig.update_layout(height=500)
+        st.plotly_chart(fig, use_container_width=True)
     
-    # ============ TAB 7: EXPORT ============
+    # ============ TAB 7: DEMOGRAPHICS ============
     with tab7:
+        st.subheader("📈 Demographics & Inclusion")
+        
+        # Gender distribution
+        st.markdown("### 👥 Gender Distribution")
+        gender_data = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [38, 18]})
+        fig = px.pie(gender_data, values='Count', names='Gender', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000'])
+        fig.update_layout(height=350)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Department gender split
+        st.markdown("---")
+        st.markdown("### 🏢 Department Gender Split")
+        dept_gender = pd.DataFrame({
+            'Department': ['Technology Group', 'Facility Management', 'Human Resources', 'Sales & Marketing', 'Accounts & Finance', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'],
+            'Male': [10, 10, 3, 6, 4, 3, 10, 1, 4, 3],
+            'Female': [4, 3, 5, 4, 2, 2, 2, 1, 1, 1]
+        })
+        fig2 = px.bar(dept_gender, x='Department', y=['Male', 'Female'], barmode='group', color_discrete_sequence=['#3182ce', '#CC0000'])
+        fig2.update_layout(height=400)
+        st.plotly_chart(fig2, use_container_width=True)
+        
+        # Tenure distribution
+        st.markdown("---")
+        st.markdown("### 📅 Tenure Distribution")
+        try:
+            tenure_data = []
+            for _, emp in employees_df.iterrows():
+                jd = emp.get('join_date')
+                if jd and pd.notna(jd):
+                    try:
+                        years = (datetime.now() - pd.to_datetime(jd)).days / 365
+                        if years < 2: tenure_data.append('0-2 years')
+                        elif years < 5: tenure_data.append('3-5 years')
+                        elif years < 10: tenure_data.append('6-10 years')
+                        else: tenure_data.append('10+ years')
+                    except:
+                        pass
+            if tenure_data:
+                tenure_df = pd.DataFrame(pd.Series(tenure_data).value_counts()).reset_index()
+                tenure_df.columns = ['Tenure', 'Count']
+                fig3 = px.bar(tenure_df, x='Tenure', y='Count', color='Tenure', color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e'])
+                fig3.update_layout(height=350, showlegend=False)
+                st.plotly_chart(fig3, use_container_width=True)
+        except:
+            pass
+        
+        # Grade distribution
+        st.markdown("---")
+        st.markdown("### 📊 Grade Distribution")
+        if not employees_df.empty:
+            grade_counts = employees_df['grade'].value_counts()
+            grade_df = pd.DataFrame({'Grade': grade_counts.index, 'Count': grade_counts.values})
+            fig4 = px.pie(grade_df, values='Count', names='Grade', hole=0.4, color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e', '#805ad5'])
+            fig4.update_layout(height=350)
+            st.plotly_chart(fig4, use_container_width=True)
+    
+    # ============ TAB 8: EXPORT ============
+    with tab8:
         st.subheader("📥 Export Employee Data")
         if not employees_df.empty:
             st.download_button("📥 Download Full Directory (CSV)", employees_df.to_csv(index=False), "churchgate_employees.csv", "text/csv")
+            
+            st.markdown("---")
+            st.markdown("### 📊 Export by Department")
+            selected_export_dept = st.selectbox("Select Department", ['All'] + list(employees_df['department'].unique()) if not employees_df.empty else ['All'])
+            if selected_export_dept != 'All':
+                dept_df = employees_df[employees_df['department'] == selected_export_dept]
+                st.download_button(f"📥 Download {selected_export_dept} (CSV)", dept_df.to_csv(index=False), f"{selected_export_dept}_employees.csv", "text/csv")
+            
             st.markdown("---")
             st.markdown("### 📊 Quick Stats")
             st.dataframe(employees_df.describe(), use_container_width=True)
