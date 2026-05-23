@@ -1348,8 +1348,6 @@ def employee_management():
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Lead ({dept}) → Manager → Sr. Manager → HOD → COO → GMD"
                         else:
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Member ({dept}) → Team Lead → Manager → Sr. Manager → HOD → COO → GMD"
-                        else:
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Member ({dept}) → Team Lead → Manager → Sr. Manager → HOD → COO → GMD"
                         break
                 
                 if not found:
