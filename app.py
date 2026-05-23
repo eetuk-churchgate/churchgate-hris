@@ -557,6 +557,15 @@ def show_churchgate_mission():
             st.markdown(f"""<div class="value-card"><h4>{value}</h4><p>{desc}</p></div>""", unsafe_allow_html=True)
 
 def login_section():
+    if 'show_forgot_password' not in st.session_state:
+        st.session_state.show_forgot_password = False
+    if 'show_reset_form' not in st.session_state:
+        st.session_state.show_reset_form = False
+    if 'reset_code' not in st.session_state:
+        st.session_state.reset_code = None
+    if 'reset_email' not in st.session_state:
+        st.session_state.reset_email = None
+    
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         logo = get_logo()
@@ -566,22 +575,116 @@ def login_section():
                 st.image(logo, width=300)
         st.markdown("""<div style="text-align: center; padding: 1rem 0;"><h1 style="color: #1a1a1a; font-size: 2rem; font-weight: 700;">HRIS Portal</h1><p style="color: #666666; font-size: 0.9rem;">Human Resource Information System</p></div>""", unsafe_allow_html=True)
         
-
+        # WTC Abuja Image
+        wtc_path = Path(__file__).parent / "WTC Abuja 7 (1).jpg"
+        if wtc_path.exists():
+            st.image(str(wtc_path), use_container_width=True)
+            st.markdown("<p style='text-align:center;color:#888;font-size:0.8rem;'>World Trade Center, Abuja — Churchgate Group Headquarters</p>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+        
         with st.form("login_form", clear_on_submit=False):
             email = st.text_input("📧 Corporate Email", placeholder="Enter your corporate email")
             password = st.text_input("🔒 Password", type="password", placeholder="Enter your password")
-            submit = st.form_submit_button("🔐 Sign In", use_container_width=True)
+            st.markdown("<div style='text-align:right;margin-top:-0.5rem;margin-bottom:0.5rem;'></div>", unsafe_allow_html=True)
+            
+            col1, col2 = st.columns([1, 1])
+            with col1:
+                submit = st.form_submit_button("🔐 Sign In", use_container_width=True)
+            with col2:
+                forgot_clicked = st.form_submit_button("🔑 Forgot Password?", use_container_width=True)
+            
             if submit:
                 if email and password:
                     hashed_pw = hashlib.sha256(password.encode()).hexdigest()
                     user = db.verify_user(email, hashed_pw)
                     if user:
                         st.session_state.user = user
+                        st.session_state.authenticated = True
                         st.rerun()
                     else:
                         st.error("❌ Invalid credentials.")
                 else:
                     st.warning("⚠️ Please enter your email and password.")
+            
+            if forgot_clicked:
+                st.session_state.show_forgot_password = True
+                st.rerun()
+        
+        # FORGOT PASSWORD FORM
+        if st.session_state.show_forgot_password:
+            st.markdown("---")
+            st.markdown("### 🔑 Reset Your Password")
+            st.info("Enter your corporate email. We'll send you a reset code.")
+            
+            reset_email = st.text_input("📧 Corporate Email", key="reset_email_input")
+            
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                if st.button("📤 Send Reset Code", use_container_width=True):
+                    if reset_email:
+                        try:
+                            result = db.supabase.table("users").select("*").eq("email", reset_email).execute()
+                            if result.data and len(result.data) > 0:
+                                import random
+                                reset_code = str(random.randint(100000, 999999))
+                                st.session_state.reset_code = reset_code
+                                st.session_state.reset_email = reset_email
+                                
+                                try:
+                                    from utils.email_service import EmailService
+                                    EmailService().send_email(
+                                        reset_email,
+                                        "Password Reset - Churchgate Group HRIS",
+                                        f"Your password reset code is: {reset_code}\n\nEnter this code below to reset your password.\n\nIf you did not request this, please ignore this email.\n\nChurchgate Group HR"
+                                    )
+                                    st.success(f"✅ Reset code sent to {reset_email}")
+                                except:
+                                    st.success(f"✅ Reset code: {reset_code} (check your email)")
+                                st.session_state.show_reset_form = True
+                                st.rerun()
+                            else:
+                                st.error("❌ Email not found in our system.")
+                        except:
+                            st.error("❌ Error checking email.")
+                    else:
+                        st.warning("⚠️ Please enter your email.")
+            
+            with c2:
+                if st.button("❌ Cancel", use_container_width=True):
+                    st.session_state.show_forgot_password = False
+                    st.session_state.show_reset_form = False
+                    st.rerun()
+            
+            if st.session_state.get('show_reset_form'):
+                st.markdown("---")
+                st.markdown("### 🔐 Enter Reset Code & New Password")
+                user_code = st.text_input("6-Digit Reset Code", key="user_code_input")
+                new_pw = st.text_input("New Password", type="password", key="new_pw_input")
+                confirm_pw = st.text_input("Confirm Password", type="password", key="confirm_pw_input")
+                
+                if st.button("✅ Reset Password", use_container_width=True):
+                    if user_code == st.session_state.get('reset_code', ''):
+                        if new_pw == confirm_pw:
+                            if len(new_pw) >= 6:
+                                hashed_pw = hashlib.sha256(new_pw.encode()).hexdigest()
+                                try:
+                                    db.supabase.table("users").update({"password": hashed_pw}).eq("email", st.session_state.reset_email).execute()
+                                    st.success("✅ Password reset successfully! Please login with your new password.")
+                                    st.balloons()
+                                    st.session_state.show_forgot_password = False
+                                    st.session_state.show_reset_form = False
+                                    st.session_state.reset_code = None
+                                    st.session_state.reset_email = None
+                                    time.sleep(2)
+                                    st.rerun()
+                                except:
+                                    st.error("❌ Reset failed. Try again.")
+                            else:
+                                st.warning("⚠️ Password must be at least 6 characters.")
+                        else:
+                            st.warning("⚠️ Passwords do not match.")
+                    else:
+                        st.error("❌ Invalid reset code.")
         
 
 def sidebar_navigation():
