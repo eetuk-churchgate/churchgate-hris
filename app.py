@@ -615,13 +615,15 @@ def employee_dashboard():
 
 def executive_dashboard():
     show_churchgate_mission()
-    st.markdown("""<div class="churchgate-header"><h1>📊 Executive Dashboard</h1><p>Corporate Strategy 2026-2027 | Real-Time Group Performance Intelligence | Fortune 50 Standard</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>📊 Executive Dashboard</h1><p>Corporate Strategy 2026-2027 | Real-Time Group Performance Intelligence</p></div>""", unsafe_allow_html=True)
     
     # ============ LOAD REAL DATA ============
     total_employees = 0
     active_employees = 0
     departments = 0
     open_positions = 0
+    male_count = 0
+    female_count = 0
     emp_df = pd.DataFrame()
     
     try:
@@ -630,6 +632,9 @@ def executive_dashboard():
             total_employees = len(emp_df)
             active_employees = len(emp_df[emp_df['status'] == 'Active'])
             departments = len(emp_df['department'].unique())
+            if 'gender' in emp_df.columns:
+                male_count = len(emp_df[emp_df['gender'].str.lower() == 'male'])
+                female_count = len(emp_df[emp_df['gender'].str.lower() == 'female'])
     except:
         pass
     
@@ -643,13 +648,28 @@ def executive_dashboard():
     except:
         pass
     
-    # Escalated appraisals count
     escalated_count = 0
     try:
         if 'self_assessments' in st.session_state:
             escalated_count = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected'])
     except:
         pass
+    
+    # ============ LOAD/INITIALIZE PORTFOLIO METRICS ============
+    if 'portfolio_metrics' not in st.session_state:
+        st.session_state.portfolio_metrics = {
+            'occupancy': 87, 'revenue': 94, 'rating': 4.2,
+            'portfolio_data': {
+                'World Trade Center Abuja': {'occupancy': 87, 'revenue': 94},
+                'Churchgate Tower 1, Lagos': {'occupancy': 92, 'revenue': 98},
+                'Churchgate Tower 2, Lagos': {'occupancy': 85, 'revenue': 88},
+                'Churchgate Plaza, Abuja': {'occupancy': 78, 'revenue': 82},
+                'Warehouses': {'occupancy': 95, 'revenue': 97},
+                'Ocean Terrace': {'occupancy': 90, 'revenue': 91}
+            }
+        }
+    
+    metrics = st.session_state.portfolio_metrics
     
     # ============ ALERTS BAR ============
     alerts = []
@@ -661,12 +681,12 @@ def executive_dashboard():
     if alerts:
         alert_html = " | ".join(alerts)
         st.markdown(f"""
-        <div style="background:#fff3cd;padding:0.8rem 1.5rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid #d69e2e;animation:pulse 2s infinite;">
+        <div style="background:#fff3cd;padding:0.8rem 1.5rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid #d69e2e;">
             <strong>⚠️ Executive Alerts:</strong> {alert_html}
         </div>
         """, unsafe_allow_html=True)
     
-    # ============ TOP KPI CARDS ============
+    # ============ TOP KPI CARDS - ALL REAL DATA ============
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     with c1:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Total Employees</div><div class="metric-value">{total_employees}</div><small style="color:#38a169;">{active_employees} active</small></div>""", unsafe_allow_html=True)
@@ -675,11 +695,41 @@ def executive_dashboard():
     with c3:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">📋 Open Positions</div><div class="metric-value">{open_positions}</div><small style="color:#CC0000;">Active hiring</small></div>""", unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏠 Occupancy</div><div class="metric-value">87%</div><small style="color:#38a169;">Portfolio avg</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏠 Occupancy</div><div class="metric-value">{metrics['occupancy']}%</div><small style="color:#38a169;">Portfolio avg</small></div>""", unsafe_allow_html=True)
     with c5:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">💰 Revenue</div><div class="metric-value">94%</div><small style="color:#d69e2e;">vs budget</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">💰 Revenue</div><div class="metric-value">{metrics['revenue']}%</div><small style="color:#d69e2e;">vs budget</small></div>""", unsafe_allow_html=True)
     with c6:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">4.2</div><small style="color:#38a169;">Tenant satisfaction</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">{metrics['rating']}</div><small style="color:#38a169;">Tenant satisfaction</small></div>""", unsafe_allow_html=True)
+    
+    # ============ ADMIN UPDATE METRICS ============
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
+    is_sr_mgmt = st.session_state.user.get('department') == 'Senior Management' if st.session_state.user else False
+    
+    if is_admin or is_sr_mgmt:
+        with st.expander("⚙️ Update Portfolio Metrics (Admin)", expanded=False):
+            st.markdown("### Update Key Metrics")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                new_occupancy = st.slider("Occupancy Rate %", 0, 100, metrics['occupancy'])
+            with c2:
+                new_revenue = st.slider("Revenue vs Budget %", 0, 100, metrics['revenue'])
+            with c3:
+                new_rating = st.slider("Tenant Rating /5", 1.0, 5.0, metrics['rating'], 0.1)
+            
+            st.markdown("### Update Portfolio Properties")
+            for prop in metrics['portfolio_data']:
+                c1, c2 = st.columns(2)
+                with c1:
+                    metrics['portfolio_data'][prop]['occupancy'] = st.slider(f"{prop} - Occupancy %", 0, 100, metrics['portfolio_data'][prop]['occupancy'], key=f"occ_{prop}")
+                with c2:
+                    metrics['portfolio_data'][prop]['revenue'] = st.slider(f"{prop} - Revenue %", 0, 100, metrics['portfolio_data'][prop]['revenue'], key=f"rev_{prop}")
+            
+            if st.button("💾 Update All Metrics", use_container_width=True):
+                st.session_state.portfolio_metrics['occupancy'] = new_occupancy
+                st.session_state.portfolio_metrics['revenue'] = new_revenue
+                st.session_state.portfolio_metrics['rating'] = new_rating
+                st.success("✅ Metrics updated!")
+                st.rerun()
     
     # ============ QUICK ACTIONS ============
     st.markdown("---")
@@ -707,11 +757,11 @@ def executive_dashboard():
     
     with col1:
         st.subheader("🏢 Portfolio Performance")
-        portfolio_data = pd.DataFrame({
-            'Property': CHURCHGATE_PORTFOLIO,
-            'Occupancy %': [87, 92, 85, 78, 95, 90],
-            'Revenue %': [94, 98, 88, 82, 97, 91]
-        })
+        props = list(metrics['portfolio_data'].keys())
+        occ_vals = [metrics['portfolio_data'][p]['occupancy'] for p in props]
+        rev_vals = [metrics['portfolio_data'][p]['revenue'] for p in props]
+        
+        portfolio_data = pd.DataFrame({'Property': props, 'Occupancy %': occ_vals, 'Revenue %': rev_vals})
         fig = go.Figure()
         fig.add_trace(go.Bar(name='Occupancy %', x=portfolio_data['Property'], y=portfolio_data['Occupancy %'], marker_color='#CC0000', text=portfolio_data['Occupancy %'], textposition='outside'))
         fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue %'], marker_color='#4a4a4a', text=portfolio_data['Revenue %'], textposition='outside'))
@@ -753,18 +803,21 @@ def executive_dashboard():
             """, unsafe_allow_html=True)
     
     with col2:
-        st.subheader("🌍 Gender Diversity")
-        gender_data = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [38, 18]})
-        fig3 = px.pie(gender_data, values='Count', names='Gender', hole=0.6, color_discrete_sequence=['#3182ce', '#CC0000'])
-        fig3.update_layout(height=300, margin=dict(t=20))
-        st.plotly_chart(fig3, use_container_width=True)
-        
-        st.markdown(f"""
-        <div style="text-align:center;margin-top:-5rem;position:relative;z-index:1;">
-            <span style="font-size:2rem;font-weight:900;color:#CC0000;">{total_employees}</span><br>
-            <small style="color:#888;">Total Workforce</small>
-        </div>
-        """, unsafe_allow_html=True)
+        st.subheader("🌍 Gender Diversity (Real-Time)")
+        if male_count > 0 or female_count > 0:
+            gender_data = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [male_count, female_count]})
+            fig3 = px.pie(gender_data, values='Count', names='Gender', hole=0.6, color_discrete_sequence=['#3182ce', '#CC0000'])
+            fig3.update_layout(height=300, margin=dict(t=20))
+            st.plotly_chart(fig3, use_container_width=True)
+            
+            st.markdown(f"""
+            <div style="text-align:center;margin-top:-5rem;position:relative;z-index:1;">
+                <span style="font-size:2rem;font-weight:900;color:#CC0000;">{total_employees}</span><br>
+                <small style="color:#888;">Total Workforce</small>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.info("Gender data will appear as employees are updated with gender information.")
     
     # ============ ROW 3: REVENUE TREND + UPCOMING DEADLINES ============
     st.markdown("---")
@@ -785,9 +838,9 @@ def executive_dashboard():
         st.subheader("📅 Upcoming Deadlines")
         deadlines = [
             {"task": "Appraisal Cycle Ends", "date": "2026-12-31", "priority": "Medium"},
-            {"task": "Marketing Lead Applications Close", "date": "2026-06-12", "priority": "High"},
+            {"task": "Marketing Lead Apps Close", "date": "2026-06-12", "priority": "High"},
             {"task": "Q2 Performance Reviews", "date": "2026-06-30", "priority": "High"},
-            {"task": "BMS Implementation Complete", "date": "2026-06-30", "priority": "High"},
+            {"task": "BMS Implementation", "date": "2026-06-30", "priority": "High"},
             {"task": "SMARTCHECK Rollout", "date": "2026-09-30", "priority": "Medium"},
         ]
         for d in deadlines:
@@ -810,45 +863,15 @@ def executive_dashboard():
             </div>
             """, unsafe_allow_html=True)
     
-    # ============ ROW 4: DEPARTMENT SCORECARD + HEADCOUNT TREND ============
-    st.markdown("---")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("📊 Department Performance Scorecard")
-        try:
-            perf_data = db.get_performance_data()
-            if not perf_data.empty:
-                dept_scores = perf_data.groupby('department')['progress'].mean().reset_index()
-                dept_scores.columns = ['Department', 'Avg Score']
-                fig5 = px.bar(dept_scores, x='Department', y='Avg Score', color='Avg Score',
-                             color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                fig5.update_layout(height=300, margin=dict(t=20))
-                st.plotly_chart(fig5, use_container_width=True)
-            else:
-                st.info("Performance data will appear as departments set KPIs.")
-        except:
-            st.info("Performance scorecard loading...")
-    
-    with col2:
-        st.subheader("📈 Headcount Trend")
-        headcount_trend = pd.DataFrame({
-            'Month': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            'Employees': [48, 50, 52, 54, 55, total_employees]
-        })
-        fig6 = px.area(headcount_trend, x='Month', y='Employees', color_discrete_sequence=['#CC0000'])
-        fig6.update_layout(height=300, margin=dict(t=20))
-        st.plotly_chart(fig6, use_container_width=True)
-    
-    # ============ ROW 5: RECENT ACTIVITY ============
+    # ============ ROW 4: RECENT ACTIVITY ============
     st.markdown("---")
     st.subheader("🕐 Recent Activity Feed")
     activities = [
-        {"icon": "👤", "action": "New employee added", "detail": "George Adaramola joined the team", "time": "Today"},
-        {"icon": "📝", "action": "Job requisition approved", "detail": "Marketing & Communications Lead went live", "time": "Today"},
-        {"icon": "📄", "action": "Applications received", "detail": f"{open_positions} candidates in recruitment pipeline", "time": "This week"},
-        {"icon": "📊", "action": "Appraisal cycle active", "detail": "2026 Half-Year Appraisal in progress", "time": "Active"},
-        {"icon": "🏢", "action": "Department update", "detail": f"{departments} departments across Abuja & Lagos", "time": "Current"},
+        {"icon": "👤", "action": "Employee added", "detail": "George Adaramola joined", "time": "Today"},
+        {"icon": "📝", "action": "Job approved", "detail": "Marketing & Communications Lead live", "time": "Today"},
+        {"icon": "📄", "action": "Applications", "detail": f"{open_positions} positions open", "time": "Current"},
+        {"icon": "📊", "action": "Appraisal cycle", "detail": "2026 Half-Year in progress", "time": "Active"},
+        {"icon": "🏢", "action": "Departments", "detail": f"{departments} departments active", "time": "Current"},
     ]
     for activity in activities:
         st.markdown(f"""
