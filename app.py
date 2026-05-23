@@ -4858,6 +4858,10 @@ def my_profile():
             </div>
             """, unsafe_allow_html=True)
         
+        if st.button("🔄 Reset Photo Upload"):
+            st.session_state['pic_processed'] = False
+            st.rerun()
+        
         uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'])
         if uploaded_pic is not None and not st.session_state.get('pic_processed', False):
             try:
