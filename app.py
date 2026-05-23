@@ -4893,7 +4893,7 @@ def my_profile():
                 b64_str = base64.b64encode(image_bytes).decode()
                 
                 # Save to Supabase Storage (this WORKS - same as CV uploads)
-                file_name = f"profile_{user_id}.jpg"
+                file_name = f"profile_{user_id}_{int(time.time())}.jpg"
                 db.supabase.storage.from_("cvs").upload(file_name, image_bytes, {"content-type": "image/jpeg"})
                 cv_url = db.supabase.storage.from_("cvs").get_public_url(file_name)
                 
