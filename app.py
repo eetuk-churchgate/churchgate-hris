@@ -4802,6 +4802,37 @@ def my_profile():
                 st.selectbox("Department", ["Technology Group", "Facility Management", "HR", "Sales", "Finance", "Procurement", "Security", "Legal", "Operations"], index=0)
             if st.form_submit_button("💾 Update Profile", use_container_width=True):
                 st.success("✅ Profile updated!")
+        
+        # Change Password Section
+        st.markdown("---")
+        st.markdown("### 🔒 Change Password")
+        with st.form("change_password_form"):
+            current_pw = st.text_input("Current Password", type="password")
+            new_pw = st.text_input("New Password", type="password")
+            confirm_pw = st.text_input("Confirm New Password", type="password")
+            
+            if st.form_submit_button("🔒 Change Password", use_container_width=True):
+                if current_pw and new_pw and confirm_pw:
+                    current_hash = hashlib.sha256(current_pw.encode()).hexdigest()
+                    try:
+                        result = db.supabase.table("users").select("*").eq("email", user['email']).eq("password", current_hash).execute()
+                        if result.data and len(result.data) > 0:
+                            if new_pw == confirm_pw:
+                                if len(new_pw) >= 6:
+                                    new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
+                                    db.supabase.table("users").update({"password": new_hash}).eq("email", user['email']).execute()
+                                    st.success("✅ Password changed successfully!")
+                                    st.balloons()
+                                else:
+                                    st.warning("⚠️ Password must be at least 6 characters.")
+                            else:
+                                st.warning("⚠️ New passwords do not match.")
+                        else:
+                            st.error("❌ Current password is incorrect.")
+                    except:
+                        st.error("❌ Error changing password.")
+                else:
+                    st.warning("⚠️ Please fill all fields.")
 
 def main():
     # Check query params for persisted login
