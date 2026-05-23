@@ -2968,8 +2968,133 @@ def performance_okrs():
                 st.info("No escalated appraisals.")
         elif not is_hod:
             st.info("HOD Review section is for Managers, HODs, Admin, and Senior Management.")
+
+with tab5:
+        st.subheader("🌟 Exceptional Achievements")
+        st.info("Document accomplishments outside your formal KPIs — achievements that had significant impact on customers, colleagues, departments, or the organization. These are reviewed during appraisals.")
+        
+        # Achievement categories
+        categories = {
+            "💡 Innovation": "New ideas, process improvements, creative solutions",
+            "👑 Leadership": "Leading teams, mentoring, stepping up in crisis",
+            "😊 Customer Impact": "Going above and beyond for customers/tenants",
+            "💰 Cost Savings": "Saving money, reducing waste, efficiency gains",
+            "🚨 Crisis Management": "Handling emergencies, solving critical problems",
+            "🤝 Teamwork": "Cross-functional collaboration, helping colleagues succeed"
+        }
+        
+        if 'exceptional_achievements' not in st.session_state:
+            st.session_state.exceptional_achievements = {}
+        
+        # Achievement Stats
+        my_achievements = st.session_state.exceptional_achievements.get(user_name, [])
+        col1, col2, col3 = st.columns(3)
+        col1.metric("🏆 My Achievements", len(my_achievements))
+        col2.metric("⭐ Avg Impact", f"{sum(3 if a.get('impact')=='Organization' else 2 if a.get('impact')=='Department' else 1 for a in my_achievements) / len(my_achievements):.1f}" if my_achievements else "N/A")
+        col3.metric("🎖️ Badges Earned", len(set(a.get('category', '') for a in my_achievements)))
+        
+        st.markdown("---")
+        
+        # Achievement Wall
+        if my_achievements:
+            st.markdown("### 🏆 My Achievement Wall")
+            
+            # Timeline view
+            for i, ach in enumerate(sorted(my_achievements, key=lambda x: x.get('date', ''), reverse=True)):
+                cat_icon = ach.get('category', '💡')
+                impact_stars = "⭐" * (3 if ach.get('impact') == 'Organization' else 2 if ach.get('impact') == 'Department' else 1)
+                badge = ""
+                if ach.get('impact') == 'Organization':
+                    badge = "🏅 Org Impact"
+                elif ach.get('impact') == 'Department':
+                    badge = "🎖️ Dept Impact"
+                
+                with st.expander(f"{cat_icon} {ach.get('title', 'Achievement')} {impact_stars} — {ach.get('date', '')}", expanded=i==0):
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"**Description:** {ach.get('description', '')}")
+                        st.markdown(f"**Outcome:** {ach.get('outcome', '')}")
+                        if ach.get('recognized_by'):
+                            st.markdown(f"**Recognized by:** 👤 {ach.get('recognized_by')}")
+                        if ach.get('evidence'):
+                            st.markdown(f"📎 **Evidence attached**")
+                    with col2:
+                        if badge:
+                            st.success(badge)
+                        st.markdown(f"**Category:** {cat_icon}")
+                        st.markdown(f"**Impact:** {ach.get('impact', 'N/A')}")
+                    
+                    # Peer Endorsement
+                    st.markdown("---")
+                    st.markdown("#### 👍 Peer Endorsements")
+                    endorsements = ach.get('endorsements', [])
+                    if endorsements:
+                        for end in endorsements:
+                            st.markdown(f"- 👤 **{end.get('name', 'Colleague')}**: {end.get('comment', '')}")
+                    else:
+                        st.markdown("*No endorsements yet. Ask colleagues to endorse this achievement!*")
+                    
+                    if st.button(f"👍 Endorse", key=f"endorse_{i}"):
+                        if 'endorsements' not in ach:
+                            ach['endorsements'] = []
+                        ach['endorsements'].append({'name': user_name, 'comment': 'Great achievement!', 'date': datetime.now().strftime('%Y-%m-%d')})
+                        st.success("✅ Endorsed!")
+                        st.rerun()
+        else:
+            st.info("🎯 No achievements recorded yet. Add your first exceptional achievement below!")
+        
+        st.markdown("---")
+        
+        # Add Achievement Form
+        st.markdown("### ➕ Add New Achievement")
+        with st.form("add_achievement"):
+            c1, c2 = st.columns(2)
+            with c1:
+                ach_title = st.text_input("Achievement Title *", placeholder="e.g., Led crisis response during system outage")
+                ach_category = st.selectbox("Category", list(categories.keys()))
+                ach_impact = st.selectbox("Impact Level *", ["Individual", "Team", "Department", "Organization"])
+                ach_date = st.date_input("Date of Achievement")
+            with c2:
+                ach_description = st.text_area("Description *", placeholder="Describe what you did and why it matters...", height=100)
+                ach_outcome = st.text_area("Outcome / Result *", placeholder="What was the measurable result?", height=100)
+                recognized_by = st.text_input("Recognized By (Optional)", placeholder="e.g., Jerome Das, COO")
+            
+            # Evidence upload
+            evidence_file = st.file_uploader("📎 Attach Evidence (Optional)", type=['pdf', 'docx', 'jpg', 'png'])
+            st.caption(f"Category description: {categories.get(ach_category, '')}")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                submitted = st.form_submit_button("💾 Save Achievement", use_container_width=True)
+            with col2:
+                include_in_appraisal = st.checkbox("Include in Appraisal Review", value=True)
+            
+            if submitted:
+                if ach_title and ach_description and ach_outcome:
+                    if user_name not in st.session_state.exceptional_achievements:
+                        st.session_state.exceptional_achievements[user_name] = []
+                    
+                    evidence_name = evidence_file.name if evidence_file else None
+                    
+                    st.session_state.exceptional_achievements[user_name].append({
+                        'title': ach_title,
+                        'category': ach_category,
+                        'description': ach_description,
+                        'impact': ach_impact,
+                        'outcome': ach_outcome,
+                        'date': ach_date.strftime('%Y-%m-%d'),
+                        'recognized_by': recognized_by,
+                        'evidence': evidence_name,
+                        'include_in_appraisal': include_in_appraisal,
+                        'endorsements': []
+                    })
+                    st.success("✅ Achievement saved! This will be visible during your appraisal.")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.error("❌ Title, Description, and Outcome are required!")
     
-    with tab5:
+    with tab6:
         st.subheader("📊 My Performance Dashboard")
         
         user_assessment = st.session_state.self_assessments.get(user_name, {})
@@ -4897,7 +5022,9 @@ def my_profile():
         st.markdown(f"- {datetime.now().strftime('%b %d, %Y %I:%M %p')}")
     
     with c2:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Info", "🔒 Security", "🛠️ Skills", "👥 Team", "📊 Activity"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "🌟 Exceptional Achievements", "📊 Dashboard"
+    ])
         
         with tab1:
             with st.form("profile_update_form"):
