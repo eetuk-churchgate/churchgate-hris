@@ -4856,7 +4856,7 @@ def my_profile():
     with c4:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Awards</div><div class="metric-value">3</div></div>""", unsafe_allow_html=True)
     
-   if 'pic_processed' not in st.session_state:
+    if 'pic_processed' not in st.session_state:
         st.session_state.pic_processed = False
     
     c1, c2 = st.columns([1, 2])
