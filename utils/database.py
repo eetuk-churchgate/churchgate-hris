@@ -105,6 +105,11 @@ class DatabaseManager:
         return pd.DataFrame(data) if data else pd.DataFrame()
     
     def get_all_employees(self):
+        if self.use_supabase:
+            data = self._get("employees")
+            if data:
+                return pd.DataFrame(data)
+            return pd.DataFrame()
         return pd.DataFrame()
     
     def get_employee_by_user_id(self, user_id):
