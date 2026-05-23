@@ -707,19 +707,7 @@ def sidebar_navigation():
                 pass
             
             initials = generate_initials(user['name'])
-            db_pic = None
-            try:
-                user_record = db._get("users", {"email": user.get('email', '')})
-                if user_record and len(user_record) > 0:
-                    pic_data = user_record[0].get('profile_picture')
-                    if pic_data and len(pic_data) > 10:
-                        import base64
-                        try:
-                            db_pic = base64.b64decode(pic_data)
-                        except:
-                            db_pic = None
-            except:
-                pass
+            db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
             
             if db_pic is not None:
                 import base64
@@ -786,15 +774,10 @@ def employee_dashboard():
     
     # Load profile picture for greeting
     greeting_pic_html = f'<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;min-width:60px;overflow:hidden;">{initials}</div>'
-    try:
-        user_record = db._get("users", {"email": user_email})
-        if user_record and len(user_record) > 0:
-            pic_data = user_record[0].get('profile_picture')
-            if pic_data and len(pic_data) > 10:
-                import base64
-                try:
-                    db_pic = base64.b64decode(pic_data)
-                    greeting_pic_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
+    db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
+    if db_pic is not None:
+        import base64
+        greeting_pic_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
                 except:
                     pass
     except:
@@ -4893,16 +4876,12 @@ def my_profile():
         if uploaded_pic is not None:
             try:
                 image_bytes = uploaded_pic.getvalue()
-                import base64
-                b64_str = base64.b64encode(image_bytes).decode()
-                
-                # Save to users table as base64
                 user_record = db._get("users", {"email": user_email})
                 if user_record and len(user_record) > 0:
                     uid = user_record[0].get('id')
-                    db._patch("users", {"profile_picture": b64_str}, {"id": str(uid)})
+                    db.update_profile_picture(int(uid), image_bytes)
                     st.session_state['profile_pic'] = uploaded_pic
-                    st.success("✅ Profile picture saved!")
+                    st.success("✅ Profile picture saved permanently!")
             except Exception as e:
                 st.warning(f"Error: {str(e)}")
         
