@@ -1295,10 +1295,10 @@ def employee_management():
         # Span of Control
         st.markdown("### 👥 Span of Control — Key Leaders")
         span_data = pd.DataFrame({
-            'Leader': ['Vinay Mahtani', 'Jerome Das', 'Ahmed Karim', 'Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar'],
-            'Role': ['GMD', 'COO', 'VP Sales', 'HOD Tech (Abuja)', 'HOD FM (Abuja)', 'HOD Engr (MEP)'],
-            'Region': ['Group', 'Group', 'Group', 'Abuja', 'Abuja', 'Abuja'],
-            'Direct Reports': [5, 12, 6, 12, 20, 8]
+            'Leader': ['Vinay Mahtani', 'Jerome Das', 'Ahmed Karim', 'Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'All HODs (Avg)'],
+            'Role': ['GMD', 'COO', 'VP Sales', 'HOD Tech (Abuja)', 'HOD FM (Abuja)', 'HOD Engr (MEP)', 'Heads of Dept'],
+            'Region': ['Group', 'Group', 'Group', 'Abuja', 'Abuja', 'Abuja', 'Group'],
+            'Direct Reports': [5, 12, 6, 12, 20, 8, 10]
         })
         fig2 = px.bar(span_data, x='Leader', y='Direct Reports', color='Region', text='Direct Reports',
                      color_discrete_sequence=['#CC0000', '#3182ce', '#38a169'])
@@ -1327,7 +1327,7 @@ def employee_management():
             'Role': ['GMD/CEO', 'COO (All Depts)', 'VP Sales', 'GEA', 'Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members'],
             'Reports To': ['Board', 'GMD', 'GMD', 'GMD (dotted to COO)', 'COO / VP Sales', 'HOD', 'Sr. Managers', 'Managers', 'Team Leads'],
             'Regions': ['Group-wide', 'Abuja & Lagos', 'Abuja & Lagos', 'Group-wide', 'By Region', 'By Department', 'By Department', 'By Department', 'By Department'],
-            'Notes': ['', '11 Departments', 'Sales & Marketing only', 'Advisory', '2 regions', '', 'Dotted line to HOD', '', '']
+            'Notes': ['', '11 Departments', 'Sales & Marketing only', 'Advisory', 'Reports to COO & GEA', '', 'Dotted line to HOD', '', '']
         })
         st.dataframe(structure_data, use_container_width=True, hide_index=True)
     
