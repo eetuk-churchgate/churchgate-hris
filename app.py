@@ -694,6 +694,18 @@ def sidebar_navigation():
         st.markdown("""<div style="text-align: center; padding: 0.8rem 0; background: #4a4a4a; border-radius: 6px; margin-bottom: 1rem; border: 1px solid #666666;"><h3 style="color: #ffffff; margin: 0; font-size: 1.1rem; font-weight: 700;">CHURCHGATE GROUP</h3><p style="color: #cccccc; font-size: 0.7rem; margin: 0;">HRIS v5.0</p></div>""", unsafe_allow_html=True)
         if st.session_state.user:
             user = st.session_state.user
+            # Load real data from employees table
+            emp_id = user.get('employee_id', '')
+            try:
+                emp_result = db._get("employees", {"employee_id": emp_id})
+                if emp_result and len(emp_result) > 0:
+                    emp = emp_result[0]
+                    user['name'] = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+                    user['department'] = emp.get('department', user.get('department', ''))
+                    user['position'] = emp.get('position', user.get('position', ''))
+            except:
+                pass
+            
             initials = generate_initials(user['name'])
             db_pic = None
             if db.use_supabase:
@@ -737,10 +749,25 @@ def sidebar_navigation():
 def employee_dashboard():
     user = st.session_state.user
     user_name = user['name'] if user else 'Staff'
+    user_id = user.get('employee_id', '') if user else ''
     user_dept = user.get('department', '') if user else ''
     user_position = user.get('position', '') if user else ''
     user_email = user.get('email', '') if user else ''
-    user_id = user.get('employee_id', '') if user else ''
+    
+    # Override with real employee data from database
+    try:
+        emp_result = db._get("employees", {"employee_id": user_id})
+        if emp_result and len(emp_result) > 0:
+            emp = emp_result[0]
+            user_name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
+            user_dept = emp.get('department', user_dept)
+            user_position = emp.get('position', user_position)
+            user_email = emp.get('email', user_email)
+            st.session_state.user['name'] = user_name
+            st.session_state.user['department'] = user_dept
+            st.session_state.user['position'] = user_position
+    except:
+        pass
     
     hour = datetime.now().hour
     if hour < 12: greeting = "Good Morning"
