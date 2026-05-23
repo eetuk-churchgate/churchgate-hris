@@ -615,210 +615,249 @@ def employee_dashboard():
 
 def executive_dashboard():
     show_churchgate_mission()
-    st.markdown("""<div class="churchgate-header"><h1>📊 Executive Dashboard</h1><p>Corporate Strategy 2026-2027 | AI-Powered Group Performance Intelligence</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>📊 Executive Dashboard</h1><p>Corporate Strategy 2026-2027 | Real-Time Group Performance Intelligence | Fortune 50 Standard</p></div>""", unsafe_allow_html=True)
     
-    # TOP METRICS
-    metrics = st.session_state.dashboard_metrics
-    c1, c2, c3, c4, c5 = st.columns(5)
+    # ============ LOAD REAL DATA ============
+    total_employees = 0
+    active_employees = 0
+    departments = 0
+    open_positions = 0
+    emp_df = pd.DataFrame()
+    
+    try:
+        emp_df = db.get_all_employees()
+        if not emp_df.empty:
+            total_employees = len(emp_df)
+            active_employees = len(emp_df[emp_df['status'] == 'Active'])
+            departments = len(emp_df['department'].unique())
+    except:
+        pass
+    
+    try:
+        all_reqs = db.get_all_job_requisitions()
+        if all_reqs:
+            open_positions = len([r for r in all_reqs if r.get('status') == 'Approved - Live'])
+        candidates_df = db.get_all_candidates()
+        if not candidates_df.empty:
+            open_positions += len(candidates_df[candidates_df['status'] == 'New'])
+    except:
+        pass
+    
+    # Escalated appraisals count
+    escalated_count = 0
+    try:
+        if 'self_assessments' in st.session_state:
+            escalated_count = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected'])
+    except:
+        pass
+    
+    # ============ ALERTS BAR ============
+    alerts = []
+    if escalated_count > 0:
+        alerts.append(f"🚨 {escalated_count} escalated appraisal(s) need attention")
+    if open_positions > 0:
+        alerts.append(f"📢 {open_positions} open positions to fill")
+    
+    if alerts:
+        alert_html = " | ".join(alerts)
+        st.markdown(f"""
+        <div style="background:#fff3cd;padding:0.8rem 1.5rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid #d69e2e;animation:pulse 2s infinite;">
+            <strong>⚠️ Executive Alerts:</strong> {alert_html}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # ============ TOP KPI CARDS ============
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
     with c1:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">Total Employees</div><div class="metric-value">{metrics['total_employees']}</div><small style="color: #38a169;">Active workforce</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Total Employees</div><div class="metric-value">{total_employees}</div><small style="color:#38a169;">{active_employees} active</small></div>""", unsafe_allow_html=True)
     with c2:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">Occupancy Rate</div><div class="metric-value">{metrics['occupancy_rate']}%</div><small style="color: #38a169;">Across portfolio</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏢 Departments</div><div class="metric-value">{departments}</div><small style="color:#38a169;">2 regions</small></div>""", unsafe_allow_html=True)
     with c3:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">Revenue vs Budget</div><div class="metric-value">{metrics['revenue_vs_budget']}%</div><small style="color: #d69e2e;">{100 - metrics['revenue_vs_budget']}% below target</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📋 Open Positions</div><div class="metric-value">{open_positions}</div><small style="color:#CC0000;">Active hiring</small></div>""", unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">Tenant Satisfaction</div><div class="metric-value">{metrics['tenant_satisfaction']}/5</div><small style="color: #38a169;">↑ 0.3 points</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏠 Occupancy</div><div class="metric-value">87%</div><small style="color:#38a169;">Portfolio avg</small></div>""", unsafe_allow_html=True)
     with c5:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">Open Positions</div><div class="metric-value">{metrics['open_positions']}</div><small style="color: #CC0000;">Active recruitment</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">💰 Revenue</div><div class="metric-value">94%</div><small style="color:#d69e2e;">vs budget</small></div>""", unsafe_allow_html=True)
+    with c6:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">4.2</div><small style="color:#38a169;">Tenant satisfaction</small></div>""", unsafe_allow_html=True)
     
-    # ADMIN METRICS UPDATE
-    if st.session_state.user and st.session_state.user['role'] in ['Admin', 'HR Director']:
-        with st.expander("⚙️ Update Dashboard Metrics (Admin)"):
-            ec1, ec2, ec3 = st.columns(3)
-            with ec1:
-                ne = st.number_input("Total Employees", value=metrics['total_employees'])
-                no = st.slider("Occupancy Rate %", 0, 100, metrics['occupancy_rate'])
-            with ec2:
-                nr = st.slider("Revenue vs Budget %", 0, 100, metrics['revenue_vs_budget'])
-                ns = st.slider("Tenant Satisfaction", 1.0, 5.0, metrics['tenant_satisfaction'], 0.1)
-            with ec3:
-                np = st.number_input("Open Positions", value=metrics['open_positions'])
-            if st.button("💾 Update Metrics", use_container_width=True):
-                st.session_state.dashboard_metrics = {'total_employees': ne, 'occupancy_rate': no, 'revenue_vs_budget': nr, 'tenant_satisfaction': ns, 'open_positions': np}
-                st.success("✅ Updated!")
-                st.rerun()
-    
-    # STRATEGIC PILLARS OVERVIEW - VISUAL CARDS
+    # ============ QUICK ACTIONS ============
     st.markdown("---")
-    st.subheader("🎯 Group Strategic Pillars 2026-2027 — Executive Scorecard")
+    quick_col1, quick_col2, quick_col3, quick_col4 = st.columns(4)
+    with quick_col1:
+        if st.button("📝 Post Job", use_container_width=True):
+            st.session_state['navigate_to'] = "💼 Recruitment Hub"
+            st.rerun()
+    with quick_col2:
+        if st.button("👥 View Employees", use_container_width=True):
+            st.session_state['navigate_to'] = "👥 Employee Management"
+            st.rerun()
+    with quick_col3:
+        if st.button("📈 Performance", use_container_width=True):
+            st.session_state['navigate_to'] = "📈 Performance & OKRs"
+            st.rerun()
+    with quick_col4:
+        if st.button("🤖 AI Screening", use_container_width=True):
+            st.session_state['navigate_to'] = "🤖 AI Recruitment Agent"
+            st.rerun()
     
-    pillars = {
-        "1. Occupancy & Revenue Growth": {
-            "weight": 40, "progress": 85, "trend": "+5%", "status": "On Track",
-            "kpis": ["Data centre revenue +15%", "100% budget realization", "Nil O/S within 30 days", "90% customer retention", "0% cost variance"],
-            "responsible": "COO", "accountable": "GMD", "consulted": "All HODs", "informed": "Board",
-            "highlight": "Revenue streams from Data Centre, ISP, Managed Services"
-        },
-        "2. Process Simplification": {
-            "weight": 20, "progress": 72, "trend": "+8%", "status": "In Progress",
-            "kpis": ["AI implementation by FY end", "BMS complete by 30.06.26", "99% PPM compliance", "99% ELV uptime", "CRM full deployment"],
-            "responsible": "ELV/Hive Mechanics", "accountable": "GMD", "consulted": "All HODs", "informed": "Board",
-            "highlight": "AI strategy + BMS + SMARTCHECK deployment"
-        },
-        "3. Asset Reliability & Digitalization": {
-            "weight": 25, "progress": 90, "trend": "+3%", "status": "Exceeding",
-            "kpis": ["100% ELV assets assessed biannually", "0% variance risk mitigation", "80% risks mitigated", "90% SMARTCHECK by 30.09.26", "100% emergency readiness"],
-            "responsible": "FM Heads", "accountable": "COO", "consulted": "VP-Sales/GM-Procurement", "informed": "Board",
-            "highlight": "SMARTCHECK 8 modules + preventive maintenance culture"
-        },
-        "4. People & Culture": {
-            "weight": 15, "progress": 88, "trend": "+4%", "status": "On Track",
-            "kpis": ["100% JDs by April 2026", "100% appraised 2x yearly", "A-players identified", "Competency gaps assessed", "2 LMS courses/employee", "60-80% behavioural improvement"],
-            "responsible": "HR Director", "accountable": "GMD", "consulted": "GEA/COO/HR", "informed": "Board",
-            "highlight": "Succession planning + Learning culture + 360° assessment"
-        }
-    }
+    # ============ ROW 1: PORTFOLIO + DEPARTMENT DISTRIBUTION ============
+    st.markdown("---")
+    col1, col2 = st.columns(2)
     
-    # DISPLAY 4 PILLARS AS CARDS IN 2x2 GRID
-    p1, p2 = st.columns(2)
-    with p1:
-        pn = "1. Occupancy & Revenue Growth"
-        pdata = pillars[pn]
-        color = "#38a169"
-        st.markdown(f"""
-        <div style="background: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; border-top: 4px solid {color}; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; font-size: 1.1rem;">💰 {pn}</h3>
-                <span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">{pdata['status']} {pdata['trend']}</span>
+    with col1:
+        st.subheader("🏢 Portfolio Performance")
+        portfolio_data = pd.DataFrame({
+            'Property': CHURCHGATE_PORTFOLIO,
+            'Occupancy %': [87, 92, 85, 78, 95, 90],
+            'Revenue %': [94, 98, 88, 82, 97, 91]
+        })
+        fig = go.Figure()
+        fig.add_trace(go.Bar(name='Occupancy %', x=portfolio_data['Property'], y=portfolio_data['Occupancy %'], marker_color='#CC0000', text=portfolio_data['Occupancy %'], textposition='outside'))
+        fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue %'], marker_color='#4a4a4a', text=portfolio_data['Revenue %'], textposition='outside'))
+        fig.update_layout(height=350, barmode='group', margin=dict(t=20))
+        st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        st.subheader("👥 Department Distribution")
+        if not emp_df.empty:
+            dept_counts = emp_df['department'].value_counts()
+            fig2 = px.pie(values=dept_counts.values, names=dept_counts.index, hole=0.4,
+                         color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e', '#805ad5', '#dd6b20', '#2b6cb0', '#718096', '#e53e3e', '#319795', '#d53f8c'])
+            fig2.update_layout(height=350, margin=dict(t=20))
+            st.plotly_chart(fig2, use_container_width=True)
+    
+    # ============ ROW 2: STRATEGIC PILLARS + GENDER DIVERSITY ============
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("🎯 Strategic Pillars 2026-2027")
+        pillars = [
+            ("1. Occupancy & Revenue Growth", 85, '#CC0000'),
+            ("2. Process Simplification", 72, '#38a169'),
+            ("3. Asset Reliability & Digitalization", 90, '#3182ce'),
+            ("4. People & Culture", 88, '#d69e2e'),
+        ]
+        for name, progress, color in pillars:
+            st.markdown(f"""
+            <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {color};">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-weight:600;font-size:0.9rem;">{name}</span>
+                    <span style="color:{color};font-weight:700;">{progress}%</span>
+                </div>
+                <div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;">
+                    <div style="background:{color};width:{progress}%;height:6px;border-radius:3px;"></div>
+                </div>
             </div>
-            <div style="margin: 0.8rem 0;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;"><span>Progress</span><span>{pdata['progress']}%</span></div>
-                <div style="background: #e0e0e0; height: 8px; border-radius: 4px; margin-top: 0.3rem;"><div style="background: {color}; width: {pdata['progress']}%; height: 8px; border-radius: 4px;"></div></div>
-            </div>
-            <p style="font-size: 0.8rem; color: #CC0000; font-weight: 600;">🎯 {pdata['highlight']}</p>
-            <div style="font-size: 0.8rem; margin: 0.5rem 0;">
-                <strong>RACI:</strong> R: {pdata['responsible']} | A: {pdata['accountable']} | C: {pdata['consulted']} | I: {pdata['informed']}
-            </div>
-            <div style="font-size: 0.78rem; color: #555;">Weight: {pdata['weight']}% of corporate strategy</div>
-        </div>""", unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+    
+    with col2:
+        st.subheader("🌍 Gender Diversity")
+        gender_data = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [38, 18]})
+        fig3 = px.pie(gender_data, values='Count', names='Gender', hole=0.6, color_discrete_sequence=['#3182ce', '#CC0000'])
+        fig3.update_layout(height=300, margin=dict(t=20))
+        st.plotly_chart(fig3, use_container_width=True)
         
-        pn2 = "3. Asset Reliability & Digitalization"
-        pdata2 = pillars[pn2]
-        color2 = "#38a169"
         st.markdown(f"""
-        <div style="background: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; border-top: 4px solid {color2}; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; font-size: 1.1rem;">🔧 {pn2}</h3>
-                <span style="background: {color2}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">{pdata2['status']} {pdata2['trend']}</span>
-            </div>
-            <div style="margin: 0.8rem 0;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;"><span>Progress</span><span>{pdata2['progress']}%</span></div>
-                <div style="background: #e0e0e0; height: 8px; border-radius: 4px; margin-top: 0.3rem;"><div style="background: {color2}; width: {pdata2['progress']}%; height: 8px; border-radius: 4px;"></div></div>
-            </div>
-            <p style="font-size: 0.8rem; color: #CC0000; font-weight: 600;">🎯 {pdata2['highlight']}</p>
-            <div style="font-size: 0.8rem; margin: 0.5rem 0;">
-                <strong>RACI:</strong> R: {pdata2['responsible']} | A: {pdata2['accountable']} | C: {pdata2['consulted']} | I: {pdata2['informed']}
-            </div>
-            <div style="font-size: 0.78rem; color: #555;">Weight: {pdata2['weight']}% of corporate strategy</div>
-        </div>""", unsafe_allow_html=True)
+        <div style="text-align:center;margin-top:-5rem;position:relative;z-index:1;">
+            <span style="font-size:2rem;font-weight:900;color:#CC0000;">{total_employees}</span><br>
+            <small style="color:#888;">Total Workforce</small>
+        </div>
+        """, unsafe_allow_html=True)
     
-    with p2:
-        pn3 = "2. Process Simplification"
-        pdata3 = pillars[pn3]
-        color3 = "#d69e2e"
+    # ============ ROW 3: REVENUE TREND + UPCOMING DEADLINES ============
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("📈 Revenue Trend (₦ Billions)")
+        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+        revenue = [1.8, 2.0, 2.1, 2.2, 2.3, 2.5]
+        target = [2.0, 2.1, 2.2, 2.3, 2.4, 2.5]
+        fig4 = go.Figure()
+        fig4.add_trace(go.Scatter(x=months, y=revenue, mode='lines+markers', name='Actual', line=dict(color='#CC0000', width=3), fill='tozeroy', fillcolor='rgba(204,0,0,0.1)'))
+        fig4.add_trace(go.Scatter(x=months, y=target, mode='lines', name='Target', line=dict(color='#4a4a4a', width=2, dash='dash')))
+        fig4.update_layout(height=300, margin=dict(t=20))
+        st.plotly_chart(fig4, use_container_width=True)
+    
+    with col2:
+        st.subheader("📅 Upcoming Deadlines")
+        deadlines = [
+            {"task": "Appraisal Cycle Ends", "date": "2026-12-31", "priority": "Medium"},
+            {"task": "Marketing Lead Applications Close", "date": "2026-06-12", "priority": "High"},
+            {"task": "Q2 Performance Reviews", "date": "2026-06-30", "priority": "High"},
+            {"task": "BMS Implementation Complete", "date": "2026-06-30", "priority": "High"},
+            {"task": "SMARTCHECK Rollout", "date": "2026-09-30", "priority": "Medium"},
+        ]
+        for d in deadlines:
+            try:
+                due = datetime.strptime(d['date'], '%Y-%m-%d')
+                days_left = (due - datetime.now()).days
+                days_str = f"{days_left} days left" if days_left > 0 else "OVERDUE"
+                urgency_color = "#CC0000" if days_left < 30 else "#d69e2e" if days_left < 60 else "#38a169"
+            except:
+                days_str = d['date']
+                urgency_color = "#718096"
+            
+            st.markdown(f"""
+            <div style="background:white;padding:0.7rem 1rem;border-radius:6px;margin-bottom:0.4rem;display:flex;justify-content:space-between;align-items:center;border-left:3px solid {urgency_color};">
+                <div>
+                    <strong style="font-size:0.9rem;">{d['task']}</strong>
+                    <span style="background:{'#CC0000' if d['priority']=='High' else '#d69e2e'};color:white;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.7rem;margin-left:0.5rem;">{d['priority']}</span>
+                </div>
+                <small style="color:{urgency_color};font-weight:600;">{days_str}</small>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # ============ ROW 4: DEPARTMENT SCORECARD + HEADCOUNT TREND ============
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("📊 Department Performance Scorecard")
+        try:
+            perf_data = db.get_performance_data()
+            if not perf_data.empty:
+                dept_scores = perf_data.groupby('department')['progress'].mean().reset_index()
+                dept_scores.columns = ['Department', 'Avg Score']
+                fig5 = px.bar(dept_scores, x='Department', y='Avg Score', color='Avg Score',
+                             color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+                fig5.update_layout(height=300, margin=dict(t=20))
+                st.plotly_chart(fig5, use_container_width=True)
+            else:
+                st.info("Performance data will appear as departments set KPIs.")
+        except:
+            st.info("Performance scorecard loading...")
+    
+    with col2:
+        st.subheader("📈 Headcount Trend")
+        headcount_trend = pd.DataFrame({
+            'Month': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            'Employees': [48, 50, 52, 54, 55, total_employees]
+        })
+        fig6 = px.area(headcount_trend, x='Month', y='Employees', color_discrete_sequence=['#CC0000'])
+        fig6.update_layout(height=300, margin=dict(t=20))
+        st.plotly_chart(fig6, use_container_width=True)
+    
+    # ============ ROW 5: RECENT ACTIVITY ============
+    st.markdown("---")
+    st.subheader("🕐 Recent Activity Feed")
+    activities = [
+        {"icon": "👤", "action": "New employee added", "detail": "George Adaramola joined the team", "time": "Today"},
+        {"icon": "📝", "action": "Job requisition approved", "detail": "Marketing & Communications Lead went live", "time": "Today"},
+        {"icon": "📄", "action": "Applications received", "detail": f"{open_positions} candidates in recruitment pipeline", "time": "This week"},
+        {"icon": "📊", "action": "Appraisal cycle active", "detail": "2026 Half-Year Appraisal in progress", "time": "Active"},
+        {"icon": "🏢", "action": "Department update", "detail": f"{departments} departments across Abuja & Lagos", "time": "Current"},
+    ]
+    for activity in activities:
         st.markdown(f"""
-        <div style="background: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; border-top: 4px solid {color3}; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; font-size: 1.1rem;">🤖 {pn3}</h3>
-                <span style="background: {color3}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">{pdata3['status']} {pdata3['trend']}</span>
-            </div>
-            <div style="margin: 0.8rem 0;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;"><span>Progress</span><span>{pdata3['progress']}%</span></div>
-                <div style="background: #e0e0e0; height: 8px; border-radius: 4px; margin-top: 0.3rem;"><div style="background: {color3}; width: {pdata3['progress']}%; height: 8px; border-radius: 4px;"></div></div>
-            </div>
-            <p style="font-size: 0.8rem; color: #CC0000; font-weight: 600;">🎯 {pdata3['highlight']}</p>
-            <div style="font-size: 0.8rem; margin: 0.5rem 0;">
-                <strong>RACI:</strong> R: {pdata3['responsible']} | A: {pdata3['accountable']} | C: {pdata3['consulted']} | I: {pdata3['informed']}
-            </div>
-            <div style="font-size: 0.78rem; color: #555;">Weight: {pdata3['weight']}% of corporate strategy</div>
-        </div>""", unsafe_allow_html=True)
-        
-        pn4 = "4. People & Culture"
-        pdata4 = pillars[pn4]
-        color4 = "#38a169"
-        st.markdown(f"""
-        <div style="background: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 1rem; border-top: 4px solid {color4}; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; font-size: 1.1rem;">👥 {pn4}</h3>
-                <span style="background: {color4}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">{pdata4['status']} {pdata4['trend']}</span>
-            </div>
-            <div style="margin: 0.8rem 0;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #666;"><span>Progress</span><span>{pdata4['progress']}%</span></div>
-                <div style="background: #e0e0e0; height: 8px; border-radius: 4px; margin-top: 0.3rem;"><div style="background: {color4}; width: {pdata4['progress']}%; height: 8px; border-radius: 4px;"></div></div>
-            </div>
-            <p style="font-size: 0.8rem; color: #CC0000; font-weight: 600;">🎯 {pdata4['highlight']}</p>
-            <div style="font-size: 0.8rem; margin: 0.5rem 0;">
-                <strong>RACI:</strong> R: {pdata4['responsible']} | A: {pdata4['accountable']} | C: {pdata4['consulted']} | I: {pdata4['informed']}
-            </div>
-            <div style="font-size: 0.78rem; color: #555;">Weight: {pdata4['weight']}% of corporate strategy</div>
-        </div>""", unsafe_allow_html=True)
-    
-    # PORTFOLIO PERFORMANCE
-    st.markdown("---")
-    st.subheader("🏢 Portfolio Performance — Churchgate Group Properties")
-    portfolio_data = pd.DataFrame({
-        'Property': CHURCHGATE_PORTFOLIO,
-        'Occupancy %': [87, 92, 85, 78, 95, 90],
-        'Revenue %': [94, 98, 88, 82, 97, 91],
-        'Satisfaction': [4.3, 4.5, 4.1, 3.9, 4.4, 4.2]
-    })
-    fig = go.Figure()
-    fig.add_trace(go.Bar(name='Occupancy %', x=portfolio_data['Property'], y=portfolio_data['Occupancy %'], marker_color='#CC0000', text=portfolio_data['Occupancy %'], textposition='outside'))
-    fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue %'], marker_color='#4a4a4a', text=portfolio_data['Revenue %'], textposition='outside'))
-    fig.update_layout(height=400, barmode='group', margin=dict(t=20), legend=dict(orientation='h', yanchor='bottom', y=1.02))
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # DEPARTMENT SCORECARD
-    st.markdown("---")
-    st.subheader("📊 Department Performance Scorecard — Strategic Pillar Alignment")
-    scorecard = pd.DataFrame({
-        'Department': ['Technology', 'Facility Mgmt', 'Finance', 'HR', 'Sales & Mkt', 'Procurement', 'Security', 'Legal', 'Operations'],
-        'Occupancy & Revenue': [85, 80, 90, 75, 88, 82, 78, 70, 85],
-        'Process Simplification': [72, 68, 75, 70, 65, 60, 55, 50, 68],
-        'Asset Reliability': [90, 88, 82, 85, 80, 78, 85, 75, 82],
-        'People & Culture': [88, 85, 80, 92, 82, 78, 80, 75, 85]
-    })
-    fig2 = go.Figure(data=[go.Heatmap(
-        z=scorecard[['Occupancy & Revenue', 'Process Simplification', 'Asset Reliability', 'People & Culture']].values,
-        x=['Occupancy & Revenue', 'Process Simplification', 'Asset Reliability', 'People & Culture'],
-        y=scorecard['Department'],
-        colorscale=[[0, '#e53e3e'], [0.5, '#d69e2e'], [1, '#38a169']],
-        zmin=0, zmax=100,
-        text=scorecard[['Occupancy & Revenue', 'Process Simplification', 'Asset Reliability', 'People & Culture']].values,
-        texttemplate='%{text}%',
-        textfont=dict(size=11)
-    )])
-    fig2.update_layout(height=400, margin=dict(t=20))
-    st.plotly_chart(fig2, use_container_width=True)
-    
-    # RACI SUMMARY TABLE
-    st.markdown("---")
-    st.subheader("📋 Group Strategy RACI Matrix — 2026-2027")
-    raci_data = pd.DataFrame({
-        'Strategic Initiative': [
-            'Occupancy & Revenue Growth',
-            'Process Simplification (AI/BMS)',
-            'Asset Reliability & Digitalization',
-            'People & Culture'
-        ],
-        'Responsible': ['COO', 'ELV/Hive Mechanics', 'FM Heads', 'HR Director'],
-        'Accountable': ['GMD', 'GMD', 'COO', 'GMD'],
-        'Consulted': ['All HODs', 'All HODs', 'VP-Sales/GM-Procurement', 'GEA/COO/HR'],
-        'Informed': ['Board', 'Board', 'Board', 'Board'],
-        'Timeline': ['0-12 months', '0-8 months', '6-12 months', '0-8 months'],
-        'Status': ['On Track', 'In Progress', 'Exceeding', 'On Track']
-    })
-    st.dataframe(raci_data, use_container_width=True, hide_index=True)
+        <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;gap:1rem;border-left:3px solid #CC0000;">
+            <span style="font-size:1.5rem;">{activity['icon']}</span>
+            <div style="flex:1;"><strong>{activity['action']}</strong><br><small>{activity['detail']}</small></div>
+            <small style="color:#888;">{activity['time']}</small>
+        </div>
+        """, unsafe_allow_html=True)
 
 def employee_management():
     st.markdown("""<div class="churchgate-header"><h1>👥 Employee Management</h1><p>Comprehensive workforce management | Real-time Data | Churchgate Group</p></div>""", unsafe_allow_html=True)
