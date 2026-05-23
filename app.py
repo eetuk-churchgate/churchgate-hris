@@ -1320,11 +1320,46 @@ def employee_management():
         st.markdown("### 🔍 Find Reporting Chain")
         chain_search = st.text_input("Enter employee name to see reporting line", placeholder="e.g., Francis Asuquo", key="chain_search")
         if chain_search:
-            st.info(f"""
-            📋 **{chain_search}** → Team Lead → Manager → HOD (Department Head) → COO (Jerome Das) → GMD (Vinay Mahtani)
+            found = False
+            chain = ""
+            try:
+                for _, emp in employees_df.iterrows():
+                    full_name = f"{emp['first_name']} {emp['last_name']}".lower()
+                    if chain_search.lower() in full_name:
+                        found = True
+                        role = emp.get('position', '')
+                        dept = emp.get('department', '')
+                        region = emp.get('region', 'Abuja')
+                        
+                        if 'GMD' in role or 'CEO' in role:
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Reports to Board"
+                        elif 'COO' in role:
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → COO → GMD (Vinay Mahtani)"
+                        elif 'VP' in role or 'Vice President' in role:
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → VP Sales → GMD (Vinay Mahtani)"
+                        elif 'GEA' in role or 'Advisor' in role:
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → GEA → GMD (Vinay Mahtani)"
+                        elif 'HOD' in role or 'Head' in role:
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → HOD ({dept}, {region}) → COO (Jerome Das) → GMD (Vinay Mahtani)"
+                        elif 'Senior Manager' in role or 'Sr. Manager' in role:
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Sr. Manager ({dept}) → HOD → COO → GMD"
+                        elif 'Manager' in role:
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Manager ({dept}) → Sr. Manager → HOD → COO → GMD"
+                        elif 'Team Lead' in role:
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Lead ({dept}) → Manager → Sr. Manager → HOD → COO → GMD"
+                        else:
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Member ({dept}) → Team Lead → Manager → Sr. Manager → HOD → COO → GMD"
+                        break
+                
+                if not found:
+                    chain = f"📋 **{chain_search}** not found in employee directory."
+            except:
+                chain = f"📋 Reporting chain lookup unavailable."
             
-            *For Sales & Marketing: Manager → VP Sales (Ahmed Karim) → GMD (Vinay Mahtani)*
-            """)
+            st.info(chain)
+            
+            if chain and 'Sales & Marketing' in chain:
+                st.caption("*Sales & Marketing reports to VP Sales → GMD")
         
         st.markdown("---")
         
