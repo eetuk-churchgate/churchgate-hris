@@ -4864,13 +4864,12 @@ def my_profile():
             try:
                 user_id_int = int(user.get('id', 0)) if user.get('id') else 0
                 image_bytes = uploaded_pic.read()
-                if db.use_supabase:
-                    import base64
-                    b64_str = base64.b64encode(image_bytes).decode()
-                    db._patch("users", {"profile_picture": b64_str}, {"id": str(user_id_int)})
-                st.success("✅ Saved!")
-            except:
-                pass
+                import base64
+                b64_str = base64.b64encode(image_bytes).decode()
+                db._patch("users", {"profile_picture": b64_str}, {"id": str(user_id_int)})
+                st.success("✅ Profile picture saved!")
+            except Exception as e:
+                st.warning(f"Could not save picture")
         
         # Profile Completeness
         st.markdown("---")
