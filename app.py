@@ -579,8 +579,7 @@ def login_section():
         wtc_path = Path(__file__).parent / "WTC Abuja 7 (1).jpg"
         if wtc_path.exists():
             st.image(str(wtc_path), use_container_width=True)
-            st.markdown("<p style='text-align:center;color:#888;font-size:0.8rem;'>World Trade Center, Abuja — Churchgate Group Headquarters</p>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center;color:#888;font-size:0.8rem;'>Churchgate Group</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
             email = st.text_input("📧 Corporate Email", placeholder="Enter your corporate email")
