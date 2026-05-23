@@ -1323,11 +1323,11 @@ def employee_management():
         # Full Reporting Structure
         st.markdown("### 📋 Complete Reporting Structure")
         structure_data = pd.DataFrame({
-            'Level': [1, 2, 2, 2, 3, 4, 5, 6, 7],
-            'Role': ['GMD/CEO', 'COO (All Depts)', 'VP Sales', 'GEA', 'Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members'],
-            'Reports To': ['Board', 'GMD', 'GMD', 'GMD (dotted to COO)', 'COO / VP Sales', 'HOD', 'Sr. Managers', 'Managers', 'Team Leads'],
-            'Regions': ['Group-wide', 'Abuja & Lagos', 'Abuja & Lagos', 'Group-wide', 'By Region', 'By Department', 'By Department', 'By Department', 'By Department'],
-            'Notes': ['', '11 Departments', 'Sales & Marketing only', 'Advisory', 'Reports to COO & GEA', '', 'Dotted line to HOD', '', '']
+            'Level': [1, 2, 2, 2, 3, 4, 5, 6, 7, 8],
+            'Role': ['GMD/CEO', 'COO (All Depts)', 'VP Sales', 'GEA', 'Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members', 'GED'],
+            'Reports To': ['Board', 'GMD', 'GMD', 'GMD', 'COO / GEA', 'HOD', 'Sr. Managers', 'Managers', 'Team Leads', 'GMD'],
+            'Regions': ['Group-wide', 'Abuja & Lagos', 'Abuja & Lagos', 'Group-wide', 'By Region', 'By Department', 'By Department', 'By Department', 'By Department', 'Group-wide'],
+            'Notes': ['', '11 Departments', 'Sales & Marketing only', 'Advisory', 'Reports to COO & GEA', '', 'Dotted line to HOD', '', '', 'Standalone, reports to GMD']
         })
         st.dataframe(structure_data, use_container_width=True, hide_index=True)
     
