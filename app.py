@@ -708,10 +708,16 @@ def sidebar_navigation():
             
             initials = generate_initials(user['name'])
             db_pic = None
-            if db.use_supabase:
-                db_pic = db.get_profile_picture(int(st.session_state.user['id']))
-            elif 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
-                db_pic = st.session_state['profile_pic']
+            db_pic = None
+            try:
+                user_record = db._get("users", {"email": user.get('email', '')})
+                if user_record and len(user_record) > 0:
+                    pic_data = user_record[0].get('profile_picture')
+                    if pic_data:
+                        import base64
+                        db_pic = base64.b64decode(pic_data) if isinstance(pic_data, str) else pic_data
+            except:
+                pass
             
             if db_pic is not None:
                 import base64
@@ -776,10 +782,23 @@ def employee_dashboard():
     
     initials = generate_initials(user_name)
     
+    # Load profile picture for greeting
+    greeting_pic_html = f'<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;min-width:60px;overflow:hidden;">{initials}</div>'
+    try:
+        user_record = db._get("users", {"email": user_email})
+        if user_record and len(user_record) > 0:
+            pic_data = user_record[0].get('profile_picture')
+            if pic_data:
+                import base64
+                db_pic = base64.b64decode(pic_data) if isinstance(pic_data, str) else pic_data
+                greeting_pic_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
+    except:
+        pass
+    
     st.markdown(f"""
     <div class="greeting-header animate-fade-in">
         <div style="display:flex;align-items:center;gap:1rem;">
-            <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;min-width:60px;">{initials}</div>
+            {greeting_pic_html}
             <div>
                 <h1>👋 {greeting}, {user_name}!</h1>
                 <p>{user_position} • {user_dept} • ID: {user_id}</p>
