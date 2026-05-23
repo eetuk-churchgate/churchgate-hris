@@ -1333,13 +1333,12 @@ def employee_management():
                         
                         if 'GMD' in role or 'CEO' in role:
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Reports to Board"
-                        elif 'COO' in role:
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → COO → GMD (Vinay Mahtani)"
+                        elif 'COO' in role or 'GED' in role or 'GEA' in role or 'Advisor' in role:
+                            role_name = 'COO' if 'COO' in role else ('GED' if 'GED' in role else 'GEA')
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → {role_name} → GMD (Vinay Mahtani)"
                         elif 'VP' in role or 'Vice President' in role:
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → VP Sales → GMD (Vinay Mahtani)"
-                        elif 'GEA' in role or 'Advisor' in role:
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → GEA → GMD (Vinay Mahtani)"
-                        elif any(title in role for title in ['HOD', 'Head', 'head', 'GM,', 'GM ']):
+                        elif 'HOD' in role or 'Head' in role or 'head' in role.lower() or 'GM,' in role or 'GM ' in role:
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → HOD ({dept}, {region}) → COO (Jerome Das) → GMD (Vinay Mahtani)"
                         elif 'Senior Manager' in role or 'Sr. Manager' in role:
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Sr. Manager ({dept}) → HOD → COO → GMD"
@@ -1347,6 +1346,8 @@ def employee_management():
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Manager ({dept}) → Sr. Manager → HOD → COO → GMD"
                         elif 'Team Lead' in role:
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Lead ({dept}) → Manager → Sr. Manager → HOD → COO → GMD"
+                        else:
+                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Member ({dept}) → Team Lead → Manager → Sr. Manager → HOD → COO → GMD"
                         else:
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Member ({dept}) → Team Lead → Manager → Sr. Manager → HOD → COO → GMD"
                         break
