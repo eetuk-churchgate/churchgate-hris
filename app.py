@@ -1176,21 +1176,116 @@ def employee_management():
     # ============ TAB 6: ORG CHART ============
     with tab6:
         st.subheader("📊 Organizational Structure")
-        st.info("Churchgate Group Reporting Structure: GMD → COO → Departments | VP Sales & GEA report to GMD")
         
-        labels = ['GMD/CEO', 'COO', 'VP Sales', 'GEA', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
+        # Key Personnel Cards
+        st.markdown("### 🌟 Key Leadership")
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.markdown("""
+            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #CC0000;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <div style="width:50px;height:50px;border-radius:50%;background:#CC0000;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">VM</div>
+                <strong style="display:block;margin-top:0.5rem;">Vinay Mahtani</strong>
+                <small style="color:#888;">GMD/CEO</small><br>
+                <small style="color:#CC0000;">👥 56 reports</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with c2:
+            st.markdown("""
+            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #e53e3e;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <div style="width:50px;height:50px;border-radius:50%;background:#e53e3e;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">JD</div>
+                <strong style="display:block;margin-top:0.5rem;">Jerome Das</strong>
+                <small style="color:#888;">COO</small><br>
+                <small style="color:#e53e3e;">👥 45 reports</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with c3:
+            st.markdown("""
+            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #805ad5;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <div style="width:50px;height:50px;border-radius:50%;background:#805ad5;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">PL</div>
+                <strong style="display:block;margin-top:0.5rem;">Partab Lalchandani</strong>
+                <small style="color:#888;">GEA</small><br>
+                <small style="color:#805ad5;">👥 5 reports</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with c4:
+            st.markdown("""
+            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #dd6b20;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <div style="width:50px;height:50px;border-radius:50%;background:#dd6b20;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">AK</div>
+                <strong style="display:block;margin-top:0.5rem;">Ahmed Karim</strong>
+                <small style="color:#888;">VP Sales</small><br>
+                <small style="color:#dd6b20;">👥 15 reports</small>
+            </div>
+            """, unsafe_allow_html=True)
         
-        sources = [0, 0, 0, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1]
-        targets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        st.markdown("---")
         
-        values = [30, 15, 5, 12, 8, 6, 4, 8, 4, 6, 2, 6, 3]
+        # Sankey Diagram
+        st.markdown("### 🔗 Reporting Hierarchy Flow")
+        st.info("GMD → COO/GEA → VP Sales/HODs → Sr. Managers → Managers → Team Leads → Team Members")
+        
+        labels = ['GMD', 'COO', 'GEA', 'VP Sales', 'HODs (11)', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members']
+        colors = ['#CC0000', '#e53e3e', '#805ad5', '#dd6b20', '#3182ce', '#38a169', '#d69e2e', '#2b6cb0', '#718096']
+        sources = [0, 0, 1, 1, 3, 3, 4, 4, 5, 5, 6, 6, 2]
+        targets = [1, 2, 3, 4, 5, 5, 6, 6, 7, 7, 8, 8, 5]
+        values  = [1, 1, 1, 11, 15, 5, 20, 5, 25, 5, 30, 5, 3]
         
         fig = go.Figure(data=[go.Sankey(
-            node=dict(pad=20, thickness=20, label=labels, color=['#CC0000', '#e53e3e', '#dd6b20', '#805ad5', '#3182ce', '#38a169', '#d69e2e', '#805ad5', '#dd6b20', '#2b6cb0', '#718096', '#e53e3e', '#319795', '#d53f8c']),
-            link=dict(source=sources, target=targets, value=values)
+            node=dict(pad=25, thickness=20, label=labels, color=colors),
+            link=dict(source=sources, target=targets, value=values,
+                color=['rgba(204,0,0,0.25)', 'rgba(128,90,213,0.25)', 'rgba(221,107,32,0.25)', 'rgba(49,130,206,0.25)',
+                       'rgba(56,161,105,0.25)', 'rgba(56,161,105,0.25)', 'rgba(214,158,46,0.25)', 'rgba(214,158,46,0.25)',
+                       'rgba(43,108,176,0.25)', 'rgba(43,108,176,0.25)', 'rgba(113,128,150,0.25)', 'rgba(113,128,150,0.25)',
+                       'rgba(128,90,213,0.12)'])
         )])
         fig.update_layout(height=500)
         st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("---")
+        
+        # Span of Control + Department Heads
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 👥 Span of Control")
+            span_data = pd.DataFrame({
+                'Leader': ['Vinay Mahtani', 'Jerome Das', 'Ahmed Karim', 'Partab Lalchandani', 'Emmanuel Etuk', 'Sanjeev Purwar'],
+                'Role': ['GMD', 'COO', 'VP Sales', 'GEA', 'HOD Tech', 'HOD FM'],
+                'Direct Reports': [4, 11, 5, 3, 12, 8]
+            })
+            fig2 = px.bar(span_data, x='Leader', y='Direct Reports', color='Role', text='Direct Reports',
+                         color_discrete_sequence=['#CC0000', '#e53e3e', '#dd6b20', '#805ad5', '#3182ce', '#38a169'])
+            fig2.update_layout(height=350, showlegend=False)
+            fig2.update_traces(textposition='outside')
+            st.plotly_chart(fig2, use_container_width=True)
+        
+        with col2:
+            st.markdown("### 🏢 Department Heads")
+            hod_data = pd.DataFrame({
+                'Department': ['Technology', 'Facility Mgmt', 'HR', 'Finance', 'Sales & Mkt', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'],
+                'Head': ['Emmanuel Etuk', 'Sanjeev Purwar', 'Adebayo Sakote', 'Jeff Arikawe', 'Ahmed Karim', 'Anand Bora', 'Maikudi Kadoh', 'David Aiyedun', 'Ibukun Adeogun', 'TBD'],
+                'Team Size': [12, 25, 8, 10, 15, 8, 20, 3, 18, 5]
+            })
+            st.dataframe(hod_data, use_container_width=True, hide_index=True)
+        
+        st.markdown("---")
+        
+        # Reporting Chain Finder
+        st.markdown("### 🔍 Find Reporting Chain")
+        chain_search = st.text_input("Enter employee name to see reporting line", placeholder="e.g., Francis Asuquo")
+        if chain_search:
+            st.info(f"📋 **{chain_search}** → Team Lead → Manager → HOD (Emmanuel Etuk) → COO (Jerome Das) → GMD (Vinay Mahtani)")
+        
+        st.markdown("---")
+        
+        # Reporting Structure Table
+        st.markdown("### 📋 Full Reporting Structure")
+        structure_data = pd.DataFrame({
+            'Level': [1, 2, 2, 3, 3, 4, 5, 6, 7],
+            'Role': ['GMD/CEO', 'COO', 'GEA', 'VP Sales', 'Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members'],
+            'Reports To': ['Board', 'GMD', 'GMD (dotted to COO)', 'GMD', 'COO', 'HOD / VP Sales', 'Sr. Managers (dotted to HOD)', 'Managers', 'Team Leads'],
+            'Span': ['4 direct, 56 total', '11 HODs', '3 advisors', '5 Sr. Managers', 'Varies by dept', '2-5 Managers', '3-8 Team Leads', '5-15 Members', 'N/A']
+        })
+        st.dataframe(structure_data, use_container_width=True, hide_index=True)
     
     # ============ TAB 7: DEMOGRAPHICS ============
     with tab7:
