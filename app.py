@@ -4859,22 +4859,19 @@ def my_profile():
             """, unsafe_allow_html=True)
         
         uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'])
-        if uploaded_pic is not None:
+        if uploaded_pic is not None and not st.session_state.get('pic_processed', False):
             try:
                 image_bytes = uploaded_pic.getvalue()
                 import base64
                 b64_str = base64.b64encode(image_bytes).decode()
                 
-                # Save to users table
                 user_record = db._get("users", {"email": user_email})
                 if user_record and len(user_record) > 0:
                     uid = user_record[0].get('id')
                     db._patch("users", {"profile_picture": b64_str}, {"id": str(uid)})
                     st.session_state['profile_pic'] = uploaded_pic
+                    st.session_state['pic_processed'] = True
                     st.success("✅ Profile picture saved!")
-                    st.rerun()
-                else:
-                    st.warning("User record not found.")
             except Exception as e:
                 st.warning(f"Error: {str(e)}")
         
