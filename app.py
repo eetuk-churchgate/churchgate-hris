@@ -789,9 +789,12 @@ def employee_dashboard():
         if user_record and len(user_record) > 0:
             pic_data = user_record[0].get('profile_picture')
             if pic_data:
-                import base64
-                db_pic = base64.b64decode(pic_data) if isinstance(pic_data, str) else pic_data
-                greeting_pic_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
+                if pic_data.startswith('http'):
+                    greeting_pic_html = f'<img src="{pic_data}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
+                else:
+                    import base64
+                    db_pic = base64.b64decode(pic_data) if isinstance(pic_data, str) else pic_data
+                    greeting_pic_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
     except:
         pass
     
