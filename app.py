@@ -668,6 +668,18 @@ def executive_dashboard():
                 'Ocean Terrace': {'occupancy': 90, 'revenue': 91}
             }
         }
+        # Load saved metrics from database
+        try:
+            saved = db.get_portfolio_metrics()
+            if saved:
+                if 'occupancy' in saved:
+                    st.session_state.portfolio_metrics['occupancy'] = int(float(saved['occupancy']))
+                if 'revenue' in saved:
+                    st.session_state.portfolio_metrics['revenue'] = int(float(saved['revenue']))
+                if 'rating' in saved:
+                    st.session_state.portfolio_metrics['rating'] = float(saved['rating'])
+        except:
+            pass
     
     metrics = st.session_state.portfolio_metrics
     
@@ -728,7 +740,13 @@ def executive_dashboard():
                 st.session_state.portfolio_metrics['occupancy'] = new_occupancy
                 st.session_state.portfolio_metrics['revenue'] = new_revenue
                 st.session_state.portfolio_metrics['rating'] = new_rating
-                st.success("✅ Metrics updated!")
+                try:
+                    db.save_portfolio_metric('occupancy', new_occupancy)
+                    db.save_portfolio_metric('revenue', new_revenue)
+                    db.save_portfolio_metric('rating', new_rating)
+                except:
+                    pass
+                st.success("✅ Metrics updated & saved!")
                 st.rerun()
     
     # ============ QUICK ACTIONS ============
