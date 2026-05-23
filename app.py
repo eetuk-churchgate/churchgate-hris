@@ -1338,7 +1338,7 @@ def employee_management():
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → {role_name} → GMD (Vinay Mahtani)"
                         elif 'VP' in role or 'Vice President' in role:
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → VP Sales → GMD (Vinay Mahtani)"
-                        elif 'HOD' in role or 'Head' in role or 'head' in role.lower() or 'GM,' in role or 'GM ' in role:
+                        elif 'HOD' in role or 'Head' in role or 'head' in role.lower() or 'GM,' in role or 'GM ' in role or role.lower().startswith('head'):
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → HOD ({dept}, {region}) → COO (Jerome Das) → GMD (Vinay Mahtani)"
                         elif 'Senior Manager' in role or 'Sr. Manager' in role:
                             chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Sr. Manager ({dept}) → HOD → COO → GMD"
