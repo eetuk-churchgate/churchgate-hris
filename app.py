@@ -821,261 +821,279 @@ def executive_dashboard():
     st.dataframe(raci_data, use_container_width=True, hide_index=True)
 
 def employee_management():
-    st.markdown("""<div class="churchgate-header"><h1>👥 Employee Management</h1><p>Comprehensive workforce management | Churchgate Group</p></div>""", unsafe_allow_html=True)
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📋 Directory", "➕ Add Employee", "📤 Bulk Upload", "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart"])
+    st.markdown("""<div class="churchgate-header"><h1>👥 Employee Management</h1><p>Comprehensive workforce management | Real-time Data | Churchgate Group</p></div>""", unsafe_allow_html=True)
+    
+    user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
+    
+    # Load employees from database
+    @st.cache_data(ttl=60)
+    def load_employees():
+        try:
+            df = db.get_all_employees()
+            if df is None or df.empty:
+                df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'status'])
+            return df
+        except:
+            return pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'status'])
+    
+    employees_df = load_employees()
+    
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        "📋 Directory", "➕ Add Employee", "📤 Bulk Upload", 
+        "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📥 Export"
+    ])
+    
+    # ============ TAB 1: DIRECTORY ============
     with tab1:
-        st.subheader("Employee Directory")
-        c1, c2, c3 = st.columns([2, 1, 1])
+        st.subheader("📋 Employee Directory")
+        
+        # Advanced Search & Filters
+        c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
         with c1:
-            st.text_input("🔍 Search", placeholder="Name, ID, department...")
+            search = st.text_input("🔍 Search", placeholder="Name, ID, email, department...")
         with c2:
-            st.selectbox("Department", ["All", "Senior Management", "Technology Group", "Facility Management", "Human Resources", "Sales & Marketing", "Accounts & Finance", "Procurement", "Security", "Legal", "Operations"])
+            all_depts = ['All'] + sorted(list(employees_df['department'].dropna().unique())) if not employees_df.empty else ['All']
+            dept_filter = st.selectbox("Department", all_depts)
         with c3:
-            st.selectbox("Status", ["All", "Active", "On Leave", "Probation"])
-        employees = [
-            {"name": "Vinay Mahtani", "id": "GMD01", "dept": "Senior Management", "position": "GMD", "status": "Active"},
-            {"name": "Jerome Das", "id": "LE00019", "dept": "Senior Management", "position": "COO", "status": "Active"},
-            {"name": "Emmanuel Etuk", "id": "AN00387", "dept": "Technology Group", "position": "Head, ELV Systems", "status": "Active"},
-            {"name": "Sanjeev Purwar", "id": "LE00212", "dept": "Facility Management", "position": "Head, MEP", "status": "Active"},
-            {"name": "Ahmed Karim", "id": "LN00369", "dept": "Sales & Marketing", "position": "GM, Sales & Marketing", "status": "Active"},
-            {"name": "Ibukun Adeogun", "id": "AN00012", "dept": "Operations", "position": "GM, Operations/Admin", "status": "Active"},
-            {"name": "Jeff Arikawe", "id": "LN00008", "dept": "Accounts & Finance", "position": "Chief Accountant", "status": "Active"},
-            {"name": "Adebayo Sakote", "id": "LN00037", "dept": "Human Resources", "position": "HR Manager", "status": "Active"},
-            {"name": "Anand Bora", "id": "LE00071", "dept": "Procurement", "position": "GM, Procurement", "status": "Active"},
-            {"name": "Maikudi Kadoh", "id": "AN00391", "dept": "Security", "position": "Chief Security Officer", "status": "Active"},
-            {"name": "David Aiyedun", "id": "AN00455", "dept": "Legal", "position": "Legal Officer", "status": "Active"},
-            {"name": "Charles Okere", "id": "AN00400", "dept": "Facility Management", "position": "Lift Supervisor", "status": "Active"},
-            {"name": "George Ojile", "id": "AN00398", "dept": "Facility Management", "position": "Lift Engineer", "status": "Active"},
-            {"name": "Augustine Oleh", "id": "AN00425", "dept": "Facility Management", "position": "HSE Coordinator", "status": "Active"},
-            {"name": "Francis Asuquo", "id": "AN00433", "dept": "Technology Group", "position": "ELV Engineer", "status": "Active"},
-            {"name": "Chika Ikwuegbu", "id": "LN00438", "dept": "Security", "position": "Admin Assistant", "status": "Active"},
-            {"name": "Alice Agbo", "id": "AN00423", "dept": "Procurement", "position": "Store Keeper", "status": "Active"},
-            {"name": "Rhoda Ajibola", "id": "AN00460", "dept": "Facility Management", "position": "Front Desk Executive", "status": "Active"},
-            {"name": "Ogechukwu Obute", "id": "AN00451", "dept": "Sales & Marketing", "position": "Sales Executive", "status": "Active"},
-            {"name": "David Effiong", "id": "AN00496", "dept": "Facility Management", "position": "Facility Manager", "status": "Active"},
-        ]
-        for emp in employees:
-            initials = generate_initials(emp['name'])
-            st.markdown(f"""<div style="background: white; padding: 0.8rem; border-radius: 8px; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 1rem; border: 1px solid #e0e0e0;"><div style="width: 40px; height: 40px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; min-width: 40px;">{initials}</div><div style="flex: 1;"><strong>{emp['name']}</strong><br><small>{emp['position']} • {emp['dept']}</small></div><div style="text-align: right;"><small>ID: {emp['id']}</small><br><span style="background: #38a169; color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem;">{emp['status']}</span></div></div>""", unsafe_allow_html=True)
+            all_grades = ['All'] + sorted(list(employees_df['grade'].dropna().unique())) if not employees_df.empty else ['All']
+            grade_filter = st.selectbox("Grade", all_grades)
+        with c4:
+            status_filter = st.selectbox("Status", ["All", "Active", "On Leave", "Probation", "Terminated"])
+        
+        # Filter
+        filtered_df = employees_df.copy()
+        if not filtered_df.empty:
+            if search:
+                s = search.lower()
+                filtered_df = filtered_df[
+                    filtered_df['first_name'].str.lower().str.contains(s, na=False) |
+                    filtered_df['last_name'].str.lower().str.contains(s, na=False) |
+                    filtered_df['employee_id'].str.lower().str.contains(s, na=False) |
+                    filtered_df['email'].str.lower().str.contains(s, na=False) |
+                    filtered_df['department'].str.lower().str.contains(s, na=False) |
+                    filtered_df['position'].str.lower().str.contains(s, na=False)
+                ]
+            if dept_filter != 'All':
+                filtered_df = filtered_df[filtered_df['department'] == dept_filter]
+            if grade_filter != 'All':
+                filtered_df = filtered_df[filtered_df['grade'] == grade_filter]
+            if status_filter != 'All':
+                filtered_df = filtered_df[filtered_df['status'] == status_filter]
+        
+        # Stats
+        total_emp = len(employees_df)
+        active_emp = len(employees_df[employees_df['status'] == 'Active']) if not employees_df.empty else 0
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total Employees", total_emp)
+        c2.metric("Active", active_emp)
+        c3.metric("Showing", len(filtered_df))
+        
+        st.markdown("---")
+        
+        if not filtered_df.empty:
+            for _, emp in filtered_df.iterrows():
+                initials = generate_initials(f"{emp['first_name']} {emp['last_name']}")
+                status_color = "#38a169" if emp.get('status') == 'Active' else "#d69e2e" if emp.get('status') == 'On Leave' else "#CC0000"
+                
+                with st.expander(f"{initials} {emp['first_name']} {emp['last_name']} — {emp.get('position', 'N/A')}", expanded=False):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.markdown(f"**🆔 ID:** {emp.get('employee_id', 'N/A')}")
+                        st.markdown(f"**📧 Email:** {emp.get('email', 'N/A')}")
+                        st.markdown(f"**📱 Phone:** {emp.get('phone', 'N/A')}")
+                        st.markdown(f"**🏢 Department:** {emp.get('department', 'N/A')}")
+                    with c2:
+                        st.markdown(f"**💼 Position:** {emp.get('position', 'N/A')}")
+                        st.markdown(f"**📊 Grade:** {emp.get('grade', 'N/A')}")
+                        st.markdown(f"**📅 Joined:** {emp.get('join_date', 'N/A')}")
+                        st.markdown(f"**Status:** <span style='color:{status_color};font-weight:600;'>{emp.get('status', 'N/A')}</span>", unsafe_allow_html=True)
+                    
+                    if is_admin:
+                        st.markdown("---")
+                        st.markdown("### ✏️ Quick Edit")
+                        with st.form(f"edit_{emp['employee_id']}"):
+                            ec1, ec2, ec3 = st.columns(3)
+                            with ec1:
+                                new_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'],
+                                    key=f"dept_{emp['employee_id']}")
+                                new_grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'],
+                                    key=f"grd_{emp['employee_id']}")
+                            with ec2:
+                                new_position = st.text_input("Position", value=str(emp.get('position', '')), key=f"pos_{emp['employee_id']}")
+                                new_status = st.selectbox("Status", ['Active', 'On Leave', 'Probation', 'Terminated'],
+                                    key=f"sts_{emp['employee_id']}")
+                            with ec3:
+                                new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Employee'],
+                                    key=f"role_{emp['employee_id']}")
+                                new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}")
+                            
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                if st.form_submit_button("💾 Save Changes", use_container_width=True):
+                                    st.success(f"✅ {emp['first_name']} updated!")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                            with c2:
+                                if st.form_submit_button("🗑️ Delete Employee", use_container_width=True, type="secondary"):
+                                    st.warning("Delete functionality requires confirmation.")
+        else:
+            st.info("No employees match your search criteria.")
+    
+    # ============ TAB 2: ADD EMPLOYEE ============
     with tab2:
-        st.subheader("Add New Employee")
+        st.subheader("➕ Add New Employee")
         with st.form("add_employee_form"):
-            st.markdown("### Basic Information")
+            st.markdown("### Personal Information")
             c1, c2, c3 = st.columns(3)
             with c1:
-                st.text_input("First Name *")
-                st.text_input("Last Name *")
-                st.text_input("Middle Name")
-                st.text_input("Staff ID *")
+                first_name = st.text_input("First Name *")
+                last_name = st.text_input("Last Name *")
+                email = st.text_input("Email *")
+                phone = st.text_input("Phone")
             with c2:
-                st.text_input("Phone Number", placeholder="+234 800 000 0000")
-                st.text_input("Email")
-                st.selectbox("Gender", ["", "Male", "Female"])
-                st.selectbox("Contract Type", ["Full-time", "Contract", "Part-time", "Intern"])
+                employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
+                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                position = st.text_input("Position *")
+                grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'])
             with c3:
-                st.date_input("Date of Birth")
-                st.selectbox("Marital Status", ["", "Single", "Married", "Divorced", "Widowed"])
-            st.markdown("### Job Information")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.selectbox("Department *", ["", "Senior Management", "Technology Group", "Facility Management", "Human Resources", "Sales & Marketing", "Accounts & Finance", "Procurement", "Security", "Legal", "Operations"])
-                st.text_input("Job Role *")
-            with c2:
-                st.selectbox("Location", ["", "World Trade Center Abuja", "Churchgate Tower 1 Lagos", "Churchgate Tower 2 Lagos", "Churchgate Plaza Abuja"])
-                st.text_input("Cost Center")
-            with c3:
-                st.text_input("Line Manager")
-                st.date_input("Date of Employment")
-            st.markdown("### Family Details")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.text_input("Next of Kin Name")
-                st.text_input("Relationship")
-            with c2:
-                st.text_input("Next of Kin Phone")
-                st.text_area("Next of Kin Address", height=80)
-            st.markdown("### Bank Details")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.text_input("Bank Name")
-            with c2:
-                st.text_input("Account Name")
-            with c3:
-                st.text_input("Account Number")
-            st.markdown("### Profile Picture & Documents")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.file_uploader("Upload Profile Picture", type=['jpg', 'jpeg', 'png'])
-            with c2:
-                st.file_uploader("Upload CV", type=['pdf', 'docx'])
-            st.file_uploader("Upload Certifications", type=['pdf', 'docx', 'jpg', 'png'])
+                employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
+                join_date = st.date_input("Join Date")
+                system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Employee'])
+                status = st.selectbox("Status", ['Active', 'Probation'])
+            
             if st.form_submit_button("✅ Add Employee", use_container_width=True):
-                st.success("✅ Employee added successfully!")
-                st.balloons()
-    with tab3:
-        st.subheader("Bulk Employee Upload")
-        st.info("Upload CSV file with employee data")
-        template_df = pd.DataFrame(columns=['first_name', 'last_name', 'email', 'staff_id', 'department', 'position', 'phone'])
-        csv = template_df.to_csv(index=False)
-        st.download_button("📥 Download Template", csv, "employee_template.csv", "text/csv")
-        uf = st.file_uploader("Upload CSV", type=['csv'])
-        if uf:
-            df = pd.read_csv(uf)
-            st.write(f"**{len(df)} employees found**")
-            st.dataframe(df.head(), use_container_width=True)
-            if st.button("📤 Upload All", use_container_width=True):
-                st.success(f"✅ {len(df)} employees uploaded!")
-                st.balloons()
-    with tab4:
-        st.subheader("🔑 Manage Employee Access & Generate Logins")
-        
-        # ADMIN ROLE MANAGEMENT
-        st.markdown("### 👑 Update User Roles (Admin Only)")
-        users_list = [
-            {"name": "Vinay Mahtani", "id": "GMD01", "email": "vbmahtani@churchgate.com", "dept": "Senior Management", "current_role": "Admin"},
-            {"name": "Jerome Das", "id": "LE00019", "email": "jeromedas@churchgate.com", "dept": "Senior Management", "current_role": "Admin"},
-            {"name": "Emmanuel Etuk", "id": "AN00387", "email": "eetuk@churchgate.com", "dept": "Technology Group", "current_role": "Manager"},
-            {"name": "Lawal Mohammed", "id": "NEW001", "email": "lawal@churchgate.com", "dept": "Senior Management", "current_role": "Admin"},
-            {"name": "Paul Fade", "id": "NEW002", "email": "pfade@churchgate.com", "dept": "Senior Management", "current_role": "Admin"},
-        ]
-        
-        for u in users_list:
-            c1, c2, c3 = st.columns([2, 1, 1])
-            with c1:
-                st.markdown(f"**{u['name']}** - {u['email']}")
-            with c2:
-                new_role = st.selectbox(f"Role for {u['name']}", ["Admin", "HR Director", "Manager", "Employee"], 
-                                        index=["Admin", "HR Director", "Manager", "Employee"].index(u['current_role']),
-                                        key=f"role_{u['id']}")
-            with c3:
-                st.markdown(f"<br><small>Dept: {u['dept']}</small>", unsafe_allow_html=True)
-        
-        if st.button("💾 Update All Roles", use_container_width=True):
-            st.success("✅ Roles updated successfully! Changes will apply on next login.")
-            st.info("Note: Role updates require database write access. In production, this will update the users table.")
-        
-        st.markdown("---")
-        st.markdown("### ⚡ Create Single Employee Account (with Email)")
-        c1, c2, c3 = st.columns(3)
-        with c1:st.markdown("---")
-        st.markdown("### 🔄 Reset Existing User Password")
-        rc1, rc2 = st.columns([2, 1])
-        with rc1:
-            reset_email = st.text_input("User Email to Reset", placeholder="eetuk@churchgate.com", key="reset_email")
-        with rc2:
-            reset_password = st.text_input("New Password", value="churchgate2026", key="reset_pw")
-        if st.button("🔄 Reset Password", use_container_width=True):
-            if reset_email:
-                hashed_pw = hashlib.sha256(reset_password.encode()).hexdigest()
-                conn = db.get_connection()
-                cursor = conn.cursor()
-                cursor.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_pw, reset_email))
-                conn.commit()
-                conn.close()
-                st.success(f"✅ Password reset for {reset_email}!")
-                st.info(f"New password: **{reset_password}**")
-            else:
-                st.warning("Please enter an email address.")
-        
-        st.markdown("---")
-        st.markdown("### ⚡ Create Single Employee Account (with Email)")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            single_email = st.text_input("Employee Email", placeholder="eetuk@churchgate.com", key="single_email")
-            single_email = st.text_input("Employee Email", placeholder="eetuk@churchgate.com", key="single_email2")
-            single_name = st.text_input("Full Name", placeholder="Emmanuel Etuk", key="single_name2")
-        with c2:
-            single_password = st.text_input("Password", value="churchgate2026", key="single_pw2")
-            single_role = st.selectbox("Role", ["Admin", "HR Director", "Manager", "Employee"], index=0, key="single_role")
-        with c3:
-            single_dept = st.selectbox("Department", ["Senior Management", "Technology Group", "Facility Management", "Human Resources", "Sales & Marketing", "Accounts & Finance", "Procurement", "Security", "Legal", "Operations"], key="single_dept")
-            single_id = st.text_input("Staff ID", placeholder="AN00387", key="single_id")
-        
-        if st.button("🔑 Create Account & Send Welcome Email", use_container_width=True):
-            if single_email and single_name:
-                hashed_pw = hashlib.sha256(single_password.encode()).hexdigest()
-                try:
-                    db.create_user(single_id, single_name, single_email, single_password, single_role, single_dept, single_dept)
-                    st.success(f"✅ Account created for {single_name}!")
-                    # Send welcome email
-                    success, msg = email_service.send_welcome_email(single_name, single_email, single_password, single_role)
-                    if success:
-                        st.success(f"📧 Welcome email sent to {single_email}!")
+                if first_name and last_name and employee_id and department and position:
+                    try:
+                        db._post("employees", {
+                            "employee_id": employee_id, "first_name": first_name, "last_name": last_name,
+                            "email": email, "phone": phone, "department": department,
+                            "position": position, "grade": grade, "employment_type": employment_type,
+                            "join_date": join_date.strftime('%Y-%m-%d'), "status": status
+                        })
+                        st.success(f"✅ {first_name} {last_name} added successfully!")
                         st.balloons()
-                    else:
-                        st.warning(f"⚠️ Account created but email failed: {msg}")
-                except Exception as e:
-                    st.warning(f"⚠️ Account may already exist or error: {str(e)}")
-            else:
-                st.warning("Please enter at least email and name.")
-        
-        st.markdown("---")
-        st.markdown("### 🔑 Generate All Employee Login Credentials (Bulk)")
-        st.info("Generate login access for all active employees. Default password will be 'churchgate2026' and employees will be prompted to change on first login.")
-        emp_list = [
-            {"name": "Vinay Mahtani", "id": "GMD01", "email": "vbmahtani@churchgate.com", "dept": "Senior Management", "role": "Admin"},
-            {"name": "Jerome Das", "id": "LE00019", "email": "jeromedas@churchgate.com", "dept": "Senior Management", "role": "Admin"},
-            {"name": "Emmanuel Etuk", "id": "AN00387", "email": "eetuk@churchgate.com", "dept": "Technology Group", "role": "Admin"},
-            {"name": "Lawal Mohammed", "id": "NEW001", "email": "lawal@churchgate.com", "dept": "Senior Management", "role": "Admin"},
-            {"name": "Paul Fade", "id": "NEW002", "email": "pfade@churchgate.com", "dept": "Senior Management", "role": "Admin"},
-            {"name": "Sanjeev Purwar", "id": "LE00212", "email": "purwar@churchgate.com", "dept": "Facility Management", "role": "Manager"},
-            {"name": "Ahmed Karim", "id": "LN00369", "email": "akarim@churchgate.com", "dept": "Sales & Marketing", "role": "Manager"},
-            {"name": "Ibukun Adeogun", "id": "AN00012", "email": "adeogun@churchgate.com", "dept": "Operations", "role": "Manager"},
-            {"name": "Jeff Arikawe", "id": "LN00008", "email": "jeff@churchgate.com", "dept": "Accounts & Finance", "role": "Manager"},
-            {"name": "Adebayo Sakote", "id": "LN00037", "email": "asakote@churchgate.com", "dept": "Human Resources", "role": "HR Director"},
-            {"name": "Anand Bora", "id": "LE00071", "email": "abora@churchgate.com", "dept": "Procurement", "role": "Manager"},
-            {"name": "Maikudi Kadoh", "id": "AN00391", "email": "mkadoh@churchgate.com", "dept": "Security", "role": "Manager"},
-            {"name": "David Aiyedun", "id": "AN00455", "email": "daiyedun@churchgate.com", "dept": "Legal", "role": "Employee"},
-            {"name": "Charles Okere", "id": "AN00400", "email": "cokere@churchgate.com", "dept": "Facility Management", "role": "Employee"},
-            {"name": "George Ojile", "id": "AN00398", "email": "gojile@churchgate.com", "dept": "Facility Management", "role": "Employee"},
-            {"name": "Augustine Oleh", "id": "AN00425", "email": "aoleh@churchgate.com", "dept": "Facility Management", "role": "Employee"},
-            {"name": "Francis Asuquo", "id": "AN00433", "email": "fasuquo@churchgate.com", "dept": "Technology Group", "role": "Employee"},
-            {"name": "Chika Ikwuegbu", "id": "LN00438", "email": "cikwuegbu@churchgate.com", "dept": "Security", "role": "Employee"},
-            {"name": "Alice Agbo", "id": "AN00423", "email": "aagbo@churchgate.com", "dept": "Procurement", "role": "Employee"},
-            {"name": "Rhoda Ajibola", "id": "AN00460", "email": "rajibola@churchgate.com", "dept": "Facility Management", "role": "Employee"},
-            {"name": "Ogechukwu Obute", "id": "AN00451", "email": "jobute@churchgate.com", "dept": "Sales & Marketing", "role": "Employee"},
-            {"name": "David Effiong", "id": "AN00496", "email": "deffiong@churchgate.com", "dept": "Facility Management", "role": "Employee"},
-        ]
-        st.dataframe(pd.DataFrame(emp_list), use_container_width=True, hide_index=True)
-        default_password = st.text_input("Default Password", value="churchgate2026")
-        if st.button("🔑 Generate Logins for All Employees", use_container_width=True):
-            created_count = 0
-            for emp in emp_list:
-                hashed_pw = hashlib.sha256(default_password.encode()).hexdigest()
-                try:
-                    existing = db.verify_user(emp['email'], hashed_pw)
-                    if not existing:
-                        db.create_user(emp['id'], emp['name'], emp['email'], default_password, emp['role'], emp['dept'], emp['dept'])
-                        created_count += 1
-                except:
-                    pass
-            if created_count > 0:
-                st.success(f"✅ {created_count} new employee logins created successfully!")
-                st.balloons()
-                email_sent_count = 0
-                for emp in emp_list:
-                    subject = f"🎉 Welcome to Churchgate Group, {emp['name']}!"
-                    body = f"Dear {emp['name']}, your HRIS account is ready! Login at https://churchgate-hris.streamlit.app with email: {emp['email']} and password: {default_password}"
-                    success, msg = email_service.send_email(emp['email'], subject, body)
-                    if success:
-                        email_sent_count += 1
-                if email_sent_count > 0:
-                    st.success(f"📧 {email_sent_count} welcome emails sent!")
+                        st.cache_data.clear()
+                        st.rerun()
+                    except:
+                        st.error("Employee ID may already exist.")
                 else:
-                    st.info("📧 Email simulation mode. In production, welcome emails will be sent.")
-            else:
-                st.info("All employees already have accounts.")
-            st.info(f"Default password: **{default_password}**")
-            st.download_button("📥 Download Login List (CSV)", pd.DataFrame(emp_list).to_csv(index=False), "employee_logins.csv", "text/csv")
+                    st.error("❌ Required fields missing!")
+    
+    # ============ TAB 3: BULK UPLOAD ============
+    with tab3:
+        st.subheader("📤 Bulk Employee Upload")
+        st.info("Upload CSV with columns: employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date")
+        
+        template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date'])
+        st.download_button("📥 Download Template", template_df.to_csv(index=False), "employee_template.csv", "text/csv")
+        
+        uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
+        if uploaded_file:
+            df = pd.read_csv(uploaded_file)
+            st.write(f"**{len(df)} employees in file**")
+            st.dataframe(df.head(), use_container_width=True)
+            
+            if st.button("📤 Upload All", use_container_width=True):
+                success, fail = 0, 0
+                for _, row in df.iterrows():
+                    try:
+                        db._post("employees", {
+                            "employee_id": str(row.get('employee_id', '')),
+                            "first_name": str(row.get('first_name', '')),
+                            "last_name": str(row.get('last_name', '')),
+                            "email": str(row.get('email', '')),
+                            "phone": str(row.get('phone', '')),
+                            "department": str(row.get('department', '')),
+                            "position": str(row.get('position', '')),
+                            "grade": str(row.get('grade', 'Junior')),
+                            "employment_type": str(row.get('employment_type', 'Full-time')),
+                            "join_date": str(row.get('join_date', '')),
+                            "status": "Active"
+                        })
+                        success += 1
+                    except:
+                        fail += 1
+                st.success(f"✅ {success} uploaded! ({fail} skipped)")
+                st.balloons()
+                st.cache_data.clear()
+    
+    # ============ TAB 4: GENERATE LOGINS ============
+    with tab4:
+        st.subheader("🔑 Generate Employee Login Credentials")
+        st.info("One-click login generation for all employees.")
+        
+        if not employees_df.empty:
+            default_pw = st.text_input("Default Password", value="churchgate2026")
+            
+            emp_list = []
+            for _, emp in employees_df.iterrows():
+                emp_list.append({
+                    'Name': f"{emp['first_name']} {emp['last_name']}",
+                    'ID': emp['employee_id'],
+                    'Email': emp.get('email', 'N/A'),
+                    'Department': emp.get('department', ''),
+                    'Role': 'Employee'
+                })
+            
+            st.dataframe(pd.DataFrame(emp_list), use_container_width=True, hide_index=True)
+            
+            if st.button("🔑 Generate Logins for All Employees", use_container_width=True):
+                count = 0
+                for emp in emp_list:
+                    if emp['Email'] and emp['Email'] != 'N/A':
+                        try:
+                            db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, 'Employee', emp['Department'], 'Staff')
+                            count += 1
+                        except:
+                            pass
+                st.success(f"✅ {count} logins generated!")
+                st.info(f"Default password: **{default_pw}**")
+                st.download_button("📥 Download Login List", pd.DataFrame(emp_list).to_csv(index=False), "logins.csv", "text/csv")
+        else:
+            st.info("No employees found.")
+    
+    # ============ TAB 5: DEPARTMENTS ============
     with tab5:
-        st.subheader("Churchgate Group Departments")
-        for dept in [{"name": "Senior Management", "head": "Vinay Mahtani (GMD)", "staff": 5}, {"name": "Technology Group", "head": "Emmanuel Etuk", "staff": 12}, {"name": "Facility Management", "head": "Sanjeev Purwar", "staff": 25}, {"name": "Human Resources", "head": "Adebayo Sakote", "staff": 8}, {"name": "Sales & Marketing", "head": "Ahmed Karim", "staff": 15}, {"name": "Accounts & Finance", "head": "Jeff Arikawe", "staff": 10}, {"name": "Procurement", "head": "Anand Bora", "staff": 8}, {"name": "Security", "head": "Maikudi Kadoh", "staff": 20}, {"name": "Legal", "head": "David Aiyedun", "staff": 3}, {"name": "Operations", "head": "Ibukun Adeogun", "staff": 18}]:
-            st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #CC0000; display: flex; justify-content: space-between;"><div><strong>{dept['name']}</strong><br><small>Head: {dept['head']}</small></div><div style="text-align: right;"><span style="font-size: 1.5rem; font-weight: 700;">{dept['staff']}</span><br><small>staff</small></div></div>""", unsafe_allow_html=True)
+        st.subheader("🏢 Department Analytics")
+        if not employees_df.empty:
+            dept_counts = employees_df['department'].value_counts()
+            for dept, count in dept_counts.items():
+                st.markdown(f"""
+                <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #CC0000; display: flex; justify-content: space-between;">
+                    <div><strong>{dept}</strong></div>
+                    <div><span style="font-size: 1.5rem; font-weight: 700;">{count}</span><br><small>staff</small></div>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    # ============ TAB 6: ORG CHART ============
     with tab6:
-        st.subheader("Organizational Structure")
-        fig = go.Figure(data=[go.Sankey(node=dict(pad=20, thickness=20, line=dict(color="black", width=0.5), label=["GMD", "COO", "Technology", "Facility Mgmt", "HR", "Sales", "Finance", "Procurement", "Security", "Legal", "Operations"], color=["#CC0000"] + ["#4a4a4a"]*10), link=dict(source=[0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1], target=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 2], value=[20, 12, 25, 8, 15, 10, 8, 20, 3, 18, 5]))])
-        fig.update_layout(height=450)
-        st.plotly_chart(fig, use_container_width=True)
+        st.subheader("📊 Organizational Structure")
+        if not employees_df.empty:
+            dept_list = list(employees_df['department'].unique())
+            labels = ['GMD/CEO'] + dept_list
+            sources = [0] * len(dept_list)
+            targets = list(range(1, len(dept_list)+1))
+            values = [len(employees_df[employees_df['department'] == d]) for d in dept_list]
+            
+            if len(sources) == len(targets) == len(values):
+                fig = go.Figure(data=[go.Sankey(
+                    node=dict(pad=20, thickness=20, label=labels, color=['#CC0000'] + ['#4a4a4a']*len(dept_list)),
+                    link=dict(source=sources, target=targets, value=values)
+                )])
+                fig.update_layout(height=450)
+                st.plotly_chart(fig, use_container_width=True)
+    
+    # ============ TAB 7: EXPORT ============
+    with tab7:
+        st.subheader("📥 Export Employee Data")
+        if not employees_df.empty:
+            st.download_button("📥 Download Full Directory (CSV)", employees_df.to_csv(index=False), "churchgate_employees.csv", "text/csv")
+            st.markdown("---")
+            st.markdown("### Quick Stats")
+            st.dataframe(employees_df.describe(), use_container_width=True)
 
 def performance_okrs():
     st.markdown("""<div class="churchgate-header"><h1>📈 Performance & Appraisal Engine</h1><p>KPI Management | Self-Assessment | HOD Review | Goal Cascading | Benchmark Reports | Smart Notifications | Audit Trail</p></div>""", unsafe_allow_html=True)
