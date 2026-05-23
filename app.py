@@ -98,6 +98,56 @@ st.markdown("""
     .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .stImage { display: flex; justify-content: center; }
     .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
+.greeting-header {
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+        padding: 1rem 2rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        border-left: 4px solid #CC0000;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .greeting-header h1 { color: white; font-size: 1.5rem; font-weight: 700; margin: 0; }
+    .greeting-header p { color: #ccc; font-size: 0.85rem; margin: 0.2rem 0 0 0; }
+    
+    .mission-banner {
+        background: #d5d5d5;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+        margin: 1rem 0;
+        border: 2px solid #CC0000;
+    }
+    .mission-banner h2 { color: #CC0000; font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .mission-item { 
+        background: white; 
+        padding: 0.8rem; 
+        border-radius: 6px; 
+        text-align: center; 
+        height: 100%;
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .mission-item h3 { color: #CC0000; font-size: 0.9rem; margin: 0 0 0.3rem 0; }
+    .mission-item p { font-size: 0.75rem; color: #666; margin: 0; line-height: 1.3; }
+    
+    .value-card {
+        background: white;
+        padding: 0.8rem;
+        border-radius: 6px;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        height: 100%;
+        min-height: 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .value-card h4 { color: #CC0000; font-size: 0.85rem; margin: 0 0 0.3rem 0; }
+    .value-card p { font-size: 0.7rem; color: #666; margin: 0; line-height: 1.3; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -476,19 +526,25 @@ def generate_ref(prefix):
 def show_churchgate_mission():
     st.markdown("""
     <div class="mission-banner">
-        <h2 style="font-size: 2.5rem; font-weight: 900; letter-spacing: 2px;">CHURCHGATE GROUP</h2>
-        <div style="display: flex; justify-content: space-around; margin: 1.5rem 0; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 200px; padding: 1rem;">
-                <h3 style="color: #CC0000;">🎯 Our Purpose</h3>
-                <p style="font-size: 0.9rem;">To improve the lives of all those we serve.</p>
+        <h2 style="font-size: 2rem; font-weight: 900; letter-spacing: 2px;">CHURCHGATE GROUP</h2>
+        <div style="display: flex; justify-content: space-around; margin: 1rem 0; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="flex: 1; min-width: 180px;">
+                <div class="mission-item">
+                <h3>🎯 Our Purpose</h3>
+                <p>To improve the lives of all those we serve.</p>
+                </div>
             </div>
-            <div style="flex: 1; min-width: 200px; padding: 1rem;">
-                <h3 style="color: #CC0000;">🔭 Our Vision</h3>
-                <p style="font-size: 0.9rem;">To become the premier property developer in Nigeria, impacting millions, while having fun!</p>
+            <div style="flex: 1; min-width: 180px;">
+                <div class="mission-item">
+                <h3>🔭 Our Vision</h3>
+                <p>To become the premier property developer in Nigeria, impacting millions, while having fun!</p>
+                </div>
             </div>
-            <div style="flex: 1; min-width: 200px; padding: 1rem;">
-                <h3 style="color: #CC0000;">📋 Our Mission</h3>
-                <p style="font-size: 0.9rem;">To provide our customers with innovative and sustainable real estate solutions that enable them to thrive.</p>
+            <div style="flex: 1; min-width: 180px;">
+                <div class="mission-item">
+                <h3>📋 Our Mission</h3>
+                <p>To provide our customers with innovative and sustainable real estate solutions that enable them to thrive.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -498,7 +554,7 @@ def show_churchgate_mission():
     cols = st.columns(5)
     for i, (value, desc) in enumerate(CHURCHGATE_VALUES.items()):
         with cols[i]:
-            st.markdown(f"""<div class="value-card"><h4 style="color: #CC0000;">{value}</h4><p style="font-size: 0.8rem; color: #666;">{desc}</p></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="value-card"><h4>{value}</h4><p>{desc}</p></div>""", unsafe_allow_html=True)
 
 def login_section():
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -577,8 +633,6 @@ def sidebar_navigation():
         return selected
 
 def employee_dashboard():
-    show_churchgate_mission()
-    
     user = st.session_state.user
     user_name = user['name'] if user else 'Staff'
     user_dept = user.get('department', '') if user else ''
@@ -586,19 +640,29 @@ def employee_dashboard():
     user_email = user.get('email', '') if user else ''
     user_id = user.get('employee_id', '') if user else ''
     
-    # Time-based greeting
     hour = datetime.now().hour
     if hour < 12: greeting = "Good Morning"
     elif hour < 17: greeting = "Good Afternoon"
     else: greeting = "Good Evening"
     
-    # ============ WELCOME HEADER ============
+    initials = generate_initials(user_name)
+    
     st.markdown(f"""
-    <div class="churchgate-header animate-fade-in">
-        <h1>👋 {greeting}, {user_name}!</h1>
-        <p>{user_position} • {user_dept} • ID: {user_id}</p>
+    <div class="greeting-header animate-fade-in">
+        <div style="display:flex;align-items:center;gap:1rem;">
+            <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;min-width:60px;">{initials}</div>
+            <div>
+                <h1>👋 {greeting}, {user_name}!</h1>
+                <p>{user_position} • {user_dept} • ID: {user_id}</p>
+            </div>
+        </div>
+        <div style="text-align:right;color:#ccc;font-size:0.85rem;">
+            {datetime.now().strftime('%A, %B %d, %Y')}
+        </div>
     </div>
     """, unsafe_allow_html=True)
+    
+    show_churchgate_mission()
     
     # ============ NEWS TICKER ============
     announcements = [
