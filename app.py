@@ -4211,7 +4211,17 @@ def reports_analytics():
     elif report_type == "💰 Financial Overview":
         st.subheader("💰 Financial Overview")
         
-        metrics = st.session_state.get('portfolio_metrics', {'occupancy': 87, 'revenue': 94, 'rating': 4.2})
+        metrics = st.session_state.get('portfolio_metrics', {
+            'occupancy': 87, 'revenue': 94, 'rating': 4.2,
+            'portfolio_data': {
+                'World Trade Center Abuja': {'occupancy': 87, 'revenue': 94},
+                'Churchgate Tower 1, Lagos': {'occupancy': 92, 'revenue': 98},
+                'Churchgate Tower 2, Lagos': {'occupancy': 85, 'revenue': 88},
+                'Churchgate Plaza, Abuja': {'occupancy': 78, 'revenue': 82},
+                'Warehouses': {'occupancy': 95, 'revenue': 97},
+                'Ocean Terrace': {'occupancy': 90, 'revenue': 91}
+            }
+        })
         
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Revenue", "₦12.5B", "+15%")
