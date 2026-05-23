@@ -2986,7 +2986,6 @@ with tab5:
         if 'exceptional_achievements' not in st.session_state:
             st.session_state.exceptional_achievements = {}
         
-        # Achievement Stats
         my_achievements = st.session_state.exceptional_achievements.get(user_name, [])
         col1, col2, col3 = st.columns(3)
         col1.metric("🏆 My Achievements", len(my_achievements))
@@ -2995,11 +2994,8 @@ with tab5:
         
         st.markdown("---")
         
-        # Achievement Wall
         if my_achievements:
             st.markdown("### 🏆 My Achievement Wall")
-            
-            # Timeline view
             for i, ach in enumerate(sorted(my_achievements, key=lambda x: x.get('date', ''), reverse=True)):
                 cat_icon = ach.get('category', '💡')
                 impact_stars = "⭐" * (3 if ach.get('impact') == 'Organization' else 2 if ach.get('impact') == 'Department' else 1)
@@ -3016,23 +3012,17 @@ with tab5:
                         st.markdown(f"**Outcome:** {ach.get('outcome', '')}")
                         if ach.get('recognized_by'):
                             st.markdown(f"**Recognized by:** 👤 {ach.get('recognized_by')}")
-                        if ach.get('evidence'):
-                            st.markdown(f"📎 **Evidence attached**")
                     with col2:
                         if badge:
                             st.success(badge)
                         st.markdown(f"**Category:** {cat_icon}")
-                        st.markdown(f"**Impact:** {ach.get('impact', 'N/A')}")
                     
-                    # Peer Endorsement
-                    st.markdown("---")
-                    st.markdown("#### 👍 Peer Endorsements")
                     endorsements = ach.get('endorsements', [])
                     if endorsements:
                         for end in endorsements:
                             st.markdown(f"- 👤 **{end.get('name', 'Colleague')}**: {end.get('comment', '')}")
                     else:
-                        st.markdown("*No endorsements yet. Ask colleagues to endorse this achievement!*")
+                        st.markdown("*No endorsements yet.*")
                     
                     if st.button(f"👍 Endorse", key=f"endorse_{i}"):
                         if 'endorsements' not in ach:
@@ -3044,24 +3034,20 @@ with tab5:
             st.info("🎯 No achievements recorded yet. Add your first exceptional achievement below!")
         
         st.markdown("---")
-        
-        # Add Achievement Form
         st.markdown("### ➕ Add New Achievement")
         with st.form("add_achievement"):
             c1, c2 = st.columns(2)
             with c1:
-                ach_title = st.text_input("Achievement Title *", placeholder="e.g., Led crisis response during system outage")
+                ach_title = st.text_input("Achievement Title *")
                 ach_category = st.selectbox("Category", list(categories.keys()))
                 ach_impact = st.selectbox("Impact Level *", ["Individual", "Team", "Department", "Organization"])
                 ach_date = st.date_input("Date of Achievement")
             with c2:
-                ach_description = st.text_area("Description *", placeholder="Describe what you did and why it matters...", height=100)
-                ach_outcome = st.text_area("Outcome / Result *", placeholder="What was the measurable result?", height=100)
-                recognized_by = st.text_input("Recognized By (Optional)", placeholder="e.g., Jerome Das, COO")
+                ach_description = st.text_area("Description *", height=100)
+                ach_outcome = st.text_area("Outcome / Result *", height=100)
+                recognized_by = st.text_input("Recognized By (Optional)")
             
-            # Evidence upload
             evidence_file = st.file_uploader("📎 Attach Evidence (Optional)", type=['pdf', 'docx', 'jpg', 'png'])
-            st.caption(f"Category description: {categories.get(ach_category, '')}")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -3074,19 +3060,13 @@ with tab5:
                     if user_name not in st.session_state.exceptional_achievements:
                         st.session_state.exceptional_achievements[user_name] = []
                     
-                    evidence_name = evidence_file.name if evidence_file else None
-                    
                     st.session_state.exceptional_achievements[user_name].append({
-                        'title': ach_title,
-                        'category': ach_category,
-                        'description': ach_description,
-                        'impact': ach_impact,
-                        'outcome': ach_outcome,
-                        'date': ach_date.strftime('%Y-%m-%d'),
+                        'title': ach_title, 'category': ach_category,
+                        'description': ach_description, 'impact': ach_impact,
+                        'outcome': ach_outcome, 'date': ach_date.strftime('%Y-%m-%d'),
                         'recognized_by': recognized_by,
-                        'evidence': evidence_name,
-                        'include_in_appraisal': include_in_appraisal,
-                        'endorsements': []
+                        'evidence': evidence_file.name if evidence_file else None,
+                        'include_in_appraisal': include_in_appraisal, 'endorsements': []
                     })
                     st.success("✅ Achievement saved! This will be visible during your appraisal.")
                     st.balloons()
