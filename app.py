@@ -4860,17 +4860,21 @@ def my_profile():
         
         uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'])
         if uploaded_pic is not None:
-            st.session_state['profile_pic'] = uploaded_pic
             try:
-                user_id_int = int(user.get('id', 0)) if user.get('id') else 0
-                st.write(f"Debug: User ID = {user_id_int}")
-                image_bytes = uploaded_pic.read()
-                st.write(f"Debug: Image size = {len(image_bytes)} bytes")
+                image_bytes = uploaded_pic.getvalue()
                 import base64
                 b64_str = base64.b64encode(image_bytes).decode()
-                result = db._patch("users", {"profile_picture": b64_str}, {"id": str(user_id_int)})
-                st.write(f"Debug: Patch result = {result}")
-                st.success("✅ Profile picture saved!")
+                
+                # Save to users table
+                user_record = db._get("users", {"email": user_email})
+                if user_record and len(user_record) > 0:
+                    uid = user_record[0].get('id')
+                    db._patch("users", {"profile_picture": b64_str}, {"id": str(uid)})
+                    st.session_state['profile_pic'] = uploaded_pic
+                    st.success("✅ Profile picture saved!")
+                    st.rerun()
+                else:
+                    st.warning("User record not found.")
             except Exception as e:
                 st.warning(f"Error: {str(e)}")
         
