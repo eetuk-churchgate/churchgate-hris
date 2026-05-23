@@ -1033,7 +1033,46 @@ def employee_management():
             st.info("No employees match your search criteria.")
     
     # ============ TAB 2: ADD EMPLOYEE ============
-    department = st.selectbox("Department *", ['Senior Management', 'Technology Group',
+    with tab2:
+        st.subheader("➕ Add New Employee")
+        with st.form("add_employee_form"):
+            st.markdown("### Personal Information")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                first_name = st.text_input("First Name *")
+                last_name = st.text_input("Last Name *")
+                email = st.text_input("Email *")
+                phone = st.text_input("Phone")
+            with c2:
+                employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
+                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                region = st.selectbox("Region *", ['Abuja', 'Lagos'])
+                position = st.text_input("Position *")
+                grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'])
+            with c3:
+                employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
+                join_date = st.date_input("Join Date")
+                system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'])
+                status = st.selectbox("Status", ['Active', 'Probation'])
+            
+            if st.form_submit_button("✅ Add Employee", use_container_width=True):
+                if first_name and last_name and employee_id and department and position:
+                    try:
+                        db._post("employees", {
+                            "employee_id": employee_id, "first_name": first_name, "last_name": last_name,
+                            "email": email, "phone": phone, "department": department,
+                            "region": region,
+                            "position": position, "grade": grade, "employment_type": employment_type,
+                            "join_date": join_date.strftime('%Y-%m-%d'), "status": status
+                        })
+                        st.success(f"✅ {first_name} {last_name} added!")
+                        st.balloons()
+                        st.cache_data.clear()
+                        st.rerun()
+                    except:
+                        st.error("Employee ID may already exist.")
+                else:
+                    st.error("❌ Required fields missing!")
     
     # ============ TAB 3: BULK UPLOAD ============
     with tab3:
