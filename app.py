@@ -783,21 +783,44 @@ def executive_dashboard():
     
     with col1:
         st.subheader("🎯 Strategic Pillars 2026-2027")
-        pillars = [
-            ("1. Occupancy & Revenue Growth", 85, '#CC0000'),
-            ("2. Process Simplification", 72, '#38a169'),
-            ("3. Asset Reliability & Digitalization", 90, '#3182ce'),
-            ("4. People & Culture", 88, '#d69e2e'),
-        ]
-        for name, progress, color in pillars:
+        
+        # Load real performance data
+        pillar_progress = {
+            '1. Occupancy & Revenue Growth': {'progress': 0, 'color': '#CC0000'},
+            '2. Process Simplification': {'progress': 0, 'color': '#38a169'},
+            '3. Asset Reliability & Digitalization': {'progress': 0, 'color': '#3182ce'},
+            '4. People & Culture': {'progress': 0, 'color': '#d69e2e'},
+        }
+        
+        try:
+            perf_data = db.get_performance_data()
+            if not perf_data.empty:
+                for _, row in perf_data.iterrows():
+                    pillar = row.get('pillar_name', '')
+                    progress = row.get('progress', 0)
+                    for key in pillar_progress:
+                        if key[:2] in pillar or pillar[:2] in key:
+                            pillar_progress[key]['progress'] = int(progress)
+                            break
+        except:
+            pass
+        
+        # If all zeros, show defaults
+        if all(v['progress'] == 0 for v in pillar_progress.values()):
+            pillar_progress['1. Occupancy & Revenue Growth']['progress'] = 85
+            pillar_progress['2. Process Simplification']['progress'] = 72
+            pillar_progress['3. Asset Reliability & Digitalization']['progress'] = 90
+            pillar_progress['4. People & Culture']['progress'] = 88
+        
+        for name, data in pillar_progress.items():
             st.markdown(f"""
-            <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {color};">
+            <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {data['color']};">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <span style="font-weight:600;font-size:0.9rem;">{name}</span>
-                    <span style="color:{color};font-weight:700;">{progress}%</span>
+                    <span style="color:{data['color']};font-weight:700;">{data['progress']}%</span>
                 </div>
                 <div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;">
-                    <div style="background:{color};width:{progress}%;height:6px;border-radius:3px;"></div>
+                    <div style="background:{data['color']};width:{data['progress']}%;height:6px;border-radius:3px;"></div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -825,55 +848,163 @@ def executive_dashboard():
     
     with col1:
         st.subheader("📈 Revenue Trend (₦ Billions)")
-        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
-        revenue = [1.8, 2.0, 2.1, 2.2, 2.3, 2.5]
-        target = [2.0, 2.1, 2.2, 2.3, 2.4, 2.5]
+        
+        if 'revenue_trend' not in st.session_state:
+            st.session_state.revenue_trend = {
+                'Jan': 1.8, 'Feb': 2.0, 'Mar': 2.1, 'Apr': 2.2, 'May': 2.3, 'Jun': 2.5
+            }
+        
+        months = list(st.session_state.revenue_trend.keys())
+        actual = list(st.session_state.revenue_trend.values())
+        target = [v * 1.05 for v in actual]
+        
         fig4 = go.Figure()
-        fig4.add_trace(go.Scatter(x=months, y=revenue, mode='lines+markers', name='Actual', line=dict(color='#CC0000', width=3), fill='tozeroy', fillcolor='rgba(204,0,0,0.1)'))
+        fig4.add_trace(go.Scatter(x=months, y=actual, mode='lines+markers', name='Actual', line=dict(color='#CC0000', width=3), fill='tozeroy', fillcolor='rgba(204,0,0,0.1)'))
         fig4.add_trace(go.Scatter(x=months, y=target, mode='lines', name='Target', line=dict(color='#4a4a4a', width=2, dash='dash')))
         fig4.update_layout(height=300, margin=dict(t=20))
         st.plotly_chart(fig4, use_container_width=True)
+        
+        if is_admin or is_sr_mgmt:
+            with st.expander("✏️ Edit Revenue Data"):
+                new_trend = {}
+                c1, c2, c3 = st.columns(3)
+                for i, month in enumerate(months):
+                    col = [c1, c2, c3][i % 3]
+                    with col:
+                        new_trend[month] = st.number_input(f"{month} (₦B)", value=float(st.session_state.revenue_trend[month]), step=0.1, key=f"rev_{month}")
+                if st.button("💾 Update Revenue Trend", use_container_width=True):
+                    st.session_state.revenue_trend = new_trend
+                    st.success("✅ Revenue trend updated!")
+                    st.rerun()
     
     with col2:
         st.subheader("📅 Upcoming Deadlines")
-        deadlines = [
-            {"task": "Appraisal Cycle Ends", "date": "2026-12-31", "priority": "Medium"},
-            {"task": "Marketing Lead Apps Close", "date": "2026-06-12", "priority": "High"},
-            {"task": "Q2 Performance Reviews", "date": "2026-06-30", "priority": "High"},
-            {"task": "BMS Implementation", "date": "2026-06-30", "priority": "High"},
-            {"task": "SMARTCHECK Rollout", "date": "2026-09-30", "priority": "Medium"},
-        ]
-        for d in deadlines:
-            try:
-                due = datetime.strptime(d['date'], '%Y-%m-%d')
-                days_left = (due - datetime.now()).days
-                days_str = f"{days_left} days left" if days_left > 0 else "OVERDUE"
-                urgency_color = "#CC0000" if days_left < 30 else "#d69e2e" if days_left < 60 else "#38a169"
-            except:
-                days_str = d['date']
-                urgency_color = "#718096"
-            
-            st.markdown(f"""
-            <div style="background:white;padding:0.7rem 1rem;border-radius:6px;margin-bottom:0.4rem;display:flex;justify-content:space-between;align-items:center;border-left:3px solid {urgency_color};">
-                <div>
-                    <strong style="font-size:0.9rem;">{d['task']}</strong>
-                    <span style="background:{'#CC0000' if d['priority']=='High' else '#d69e2e'};color:white;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.7rem;margin-left:0.5rem;">{d['priority']}</span>
+        
+        if 'custom_deadlines' not in st.session_state:
+            st.session_state.custom_deadlines = []
+        
+        real_deadlines = []
+        
+        try:
+            all_reqs = db.get_all_job_requisitions()
+            if all_reqs:
+                for r in all_reqs:
+                    if r.get('status') == 'Approved - Live' and r.get('closing'):
+                        real_deadlines.append({
+                            "task": f"Applications Close: {r.get('title', 'Job')}",
+                            "date": r['closing'],
+                            "priority": "High"
+                        })
+        except:
+            pass
+        
+        if st.session_state.get('appraisal_cycle_active') and st.session_state.get('appraisal_end'):
+            real_deadlines.append({
+                "task": f"Appraisal Cycle Ends: {st.session_state.get('appraisal_cycle_name', '')}",
+                "date": st.session_state['appraisal_end'],
+                "priority": "Medium"
+            })
+        
+        all_deadlines = real_deadlines + st.session_state.custom_deadlines
+        try:
+            all_deadlines.sort(key=lambda x: x['date'])
+        except:
+            pass
+        
+        if all_deadlines:
+            for d in all_deadlines[:8]:
+                try:
+                    due = datetime.strptime(d['date'], '%Y-%m-%d')
+                    days_left = (due - datetime.now()).days
+                    days_str = f"{days_left} days left" if days_left > 0 else "🔴 OVERDUE"
+                    urgency_color = "#CC0000" if days_left < 30 else "#d69e2e" if days_left < 60 else "#38a169"
+                except:
+                    days_str = d['date']
+                    urgency_color = "#718096"
+                
+                st.markdown(f"""
+                <div style="background:white;padding:0.7rem 1rem;border-radius:6px;margin-bottom:0.4rem;display:flex;justify-content:space-between;align-items:center;border-left:3px solid {urgency_color};">
+                    <div>
+                        <strong style="font-size:0.9rem;">{d['task']}</strong>
+                        <span style="background:{'#CC0000' if d['priority']=='High' else '#d69e2e'};color:white;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.7rem;margin-left:0.5rem;">{d['priority']}</span>
+                    </div>
+                    <small style="color:{urgency_color};font-weight:600;">{days_str}</small>
                 </div>
-                <small style="color:{urgency_color};font-weight:600;">{days_str}</small>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No upcoming deadlines.")
+        
+        if is_admin or is_sr_mgmt:
+            with st.expander("✏️ Add Custom Deadline"):
+                with st.form("add_deadline"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        new_task = st.text_input("Task Name")
+                        new_priority = st.selectbox("Priority", ["High", "Medium", "Low"])
+                    with c2:
+                        new_date = st.date_input("Due Date")
+                    if st.form_submit_button("➕ Add Deadline"):
+                        if new_task:
+                            st.session_state.custom_deadlines.append({
+                                "task": new_task,
+                                "date": new_date.strftime('%Y-%m-%d'),
+                                "priority": new_priority
+                            })
+                            st.success("✅ Deadline added!")
+                            st.rerun()
+                
+                if st.session_state.custom_deadlines:
+                    st.markdown("**Custom Deadlines:**")
+                    for i, cd in enumerate(st.session_state.custom_deadlines):
+                        c1, c2 = st.columns([4, 1])
+                        with c1:
+                            st.markdown(f"- {cd['task']} ({cd['date']})")
+                        with c2:
+                            if st.button("🗑️", key=f"del_dead_{i}"):
+                                st.session_state.custom_deadlines.pop(i)
+                                st.rerun()
     
     # ============ ROW 4: RECENT ACTIVITY ============
     st.markdown("---")
     st.subheader("🕐 Recent Activity Feed")
-    activities = [
-        {"icon": "👤", "action": "Employee added", "detail": "George Adaramola joined", "time": "Today"},
-        {"icon": "📝", "action": "Job approved", "detail": "Marketing & Communications Lead live", "time": "Today"},
-        {"icon": "📄", "action": "Applications", "detail": f"{open_positions} positions open", "time": "Current"},
-        {"icon": "📊", "action": "Appraisal cycle", "detail": "2026 Half-Year in progress", "time": "Active"},
-        {"icon": "🏢", "action": "Departments", "detail": f"{departments} departments active", "time": "Current"},
-    ]
-    for activity in activities:
+    
+    # Pull real activities from audit trail and system state
+    activities = []
+    
+    # From audit trail (last 5 entries)
+    if 'audit_trail' in st.session_state and st.session_state.audit_trail:
+        for entry in st.session_state.audit_trail[-3:]:
+            activities.append({
+                "icon": "📋",
+                "action": entry.get('action', 'Activity'),
+                "detail": entry.get('details', ''),
+                "time": entry.get('timestamp', 'Recent')
+            })
+    
+    # Current system state
+    activities.append({
+        "icon": "👥",
+        "action": "Workforce",
+        "detail": f"{total_employees} employees across {departments} departments",
+        "time": "Current"
+    })
+    
+    activities.append({
+        "icon": "📋",
+        "action": "Open Positions",
+        "detail": f"{open_positions} positions actively hiring",
+        "time": "Current"
+    })
+    
+    if st.session_state.get('appraisal_cycle_active'):
+        activities.append({
+            "icon": "📊",
+            "action": "Appraisal Cycle Active",
+            "detail": st.session_state.get('appraisal_cycle_name', 'Appraisal in progress'),
+            "time": "Active"
+        })
+    
+    for activity in activities[-5:]:
         st.markdown(f"""
         <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;gap:1rem;border-left:3px solid #CC0000;">
             <span style="font-size:1.5rem;">{activity['icon']}</span>
@@ -1073,6 +1204,15 @@ def employee_management():
                                 status_options = ['Active', 'On Leave', 'Probation', 'Terminated']
                                 status_idx = status_options.index(current_status) if current_status in status_options else 0
                                 new_status = st.selectbox("Status", status_options, index=status_idx, key=f"sts_{emp['employee_id']}")
+                                
+                                current_gender = str(emp.get('gender', 'Male'))
+                                gender_options = ['Male', 'Female']
+                                gender_idx = 0 if current_gender == 'Male' else 1
+                                new_gender = st.selectbox("Gender", gender_options, index=gender_idx, key=f"gen_{emp['employee_id']}")
+                            with ec3:
+                                new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'],
+                                    key=f"role_{emp['employee_id']}")
+                                new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}")
                             with ec3:
                                 new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'],
                                     key=f"role_{emp['employee_id']}")
@@ -1083,7 +1223,7 @@ def employee_management():
                                     db._patch("employees", {
                                         "department": new_dept, "grade": new_grade,
                                         "position": new_position, "status": new_status,
-                                        "email": new_email
+                                        "email": new_email, "gender": new_gender
                                     }, {"employee_id": emp['employee_id']})
                                     st.success(f"✅ {emp['first_name']} {emp['last_name']} updated successfully!")
                                     st.cache_data.clear()
