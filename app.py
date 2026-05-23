@@ -4933,8 +4933,8 @@ def my_profile():
                         st.session_state.user['department'] = new_dept
                         st.success("✅ Profile updated!")
                         st.rerun()
-                    except:
-                        st.error("❌ Update failed.")
+                    except Exception as e:
+                        st.error(f"❌ Update failed: {str(e)}")
         
         with tab2:
             st.markdown("### 🔒 Change Password")
