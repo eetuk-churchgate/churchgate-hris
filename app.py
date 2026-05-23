@@ -1033,44 +1033,7 @@ def employee_management():
             st.info("No employees match your search criteria.")
     
     # ============ TAB 2: ADD EMPLOYEE ============
-    with tab2:
-        st.subheader("➕ Add New Employee")
-        with st.form("add_employee_form"):
-            st.markdown("### Personal Information")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                first_name = st.text_input("First Name *")
-                last_name = st.text_input("Last Name *")
-                email = st.text_input("Email *")
-                phone = st.text_input("Phone")
-            with c2:
-                employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
-                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
-                position = st.text_input("Position *")
-                grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'])
-            with c3:
-                employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
-                join_date = st.date_input("Join Date")
-                system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'])
-                status = st.selectbox("Status", ['Active', 'Probation'])
-            
-            if st.form_submit_button("✅ Add Employee", use_container_width=True):
-                if first_name and last_name and employee_id and department and position:
-                    try:
-                        db._post("employees", {
-                            "employee_id": employee_id, "first_name": first_name, "last_name": last_name,
-                            "email": email, "phone": phone, "department": department,
-                            "position": position, "grade": grade, "employment_type": employment_type,
-                            "join_date": join_date.strftime('%Y-%m-%d'), "status": status
-                        })
-                        st.success(f"✅ {first_name} {last_name} added!")
-                        st.balloons()
-                        st.cache_data.clear()
-                        st.rerun()
-                    except:
-                        st.error("Employee ID may already exist.")
-                else:
-                    st.error("❌ Required fields missing!")
+    department = st.selectbox("Department *", ['Senior Management', 'Technology Group',
     
     # ============ TAB 3: BULK UPLOAD ============
     with tab3:
@@ -1175,9 +1138,9 @@ def employee_management():
     
     # ============ TAB 6: ORG CHART ============
     with tab6:
-        st.subheader("📊 Organizational Structure")
+        st.subheader("📊 Organizational Structure — Churchgate Group")
         
-        # Key Personnel Cards
+        # Key Leadership Cards
         st.markdown("### 🌟 Key Leadership")
         c1, c2, c3, c4 = st.columns(4)
         with c1:
@@ -1186,7 +1149,7 @@ def employee_management():
                 <div style="width:50px;height:50px;border-radius:50%;background:#CC0000;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">VM</div>
                 <strong style="display:block;margin-top:0.5rem;">Vinay Mahtani</strong>
                 <small style="color:#888;">GMD/CEO</small><br>
-                <small style="color:#CC0000;">👥 56 reports</small>
+                <small style="color:#CC0000;">👥 Group-wide</small>
             </div>
             """, unsafe_allow_html=True)
         with c2:
@@ -1195,95 +1158,137 @@ def employee_management():
                 <div style="width:50px;height:50px;border-radius:50%;background:#e53e3e;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">JD</div>
                 <strong style="display:block;margin-top:0.5rem;">Jerome Das</strong>
                 <small style="color:#888;">COO</small><br>
-                <small style="color:#e53e3e;">👥 45 reports</small>
+                <small style="color:#e53e3e;">👥 All Departments</small>
             </div>
             """, unsafe_allow_html=True)
         with c3:
-            st.markdown("""
-            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #805ad5;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                <div style="width:50px;height:50px;border-radius:50%;background:#805ad5;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">PL</div>
-                <strong style="display:block;margin-top:0.5rem;">Partab Lalchandani</strong>
-                <small style="color:#888;">GEA</small><br>
-                <small style="color:#805ad5;">👥 5 reports</small>
-            </div>
-            """, unsafe_allow_html=True)
-        with c4:
             st.markdown("""
             <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #dd6b20;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                 <div style="width:50px;height:50px;border-radius:50%;background:#dd6b20;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">AK</div>
                 <strong style="display:block;margin-top:0.5rem;">Ahmed Karim</strong>
                 <small style="color:#888;">VP Sales</small><br>
-                <small style="color:#dd6b20;">👥 15 reports</small>
+                <small style="color:#dd6b20;">👥 Sales & Marketing</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with c4:
+            st.markdown("""
+            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #805ad5;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <div style="width:50px;height:50px;border-radius:50%;background:#805ad5;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">PL</div>
+                <strong style="display:block;margin-top:0.5rem;">Partab Lalchandani</strong>
+                <small style="color:#888;">GEA</small><br>
+                <small style="color:#805ad5;">👥 Group Advisor</small>
             </div>
             """, unsafe_allow_html=True)
         
         st.markdown("---")
         
-        # Sankey Diagram
-        st.markdown("### 🔗 Reporting Hierarchy Flow")
-        st.info("GMD → COO/GEA → VP Sales/HODs → Sr. Managers → Managers → Team Leads → Team Members")
+        # Main Sankey - Group Level
+        st.markdown("### 🔗 Group Reporting Hierarchy")
+        st.info("GMD → COO (All Depts) / VP Sales (Sales & Mkt) / GEA | Regions: Abuja & Lagos")
         
-        labels = ['GMD', 'COO', 'GEA', 'VP Sales', 'HODs (11)', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members']
-        colors = ['#CC0000', '#e53e3e', '#805ad5', '#dd6b20', '#3182ce', '#38a169', '#d69e2e', '#2b6cb0', '#718096']
-        sources = [0, 0, 1, 1, 3, 3, 4, 4, 5, 5, 6, 6, 2]
-        targets = [1, 2, 3, 4, 5, 5, 6, 6, 7, 7, 8, 8, 5]
-        values  = [1, 1, 1, 11, 15, 5, 20, 5, 25, 5, 30, 5, 3]
+        labels = [
+            'GMD', 'COO', 'VP Sales', 'GEA',
+            'Technology (Abuja)', 'Technology (Lagos)',
+            'Facility Mgmt (Abuja)', 'Facility Mgmt (Lagos)',
+            'Engineering/MEP', 'HR', 'Accounts & Finance',
+            'Sales & Marketing', 'Procurement', 'Security',
+            'Legal', 'Operations',
+            'Sr. Managers', 'Managers', 'Team Leads', 'Team Members'
+        ]
+        
+        colors = [
+            '#CC0000', '#e53e3e', '#dd6b20', '#805ad5',
+            '#3182ce', '#3182ce',
+            '#38a169', '#38a169',
+            '#d53f8c', '#d69e2e', '#805ad5',
+            '#dd6b20', '#2b6cb0', '#718096',
+            '#e53e3e', '#319795',
+            '#38a169', '#d69e2e', '#2b6cb0', '#718096'
+        ]
+        
+        sources = [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3]
+        targets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 11, 15]
+        values  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        
+        # Add chain from each department to team members
+        for i in range(4, 16):
+            sources.append(i)
+            targets.append(16)
+            values.append(1)
+        
+        sources += [16, 16, 17, 17]
+        targets += [17, 18, 18, 19]
+        values += [10, 5, 12, 30]
         
         fig = go.Figure(data=[go.Sankey(
-            node=dict(pad=25, thickness=20, label=labels, color=colors),
+            node=dict(pad=20, thickness=18, label=labels, color=colors),
             link=dict(source=sources, target=targets, value=values,
-                color=['rgba(204,0,0,0.25)', 'rgba(128,90,213,0.25)', 'rgba(221,107,32,0.25)', 'rgba(49,130,206,0.25)',
-                       'rgba(56,161,105,0.25)', 'rgba(56,161,105,0.25)', 'rgba(214,158,46,0.25)', 'rgba(214,158,46,0.25)',
-                       'rgba(43,108,176,0.25)', 'rgba(43,108,176,0.25)', 'rgba(113,128,150,0.25)', 'rgba(113,128,150,0.25)',
-                       'rgba(128,90,213,0.12)'])
+                color=['rgba(204,0,0,0.2)'] * len(sources))
         )])
-        fig.update_layout(height=500)
+        fig.update_layout(height=600)
         st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---")
         
-        # Span of Control + Department Heads
+        # Department Heads by Region
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("### 👥 Span of Control")
-            span_data = pd.DataFrame({
-                'Leader': ['Vinay Mahtani', 'Jerome Das', 'Ahmed Karim', 'Partab Lalchandani', 'Emmanuel Etuk', 'Sanjeev Purwar'],
-                'Role': ['GMD', 'COO', 'VP Sales', 'GEA', 'HOD Tech', 'HOD FM'],
-                'Direct Reports': [4, 11, 5, 3, 12, 8]
+            st.markdown("### 🏢 Abuja Region — Department Heads")
+            abuja_hods = pd.DataFrame({
+                'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'],
+                'HOD': ['Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'Adebayo Sakote', 'Jeff Arikawe', 'Ahmed Karim (VP)', 'Anand Bora', 'Usman Sani', 'David Aiyedun', 'Ibukun Adeogun'],
+                'Team': [12, 20, 8, 6, 8, 12, 6, 15, 3, 10]
             })
-            fig2 = px.bar(span_data, x='Leader', y='Direct Reports', color='Role', text='Direct Reports',
-                         color_discrete_sequence=['#CC0000', '#e53e3e', '#dd6b20', '#805ad5', '#3182ce', '#38a169'])
-            fig2.update_layout(height=350, showlegend=False)
-            fig2.update_traces(textposition='outside')
-            st.plotly_chart(fig2, use_container_width=True)
+            st.dataframe(abuja_hods, use_container_width=True, hide_index=True)
         
         with col2:
-            st.markdown("### 🏢 Department Heads")
-            hod_data = pd.DataFrame({
-                'Department': ['Technology', 'Facility Mgmt', 'HR', 'Finance', 'Sales & Mkt', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'],
-                'Head': ['Emmanuel Etuk', 'Sanjeev Purwar', 'Adebayo Sakote', 'Jeff Arikawe', 'Ahmed Karim', 'Anand Bora', 'Maikudi Kadoh', 'David Aiyedun', 'Ibukun Adeogun', 'TBD'],
-                'Team Size': [12, 25, 8, 10, 15, 8, 20, 3, 18, 5]
+            st.markdown("### 🏢 Lagos Region — Department Heads")
+            lagos_hods = pd.DataFrame({
+                'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'],
+                'HOD': ['Lawal Mohammed', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD'],
+                'Team': ['TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD']
             })
-            st.dataframe(hod_data, use_container_width=True, hide_index=True)
+            st.dataframe(lagos_hods, use_container_width=True, hide_index=True)
+        
+        st.markdown("---")
+        
+        # Span of Control
+        st.markdown("### 👥 Span of Control — Key Leaders")
+        span_data = pd.DataFrame({
+            'Leader': ['Vinay Mahtani', 'Jerome Das', 'Ahmed Karim', 'Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar'],
+            'Role': ['GMD', 'COO', 'VP Sales', 'HOD Tech (Abuja)', 'HOD FM (Abuja)', 'HOD Engr (MEP)'],
+            'Region': ['Group', 'Group', 'Group', 'Abuja', 'Abuja', 'Abuja'],
+            'Direct Reports': [5, 12, 6, 12, 20, 8]
+        })
+        fig2 = px.bar(span_data, x='Leader', y='Direct Reports', color='Region', text='Direct Reports',
+                     color_discrete_sequence=['#CC0000', '#3182ce', '#38a169'])
+        fig2.update_layout(height=350)
+        fig2.update_traces(textposition='outside')
+        st.plotly_chart(fig2, use_container_width=True)
         
         st.markdown("---")
         
         # Reporting Chain Finder
         st.markdown("### 🔍 Find Reporting Chain")
-        chain_search = st.text_input("Enter employee name to see reporting line", placeholder="e.g., Francis Asuquo")
+        chain_search = st.text_input("Enter employee name to see reporting line", placeholder="e.g., Francis Asuquo", key="chain_search")
         if chain_search:
-            st.info(f"📋 **{chain_search}** → Team Lead → Manager → HOD (Emmanuel Etuk) → COO (Jerome Das) → GMD (Vinay Mahtani)")
+            st.info(f"""
+            📋 **{chain_search}** → Team Lead → Manager → HOD (Department Head) → COO (Jerome Das) → GMD (Vinay Mahtani)
+            
+            *For Sales & Marketing: Manager → VP Sales (Ahmed Karim) → GMD (Vinay Mahtani)*
+            """)
         
         st.markdown("---")
         
-        # Reporting Structure Table
-        st.markdown("### 📋 Full Reporting Structure")
+        # Full Reporting Structure
+        st.markdown("### 📋 Complete Reporting Structure")
         structure_data = pd.DataFrame({
-            'Level': [1, 2, 2, 3, 3, 4, 5, 6, 7],
-            'Role': ['GMD/CEO', 'COO', 'GEA', 'VP Sales', 'Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members'],
-            'Reports To': ['Board', 'GMD', 'GMD (dotted to COO)', 'GMD', 'COO', 'HOD / VP Sales', 'Sr. Managers (dotted to HOD)', 'Managers', 'Team Leads'],
-            'Span': ['4 direct, 56 total', '11 HODs', '3 advisors', '5 Sr. Managers', 'Varies by dept', '2-5 Managers', '3-8 Team Leads', '5-15 Members', 'N/A']
+            'Level': [1, 2, 2, 2, 3, 4, 5, 6, 7],
+            'Role': ['GMD/CEO', 'COO (All Depts)', 'VP Sales', 'GEA', 'Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members'],
+            'Reports To': ['Board', 'GMD', 'GMD', 'GMD (dotted to COO)', 'COO / VP Sales', 'HOD', 'Sr. Managers', 'Managers', 'Team Leads'],
+            'Regions': ['Group-wide', 'Abuja & Lagos', 'Abuja & Lagos', 'Group-wide', 'By Region', 'By Department', 'By Department', 'By Department', 'By Department'],
+            'Notes': ['', '11 Departments', 'Sales & Marketing only', 'Advisory', '2 regions', '', 'Dotted line to HOD', '', '']
         })
         st.dataframe(structure_data, use_container_width=True, hide_index=True)
     
