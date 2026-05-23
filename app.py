@@ -578,40 +578,258 @@ def sidebar_navigation():
 
 def employee_dashboard():
     show_churchgate_mission()
+    
     user = st.session_state.user
-    st.markdown(f"""<div class="churchgate-header"><h1>👋 Welcome back, {user['name']}!</h1><p>{user.get('position', 'Employee')} • {user.get('department', 'Department')}</p></div>""", unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
+    user_name = user['name'] if user else 'Staff'
+    user_dept = user.get('department', '') if user else ''
+    user_position = user.get('position', '') if user else ''
+    user_email = user.get('email', '') if user else ''
+    user_id = user.get('employee_id', '') if user else ''
+    
+    # Time-based greeting
+    hour = datetime.now().hour
+    if hour < 12: greeting = "Good Morning"
+    elif hour < 17: greeting = "Good Afternoon"
+    else: greeting = "Good Evening"
+    
+    # ============ WELCOME HEADER ============
+    st.markdown(f"""
+    <div class="churchgate-header animate-fade-in">
+        <h1>👋 {greeting}, {user_name}!</h1>
+        <p>{user_position} • {user_dept} • ID: {user_id}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ============ NEWS TICKER ============
+    announcements = [
+        "📢 Q2 Performance Reviews due by June 30, 2026",
+        "🎓 New training courses available in Learning Hub",
+        "🏢 Churchgate Tower 2 renovation project starting July",
+        "🎉 Employee Appreciation Day coming up - June 15"
+    ]
+    ticker_text = " • ".join(announcements)
+    st.markdown(f"""
+    <div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);color:white;padding:0.6rem 1.5rem;border-radius:8px;margin-bottom:1rem;overflow:hidden;white-space:nowrap;">
+        <marquee behavior="scroll" direction="left" scrollamount="3">{ticker_text}</marquee>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ============ TOP METRICS ROW ============
+    # Real data calculations
+    team_count = 0
+    try:
+        emp_df = db.get_all_employees()
+        if not emp_df.empty:
+            team_count = len(emp_df[emp_df['department'] == user_dept])
+    except:
+        team_count = 0
+    
+    # Performance score from appraisal
+    perf_score = 0
+    try:
+        if 'self_assessments' in st.session_state and user_name in st.session_state.self_assessments:
+            assessment = st.session_state.self_assessments[user_name]
+            if assessment.get('hod_scores'):
+                scores = [s for s in assessment['hod_scores'].values() if isinstance(s, (int, float))]
+                if scores:
+                    perf_score = sum(scores) / len(scores)
+    except:
+        pass
+    
+    # Leave balance (editable)
+    if 'leave_balance' not in st.session_state:
+        st.session_state.leave_balance = 18
+    
+    c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        st.markdown("""<div class="metric-card"><div class="metric-label">Profile Completeness</div><div class="metric-value">80%</div><small><span style="color: #CC0000; text-decoration: underline; cursor: pointer;">Edit Profile →</span></small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📊 Performance</div><div class="metric-value">{perf_score:.0f}%</div><small style="color:#38a169;">Latest appraisal</small></div>""", unsafe_allow_html=True)
     with c2:
-        st.markdown("""<div class="metric-card"><div class="metric-label">Leave Days</div><div class="metric-value">18</div><small style="color: #38a169;">Available</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Team Members</div><div class="metric-value">{team_count}</div><small>{user_dept}</small></div>""", unsafe_allow_html=True)
     with c3:
-        st.markdown("""<div class="metric-card"><div class="metric-label">Performance</div><div class="metric-value">93.3%</div><small style="color: #38a169;">↑ 5%</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏖️ Leave Days</div><div class="metric-value">{st.session_state.leave_balance}</div><small style="color:#38a169;">Remaining</small></div>""", unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">Team Members</div><div class="metric-value">12</div><small>{user.get('department', '')}</small></div>""", unsafe_allow_html=True)
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        st.subheader("📈 Performance Overview")
-        pillars = {"Occupancy & Revenue Growth": 85, "Process Simplification": 72, "Asset Reliability & Digitalization": 90, "People & Culture": 88}
-        for pillar, progress in pillars.items():
-            color = "#38a169" if progress >= 85 else "#d69e2e"
-            st.markdown(f"""<div style="background: white; padding: 0.6rem 1rem; border-radius: 6px; margin-bottom: 0.4rem; display: flex; align-items: center; justify-content: space-between;"><span style="font-weight: 600; font-size: 0.85rem;">{pillar}</span><div style="width: 150px;"><div style="background: #e0e0e0; height: 6px; border-radius: 3px;"><div style="background: {color}; width: {progress}%; height: 6px; border-radius: 3px;"></div></div></div><span style="font-weight: 700; color: {color};">{progress}%</span></div>""", unsafe_allow_html=True)
-    with c2:
-        st.subheader("🎂 Team Birthdays")
-        for b in [{"name": "Chika Ikwuegbu", "date": "May 13", "dept": "Security"}, {"name": "Francis Asuquo", "date": "May 19", "dept": "ELV Systems"}, {"name": "Rhoda Ajibola", "date": "May 25", "dept": "Facility Management"}, {"name": "Alice Agbo", "date": "May 28", "dept": "Procurement"}]:
-            st.markdown(f"""<div style="background: white; padding: 0.5rem; border-radius: 6px; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.5rem;"><span>🎂</span><div><strong style="font-size: 0.8rem;">{b['name']}</strong><br><small>{b['date']} • {b['dept']}</small></div></div>""", unsafe_allow_html=True)
-        st.subheader("🎉 Anniversaries")
-        for a in [{"name": "Augustine Oleh", "years": 5}, {"name": "Charles Okere", "years": 8}, {"name": "Emmanuel Etuk", "years": 7}]:
-            st.markdown(f"""<div style="background: white; padding: 0.5rem; border-radius: 6px; margin-bottom: 0.3rem;">⭐ <strong>{a['name']}</strong> - {a['years']} years</div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🎯 KPIs</div><div class="metric-value">4</div><small>Strategic pillars</small></div>""", unsafe_allow_html=True)
+    with c5:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">4.5</div><small>Peer recognition</small></div>""", unsafe_allow_html=True)
+    
+    # ============ QUICK ACTIONS ============
     st.markdown("---")
-    st.subheader("🎓 Recommended Training")
+    st.markdown("### ⚡ Quick Actions")
+    qc1, qc2, qc3, qc4, qc5 = st.columns(5)
+    with qc1:
+        if st.button("🎯 Set My KPIs", use_container_width=True):
+            st.session_state['navigate_to'] = "📈 Performance & OKRs"
+            st.rerun()
+    with qc2:
+        if st.button("📝 Self-Assessment", use_container_width=True):
+            st.session_state['navigate_to'] = "📈 Performance & OKRs"
+            st.rerun()
+    with qc3:
+        if st.button("👤 Edit Profile", use_container_width=True):
+            st.session_state['navigate_to'] = "👤 My Profile"
+            st.rerun()
+    with qc4:
+        if st.button("🏖️ Request Leave", use_container_width=True):
+            st.success("Leave request feature coming soon!")
+    with qc5:
+        if st.button("📚 Training", use_container_width=True):
+            st.session_state['navigate_to'] = "🎓 Training & Development"
+            st.rerun()
+    
+    # ============ MAIN CONTENT ============
+    st.markdown("---")
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        # KPI Progress
+        st.subheader("🎯 My KPI Progress")
+        try:
+            perf_data = db.get_performance_data(user_dept)
+            if not perf_data.empty:
+                for _, row in perf_data.iterrows():
+                    progress = row.get('progress', 0)
+                    color = "#38a169" if progress >= 85 else "#d69e2e" if progress >= 65 else "#CC0000"
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.7rem 1rem;border-radius:8px;margin-bottom:0.4rem;">
+                        <div style="display:flex;justify-content:space-between;">
+                            <span style="font-weight:600;font-size:0.9rem;">{row.get('pillar_name', 'Pillar')}</span>
+                            <span style="color:{color};font-weight:700;">{int(progress)}%</span>
+                        </div>
+                        <div style="background:#e0e0e0;height:5px;border-radius:3px;margin-top:0.3rem;">
+                            <div style="background:{color};width:{int(progress)}%;height:5px;border-radius:3px;"></div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("Set your KPIs in Performance & OKRs to track progress here.")
+        except:
+            st.info("KPI progress will appear here.")
+        
+        # Recent Activity
+        st.markdown("---")
+        st.subheader("🕐 My Recent Activity")
+        if 'audit_trail' in st.session_state and st.session_state.audit_trail:
+            my_activities = [a for a in st.session_state.audit_trail if a.get('user') == user_name][-3:]
+            if my_activities:
+                for activity in my_activities:
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.6rem 1rem;border-radius:6px;margin-bottom:0.3rem;border-left:3px solid #CC0000;">
+                        <strong>{activity.get('action', '')}</strong><br>
+                        <small style="color:#888;">{activity.get('details', '')} • {activity.get('timestamp', '')}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("Your activity will appear here as you use the system.")
+        else:
+            st.info("Complete your profile and set KPIs to get started!")
+        
+        # Recognition Wall
+        st.markdown("---")
+        st.subheader("🌟 Recognition Wall")
+        st.markdown("""
+        <div style="background:white;padding:1rem;border-radius:8px;text-align:center;border:1px dashed #d69e2e;">
+            <p style="color:#888;">🎉 Recognitions from colleagues will appear here!</p>
+            <small style="color:#d69e2e;">Coming soon: Peer-to-peer recognition</small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        # Profile Card
+        initials = generate_initials(user_name)
+        st.markdown(f"""
+        <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin-bottom:1rem;">
+            <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;color:white;margin:0 auto;">{initials}</div>
+            <h3 style="margin-top:0.8rem;">{user_name}</h3>
+            <p style="color:#666;">{user_position}</p>
+            <p style="color:#888;font-size:0.85rem;">🏢 {user_dept}</p>
+            <p style="color:#888;font-size:0.85rem;">📧 {user_email}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Team Mood
+        st.markdown("---")
+        st.subheader("😊 Team Mood Check")
+        mood_col1, mood_col2, mood_col3 = st.columns(3)
+        with mood_col1:
+            if st.button("😊 Great", use_container_width=True, key="mood_great"):
+                st.success("Thanks for sharing! 😊")
+        with mood_col2:
+            if st.button("😐 Okay", use_container_width=True, key="mood_okay"):
+                st.success("Thanks for sharing! 😐")
+        with mood_col3:
+            if st.button("😤 Stressed", use_container_width=True, key="mood_stressed"):
+                st.success("We hear you. HR is here to help. 😤")
+        
+        # Birthdays This Month
+        st.markdown("---")
+        st.subheader("🎂 Birthdays This Month")
+        birthdays = [
+            {"name": "Chika Ikwuegbu", "date": "May 13"},
+            {"name": "Francis Asuquo", "date": "May 19"},
+            {"name": "Rhoda Ajibola", "date": "May 25"},
+            {"name": "Alice Agbo", "date": "May 28"},
+        ]
+        for b in birthdays:
+            st.markdown(f"🎂 **{b['name']}** — {b['date']}")
+        
+        # Work Anniversaries
+        st.markdown("---")
+        st.subheader("⭐ Work Anniversaries")
+        anniversaries = [
+            {"name": "Augustine Oleh", "years": 4},
+            {"name": "Shem Waziri", "years": 3},
+            {"name": "Charles Okere", "years": 7},
+        ]
+        for a in anniversaries:
+            st.markdown(f"⭐ **{a['name']}** — {a['years']} years")
+        
+        # Upcoming Holidays
+        st.markdown("---")
+        st.subheader("🏖️ Upcoming Holidays")
+        st.markdown("📅 **Democracy Day** — June 12 (18 days)")
+        st.markdown("📅 **Eid al-Adha** — June 17 (23 days)")
+        
+        # Wellness Tip
+        st.markdown("---")
+        st.subheader("💪 Wellness Tip")
+        tips = [
+            "Take a 5-minute stretch break every hour.",
+            "Stay hydrated! Aim for 8 glasses of water today.",
+            "Practice deep breathing for 2 minutes between meetings.",
+            "Step away from your screen for lunch.",
+            "A short walk boosts creativity and energy."
+        ]
+        import random
+        st.info(f"💡 {random.choice(tips)}")
+    
+    # ============ UPCOMING TRAINING ============
+    st.markdown("---")
+    st.subheader("🎓 Recommended Training & Webinars")
     tc1, tc2, tc3 = st.columns(3)
     with tc1:
-        st.markdown("""<div class="metric-card"><h4>🔧 BMS Advanced</h4><p style="font-size: 0.8rem;">Advanced Building Management</p><small style="color: #CC0000;">📅 June 15, 2026</small></div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="metric-card">
+            <h4>🔧 BMS Advanced</h4>
+            <p style="font-size:0.8rem;">Building Management Systems</p>
+            <small style="color:#CC0000;">📅 June 15, 2026</small>
+        </div>
+        """, unsafe_allow_html=True)
     with tc2:
-        st.markdown("""<div class="metric-card"><h4>🤖 AI in FM</h4><p style="font-size: 0.8rem;">Practical AI for Facilities</p><small style="color: #CC0000;">📅 June 20, 2026</small></div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="metric-card">
+            <h4>🤖 AI in Facilities</h4>
+            <p style="font-size:0.8rem;">Practical AI Applications</p>
+            <small style="color:#CC0000;">📅 June 20, 2026</small>
+        </div>
+        """, unsafe_allow_html=True)
     with tc3:
-        st.markdown("""<div class="metric-card"><h4>📊 Data Analytics</h4><p style="font-size: 0.8rem;">Operational Analytics</p><small style="color: #CC0000;">📅 July 5, 2026</small></div>""", unsafe_allow_html=True)
+        st.markdown("""
+        <div class="metric-card">
+            <h4>📊 Data Analytics</h4>
+            <p style="font-size:0.8rem;">Operational Analytics</p>
+            <small style="color:#CC0000;">📅 July 5, 2026</small>
+        </div>
+        """, unsafe_allow_html=True)
 
 def executive_dashboard():
     show_churchgate_mission()
