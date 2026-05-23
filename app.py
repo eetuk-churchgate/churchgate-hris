@@ -2969,7 +2969,7 @@ def performance_okrs():
         elif not is_hod:
             st.info("HOD Review section is for Managers, HODs, Admin, and Senior Management.")
 
-with tab5:
+    with tab5:
         st.subheader("🌟 Exceptional Achievements")
         st.info("Document accomplishments outside your formal KPIs — achievements that had significant impact on customers, colleagues, departments, or the organization. These are reviewed during appraisals.")
         
