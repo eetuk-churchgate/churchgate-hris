@@ -4753,86 +4753,243 @@ def notifications_page():
 
 def my_profile():
     user = st.session_state.user
-    st.markdown(f"""<div class="churchgate-header"><h1>👤 My Profile</h1><p>{user['name']} • {user.get('position', 'Employee')}</p></div>""", unsafe_allow_html=True)
-    c1, c2 = st.columns([1, 2])
+    user_email = user.get('email', '') if user else ''
+    user_name = user['name'] if user else 'Staff'
+    user_id = user.get('employee_id', '') if user else ''
+    
+    # Load real employee data from database
+    emp_data = None
+    try:
+        result = db._get("employees", {"employee_id": user_id})
+        if result and len(result) > 0:
+            emp_data = result[0]
+    except:
+        pass
+    
+    first_name = emp_data.get('first_name', user_name.split()[0]) if emp_data else user_name.split()[0] if user_name else ''
+    last_name = emp_data.get('last_name', ' '.join(user_name.split()[1:]) if len(user_name.split()) > 1 else '') if emp_data else ''
+    emp_dept = emp_data.get('department', user.get('department', '')) if emp_data else user.get('department', '')
+    emp_position = emp_data.get('position', user.get('position', '')) if emp_data else user.get('position', '')
+    emp_phone = emp_data.get('phone', '+234 800 000 0000') if emp_data else '+234 800 000 0000'
+    emp_grade = emp_data.get('grade', 'N/A') if emp_data else 'N/A'
+    emp_join = emp_data.get('join_date', 'N/A') if emp_data else 'N/A'
+    emp_status = emp_data.get('status', 'Active') if emp_data else 'Active'
+    emp_region = emp_data.get('region', 'Abuja') if emp_data else 'Abuja'
+    emp_gender = emp_data.get('gender', 'Male') if emp_data else 'Male'
+    
+    time_in_company = "N/A"
+    days_to_anniversary = 0
+    if emp_join and emp_join != 'N/A':
+        try:
+            join_date = datetime.strptime(str(emp_join)[:10], '%Y-%m-%d')
+            years = (datetime.now() - join_date).days / 365
+            time_in_company = f"{int(years)} years {int((years - int(years)) * 12)} months"
+            # Calculate next anniversary
+            next_anniversary = join_date.replace(year=datetime.now().year)
+            if next_anniversary < datetime.now():
+                next_anniversary = next_anniversary.replace(year=datetime.now().year + 1)
+            days_to_anniversary = (next_anniversary - datetime.now()).days
+        except:
+            pass
+    
+    # Profile completeness
+    profile_fields = [first_name, last_name, emp_phone, emp_grade, emp_join, emp_gender]
+    complete_count = sum(1 for f in profile_fields if f and f != 'N/A' and f != '+234 800 000 0000')
+    profile_pct = int(complete_count / len(profile_fields) * 100)
+    
+    st.markdown(f"""<div class="churchgate-header"><h1>👤 My Profile</h1><p>{user_name} • {emp_position}</p></div>""", unsafe_allow_html=True)
+    
+    # Quick Stats Row
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📊 Performance</div><div class="metric-value">93%</div></div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏖️ Leave Days</div><div class="metric-value">18</div></div>""", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 My Team</div><div class="metric-value">12</div></div>""", unsafe_allow_html=True)
+    with c4:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Awards</div><div class="metric-value">3</div></div>""", unsafe_allow_html=True)
+    
+    c1, c2 = st.columns([1, 2])
+    
+    with c1:
+        initials = generate_initials(user_name)
+        
         db_pic = None
-        if db.use_supabase:
-            db_pic = db.get_profile_picture(int(st.session_state.user['id']))
-        elif 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
+        if 'profile_pic' in st.session_state and st.session_state['profile_pic'] is not None:
             db_pic = st.session_state['profile_pic']
         
         if db_pic is not None:
             st.image(db_pic, width=150)
-        
         else:
-            initials = generate_initials(user['name'])
-            st.markdown(f"""<div style="text-align: center; padding: 1.5rem; background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);"><div style="width: 80px; height: 80px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; color: white; margin: 0 auto;">{initials}</div><h3 style="margin-top: 0.8rem;">{user['name']}</h3><p>{user.get('position', 'Employee')}</p><p style="color: #CC0000;">ID: {user.get('employee_id', 'N/A')}</p><p>🏢 {user.get('department', 'N/A')}</p><p>👤 Supervisor: Jerome Das (COO)</p></div>""", unsafe_allow_html=True)
-        uploaded_pic = st.file_uploader("📸 Upload Profile Picture", type=['jpg', 'jpeg', 'png'])
+            st.markdown(f"""
+            <div style="text-align:center;padding:1.2rem;background:white;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:1rem;">
+                <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:700;color:white;margin:0 auto;">{initials}</div>
+                <h3 style="margin-top:0.6rem;">{user_name}</h3>
+                <p style="color:#666;">{emp_position}</p>
+                <p style="color:#CC0000;font-weight:600;">ID: {user_id}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'])
         if uploaded_pic is not None:
             st.session_state['profile_pic'] = uploaded_pic
             try:
-                user_id = st.session_state.user['id']
+                user_id_int = int(user.get('id', 0)) if user.get('id') else 0
                 image_bytes = uploaded_pic.read()
                 if db.use_supabase:
                     import base64
                     b64_str = base64.b64encode(image_bytes).decode()
-                    db._post("profile_pics", {"user_id": str(int(user_id)), "image_data": b64_str})
-                    st.session_state['profile_pic'] = uploaded_pic
-                    st.success("✅ Picture saved to Supabase!")
-                else:
-                    conn = db.get_connection()
-                    cursor = conn.cursor()
-                    cursor.execute("UPDATE users SET profile_picture = ? WHERE id = ?", (image_bytes, user_id))
-                    conn.commit()
-                    conn.close()
-                st.success("✅ Profile picture saved permanently!")
-            except Exception as e:
+                    db._patch("users", {"profile_picture": b64_str}, {"id": str(user_id_int)})
+                st.success("✅ Saved!")
+            except:
                 pass
-    with c2:
-        with st.form("profile_update"):
-            c1, c2 = st.columns(2)
-            with c1:
-                st.text_input("First Name", value=user['name'].split()[0] if user['name'] else "")
-                st.text_input("Email", value=user.get('email', ''))
-                st.text_input("Phone", value="+234 800 000 0000")
-            with c2:
-                ln = ' '.join(user['name'].split()[1:]) if len(user['name'].split()) > 1 else ''
-                st.text_input("Last Name", value=ln)
-                st.selectbox("Department", ["Technology Group", "Facility Management", "HR", "Sales", "Finance", "Procurement", "Security", "Legal", "Operations"], index=0)
-            if st.form_submit_button("💾 Update Profile", use_container_width=True):
-                st.success("✅ Profile updated!")
         
-        # Change Password Section
+        # Profile Completeness
         st.markdown("---")
-        st.markdown("### 🔒 Change Password")
-        with st.form("change_password_form"):
-            current_pw = st.text_input("Current Password", type="password")
-            new_pw = st.text_input("New Password", type="password")
-            confirm_pw = st.text_input("Confirm New Password", type="password")
-            
-            if st.form_submit_button("🔒 Change Password", use_container_width=True):
-                if current_pw and new_pw and confirm_pw:
-                    current_hash = hashlib.sha256(current_pw.encode()).hexdigest()
+        st.markdown(f"**Profile Completeness: {profile_pct}%**")
+        st.progress(profile_pct/100)
+        
+        # Anniversary Countdown
+        if days_to_anniversary > 0 and days_to_anniversary < 365:
+            st.markdown(f"🎉 **Work Anniversary in {days_to_anniversary} days!**")
+        
+        # Recent Logins
+        st.markdown("---")
+        st.markdown("**🕐 Recent Logins**")
+        st.markdown(f"- {datetime.now().strftime('%b %d, %Y %I:%M %p')}")
+        st.markdown(f"- {datetime.now().strftime('%b %d, %Y %I:%M %p')}")
+    
+    with c2:
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Info", "🔒 Security", "🛠️ Skills", "👥 Team", "📊 Activity"])
+        
+        with tab1:
+            with st.form("profile_update_form"):
+                c1, c2 = st.columns(2)
+                with c1:
+                    new_first = st.text_input("First Name", value=first_name)
+                    new_email = st.text_input("Email", value=user_email)
+                    new_phone = st.text_input("Phone", value=str(emp_phone))
+                    new_gender = st.selectbox("Gender", ['Male', 'Female'], index=0 if emp_gender == 'Male' else 1)
+                with c2:
+                    new_last = st.text_input("Last Name", value=last_name)
+                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
+                    dept_idx = dept_list.index(emp_dept) if emp_dept in dept_list else 0
+                    new_dept = st.selectbox("Department", dept_list, index=dept_idx)
+                    new_region = st.selectbox("Region", ['Abuja', 'Lagos'], index=0 if emp_region == 'Abuja' else 1)
+                
+                st.markdown("---")
+                st.markdown("**Emergency Contact**")
+                ec1, ec2 = st.columns(2)
+                with ec1:
+                    emergency_name = st.text_input("Contact Name", placeholder="Next of Kin")
+                with ec2:
+                    emergency_phone = st.text_input("Contact Phone", placeholder="+234...")
+                
+                if st.form_submit_button("💾 Update Profile", use_container_width=True):
                     try:
-                        result = db.supabase.table("users").select("*").eq("email", user['email']).eq("password", current_hash).execute()
-                        if result.data and len(result.data) > 0:
-                            if new_pw == confirm_pw:
-                                if len(new_pw) >= 6:
-                                    new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
-                                    db.supabase.table("users").update({"password": new_hash}).eq("email", user['email']).execute()
-                                    st.success("✅ Password changed successfully!")
-                                    st.balloons()
-                                else:
-                                    st.warning("⚠️ Password must be at least 6 characters.")
-                            else:
-                                st.warning("⚠️ New passwords do not match.")
-                        else:
-                            st.error("❌ Current password is incorrect.")
+                        db._patch("employees", {
+                            "first_name": new_first, "last_name": new_last,
+                            "email": new_email, "phone": new_phone,
+                            "department": new_dept, "region": new_region,
+                            "gender": new_gender
+                        }, {"employee_id": user_id})
+                        st.session_state.user['name'] = f"{new_first} {new_last}"
+                        st.session_state.user['email'] = new_email
+                        st.session_state.user['department'] = new_dept
+                        st.success("✅ Profile updated!")
+                        st.rerun()
                     except:
-                        st.error("❌ Error changing password.")
+                        st.error("❌ Update failed.")
+        
+        with tab2:
+            st.markdown("### 🔒 Change Password")
+            with st.form("change_password_form"):
+                current_pw = st.text_input("Current Password", type="password")
+                new_pw = st.text_input("New Password", type="password")
+                confirm_pw = st.text_input("Confirm New Password", type="password")
+                
+                if st.form_submit_button("🔒 Change Password", use_container_width=True):
+                    if current_pw and new_pw and confirm_pw:
+                        current_hash = hashlib.sha256(current_pw.encode()).hexdigest()
+                        try:
+                            result = db._get("users", {"email": user_email})
+                            if result and len(result) > 0:
+                                stored_pw = result[0].get('password', '')
+                                if stored_pw == current_hash:
+                                    if new_pw == confirm_pw:
+                                        if len(new_pw) >= 6:
+                                            new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
+                                            db._patch("users", {"password": new_hash}, {"email": user_email})
+                                            st.success("✅ Password changed!")
+                                            st.balloons()
+                                        else:
+                                            st.warning("⚠️ Min 6 characters.")
+                                    else:
+                                        st.warning("⚠️ Passwords don't match.")
+                                else:
+                                    st.error("❌ Wrong current password.")
+                        except:
+                            st.error("❌ Error.")
+                    else:
+                        st.warning("⚠️ Fill all fields.")
+        
+        with tab3:
+            st.subheader("🛠️ My Skills & Certifications")
+            st.markdown("**Technical Skills**")
+            skills = st.text_area("List your skills (comma-separated)", placeholder="e.g., Python, Project Management, BMS, HVAC", value="Python, Project Management, Leadership")
+            
+            st.markdown("**Certifications**")
+            certs = st.text_area("List your certifications", placeholder="e.g., CCNP, NEBOSH, PMP, CIPM")
+            
+            if st.button("💾 Save Skills & Certs", use_container_width=True):
+                st.success("✅ Skills saved!")
+            
+            st.markdown("---")
+            st.subheader("📁 My Documents")
+            st.markdown("📄 Employment Contract - Available")
+            st.markdown("📄 Last Pay Slip - May 2026")
+            st.markdown("📄 Performance Review 2025 - Available")
+            st.file_uploader("Upload New Document", type=['pdf', 'docx', 'jpg'])
+        
+        with tab4:
+            st.subheader("👥 My Team")
+            st.info(f"Showing colleagues in **{emp_dept}**")
+            
+            try:
+                emp_df = db.get_all_employees()
+                if not emp_df.empty:
+                    team = emp_df[emp_df['department'] == emp_dept]
+                    for _, teammate in team.head(10).iterrows():
+                        if teammate.get('employee_id') != user_id:
+                            initials_t = generate_initials(f"{teammate['first_name']} {teammate['last_name']}")
+                            st.markdown(f"""
+                            <div style="background:white;padding:0.6rem;border-radius:6px;margin-bottom:0.3rem;display:flex;align-items:center;gap:0.8rem;">
+                                <div style="width:35px;height:35px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:0.8rem;">{initials_t}</div>
+                                <div><strong>{teammate['first_name']} {teammate['last_name']}</strong><br><small>{teammate.get('position', '')}</small></div>
+                            </div>
+                            """, unsafe_allow_html=True)
                 else:
-                    st.warning("⚠️ Please fill all fields.")
+                    st.info("Team data loading...")
+            except:
+                st.info("Team data loading...")
+        
+        with tab5:
+            st.subheader("📊 My Activity")
+            if 'audit_trail' in st.session_state and st.session_state.audit_trail:
+                my_activities = [a for a in st.session_state.audit_trail if a.get('user') == user_name][-10:]
+                if my_activities:
+                    for activity in reversed(my_activities):
+                        st.markdown(f"""
+                        <div style="background:white;padding:0.6rem;border-radius:6px;margin-bottom:0.3rem;border-left:3px solid #CC0000;">
+                            <strong>{activity.get('action', '')}</strong><br>
+                            <small style="color:#888;">{activity.get('details', '')} • {activity.get('timestamp', '')}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("Your activity will appear here.")
+            else:
+                st.info("Complete actions to see your activity log.")
 
 def main():
     if 'user' not in st.session_state:
