@@ -4432,16 +4432,44 @@ def chat_communications():
                 ask = st.form_submit_button("🤖 Ask", use_container_width=True)
             if ask and bot_question:
                 responses = {
-                    'leave': "To apply for leave, go to your Employee Dashboard and click 'Request Leave'. Your current balance is 18 days. You can also check your leave history and upcoming approved leaves there. Would you like to know about specific leave types?",
-                    'payroll': "Payroll is processed on the 25th of each month. For any payroll discrepancies, contact Accounts & Finance. Would you like to see your pay history?",
-                    'training': "Check the Training & Development section for available courses. Currently we have BMS Advanced Integration, AI in Facility Management, Leadership Excellence, and Data Analytics for Operations. New webinars are added weekly. Which area interests you?",
-                    'policy': "HR policies are available in the Employee Handbook. You can find policies on leave, code of conduct, benefits, and more. Is there a specific policy you'd like to know about?",
-                    'benefits': "Churchgate Group offers health insurance (HMO), pension contributions, annual leave (20 days), and performance bonuses. Would you like details on any specific benefit?",
-                    'performance': "Your performance reviews are conducted twice yearly. Your current score is 93.3%. You can view your detailed performance breakdown in the Performance & OKRs section. Would you like tips on improving your score?",
-                    'promotion': "Promotions are based on performance score (40%), leadership competency (25%), strategic impact (20%), and readiness assessment (15%). Your current eligibility can be viewed in the Promotions section. Would you like to know more?",
-                    'birthday': "You can view team birthdays on your Employee Dashboard. Upcoming birthdays this month include Chika Ikwuegbu (May 13), Francis Asuquo (May 19), Rhoda Ajibola (May 25), and Alice Agbo (May 28).",
-                    'help': "I can help with: Leave, Payroll, Training, Policies, Benefits, Performance, Promotions, Birthdays, and general HR questions. What would you like to know?",
-                }
+                'leave': "🏖️ **How to Apply for Leave:**\n\n1. Go to your 🏠 Employee Dashboard\n2. View your leave balance (currently 18 days)\n3. Click '🏖️ Request Leave' under Quick Actions\n4. Select leave type and dates\n5. Submit for manager approval\n\nYour leave balance refreshes annually. Sick leave and annual leave are tracked separately.",
+                
+                'payroll': "💰 **Payroll Information:**\n\n- Payroll is processed on the 25th of each month\n- Pay stubs available in 👤 My Profile → Documents\n- For salary discrepancies, contact Accounts & Finance (Jeff Arikawe)\n- Tax deductions follow Nigerian PAYE regulations\n- Pension contributions are remitted to your PFA",
+                
+                'training': "🎓 **Training & Development:**\n\nAvailable courses:\n- 🔧 BMS Advanced Integration (June 15)\n- 🤖 AI in Facility Management (June 20)\n- 📊 Data Analytics for Operations (July 5)\n- 👔 Leadership Excellence Program\n\nTo enroll:\n1. Go to 🎓 Training & Development\n2. Browse courses by category\n3. Click 'Enroll'\n4. Complete pre-work before the session",
+                
+                'policy': "📋 **Key Company Policies:**\n\n- Code of Conduct: Available in Employee Handbook\n- Dress Code: Business casual (Mon-Thu), Smart casual (Fri)\n- Work Hours: 8:00 AM - 5:00 PM WAT\n- Remote Work: By manager approval only\n- Data Protection: NDPA 2023 compliant\n\nFull policy documents in 👤 My Profile → Documents",
+                
+                'benefits': "🎁 **Employee Benefits:**\n\n- 🏥 Comprehensive HMO coverage\n- 💰 Contributory Pension Scheme\n- 🏖️ 20 days annual leave\n- 📚 Training & certification support\n- 🎉 Performance bonuses\n- 🚗 Transport allowance (select roles)\n\nContact HR for detailed benefits breakdown.",
+                
+                'performance': "📈 **Performance Management:**\n\nYour performance is measured across 4 Strategic Pillars:\n1. Occupancy & Revenue Growth (40%)\n2. Process Simplification (20%)\n3. Asset Reliability & Digitalization (25%)\n4. People & Culture (15%)\n\nSet your KPIs in 📈 Performance & OKRs → ✏️ My KPIs. Self-assess during appraisal cycles.",
+                
+                'promotion': "🚀 **Promotions & Career Growth:**\n\nA-Players are evaluated on:\n- Performance Score (40%)\n- Leadership Competency (25%)\n- Strategic Impact (20%)\n- Readiness Assessment (15%)\n\nHODs nominate A-Players. 360-degree reviews follow. Scores above 85% qualify for immediate promotion.",
+                
+                'birthday': "🎂 **Team Birthdays This Month:**\n\n- Chika Ikwuegbu (May 13)\n- Francis Asuquo (May 19)\n- Rhoda Ajibola (May 25)\n- Alice Agbo (May 28)\n\nView all birthdays on your 🏠 Employee Dashboard.",
+                
+                'help': "🤖 **I can help with:**\n\n• 🏖️ Leave & Time Off\n• 💰 Payroll & Benefits\n• 📈 Performance & KPIs\n• 🚀 Promotions\n• 🎓 Training & Courses\n• 👤 Profile & Password\n• 💼 Recruitment\n• 📋 Company Policies\n• 🏢 Departments & Org Structure\n• 🎂 Birthdays & Events\n\nJust ask! Example: 'How do I set my KPIs?'",
+                
+                'kpi': "📊 **How to Set Up Your KPIs:**\n\n1. Go to 📈 Performance & OKRs\n2. Click '✏️ My KPIs' tab\n3. Select a Strategic Pillar (aligned to corporate strategy)\n4. Enter KPI Title (be specific and measurable)\n5. Set Target Value and Weight (%)\n6. Add deadline and current progress\n7. Write description/key results\n8. Click '💾 Save & Add Another' or '✅ Submit KPI'\n\n💡 **Pro Tips:**\n- Align each KPI to one of the 4 Corporate Strategic Pillars\n- Make targets SMART (Specific, Measurable, Achievable, Relevant, Time-bound)\n- Set realistic weights that sum to 100%\n- Your KPIs will be reviewed during half-yearly appraisals",
+                
+                'achievement': "🌟 **Exceptional Achievements:**\n\nDocument accomplishments OUTSIDE your formal KPIs in the '🌟 Exceptional Achievements' tab under 📈 Performance & OKRs.\n\n**What qualifies:**\n- 💡 Innovation that improved processes\n- 👑 Leadership during crisis\n- 😊 Customer impact beyond expectations\n- 💰 Cost savings initiatives\n- 🚨 Crisis management\n- 🤝 Cross-functional collaboration\n\n**How to add:**\n1. Go to 📈 Performance & OKRs → 🌟 Exceptional Achievements\n2. Click '➕ Add New Achievement'\n3. Fill title, category, impact level, description, outcome\n4. Attach evidence if available\n5. Save!\n\nAchievements are reviewed during appraisals and can boost your overall score.",
+                
+                'appraisal': "📝 **Appraisal Process:**\n\nThe appraisal cycle has 4 stages:\n\n**1. Self-Assessment:** Rate yourself 0-100% on each KPI with justifications\n**2. HOD Review:** Your HOD reviews scores side-by-side with yours\n**3. Acceptance:** You accept or request re-review\n**4. Final:** If disputed, Sr. Management makes final decision\n\nAppraisals are half-yearly. Admin activates the cycle. You'll receive notifications when it opens.",
+                
+                'profile': "👤 **How to Update Your Profile:**\n\n1. Go to 👤 My Profile\n2. Click '📋 Info' tab\n3. Update your details (name, phone, department, region)\n4. Click '💾 Update Profile'\n\n**Upload Profile Picture:**\n1. Go to 👤 My Profile\n2. Click '📸 Upload Photo'\n3. Select your image (JPG/PNG)\n4. Picture saves automatically\n\nYour profile picture appears on the sidebar and greeting header.",
+                
+                'password': "🔒 **Password Management:**\n\n**Change Password:**\n1. Go to 👤 My Profile → 🔒 Security tab\n2. Enter current password\n3. Enter new password (min 6 characters)\n4. Confirm and save\n\n**Forgot Password:**\n1. On login page, click '🔑 Forgot Password?'\n2. Enter your corporate email\n3. You'll receive a 6-digit reset code\n4. Enter code + new password\n5. Login with new password",
+                
+                'recruitment': "💼 **Recruitment Process:**\n\n**Submit Job Requisition:**\n1. Go to 💼 Recruitment Hub → 📋 Job Requisition\n2. Fill job details, JD, screening questions\n3. Submit for approval (LM → Admin → COO)\n4. Once approved, job goes LIVE on Careers Page\n\n**AI Screening:**\n- Upload CVs to 🤖 AI Recruitment Agent\n- AI auto-scores and tiers candidates\n- View deep analysis with skills gap, interview questions, culture fit",
+                
+                'onboarding': "🎯 **New Employee Onboarding:**\n\nWelcome to Churchgate Group! Here's your checklist:\n\n📧 Offer Letter - Signed and returned\n✅ Document Collection - ID, certificates, bank details\n💻 IT Setup - Email, laptop, system access\n🏢 Workspace - Desk/office assigned\n👤 Buddy - Your onboarding buddy assigned\n📅 Orientation - HR orientation scheduled\n📚 Training - Enrolled in required courses\n🔑 Access Cards - Building and parking access\n🎉 First Day - Welcome to the team!\n\nTrack your progress in 💼 Recruitment Hub → 🎯 Onboarding.",
+                
+                'department': "🏢 **Department Information:**\n\nChurchgate Group has 10 departments:\n• Senior Management\n• Technology Group\n• Facility Management\n• Human Resources\n• Accounts & Finance\n• Sales & Marketing\n• Procurement\n• Security\n• Legal\n• Operations\n\nEach department operates across Abuja and Lagos regions. HODs report to the COO.",
+                
+                'orgchart': "📊 **Organizational Structure:**\n\nGMD/CEO (Vinay Mahtani)\n├── COO (Jerome Das) - All Departments\n├── GEA (Partab Lalchandani) - Advisory\n└── VP Sales (Ahmed Karim) - Sales & Marketing\n\nHODs → Sr. Managers → Managers → Team Leads → Team Members\n\nView the full org chart in 👥 Employee Management → 📊 Org Chart.",
+                
+                'default': "🤖 **I can help with many topics!** Try asking about:\n\n• 'How do I set my KPIs?'\n• 'How do I apply for leave?'\n• 'How does the appraisal process work?'\n• 'How do I change my password?'\n• 'What training courses are available?'\n• 'How do I submit a job requisition?'\n• 'What are the company benefits?'\n\nJust type your question naturally!",
+            }
                 response = "I can help with leave, payroll, training, policies, benefits, performance, promotions, and more. What would you like to know?"
                 for key, val in responses.items():
                     if key in bot_question.lower():
