@@ -4835,31 +4835,16 @@ def my_profile():
                     st.warning("⚠️ Please fill all fields.")
 
 def main():
-    # Check query params for persisted login
-    query_params = st.query_params
-    if 'logged_in' in query_params and query_params['logged_in'] == 'true':
-        if 'user' not in st.session_state or st.session_state.user is None:
-            # Try to restore from query param
-            if 'user_email' in query_params:
-                email = query_params['user_email']
-                # Quick re-auth without password (session token approach)
-                try:
-                    result = db.supabase.table("users").select("*").eq("email", email).execute()
-                    if result.data and len(result.data) > 0:
-                        st.session_state.user = result.data[0]
-                except:
-                    pass
+    if 'user' not in st.session_state:
+        st.session_state.user = None
     
-    if 'user' not in st.session_state or st.session_state.user is None:
+    if st.session_state.user is None:
         login_section()
     else:
-        # Set query params to persist login
-        st.query_params['logged_in'] = 'true'
-        st.query_params['user_email'] = st.session_state.user.get('email', '')
-        
         page = sidebar_navigation()
         if 'navigate_to' in st.session_state:
             page = st.session_state.pop('navigate_to')
+        
         page_routes = {
             "🏠 Employee Dashboard": employee_dashboard,
             "📊 Executive Dashboard": executive_dashboard,
