@@ -1645,13 +1645,15 @@ def employee_management():
                                 new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'],
                                     key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}_{st.session_state.dir_page}")
+                                new_leave = st.number_input("Leave Days", value=int(emp.get('leave_balance', 20) or 20), min_value=0, max_value=365, key=f"leave_{emp['employee_id']}_{st.session_state.dir_page}")
                             
                             if st.form_submit_button("💾 Save Changes", use_container_width=True):
                                 try:
                                     db._patch("employees", {
                                         "department": new_dept, "grade": new_grade,
                                         "position": new_position, "status": new_status,
-                                        "email": new_email, "gender": new_gender
+                                        "email": new_email, "gender": new_gender,
+                                        "leave_balance": new_leave
                                     }, {"employee_id": emp['employee_id']})
                                     st.success(f"✅ {emp['first_name']} {emp['last_name']} updated successfully!")
                                     st.cache_data.clear()
@@ -4934,6 +4936,7 @@ def my_profile():
     emp_phone = emp_data.get('phone', '+234 800 000 0000') if emp_data else '+234 800 000 0000'
     emp_grade = emp_data.get('grade', 'N/A') if emp_data else 'N/A'
     emp_join = emp_data.get('join_date', 'N/A') if emp_data else 'N/A'
+    emp_leave = int(emp_data.get('leave_balance', 20)) if emp_data else 20
     emp_status = emp_data.get('status', 'Active') if emp_data else 'Active'
     emp_region = emp_data.get('region', 'Abuja') if emp_data else 'Abuja'
     emp_gender = emp_data.get('gender', 'Male') if emp_data else 'Male'
@@ -4981,7 +4984,7 @@ def my_profile():
     except:
         pass
     
-    leave_balance = st.session_state.get('leave_balance', 18)
+    leave_balance = emp_leave
     achievements_count = len(st.session_state.get('exceptional_achievements', {}).get(user_name, []))
     
     c1, c2, c3, c4 = st.columns(4)
