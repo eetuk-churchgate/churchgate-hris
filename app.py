@@ -4961,15 +4961,38 @@ def my_profile():
     st.markdown(f"""<div class="churchgate-header"><h1>👤 My Profile</h1><p>{user_name} • {emp_position}</p></div>""", unsafe_allow_html=True)
     
     # Quick Stats Row
+    # Dynamic stats
+    perf_score = 0
+    try:
+        if 'self_assessments' in st.session_state and user_name in st.session_state.self_assessments:
+            assessment = st.session_state.self_assessments[user_name]
+            if assessment.get('hod_scores'):
+                scores = [s for s in assessment['hod_scores'].values() if isinstance(s, (int, float))]
+                if scores:
+                    perf_score = sum(scores) / len(scores)
+    except:
+        pass
+    
+    team_count = 0
+    try:
+        emp_df = db.get_all_employees()
+        if not emp_df.empty:
+            team_count = len(emp_df[emp_df['department'] == emp_dept])
+    except:
+        pass
+    
+    leave_balance = st.session_state.get('leave_balance', 18)
+    achievements_count = len(st.session_state.get('exceptional_achievements', {}).get(user_name, []))
+    
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">📊 Performance</div><div class="metric-value">93%</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📊 Performance</div><div class="metric-value">{perf_score:.0f}%</div></div>""", unsafe_allow_html=True)
     with c2:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏖️ Leave Days</div><div class="metric-value">18</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏖️ Leave Days</div><div class="metric-value">{leave_balance}</div></div>""", unsafe_allow_html=True)
     with c3:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 My Team</div><div class="metric-value">12</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 My Team</div><div class="metric-value">{team_count}</div></div>""", unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Awards</div><div class="metric-value">3</div></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏆 Achievements</div><div class="metric-value">{achievements_count}</div></div>""", unsafe_allow_html=True)
     
     if 'pic_processed' not in st.session_state:
         st.session_state.pic_processed = False
