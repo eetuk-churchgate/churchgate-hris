@@ -765,7 +765,9 @@ def employee_dashboard():
     except:
         pass
     
-    hour = datetime.now().hour
+    from datetime import timezone, timedelta
+    wat = timezone(timedelta(hours=1))
+    hour = datetime.now(wat).hour
     if hour < 12: greeting = "Good Morning"
     elif hour < 17: greeting = "Good Afternoon"
     else: greeting = "Good Evening"
