@@ -5028,9 +5028,7 @@ def my_profile():
         st.markdown(f"- {datetime.now().strftime('%b %d, %Y %I:%M %p')}")
     
     with c2:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "🌟 Exceptional Achievements", "📊 Dashboard"
-    ])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Info", "🔒 Security", "🛠️ Skills", "👥 Team", "📊 Activity"])
         
         with tab1:
             with st.form("profile_update_form"):
