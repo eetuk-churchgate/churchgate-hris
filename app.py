@@ -4506,27 +4506,249 @@ def chat_communications():
                 st.success("✅ Preferences saved!")
 
 def training_development():
-    st.markdown("""<div class="churchgate-header"><h1>🎓 Training & Development</h1><p>Learning Management | Webinars | Professional Development</p></div>""", unsafe_allow_html=True)
-    tab1, tab2, tab3 = st.tabs(["📚 Courses", "🌐 Webinars", "📋 Calendar"])
+    st.markdown("""<div class="churchgate-header"><h1>🎓 Training & Development Hub</h1><p>AI-Powered Learning | Live Webinars | Certifications | Skills Gap Analyzer | Mentorship | Video Library | Gamification</p></div>""", unsafe_allow_html=True)
+    
+    user_role = st.session_state.user['role'] if st.session_state.user else 'Team Member'
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    
+    # Learning streak
+    if 'learning_streak' not in st.session_state:
+        st.session_state.learning_streak = 5
+    
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+        "📚 Courses", "🌐 Webinars", "🎯 Learning Paths", "🏅 Certifications", 
+        "🤝 Mentorship", "📊 Leaderboard", "📅 Calendar", "🎬 Videos & Podcasts",
+        "📝 Requests", "📖 Resources"
+    ])
+    
+    # ============ TAB 1: COURSES ============
     with tab1:
-        st.subheader("My Learning Path")
-        for course in [{"name": "BMS Advanced Integration", "progress": 75, "deadline": "2026-07-15"}, {"name": "AI in Facility Management", "progress": 40, "deadline": "2026-08-30"}, {"name": "Leadership Excellence", "progress": 90, "deadline": "2026-06-15"}, {"name": "Data Analytics for Operations", "progress": 60, "deadline": "2026-09-01"}]:
-            color = "#38a169" if course['progress'] >= 80 else "#d69e2e"
-            st.markdown(f"""<div style="background: white; padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem;"><div style="display: flex; justify-content: space-between;"><strong>{course['name']}</strong><span>{course['progress']}%</span></div><div style="background: #e0e0e0; height: 5px; border-radius: 3px; margin: 0.4rem 0;"><div style="background: {color}; width: {course['progress']}%; height: 5px; border-radius: 3px;"></div></div><small>Deadline: {course['deadline']}</small></div>""", unsafe_allow_html=True)
+        st.subheader("📚 AI-Powered Course Catalog")
+        
+        # AI Recommendation banner
+        st.info(f"🤖 **AI Recommendation:** Based on your role in {user_dept}, we recommend: **BMS Advanced Integration** and **AI in Facility Management**.")
+        
+        # Learning Streak
+        st.markdown(f"🔥 **Learning Streak:** {st.session_state.learning_streak} days! Keep going!")
+        
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            course_filter = st.selectbox("Category", ["All", "Technical", "Leadership", "Compliance", "Soft Skills", "Professional"])
+        with c2:
+            dept_filter_course = st.selectbox("Department", ["All", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations", "Engineering"])
+        with c3:
+            level_filter = st.selectbox("Level", ["All", "Beginner", "Intermediate", "Advanced", "Expert"])
+        
+        courses = [
+            {"title": "Building Management Systems - Advanced", "category": "Technical", "dept": "Facility Management", "level": "Advanced", "duration": "8 weeks", "provider": "Siemens Academy", "format": "Online", "rating": 4.8, "url": "#", "enrolled": 45},
+            {"title": "AI in Facility Management", "category": "Technical", "dept": "Technology Group", "level": "Intermediate", "duration": "6 weeks", "provider": "LinkedIn Learning", "format": "Hybrid", "rating": 4.7, "url": "https://www.linkedin.com/learning/", "enrolled": 32},
+            {"title": "Strategic HR Management", "category": "Professional", "dept": "Human Resources", "level": "Advanced", "duration": "10 weeks", "provider": "SHRM", "format": "In-Person", "rating": 4.9, "url": "https://www.shrm.org/", "enrolled": 18},
+            {"title": "Financial Modeling for Real Estate", "category": "Professional", "dept": "Accounts & Finance", "level": "Advanced", "duration": "8 weeks", "provider": "CFA Institute", "format": "Online", "rating": 4.6, "url": "https://www.cfainstitute.org/", "enrolled": 22},
+            {"title": "Leadership Excellence Program", "category": "Leadership", "dept": "All", "level": "Advanced", "duration": "12 weeks", "provider": "Harvard Business School Online", "format": "Hybrid", "rating": 4.9, "url": "https://online.hbs.edu/", "enrolled": 15},
+            {"title": "Occupational Health & Safety", "category": "Compliance", "dept": "All", "level": "Beginner", "duration": "4 weeks", "provider": "IOSH", "format": "Online", "rating": 4.5, "url": "https://iosh.com/", "enrolled": 55},
+            {"title": "Data Analytics for Operations", "category": "Technical", "dept": "Operations", "level": "Intermediate", "duration": "8 weeks", "provider": "Google Analytics Academy", "format": "Online", "rating": 4.7, "url": "https://analytics.google.com/", "enrolled": 28},
+            {"title": "Customer Experience Management", "category": "Soft Skills", "dept": "Sales & Marketing", "level": "Intermediate", "duration": "6 weeks", "provider": "CX Academy", "format": "Online", "rating": 4.4, "url": "#", "enrolled": 20},
+            {"title": "Project Management Professional (PMP)", "category": "Professional", "dept": "All", "level": "Advanced", "duration": "12 weeks", "provider": "PMI", "format": "Online", "rating": 4.8, "url": "https://www.pmi.org/", "enrolled": 12},
+            {"title": "Cybersecurity Essentials", "category": "Technical", "dept": "Technology Group", "level": "Beginner", "duration": "4 weeks", "provider": "Cisco Networking Academy", "format": "Online", "rating": 4.6, "url": "https://www.netacad.com/", "enrolled": 38},
+            {"title": "Effective Communication Skills", "category": "Soft Skills", "dept": "All", "level": "Beginner", "duration": "3 weeks", "provider": "Coursera", "format": "Online", "rating": 4.3, "url": "https://www.coursera.org/", "enrolled": 42},
+            {"title": "HVAC Systems Maintenance", "category": "Technical", "dept": "Facility Management", "level": "Intermediate", "duration": "6 weeks", "provider": "Carrier Academy", "format": "In-Person", "rating": 4.5, "url": "#", "enrolled": 15},
+        ]
+        
+        filtered_courses = courses
+        if course_filter != "All":
+            filtered_courses = [c for c in filtered_courses if c['category'] == course_filter]
+        if dept_filter_course != "All":
+            filtered_courses = [c for c in filtered_courses if c['dept'] == dept_filter_course or c['dept'] == 'All']
+        if level_filter != "All":
+            filtered_courses = [c for c in filtered_courses if c['level'] == level_filter]
+        
+        st.markdown(f"**{len(filtered_courses)} courses found**")
+        
+        for course in filtered_courses:
+            with st.expander(f"📚 {course['title']} | {course['provider']} | ⭐{course['rating']}", expanded=False):
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.markdown(f"**Category:** {course['category']} | **Level:** {course['level']} | **Duration:** {course['duration']}")
+                    st.markdown(f"**Format:** {course['format']} | **Dept:** {course['dept']}")
+                    st.markdown(f"👥 {course['enrolled']} enrolled | ⭐ {course['rating']}/5")
+                    if course['url'] != '#':
+                        st.markdown(f"🔗 [Visit Course Page]({course['url']})")
+                with col2:
+                    if st.button(f"📝 Enroll", key=f"enroll_{course['title'][:15]}"):
+                        st.success(f"✅ Enrolled in {course['title']}!")
+                        st.session_state.learning_streak += 1
+                        st.balloons()
+    
+    # ============ TAB 2: WEBINARS ============
     with tab2:
-        st.subheader("Upcoming Webinars")
-        for web in [{"title": "AI in Real Estate Management", "date": "June 20, 2026", "source": "LinkedIn Learning", "dept": "Technology"}, {"title": "Financial Modeling for RE", "date": "June 25, 2026", "source": "CFA Institute", "dept": "Finance"}, {"title": "HR Tech Summit 2026", "date": "July 10, 2026", "source": "SHRM", "dept": "HR"}, {"title": "Facility Management Excellence", "date": "July 15, 2026", "source": "IFMA", "dept": "Operations"}, {"title": "Cybersecurity for Smart Buildings", "date": "July 20, 2026", "source": "NITDA", "dept": "Technology"}]:
-            st.markdown(f"""<div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid #CC0000;"><strong>{web['title']}</strong><br><small>📅 {web['date']} | 📍 {web['source']} | 🏢 {web['dept']}</small></div>""", unsafe_allow_html=True)
+        st.subheader("🌐 Upcoming Webinars & Events")
+        st.info("Click on any webinar to join or register. All times in WAT.")
+        
+        webinars = [
+            {"title": "AI in Real Estate Management 2026", "date": "2026-06-20", "time": "10:00 AM", "speaker": "Dr. Adebayo Ogunlesi", "source": "LinkedIn Learning", "dept": "Technology", "url": "https://www.linkedin.com/events/", "spots": 100},
+            {"title": "HR Tech Summit 2026", "date": "2026-07-10", "time": "9:00 AM", "speaker": "Multiple Speakers", "source": "SHRM", "dept": "HR", "url": "https://www.shrm.org/", "spots": 200},
+            {"title": "Sustainable Building Practices", "date": "2026-06-25", "time": "2:00 PM", "speaker": "Arch. Femi Adebayo", "source": "IFMA", "dept": "Facility Management", "url": "https://www.ifma.org/", "spots": 75},
+            {"title": "Financial Planning for 2027", "date": "2026-08-15", "time": "11:00 AM", "speaker": "Mr. Olusegun Agbaje", "source": "CFA Society Nigeria", "dept": "Finance", "url": "https://www.cfasociety.org/", "spots": 150},
+            {"title": "Cybersecurity for Smart Buildings", "date": "2026-07-20", "time": "3:00 PM", "speaker": "Mr. Abdul-Hakeem Ajijola", "source": "NITDA", "dept": "Technology", "url": "https://www.nitda.gov.ng/", "spots": 80},
+            {"title": "Leadership in Times of Change", "date": "2026-09-05", "time": "10:00 AM", "speaker": "Mrs. Ibukun Awosika", "source": "First Bank Leadership Series", "dept": "All", "url": "https://www.firstbanknigeria.com/", "spots": 300},
+        ]
+        
+        for web in webinars:
+            try:
+                web_date = datetime.strptime(web['date'], '%Y-%m-%d')
+                days_left = (web_date - datetime.now()).days
+                days_str = f"📅 {days_left} days away" if days_left > 0 else "🔴 Today!"
+            except:
+                days_str = web['date']
+            
+            with st.expander(f"🎙️ {web['title']} | {web['source']} | {days_str}", expanded=False):
+                st.markdown(f"**Speaker:** {web['speaker']}")
+                st.markdown(f"**Date:** {web['date']} at {web['time']} WAT")
+                st.markdown(f"**Dept:** {web['dept']} | **Spots:** {web['spots']}")
+                st.markdown(f"🔗 [Register/Join Webinar]({web['url']})")
+                if st.button(f"📝 Register", key=f"reg_{web['title'][:10]}"):
+                    st.success(f"✅ Registered!")
+                    st.balloons()
+    
+    # ============ TAB 3: LEARNING PATHS ============
     with tab3:
-        st.subheader("Training Calendar - June 2026")
+        st.subheader("🎯 Career Learning Paths")
+        paths = {
+            "💻 Technology Leadership": {"courses": ["BMS Advanced", "AI in FM", "Cybersecurity", "Data Analytics"], "duration": "6 months", "cert": "Certified Technology Leader"},
+            "🏗️ FM Excellence": {"courses": ["BMS Advanced", "HVAC Maintenance", "Sustainable Building", "OHS"], "duration": "5 months", "cert": "Certified FM Professional"},
+            "👥 HR Business Partner": {"courses": ["Strategic HR", "Leadership Excellence", "CX Management"], "duration": "6 months", "cert": "SHRM-CP"},
+            "💰 Finance Leadership": {"courses": ["Financial Modeling", "Data Analytics", "Leadership Excellence", "PMP"], "duration": "7 months", "cert": "CFA Charter"},
+            "📈 Sales Excellence": {"courses": ["CX Management", "Effective Communication", "Data Analytics"], "duration": "5 months", "cert": "Certified Sales Leader"},
+        }
+        for path_name, path_data in paths.items():
+            with st.expander(f"{path_name} — {path_data['duration']} — 🏅 {path_data['cert']}", expanded=False):
+                for c in path_data['courses']:
+                    st.markdown(f"- ✅ {c}")
+                st.progress(random.randint(20, 80)/100)
+                if st.button(f"🎯 Start Path", key=f"path_{path_name[:5]}"):
+                    st.success(f"✅ Started {path_name}!")
+                    st.balloons()
+    
+    # ============ TAB 4: CERTIFICATIONS ============
+    with tab4:
+        st.subheader("🏅 Certifications Tracker")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("### 🎖️ Earned")
+            for cert in [{"name": "CCNP", "date": "2024", "expiry": "2027"}, {"name": "NEBOSH", "date": "2023", "expiry": "2026"}, {"name": "PMP", "date": "2025", "expiry": "2028"}]:
+                st.markdown(f"✅ **{cert['name']}** — {cert['date']} (Exp: {cert['expiry']})")
+        with col2:
+            st.markdown("### 🎯 Recommended")
+            for cert in [{"name": "BMS Siemens Certification"}, {"name": "AWS Solutions Architect"}, {"name": "SHRM-CP"}]:
+                st.markdown(f"🎯 **{cert['name']}**")
+    
+    # ============ TAB 5: MENTORSHIP ============
+    with tab5:
+        st.subheader("🤝 Mentorship Program")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("### 👤 Find a Mentor")
+            mentors = [{"name": "Jerome Das", "role": "COO", "expertise": "Leadership, Strategy"}, {"name": "Emmanuel Etuk", "role": "HOD Technology", "expertise": "AI, BMS, Digital"}, {"name": "Sanjeev Purwar", "role": "HOD Engineering", "expertise": "MEP, Project Mgmt"}, {"name": "Adebayo Sakote", "role": "HR Manager", "expertise": "HR Strategy, Talent"}]
+            for m in mentors:
+                st.markdown(f"**{m['name']}** — {m['role']}<br><small>{m['expertise']}</small>")
+                if st.button(f"🤝 Request", key=f"mentor_{m['name'][:5]}"):
+                    st.success(f"✅ Request sent to {m['name']}!")
+        with col2:
+            st.markdown("### 🎓 Become a Mentor")
+            st.text_area("What skills can you teach?")
+            if st.button("📤 Register as Mentor", use_container_width=True):
+                st.success("✅ Registered!")
+                st.balloons()
+    
+    # ============ TAB 6: LEADERBOARD ============
+    with tab6:
+        st.subheader("📊 Learning Leaderboard")
+        for learner in [{"rank": "🥇", "name": "Francis Asuquo", "dept": "Technology Group", "courses": 8, "hours": 120}, {"rank": "🥈", "name": "Chika Ikwuegbu", "dept": "Security", "courses": 6, "hours": 95}, {"rank": "🥉", "name": "Ujunwa Onyemechalu", "dept": "Technology Group", "courses": 5, "hours": 85}, {"rank": "4", "name": "Adebayo Sakote", "dept": "HR", "courses": 5, "hours": 75}, {"rank": "5", "name": "David Effiong", "dept": "Facility Management", "courses": 4, "hours": 65}]:
+            st.markdown(f"""<div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;gap:1rem;border-left:4px solid #CC0000;"><span style="font-size:1.5rem;">{learner['rank']}</span><div style="flex:1;"><strong>{learner['name']}</strong> — {learner['dept']}<br><small>{learner['courses']} courses | {learner['hours']} hours</small></div></div>""", unsafe_allow_html=True)
+    
+    # ============ TAB 7: CALENDAR ============
+    with tab7:
+        st.subheader("📅 Training Calendar — June 2026")
         cal_data = []
         for day in range(1, 31):
             events = []
-            if day == 15: events.append("BMS Training")
-            if day == 20: events.append("AI in FM Webinar")
-            if day == 25: events.append("Finance Workshop")
-            cal_data.append({"Day": day, "Events": ", ".join(events) if events else "-"})
+            if day == 5: events.append("🔧 BMS Training")
+            if day == 10: events.append("🤖 AI Workshop")
+            if day == 15: events.append("📊 Data Analytics")
+            if day == 20: events.append("🎙️ AI in RE Webinar")
+            if day == 25: events.append("🌐 Sustainable Building")
+            if day == 28: events.append("👔 Leadership Masterclass")
+            cal_data.append({"Day": f"June {day}", "Events": ", ".join(events) if events else "—"})
         st.dataframe(pd.DataFrame(cal_data), use_container_width=True, hide_index=True)
+    
+    # ============ TAB 8: VIDEOS & PODCASTS ============
+    with tab8:
+        st.subheader("🎬 Video & Podcast Library")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("### 📺 Recommended Videos")
+            videos = [{"title": "Introduction to Building Management Systems", "source": "Siemens Knowledge Hub", "duration": "15 min", "url": "https://www.youtube.com/watch?v=example1"}, {"title": "AI for Facility Managers", "source": "LinkedIn Learning", "duration": "45 min", "url": "https://www.youtube.com/watch?v=example2"}, {"title": "Leadership in the Digital Age", "source": "TED Talks", "duration": "18 min", "url": "https://www.youtube.com/watch?v=example3"}]
+            for v in videos:
+                st.markdown(f"🎥 **{v['title']}**<br><small>{v['source']} • {v['duration']}</small>")
+                st.markdown(f"🔗 [Watch Video]({v['url']})")
+                st.markdown("---")
+        
+        with col2:
+            st.markdown("### 🎙️ Industry Podcasts")
+            podcasts = [{"title": "The Future of Real Estate Tech", "host": "PropTech Podcast", "episodes": 45, "url": "#"}, {"title": "HR Leaders Podcast", "host": "SHRM", "episodes": 120, "url": "#"}, {"title": "Facility Management Insights", "host": "IFMA", "episodes": 35, "url": "#"}]
+            for p in podcasts:
+                st.markdown(f"🎙️ **{p['title']}**<br><small>{p['host']} • {p['episodes']} episodes</small>")
+                st.markdown(f"🔗 [Listen]({p['url']})")
+                st.markdown("---")
+    
+    # ============ TAB 9: REQUESTS ============
+    with tab9:
+        st.subheader("📝 Training Requests")
+        with st.form("training_request"):
+            c1, c2 = st.columns(2)
+            with c1:
+                req_course = st.text_input("Course/Conference Name *")
+                req_provider = st.text_input("Provider *")
+                req_cost = st.text_input("Cost (₦)")
+            with c2:
+                req_date = st.date_input("Event Date")
+                req_duration = st.text_input("Duration")
+                req_location = st.text_input("Location")
+            req_justification = st.text_area("Business Justification *")
+            if st.form_submit_button("📤 Submit Request", use_container_width=True):
+                if req_course and req_justification:
+                    st.success("✅ Training request submitted!")
+                    st.balloons()
+                else:
+                    st.error("❌ Required fields missing!")
+    
+    # ============ TAB 10: RESOURCES ============
+    with tab10:
+        st.subheader("📖 Learning Resources")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("### 📚 Book Summaries")
+            books = [{"title": "Good to Great", "author": "Jim Collins", "key_insight": "Level 5 Leadership: Humility + Will"}, {"title": "The Lean Startup", "author": "Eric Ries", "key_insight": "Build-Measure-Learn feedback loop"}, {"title": "Atomic Habits", "author": "James Clear", "key_insight": "1% better every day"}]
+            for b in books:
+                st.markdown(f"📖 **{b['title']}** — {b['author']}<br><small>💡 {b['key_insight']}</small>")
+                st.markdown("---")
+        
+        with col2:
+            st.markdown("### 🔧 Internal Knowledge Base")
+            st.markdown("📄 [Churchgate HR Policy Manual](#)")
+            st.markdown("📄 [BMS Standard Operating Procedures](#)")
+            st.markdown("📄 [Procurement Guidelines](#)")
+            st.markdown("📄 [IT Security Policy](#)")
+            st.markdown("📄 [Onboarding Handbook](#)")
+            
+            st.markdown("---")
+            st.markdown("### 🌍 External Conference Tracker")
+            conferences = [{"name": "Africa Real Estate Summit", "date": "Sep 2026", "location": "Lagos"}, {"name": "HR Tech Conference", "date": "Oct 2026", "location": "London"}, {"name": "Smart Buildings Expo", "date": "Nov 2026", "location": "Dubai"}]
+            for conf in conferences:
+                st.markdown(f"🎪 **{conf['name']}** — {conf['date']}, {conf['location']}")
 
 def reports_analytics():
     st.markdown("""<div class="churchgate-header"><h1>📊 Reports & Analytics</h1><p>Real-Time Business Intelligence | Predictive Analytics | Churchgate Group</p></div>""", unsafe_allow_html=True)
