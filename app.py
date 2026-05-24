@@ -4393,345 +4393,117 @@ def ai_recruitment_agent():
             st.info("No data to export.")
 
 def chat_communications():
-    st.markdown("""<div class="churchgate-header"><h1>💬 Social Hub</h1><p>Team Chat | Direct Messages | Announcements | Kudos | Polls | Interest Groups | Smart HRIS Bot</p></div>""", unsafe_allow_html=True)
-    
-    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
-    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
-    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
-    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
-    
-    # Initialize chat state
-    if 'chat_messages' not in st.session_state:
-        st.session_state.chat_messages = {}
-    if 'direct_messages' not in st.session_state:
-        st.session_state.direct_messages = {}
-    if 'group_channels' not in st.session_state:
-        st.session_state.group_channels = {}
-    if 'kudos_board' not in st.session_state:
-        st.session_state.kudos_board = []
-    if 'polls' not in st.session_state:
-        st.session_state.polls = []
-    if 'online_users' not in st.session_state:
-        st.session_state.online_users = [user_name]
-    
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-        "💬 Team Chat", "👥 Direct Messages", "📢 Announcements", 
-        "🌟 Kudos Board", "📊 Polls", "🎯 Interest Groups", "🤖 HRIS Bot"
-    ])
-    
-    # ============ TAB 1: TEAM CHAT ============
+    st.markdown("""<div class="churchgate-header"><h1>💬 Chat & Communications</h1><p>Team Messaging | Announcements | AI Assistant</p></div>""", unsafe_allow_html=True)
+    tab1, tab2, tab3 = st.tabs(["💬 Team Chat", "📢 Announcements", "📧 Email"])
     with tab1:
-        st.subheader("💬 Department & Group Chat")
-        
-        # Online users
-        st.markdown(f"🟢 **{len(st.session_state.online_users)} online now**")
-        
-        # Channel selector
-        channels = ["# general", f"# {user_dept.lower().replace(' ', '-')}", "# water-cooler", "# announcements", "# kudos"]
-        selected_channel = st.selectbox("📢 Channel", channels)
-        
-        # Auto-post birthday greetings
-        today = datetime.now()
-        if today.month == 5 and today.day in [13, 19, 25, 28]:
-            birthday_names = {13: "Chika Ikwuegbu", 19: "Francis Asuquo", 25: "Rhoda Ajibola", 28: "Alice Agbo"}
-            if today.day in birthday_names:
-                st.balloons()
-                st.success(f"🎂 Happy Birthday, {birthday_names[today.day]}! 🎉")
-        
-        # Chat messages
-        if selected_channel not in st.session_state.chat_messages:
-            st.session_state.chat_messages[selected_channel] = [
-                {"sender": "System", "content": f"Welcome to {selected_channel}! 👋", "time": "Today", "type": "system"}
-            ]
-        
-        # Display messages
-        chat_container = st.container()
-        with chat_container:
-            for msg in st.session_state.chat_messages[selected_channel][-30:]:
-                if msg['type'] == 'system':
-                    st.markdown(f"<div style='text-align:center;color:#888;font-size:0.8rem;'>{msg['content']} — {msg['time']}</div>", unsafe_allow_html=True)
-                elif msg['sender'] == user_name:
-                    st.markdown(f"""
-                    <div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;text-align:right;">
-                        <strong>You</strong>
-                        <p style="margin:0.2rem 0;">{msg['content']}</p>
-                        <small>{msg['time']}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
+        st.subheader("Team Chat")
+        team_members = ["Emmanuel Etuk (Technology)", "Sanjeev Purwar (FM)", "Ahmed Karim (Sales)", "Adebayo Sakote (HR)", "Jeff Arikawe (Finance)", "Maikudi Kadoh (Security)", "Francis Asuquo (ELV)", "David Aiyedun (Legal)", "Ibukun Adeogun (Operations)"]
+        chat_with = st.selectbox("Chat with:", ["Select colleague..."] + team_members)
+        if chat_with != "Select colleague...":
+            chat_key = f"chat_{chat_with}"
+            if chat_key not in st.session_state:
+                st.session_state[chat_key] = []
+            for msg in st.session_state[chat_key][-20:]:
+                if msg['sender'] == 'You':
+                    st.markdown(f"""<div style="background: #CC0000; color: white; padding: 0.6rem 1rem; border-radius: 10px; margin: 0.3rem 0; margin-left: 3rem;"><strong>You</strong><p style="margin: 0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
                 else:
-                    initials = generate_initials(msg['sender'])
-                    st.markdown(f"""
-                    <div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;">
-                        <strong>{initials} {msg['sender']}</strong>
-                        <p style="margin:0.2rem 0;">{msg['content']}</p>
-                        <small>{msg['time']}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-        
-        # Send message
-        with st.form(f"chat_form_{selected_channel}", clear_on_submit=True):
-            col1, col2 = st.columns([4, 1])
-            with col1:
-                message = st.text_input("Type a message...", placeholder=f"Message {selected_channel}...", label_visibility="collapsed")
-            with col2:
-                send = st.form_submit_button("📤 Send", use_container_width=True)
-            
-            if send and message:
-                st.session_state.chat_messages[selected_channel].append({
-                    'sender': user_name, 'content': message,
-                    'time': datetime.now().strftime('%I:%M %p'), 'type': 'user'
-                })
-                st.rerun()
-    
-    # ============ TAB 2: DIRECT MESSAGES ============
-    with tab2:
-        st.subheader("👥 Direct Messages")
-        
-        # Load employee list for DM
-        try:
-            emp_df = db.get_all_employees()
-            if not emp_df.empty:
-                team_list = [f"{row['first_name']} {row['last_name']} — {row.get('department', '')}" for _, row in emp_df.iterrows() if f"{row['first_name']} {row['last_name']}" != user_name]
-            else:
-                team_list = ["Jerome Das — Senior Management", "Sanjeev Purwar — Facility Management", "Ahmed Karim — Sales & Marketing"]
-        except:
-            team_list = ["Jerome Das — Senior Management", "Sanjeev Purwar — Facility Management", "Ahmed Karim — Sales & Marketing"]
-        
-        dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + team_list)
-        
-        if dm_with != "Select colleague...":
-            dm_name = dm_with.split(" — ")[0]
-            dm_key = f"dm_{user_name}_{dm_name}"
-            sorted_key = tuple(sorted([user_name, dm_name]))
-            dm_storage_key = f"dm_{sorted_key[0]}_{sorted_key[1]}"
-            
-            if dm_storage_key not in st.session_state.direct_messages:
-                st.session_state.direct_messages[dm_storage_key] = []
-            
-            for msg in st.session_state.direct_messages[dm_storage_key][-20:]:
-                if msg['sender'] == user_name:
-                    st.markdown(f"""
-                    <div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;">
-                        <strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    initials = generate_initials(msg['sender'])
-                    st.markdown(f"""
-                    <div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;">
-                        <strong>{initials} {msg['sender']}</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            with st.form(f"dm_form_{dm_name}", clear_on_submit=True):
-                col1, col2 = st.columns([4, 1])
-                with col1:
-                    dm_message = st.text_input("Type message...", placeholder=f"Message {dm_name}...", label_visibility="collapsed")
-                with col2:
-                    if st.form_submit_button("📤", use_container_width=True):
-                        if dm_message:
-                            st.session_state.direct_messages[dm_storage_key].append({
-                                'sender': user_name, 'content': dm_message,
-                                'time': datetime.now().strftime('%I:%M %p')
-                            })
-                            st.rerun()
-    
-    # ============ TAB 3: ANNOUNCEMENTS ============
-    with tab3:
-        st.subheader("📢 Company Announcements")
-        
-        if is_admin:
-            with st.form("new_announcement"):
-                ann_title = st.text_input("Title *")
-                ann_content = st.text_area("Message *")
-                ann_priority = st.selectbox("Priority", ["Normal", "Important", "Urgent"])
-                if st.form_submit_button("📢 Post Announcement", use_container_width=True):
-                    if ann_title and ann_content:
-                        st.success("✅ Announcement posted!")
-                        st.balloons()
-        
-        announcements = [
-            {"title": "Q2 Performance Reviews", "date": "2026-06-01", "priority": "Important", "content": "All departments to submit Q2 performance reviews by June 15, 2026."},
-            {"title": "BMS Implementation Update", "date": "2026-05-28", "priority": "Normal", "content": "Phase 1 of BMS installation complete. Phase 2 starts June 10."},
-            {"title": "Holiday Notice - Democracy Day", "date": "2026-05-25", "priority": "Important", "content": "Office closed on June 12 for Democracy Day. Normal operations resume June 13."},
-        ]
-        
-        for ann in announcements:
-            pc = "#CC0000" if ann['priority'] == 'Urgent' else "#d69e2e" if ann['priority'] == 'Important' else "#3182ce"
-            st.markdown(f"""
-            <div style="background:white;padding:1rem;border-radius:8px;margin-bottom:0.6rem;border-left:4px solid {pc};">
-                <div style="display:flex;justify-content:space-between;">
-                    <strong>{ann['title']}</strong>
-                    <span style="background:{pc};color:white;padding:0.2rem 0.6rem;border-radius:10px;font-size:0.75rem;">{ann['priority']}</span>
-                </div>
-                <p style="margin:0.4rem 0;">{ann['content']}</p>
-                <small>📅 {ann['date']}</small>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # ============ TAB 4: KUDOS BOARD ============
-    with tab4:
-        st.subheader("🌟 Kudos & Appreciation Board")
-        st.info("Give public shout-outs to colleagues who've done great work!")
-        
-        # Load employees for kudos
-        try:
-            emp_df = db.get_all_employees()
-            kudos_list = [f"{row['first_name']} {row['last_name']}" for _, row in emp_df.iterrows() if f"{row['first_name']} {row['last_name']}" != user_name] if not emp_df.empty else ["Jerome Das", "Sanjeev Purwar"]
-        except:
-            kudos_list = ["Jerome Das", "Sanjeev Purwar", "Ahmed Karim"]
-        
-        with st.form("give_kudos"):
-            kudos_to = st.selectbox("👤 Give Kudos to", kudos_list)
-            kudos_msg = st.text_area("💬 Your appreciation message *")
-            kudos_emoji = st.selectbox("🎉 Emoji", ["🌟", "👏", "🏆", "💪", "🎯", "🔥", "💡", "🤝"])
-            if st.form_submit_button(f"{kudos_emoji} Send Kudos!", use_container_width=True):
-                if kudos_msg:
-                    st.session_state.kudos_board.append({
-                        'from': user_name, 'to': kudos_to, 'message': kudos_msg,
-                        'emoji': kudos_emoji, 'time': datetime.now().strftime('%b %d, %I:%M %p')
-                    })
-                    st.success(f"{kudos_emoji} Kudos sent to {kudos_to}!")
-                    st.balloons()
+                    st.markdown(f"""<div style="background: #f0f0f0; padding: 0.6rem 1rem; border-radius: 10px; margin: 0.3rem 0; margin-right: 3rem;"><strong>{msg['sender']}</strong><p style="margin: 0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+            with st.form(f"chat_form_{chat_with}", clear_on_submit=True):
+                c1, c2 = st.columns([4, 1])
+                with c1:
+                    message = st.text_input("Type message...", placeholder=f"Message {chat_with}...")
+                with c2:
+                    send = st.form_submit_button("📤 Send", use_container_width=True)
+                if send and message:
+                    st.session_state[chat_key].append({'sender': 'You', 'content': message, 'time': datetime.now().strftime('%I:%M %p')})
+                    st.session_state[chat_key].append({'sender': chat_with, 'content': f"Thanks for your message! (Auto-reply: {chat_with.split('(')[0].strip()} will respond soon)", 'time': datetime.now().strftime('%I:%M %p')})
                     st.rerun()
-        
         st.markdown("---")
-        st.markdown("### 🏆 Recent Kudos")
-        if st.session_state.kudos_board:
-            for k in reversed(st.session_state.kudos_board[-10:]):
-                st.markdown(f"""
-                <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid #d69e2e;">
-                    {k['emoji']} <strong>{k['from']}</strong> → <strong>{k['to']}</strong>
-                    <p style="margin:0.2rem 0;">"{k['message']}"</p>
-                    <small>{k['time']}</small>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.info("No kudos yet. Be the first to appreciate a colleague! 🌟")
-    
-    # ============ TAB 5: POLLS ============
-    with tab5:
-        st.subheader("📊 Quick Polls & Surveys")
-        
-        with st.form("create_poll"):
-            poll_question = st.text_input("Poll Question *")
-            c1, c2 = st.columns(2)
-            with c1:
-                poll_option1 = st.text_input("Option 1", "Yes 👍")
-                poll_option2 = st.text_input("Option 2", "No 👎")
-            with c2:
-                poll_option3 = st.text_input("Option 3 (Optional)")
-                poll_option4 = st.text_input("Option 4 (Optional)")
-            
-            if st.form_submit_button("📊 Create Poll", use_container_width=True):
-                if poll_question and poll_option1 and poll_option2:
-                    options = [poll_option1, poll_option2]
-                    if poll_option3: options.append(poll_option3)
-                    if poll_option4: options.append(poll_option4)
-                    st.session_state.polls.append({
-                        'question': poll_question, 'options': options,
-                        'votes': {opt: 0 for opt in options},
-                        'voters': [], 'created_by': user_name
-                    })
-                    st.success("✅ Poll created!")
-                    st.rerun()
-        
-        st.markdown("---")
-        if st.session_state.polls:
-            for i, poll in enumerate(reversed(st.session_state.polls)):
-                with st.expander(f"📊 {poll['question']} — by {poll['created_by']}", expanded=True):
-                    total_votes = sum(poll['votes'].values())
-                    for opt in poll['options']:
-                        votes = poll['votes'][opt]
-                        pct = (votes / total_votes * 100) if total_votes > 0 else 0
-                        st.markdown(f"**{opt}** — {votes} votes ({pct:.0f}%)")
-                        st.progress(pct/100)
-                    
-                    if user_name not in poll['voters']:
-                        vote_choice = st.selectbox("Your vote", poll['options'], key=f"vote_{i}")
-                        if st.button("🗳️ Vote", key=f"submit_vote_{i}"):
-                            poll['votes'][vote_choice] += 1
-                            poll['voters'].append(user_name)
-                            st.success("✅ Vote recorded!")
-                            st.rerun()
-        else:
-            st.info("No polls yet. Create one!")
-    
-    # ============ TAB 6: INTEREST GROUPS ============
-    with tab6:
-        st.subheader("🎯 Interest Groups")
-        st.info("Join groups and connect with colleagues who share your interests!")
-        
-        groups = [
-            {"name": "💻 Tech Innovators", "members": 25, "description": "AI, IoT, and emerging tech discussions"},
-            {"name": "⚽ Football Fans", "members": 35, "description": "EPL, La Liga, and Nigerian league discussions"},
-            {"name": "📚 Book Club", "members": 15, "description": "Monthly book recommendations and reviews"},
-            {"name": "🏋️ Fitness & Wellness", "members": 20, "description": "Health tips, workout routines, wellness challenges"},
-            {"name": "🎵 Music Lovers", "members": 18, "description": "Share playlists and discover new music"},
-            {"name": "📸 Photography", "members": 12, "description": "Share photos and photography tips"},
-            {"name": "🍳 Foodies", "members": 22, "description": "Restaurant reviews, recipes, food events"},
-        ]
-        
-        for group in groups:
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.markdown(f"**{group['name']}** — {group['members']} members<br><small>{group['description']}</small>")
-            with col2:
-                if st.button(f"Join", key=f"join_{group['name'][:10]}"):
-                    st.success(f"✅ Joined {group['name']}!")
-    
-    # ============ TAB 7: HRIS BOT ============
-    with tab7:
-        st.subheader("🤖 Smart HRIS Assistant")
-        st.info("Ask me anything about leave, payroll, KPIs, training, policies, benefits, performance, promotions, recruitment, onboarding, or company information!")
-        
+        st.markdown("### 🤖 HRIS Assistant Bot")
+        st.info("Ask me anything about leave, payroll, training, policies, benefits, or general HR inquiries. I'm here to help!")
         if 'bot_conversation' not in st.session_state:
             st.session_state.bot_conversation = []
-        
         for msg in st.session_state.bot_conversation:
             if msg['role'] == 'user':
-                st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;"><strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div style="background: #CC0000; color: white; padding: 0.6rem 1rem; border-radius: 10px; margin: 0.3rem 0; margin-left: 3rem;"><strong>You</strong><p style="margin: 0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
             else:
-                st.markdown(f"""<div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>🤖 HRIS Bot</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
-        
+                st.markdown(f"""<div style="background: #f0f0f0; padding: 0.6rem 1rem; border-radius: 10px; margin: 0.3rem 0; margin-right: 3rem;"><strong>🤖 HRIS Bot</strong><p style="margin: 0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
         with st.form("bot_form", clear_on_submit=True):
-            col1, col2 = st.columns([4, 1])
-            with col1:
-                bot_question = st.text_input("Ask HRIS Bot...", placeholder="e.g., How do I set my KPIs?", label_visibility="collapsed")
-            with col2:
+            c1, c2 = st.columns([4, 1])
+            with c1:
+                bot_question = st.text_input("Ask HRIS Bot:", placeholder="e.g., How do I apply for leave? What are the training options?")
+            with c2:
                 ask = st.form_submit_button("🤖 Ask", use_container_width=True)
-            
             if ask and bot_question:
                 responses = {
-                    'leave': "🏖️ **How to Apply for Leave:**\n\n1. Go to Employee Dashboard\n2. View your leave balance\n3. Click 'Request Leave'\n4. Submit for manager approval",
-                    'payroll': "💰 Payroll processed on 25th monthly. Pay stubs in My Profile → Documents.",
-                    'training': "🎓 Available courses: BMS Advanced, AI in FM, Leadership Excellence, Data Analytics. Check Training & Development tab.",
-                    'policy': "📋 Company policies available in Employee Handbook. Contact HR for specific policies.",
-                    'benefits': "🎁 Benefits: HMO, Pension, 20 days leave, Training support, Performance bonuses.",
-                    'performance': "📈 Performance measured across 4 Strategic Pillars. Set KPIs in Performance & OKRs.",
-                    'promotion': "🚀 A-Players evaluated on Performance (40%), Leadership (25%), Strategic Impact (20%), Readiness (15%).",
-                    'kpi': "📊 **KPI Setup:**\n1. Go to Performance & OKRs\n2. Click My KPIs\n3. Select Strategic Pillar\n4. Enter title, target, weight, deadline\n5. Save!",
-                    'achievement': "🌟 Document exceptional achievements in Performance & OKRs → Exceptional Achievements tab.",
-                    'appraisal': "📝 Appraisal: Self-Assessment → HOD Review → Accept/Reject → Sr. Management escalation if needed.",
-                    'profile': "👤 Update profile in My Profile → Info tab. Upload photo for sidebar and greeting header.",
-                    'password': "🔒 Change password in My Profile → Security tab. Forgot password on login page.",
-                    'recruitment': "💼 Submit job requisition in Recruitment Hub → Job Requisition. Approval: LM → Admin → COO.",
-                    'onboarding': "🎯 New hire checklist in Recruitment Hub → Onboarding tab.",
-                    'help': "🤖 I can help with leave, payroll, training, KPIs, performance, promotions, profile, password, recruitment, and more!",
-                }
-                response = "I can help with many topics! Try asking about leave, KPIs, training, benefits, or anything HR-related."
+                'leave': "🏖️ **How to Apply for Leave:**\n\n1. Go to your 🏠 Employee Dashboard\n2. View your leave balance (currently 18 days)\n3. Click '🏖️ Request Leave' under Quick Actions\n4. Select leave type and dates\n5. Submit for manager approval\n\nYour leave balance refreshes annually. Sick leave and annual leave are tracked separately.",
+                
+                'payroll': "💰 **Payroll Information:**\n\n- Payroll is processed on the 25th of each month\n- Pay stubs available in 👤 My Profile → Documents\n- For salary discrepancies, contact Accounts & Finance (Jeff Arikawe)\n- Tax deductions follow Nigerian PAYE regulations\n- Pension contributions are remitted to your PFA",
+                
+                'training': "🎓 **Training & Development:**\n\nAvailable courses:\n- 🔧 BMS Advanced Integration (June 15)\n- 🤖 AI in Facility Management (June 20)\n- 📊 Data Analytics for Operations (July 5)\n- 👔 Leadership Excellence Program\n\nTo enroll:\n1. Go to 🎓 Training & Development\n2. Browse courses by category\n3. Click 'Enroll'\n4. Complete pre-work before the session",
+                
+                'policy': "📋 **Key Company Policies:**\n\n- Code of Conduct: Available in Employee Handbook\n- Dress Code: Business casual (Mon-Thu), Smart casual (Fri)\n- Work Hours: 8:00 AM - 5:00 PM WAT\n- Remote Work: By manager approval only\n- Data Protection: NDPA 2023 compliant\n\nFull policy documents in 👤 My Profile → Documents",
+                
+                'benefits': "🎁 **Employee Benefits:**\n\n- 🏥 Comprehensive HMO coverage\n- 💰 Contributory Pension Scheme\n- 🏖️ 20 days annual leave\n- 📚 Training & certification support\n- 🎉 Performance bonuses\n- 🚗 Transport allowance (select roles)\n\nContact HR for detailed benefits breakdown.",
+                
+                'performance': "📈 **Performance Management:**\n\nYour performance is measured across 4 Strategic Pillars:\n1. Occupancy & Revenue Growth (40%)\n2. Process Simplification (20%)\n3. Asset Reliability & Digitalization (25%)\n4. People & Culture (15%)\n\nSet your KPIs in 📈 Performance & OKRs → ✏️ My KPIs. Self-assess during appraisal cycles.",
+                
+                'promotion': "🚀 **Promotions & Career Growth:**\n\nA-Players are evaluated on:\n- Performance Score (40%)\n- Leadership Competency (25%)\n- Strategic Impact (20%)\n- Readiness Assessment (15%)\n\nHODs nominate A-Players. 360-degree reviews follow. Scores above 85% qualify for immediate promotion.",
+                
+                'birthday': "🎂 **Team Birthdays This Month:**\n\n- Chika Ikwuegbu (May 13)\n- Francis Asuquo (May 19)\n- Rhoda Ajibola (May 25)\n- Alice Agbo (May 28)\n\nView all birthdays on your 🏠 Employee Dashboard.",
+                
+                'help': "🤖 **I can help with:**\n\n• 🏖️ Leave & Time Off\n• 💰 Payroll & Benefits\n• 📈 Performance & KPIs\n• 🚀 Promotions\n• 🎓 Training & Courses\n• 👤 Profile & Password\n• 💼 Recruitment\n• 📋 Company Policies\n• 🏢 Departments & Org Structure\n• 🎂 Birthdays & Events\n\nJust ask! Example: 'How do I set my KPIs?'",
+                
+                'kpi': "📊 **How to Set Up Your KPIs:**\n\n1. Go to 📈 Performance & OKRs\n2. Click '✏️ My KPIs' tab\n3. Select a Strategic Pillar (aligned to corporate strategy)\n4. Enter KPI Title (be specific and measurable)\n5. Set Target Value and Weight (%)\n6. Add deadline and current progress\n7. Write description/key results\n8. Click '💾 Save & Add Another' or '✅ Submit KPI'\n\n💡 **Pro Tips:**\n- Align each KPI to one of the 4 Corporate Strategic Pillars\n- Make targets SMART (Specific, Measurable, Achievable, Relevant, Time-bound)\n- Set realistic weights that sum to 100%\n- Your KPIs will be reviewed during half-yearly appraisals",
+                
+                'achievement': "🌟 **Exceptional Achievements:**\n\nDocument accomplishments OUTSIDE your formal KPIs in the '🌟 Exceptional Achievements' tab under 📈 Performance & OKRs.\n\n**What qualifies:**\n- 💡 Innovation that improved processes\n- 👑 Leadership during crisis\n- 😊 Customer impact beyond expectations\n- 💰 Cost savings initiatives\n- 🚨 Crisis management\n- 🤝 Cross-functional collaboration\n\n**How to add:**\n1. Go to 📈 Performance & OKRs → 🌟 Exceptional Achievements\n2. Click '➕ Add New Achievement'\n3. Fill title, category, impact level, description, outcome\n4. Attach evidence if available\n5. Save!\n\nAchievements are reviewed during appraisals and can boost your overall score.",
+                
+                'appraisal': "📝 **Appraisal Process:**\n\nThe appraisal cycle has 4 stages:\n\n**1. Self-Assessment:** Rate yourself 0-100% on each KPI with justifications\n**2. HOD Review:** Your HOD reviews scores side-by-side with yours\n**3. Acceptance:** You accept or request re-review\n**4. Final:** If disputed, Sr. Management makes final decision\n\nAppraisals are half-yearly. Admin activates the cycle. You'll receive notifications when it opens.",
+                
+                'profile': "👤 **How to Update Your Profile:**\n\n1. Go to 👤 My Profile\n2. Click '📋 Info' tab\n3. Update your details (name, phone, department, region)\n4. Click '💾 Update Profile'\n\n**Upload Profile Picture:**\n1. Go to 👤 My Profile\n2. Click '📸 Upload Photo'\n3. Select your image (JPG/PNG)\n4. Picture saves automatically\n\nYour profile picture appears on the sidebar and greeting header.",
+                
+                'password': "🔒 **Password Management:**\n\n**Change Password:**\n1. Go to 👤 My Profile → 🔒 Security tab\n2. Enter current password\n3. Enter new password (min 6 characters)\n4. Confirm and save\n\n**Forgot Password:**\n1. On login page, click '🔑 Forgot Password?'\n2. Enter your corporate email\n3. You'll receive a 6-digit reset code\n4. Enter code + new password\n5. Login with new password",
+                
+                'recruitment': "💼 **Recruitment Process:**\n\n**Submit Job Requisition:**\n1. Go to 💼 Recruitment Hub → 📋 Job Requisition\n2. Fill job details, JD, screening questions\n3. Submit for approval (LM → Admin → COO)\n4. Once approved, job goes LIVE on Careers Page\n\n**AI Screening:**\n- Upload CVs to 🤖 AI Recruitment Agent\n- AI auto-scores and tiers candidates\n- View deep analysis with skills gap, interview questions, culture fit",
+                
+                'onboarding': "🎯 **New Employee Onboarding:**\n\nWelcome to Churchgate Group! Here's your checklist:\n\n📧 Offer Letter - Signed and returned\n✅ Document Collection - ID, certificates, bank details\n💻 IT Setup - Email, laptop, system access\n🏢 Workspace - Desk/office assigned\n👤 Buddy - Your onboarding buddy assigned\n📅 Orientation - HR orientation scheduled\n📚 Training - Enrolled in required courses\n🔑 Access Cards - Building and parking access\n🎉 First Day - Welcome to the team!\n\nTrack your progress in 💼 Recruitment Hub → 🎯 Onboarding.",
+                
+                'department': "🏢 **Department Information:**\n\nChurchgate Group has 10 departments:\n• Senior Management\n• Technology Group\n• Facility Management\n• Human Resources\n• Accounts & Finance\n• Sales & Marketing\n• Procurement\n• Security\n• Legal\n• Operations\n\nEach department operates across Abuja and Lagos regions. HODs report to the COO.",
+                
+                'orgchart': "📊 **Organizational Structure:**\n\nGMD/CEO (Vinay Mahtani)\n├── COO (Jerome Das) - All Departments\n├── GEA (Partab Lalchandani) - Advisory\n└── VP Sales (Ahmed Karim) - Sales & Marketing\n\nHODs → Sr. Managers → Managers → Team Leads → Team Members\n\nView the full org chart in 👥 Employee Management → 📊 Org Chart.",
+                
+                'default': "🤖 **I can help with many topics!** Try asking about:\n\n• 'How do I set my KPIs?'\n• 'How do I apply for leave?'\n• 'How does the appraisal process work?'\n• 'How do I change my password?'\n• 'What training courses are available?'\n• 'How do I submit a job requisition?'\n• 'What are the company benefits?'\n\nJust type your question naturally!",
+            }
+                response = "I can help with leave, payroll, training, policies, benefits, performance, promotions, and more. What would you like to know?"
                 for key, val in responses.items():
                     if key in bot_question.lower():
                         response = val
                         break
-                
                 st.session_state.bot_conversation.append({'role': 'user', 'content': bot_question, 'time': datetime.now().strftime('%I:%M %p')})
                 st.session_state.bot_conversation.append({'role': 'bot', 'content': response, 'time': datetime.now().strftime('%I:%M %p')})
                 st.rerun()
-        
         if st.button("🗑️ Clear Chat History", use_container_width=True):
             st.session_state.bot_conversation = []
             st.rerun()
+    with tab2:
+        st.subheader("📢 Company Announcements")
+        for ann in [{"title": "Q2 Performance Reviews", "date": "2026-06-01", "priority": "High", "content": "All departments to submit Q2 reviews by June 15."}, {"title": "BMS Implementation Update", "date": "2026-05-28", "priority": "Medium", "content": "Phase 1 complete. Phase 2 starts June 10."}, {"title": "Holiday - Democracy Day", "date": "2026-05-25", "priority": "Medium", "content": "Office closed June 12."}]:
+            pc = "#e53e3e" if ann['priority'] == 'High' else "#d69e2e"
+            st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem; border-left: 4px solid {pc};"><div style="display: flex; justify-content: space-between;"><strong>{ann['title']}</strong><span style="background: {pc}; color: white; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">{ann['priority']}</span></div><p style="margin: 0.4rem 0;">{ann['content']}</p><small>📅 {ann['date']}</small></div>""", unsafe_allow_html=True)
+    with tab3:
+        st.subheader("📧 Email Notifications")
+        with st.form("email_prefs"):
+            c1, c2 = st.columns(2)
+            with c1:
+                st.checkbox("Birthday Alerts", value=True)
+                st.checkbox("Work Anniversaries", value=True)
+                st.checkbox("Promotion Announcements", value=True)
+            with c2:
+                st.checkbox("Holiday Reminders", value=True)
+                st.checkbox("Training & Webinars", value=True)
+                st.checkbox("New Hire Announcements", value=True)
+            if st.form_submit_button("💾 Save Preferences", use_container_width=True):
+                st.success("✅ Preferences saved!")
 
 def training_development():
     st.markdown("""<div class="churchgate-header"><h1>🎓 Training & Development Hub</h1><p>AI-Powered Learning | Live Webinars | Certifications | Skills Gap Analyzer | Mentorship | Video Library | Gamification</p></div>""", unsafe_allow_html=True)
