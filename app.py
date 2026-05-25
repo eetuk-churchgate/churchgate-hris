@@ -4412,6 +4412,10 @@ def ai_recruitment_agent():
 def chat_communications():
     st.markdown("""<div class="churchgate-header"><h1>💬 Social Hub</h1><p>Team Chat | Direct Messages | Announcements | Kudos | Polls | Interest Groups | Smart HRIS Bot | Integrations</p></div>""", unsafe_allow_html=True)
     
+    # Reset old chat state format
+    if isinstance(st.session_state.get('chat_messages'), list):
+        st.session_state.chat_messages = {}
+    
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
