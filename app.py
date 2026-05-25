@@ -1662,6 +1662,22 @@ def employee_management():
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Update failed: {str(e)}")
+                        
+                        st.markdown("---")
+                        st.markdown("#### 🗑️ Danger Zone")
+                        delete_col1, delete_col2 = st.columns([3, 1])
+                        with delete_col1:
+                            st.warning(f"⚠️ Delete {emp['first_name']} {emp['last_name']}? This cannot be undone.")
+                        with delete_col2:
+                            if st.button("🗑️ Delete", key=f"del_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
+                                try:
+                                    db._delete("employees", {"employee_id": emp['employee_id']})
+                                    st.success(f"🗑️ {emp['first_name']} {emp['last_name']} deleted!")
+                                    st.cache_data.clear()
+                                    time.sleep(1)
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Delete failed: {str(e)}")
         else:
             st.info("No employees match your search criteria.")
     
