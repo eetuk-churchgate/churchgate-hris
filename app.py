@@ -1239,13 +1239,6 @@ def executive_dashboard():
         except:
             pass
         
-        # If all zeros, show defaults
-        if all(v['progress'] == 0 for v in pillar_progress.values()):
-            pillar_progress['1. Occupancy & Revenue Growth']['progress'] = 85
-            pillar_progress['2. Process Simplification']['progress'] = 72
-            pillar_progress['3. Asset Reliability & Digitalization']['progress'] = 90
-            pillar_progress['4. People & Culture']['progress'] = 88
-        
         for name, data in pillar_progress.items():
             st.markdown(f"""
             <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {data['color']};">
