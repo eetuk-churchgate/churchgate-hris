@@ -1691,21 +1691,23 @@ def employee_management():
             if st.form_submit_button("✅ Add Employee", use_container_width=True):
                 if first_name and last_name and employee_id and department and position:
                     try:
-                        db._post("employees", {
-                            "employee_id": employee_id, "first_name": first_name, "last_name": last_name,
-                            "email": email, "phone": phone, "department": department,
-                            "region": region,
-                            "position": position, "grade": grade, "employment_type": employment_type,
-                            "join_date": join_date.strftime('%Y-%m-%d'), "status": status
-                        })
-                        st.success(f"✅ {first_name} {last_name} added!")
-                        st.balloons()
-                        st.cache_data.clear()
-                        st.rerun()
-                    except:
-                        st.error("Employee ID may already exist.")
-                else:
-                    st.error("❌ Required fields missing!")
+    result = db._post("employees", {
+        "employee_id": employee_id, "first_name": first_name, "last_name": last_name,
+        "email": email, "phone": phone, "department": department,
+        "region": region,
+        "position": position, "grade": grade, "employment_type": employment_type,
+        "join_date": join_date.strftime('%Y-%m-%d'), "status": status
+    })
+    if result:
+        st.success(f"✅ {first_name} {last_name} added!")
+        st.balloons()
+        st.cache_data.clear()
+        time.sleep(0.5)
+        st.rerun()
+    else:
+        st.error("❌ Insert failed - check Supabase RLS policies or employee_id uniqueness")
+except Exception as e:
+    st.error(f"❌ Error adding employee: {str(e)}")
     
     # ============ TAB 3: BULK UPLOAD ============
     with tab3:
