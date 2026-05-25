@@ -1454,7 +1454,6 @@ def employee_management():
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     
-    @st.cache_data(ttl=60)
     def load_employees():
         try:
             df = db.get_all_employees()
