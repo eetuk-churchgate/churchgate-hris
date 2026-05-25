@@ -1073,37 +1073,35 @@ def executive_dashboard():
     
     # ============ LOAD/INITIALIZE PORTFOLIO METRICS ============
     if 'portfolio_metrics' not in st.session_state:
-    st.session_state.portfolio_metrics = {
-        'occupancy': 87, 'revenue': 94, 'rating': 4.2,
-        'portfolio_data': {
-            'World Trade Center Abuja': {'occupancy': 87, 'revenue': 94},
-            'Churchgate Tower 1, Lagos': {'occupancy': 92, 'revenue': 98},
-            'Churchgate Tower 2, Lagos': {'occupancy': 85, 'revenue': 88},
-            'Churchgate Plaza, Abuja': {'occupancy': 78, 'revenue': 82},
-            'Warehouses': {'occupancy': 95, 'revenue': 97},
-            'Ocean Terrace': {'occupancy': 90, 'revenue': 91}
+        st.session_state.portfolio_metrics = {
+            'occupancy': 87, 'revenue': 94, 'rating': 4.2,
+            'portfolio_data': {
+                'World Trade Center Abuja': {'occupancy': 87, 'revenue': 94},
+                'Churchgate Tower 1, Lagos': {'occupancy': 92, 'revenue': 98},
+                'Churchgate Tower 2, Lagos': {'occupancy': 85, 'revenue': 88},
+                'Churchgate Plaza, Abuja': {'occupancy': 78, 'revenue': 82},
+                'Warehouses': {'occupancy': 95, 'revenue': 97},
+                'Ocean Terrace': {'occupancy': 90, 'revenue': 91}
+            }
         }
-    }
-    # Load ALL saved metrics from database
-    try:
-        saved = db.get_portfolio_metrics()
-        if saved:
-            if 'occupancy' in saved:
-                st.session_state.portfolio_metrics['occupancy'] = int(float(saved['occupancy']))
-            if 'revenue' in saved:
-                st.session_state.portfolio_metrics['revenue'] = int(float(saved['revenue']))
-            if 'rating' in saved:
-                st.session_state.portfolio_metrics['rating'] = float(saved['rating'])
-            # Load property-level data
-            for prop in st.session_state.portfolio_metrics['portfolio_data']:
-                occ_key = f"{prop}_occupancy"
-                rev_key = f"{prop}_revenue"
-                if occ_key in saved:
-                    st.session_state.portfolio_metrics['portfolio_data'][prop]['occupancy'] = int(float(saved[occ_key]))
-                if rev_key in saved:
-                    st.session_state.portfolio_metrics['portfolio_data'][prop]['revenue'] = int(float(saved[rev_key]))
-    except:
-        pass
+        try:
+            saved = db.get_portfolio_metrics()
+            if saved:
+                if 'occupancy' in saved:
+                    st.session_state.portfolio_metrics['occupancy'] = int(float(saved['occupancy']))
+                if 'revenue' in saved:
+                    st.session_state.portfolio_metrics['revenue'] = int(float(saved['revenue']))
+                if 'rating' in saved:
+                    st.session_state.portfolio_metrics['rating'] = float(saved['rating'])
+                for prop in st.session_state.portfolio_metrics['portfolio_data']:
+                    occ_key = f"{prop}_occupancy"
+                    rev_key = f"{prop}_revenue"
+                    if occ_key in saved:
+                        st.session_state.portfolio_metrics['portfolio_data'][prop]['occupancy'] = int(float(saved[occ_key]))
+                    if rev_key in saved:
+                        st.session_state.portfolio_metrics['portfolio_data'][prop]['revenue'] = int(float(saved[rev_key]))
+        except:
+            pass
     
     metrics = st.session_state.portfolio_metrics
     
@@ -1161,21 +1159,20 @@ def executive_dashboard():
                     metrics['portfolio_data'][prop]['revenue'] = st.slider(f"{prop} - Revenue %", 0, 100, metrics['portfolio_data'][prop]['revenue'], key=f"rev_{prop}")
             
             if st.button("💾 Update All Metrics", use_container_width=True):
-    st.session_state.portfolio_metrics['occupancy'] = new_occupancy
-    st.session_state.portfolio_metrics['revenue'] = new_revenue
-    st.session_state.portfolio_metrics['rating'] = new_rating
-    try:
-        db.save_portfolio_metric('occupancy', new_occupancy)
-        db.save_portfolio_metric('revenue', new_revenue)
-        db.save_portfolio_metric('rating', new_rating)
-        # Save property-level metrics
-        for prop in metrics['portfolio_data']:
-            db.save_portfolio_metric(f"{prop}_occupancy", metrics['portfolio_data'][prop]['occupancy'])
-            db.save_portfolio_metric(f"{prop}_revenue", metrics['portfolio_data'][prop]['revenue'])
-    except:
-        pass
-    st.success("✅ Metrics updated & saved!")
-    st.rerun()
+                st.session_state.portfolio_metrics['occupancy'] = new_occupancy
+                st.session_state.portfolio_metrics['revenue'] = new_revenue
+                st.session_state.portfolio_metrics['rating'] = new_rating
+                try:
+                    db.save_portfolio_metric('occupancy', new_occupancy)
+                    db.save_portfolio_metric('revenue', new_revenue)
+                    db.save_portfolio_metric('rating', new_rating)
+                    for prop in metrics['portfolio_data']:
+                        db.save_portfolio_metric(f"{prop}_occupancy", metrics['portfolio_data'][prop]['occupancy'])
+                        db.save_portfolio_metric(f"{prop}_revenue", metrics['portfolio_data'][prop]['revenue'])
+                except:
+                    pass
+                st.success("✅ Metrics updated & saved!")
+                st.rerun()
     
     # ============ QUICK ACTIONS ============
     st.markdown("---")
