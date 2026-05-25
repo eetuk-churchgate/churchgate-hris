@@ -34,9 +34,12 @@ class DatabaseManager:
         return r.json() if r.status_code == 200 else []
     
     def _post(self, table, data):
-        url = f"{self.url}/rest/v1/{table}"
-        r = requests.post(url, headers=self._headers(), json=data)
-        return r.status_code in [200, 201]
+    url = f"{self.url}/rest/v1/{table}"
+    r = requests.post(url, headers=self._headers(), json=data)
+    if r.status_code not in [200, 201]:
+        print(f"POST ERROR: {r.status_code} - {r.text[:300]}")
+        st.error(f"Supabase POST Error [{r.status_code}]: {r.text[:200]}")
+    return r.status_code in [200, 201]
     
     def _patch(self, table, data, filters):
         url = f"{self.url}/rest/v1/{table}?"
