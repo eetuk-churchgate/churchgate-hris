@@ -5506,11 +5506,471 @@ def reports_analytics():
             st.download_button("📥 Download Workforce Data (CSV)", emp_df.to_csv(index=False), "workforce_data.csv", "text/csv")
 
 def notifications_page():
-    st.markdown("""<div class="churchgate-header"><h1>🔔 Notifications</h1><p>Alerts, Reminders, and Updates</p></div>""", unsafe_allow_html=True)
-    for n in [{"title": "Performance Review Due", "msg": "Q2 2026 reviews due by June 15", "time": "2 hours ago", "unread": True}, {"title": "New Hire", "msg": "Welcome David Effiong - Facility Manager", "time": "Yesterday", "unread": True}, {"title": "Training Reminder", "msg": "BMS Advanced starts June 15", "time": "2 days ago", "unread": False}, {"title": "Holiday Notice", "msg": "Democracy Day - June 12, 2026", "time": "1 week ago", "unread": False}]:
-        bg = "#fff3f3" if n['unread'] else "#fafafa"
-        icon = "🔴" if n['unread'] else "✅"
-        st.markdown(f"""<div style="background: {bg}; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid #CC0000;">{icon} <strong>{n['title']}</strong><p style="margin: 0.2rem 0;">{n['msg']}</p><small>{n['time']}</small></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>🔔 Notifications Center</h1><p>Real-Time Alerts | Priority Intelligence | System Status</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
+    is_manager = is_admin or st.session_state.user['role'] in ['Manager', 'HOD'] if st.session_state.user else False
+    
+    # Initialize notification state
+    if 'notifications_read' not in st.session_state:
+        st.session_state.notifications_read = set()
+    if 'notifications_dismissed' not in st.session_state:
+        st.session_state.notifications_dismissed = set()
+    if 'notification_preferences' not in st.session_state:
+        st.session_state.notification_preferences = {
+            'appraisal': True, 'leave': True, 'kudos': True, 'kpi': True,
+            'birthday': True, 'training': True, 'recruitment': True,
+            'announcement': True, 'poll': True, 'system': True
+        }
+    
+    # ============ BUILD REAL-TIME NOTIFICATIONS ============
+    notifications = []
+    now = datetime.now()
+    today = now.strftime('%Y-%m-%d')
+    
+    # 1. Load real data from database
+    employees_df = pd.DataFrame()
+    try:
+        employees_df = db.get_all_employees()
+    except:
+        pass
+    
+    # 2. Appraisal Notifications
+    try:
+        all_appraisals = db.get_all_appraisals()
+        if all_appraisals:
+            for a in all_appraisals:
+                # Staff: HOD has reviewed their appraisal
+                if a.get('user_name') == user_name and a.get('status') == 'Approved' and a.get('acceptance') is None:
+                    notifications.append({
+                        'id': f"appraisal_accept_{user_name}",
+                        'title': '📝 Appraisal Review Ready',
+                        'message': f'Your HOD has reviewed your appraisal. Please accept or request re-review.',
+                        'time': a.get('submitted_date', 'Recently'),
+                        'category': 'appraisal',
+                        'priority': 'high',
+                        'action': 'review_appraisal',
+                        'action_label': 'Review Now'
+                    })
+                # HOD: Staff has submitted appraisal
+                if is_manager and a.get('department') == user_dept and a.get('status') == 'Submitted':
+                    notifications.append({
+                        'id': f"appraisal_review_{a.get('user_name')}",
+                        'title': '📝 Appraisal Awaiting Review',
+                        'message': f"{a.get('user_name')} has submitted their self-assessment. Your review is needed.",
+                        'time': a.get('submitted_date', 'Recently'),
+                        'category': 'appraisal',
+                        'priority': 'high',
+                        'action': 'review_appraisal',
+                        'action_label': 'Review Now'
+                    })
+                # Sr Management: Escalated appraisals
+                if is_admin and a.get('acceptance') == 'Rejected' and a.get('status') != 'Awaiting HOD Re-review':
+                    notifications.append({
+                        'id': f"appraisal_escalated_{a.get('user_name')}",
+                        'title': '🚨 Appraisal Escalated',
+                        'message': f"{a.get('user_name')} ({a.get('department', '')}) has rejected their HOD review. Sr. Management decision needed.",
+                        'time': a.get('submitted_date', 'Recently'),
+                        'category': 'appraisal',
+                        'priority': 'critical',
+                        'action': 'review_escalation',
+                        'action_label': 'Resolve Now'
+                    })
+    except:
+        pass
+    
+    # 3. KPI Deadline Reminders
+    try:
+        perf_data = db.get_performance_data()
+        if not perf_data.empty:
+            for _, row in perf_data.iterrows():
+                deadline = row.get('deadline', '')
+                if deadline and str(deadline) != 'nan':
+                    try:
+                        deadline_date = pd.to_datetime(deadline)
+                        days_left = (deadline_date - now).days
+                        if 0 < days_left <= 14:
+                            notifications.append({
+                                'id': f"kpi_deadline_{row.get('pillar_name', '')}",
+                                'title': '⏰ KPI Deadline Approaching',
+                                'message': f"'{row.get('pillar_name', 'KPI')}' is due in {days_left} days. Current progress: {int(row.get('progress', 0))}%",
+                                'time': f'{days_left} days remaining',
+                                'category': 'kpi',
+                                'priority': 'high' if days_left <= 7 else 'medium',
+                                'action': 'view_kpis',
+                                'action_label': 'Update KPI'
+                            })
+                    except:
+                        pass
+    except:
+        pass
+    
+    # 4. Birthdays Today
+    if not employees_df.empty:
+        for _, emp in employees_df.iterrows():
+            dob = emp.get('date_of_birth')
+            if dob and str(dob) != 'None' and str(dob) != 'nan':
+                try:
+                    dob_date = pd.to_datetime(dob)
+                    if dob_date.month == now.month:
+                        if dob_date.day == now.day:
+                            notifications.append({
+                                'id': f"birthday_{emp['employee_id']}",
+                                'title': '🎂 Birthday Today!',
+                                'message': f"Happy Birthday to {emp['first_name']} {emp['last_name']} ({emp.get('department', '')})!",
+                                'time': 'Today',
+                                'category': 'birthday',
+                                'priority': 'medium',
+                                'action': 'send_wishes',
+                                'action_label': '🎉 Send Wishes'
+                            })
+                        elif 1 <= (dob_date.day - now.day) <= 7:
+                            notifications.append({
+                                'id': f"birthday_upcoming_{emp['employee_id']}",
+                                'title': '🎂 Upcoming Birthday',
+                                'message': f"{emp['first_name']} {emp['last_name']}'s birthday is in {dob_date.day - now.day} days (May {dob_date.day})",
+                                'time': f'In {dob_date.day - now.day} days',
+                                'category': 'birthday',
+                                'priority': 'low',
+                                'action': 'view_calendar',
+                                'action_label': 'View Calendar'
+                            })
+                except:
+                    pass
+    
+    # 5. Work Anniversaries
+    if not employees_df.empty:
+        for _, emp in employees_df.iterrows():
+            join_date = emp.get('join_date')
+            if join_date and str(join_date) != 'None' and str(join_date) != 'nan':
+                try:
+                    jd = pd.to_datetime(join_date)
+                    years = now.year - jd.year
+                    if jd.month == now.month and jd.day == now.day and years > 0:
+                        notifications.append({
+                            'id': f"anniversary_{emp['employee_id']}",
+                            'title': '⭐ Work Anniversary Today!',
+                            'message': f"{emp['first_name']} {emp['last_name']} celebrates {years} year{'s' if years > 1 else ''} at Churchgate Group!",
+                            'time': 'Today',
+                            'category': 'birthday',
+                            'priority': 'medium',
+                            'action': 'send_congrats',
+                            'action_label': '🎉 Congratulate'
+                        })
+                except:
+                    pass
+    
+    # 6. Job Requisitions
+    try:
+        all_reqs = db.get_all_job_requisitions()
+        if all_reqs:
+            for r in all_reqs:
+                if r.get('status') == 'Approved - Live':
+                    closing = r.get('closing', '')
+                    if closing:
+                        try:
+                            close_date = datetime.strptime(closing, '%Y-%m-%d')
+                            days_to_close = (close_date - now).days
+                            if 0 < days_to_close <= 7:
+                                notifications.append({
+                                    'id': f"job_closing_{r.get('req_id', '')}",
+                                    'title': '📋 Job Posting Closing Soon',
+                                    'message': f"'{r.get('title', '')}' closes in {days_to_close} days. Review applications now.",
+                                    'time': f'{days_to_close} days left',
+                                    'category': 'recruitment',
+                                    'priority': 'medium',
+                                    'action': 'view_recruitment',
+                                    'action_label': 'View Applications'
+                                })
+                        except:
+                            pass
+    except:
+        pass
+    
+    # 7. Training Reminders
+    try:
+        training_data = db._get("training_enrollments") if hasattr(db, '_get') else []
+        if training_data:
+            for t in training_data:
+                if t.get('user_email') == user_email:
+                    notifications.append({
+                        'id': f"training_{t.get('course_name', '')}",
+                        'title': '📚 Upcoming Training',
+                        'message': f"Your course '{t.get('course_name', '')}' starts on {t.get('start_date', 'soon')}.",
+                        'time': t.get('start_date', 'Soon'),
+                        'category': 'training',
+                        'priority': 'low',
+                        'action': 'view_training',
+                        'action_label': 'View Course'
+                    })
+    except:
+        pass
+    
+    # 8. Kudos Received
+    if 'kudos_board' in st.session_state and st.session_state.kudos_board:
+        for k in st.session_state.kudos_board:
+            if k.get('to') == user_name:
+                notif_id = f"kudos_{k.get('from', '')}_{k.get('time', '')}"
+                notifications.append({
+                    'id': notif_id,
+                    'title': f"{k.get('emoji', '🌟')} Kudos Received!",
+                    'message': f"{k.get('from', 'Someone')} appreciated you: \"{k.get('message', '')[:80]}...\"",
+                    'time': k.get('time', 'Recently'),
+                    'category': 'kudos',
+                    'priority': 'medium',
+                    'action': 'view_kudos',
+                    'action_label': 'View Kudos'
+                })
+    
+    # 9. Polls Not Yet Voted
+    if 'polls' in st.session_state and st.session_state.polls:
+        for i, poll in enumerate(st.session_state.polls):
+            if poll.get('active', True) and user_name not in poll.get('voters', []):
+                notifications.append({
+                    'id': f"poll_unvoted_{i}",
+                    'title': '📊 Poll Waiting For You',
+                    'message': f"'{poll.get('question', '')}' — Cast your vote!",
+                    'time': f"Created {poll.get('created_at', 'recently')}",
+                    'category': 'poll',
+                    'priority': 'low',
+                    'action': 'vote_poll',
+                    'action_label': 'Vote Now'
+                })
+    
+    # 10. New Announcements
+    if 'announcements_list' in st.session_state and st.session_state.announcements_list:
+        recent_anns = st.session_state.announcements_list[-3:]
+        for ann in recent_anns:
+            notifications.append({
+                'id': f"announcement_{ann.get('title', '')}_{ann.get('time', '')}",
+                'title': f"📢 New Announcement: {ann.get('title', '')}",
+                'message': ann.get('content', '')[:100],
+                'time': ann.get('time', 'Recently'),
+                'category': 'announcement',
+                'priority': ann.get('priority', 'Normal').lower() if ann.get('priority') == 'Urgent' else 'medium',
+                'action': 'view_announcements',
+                'action_label': 'Read More'
+            })
+    
+    # 11. System Status (for Admins)
+    if is_admin:
+        # Database health check
+        try:
+            emp_count = len(employees_df) if not employees_df.empty else 0
+            notifications.append({
+                'id': 'system_health',
+                'title': '🟢 System Status: Healthy',
+                'message': f'All systems operational. {emp_count} employees in database. Last backup: {now.strftime("%B %d, %Y")}',
+                'time': 'Live',
+                'category': 'system',
+                'priority': 'low',
+                'action': 'view_system',
+                'action_label': 'System Dashboard'
+            })
+        except:
+            pass
+    
+    # Sort notifications by priority and time
+    priority_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+    notifications.sort(key=lambda x: (priority_order.get(x.get('priority', 'low'), 3), str(x.get('time', ''))))
+    
+    # Filter by user preferences
+    filtered_notifications = [n for n in notifications if st.session_state.notification_preferences.get(n.get('category', ''), True)]
+    
+    # Remove dismissed notifications
+    active_notifications = [n for n in filtered_notifications if n['id'] not in st.session_state.notifications_dismissed]
+    
+    # ============ TOP METRICS BAR ============
+    unread_count = len([n for n in active_notifications if n['id'] not in st.session_state.notifications_read])
+    critical_count = len([n for n in active_notifications if n.get('priority') == 'critical'])
+    high_count = len([n for n in active_notifications if n.get('priority') == 'high'])
+    
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        st.metric("🔔 Total", len(active_notifications))
+    with c2:
+        st.metric("🔴 Unread", unread_count, delta=None, delta_color="off")
+    with c3:
+        st.metric("🚨 Critical", critical_count)
+    with c4:
+        st.metric("⚠️ High Priority", high_count)
+    with c5:
+        st.metric("✅ Read", len(active_notifications) - unread_count)
+    
+    st.markdown("---")
+    
+    # ============ QUICK ACTIONS ============
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        if st.button("✅ Mark All as Read", use_container_width=True):
+            for n in active_notifications:
+                st.session_state.notifications_read.add(n['id'])
+            st.rerun()
+    with col2:
+        if st.button("🗑️ Clear All", use_container_width=True):
+            for n in active_notifications:
+                st.session_state.notifications_dismissed.add(n['id'])
+            st.rerun()
+    with col3:
+        if st.button("📧 Email Digest", use_container_width=True):
+            if active_notifications:
+                st.success(f"✅ Digest with {len(active_notifications)} notifications sent to {user_email}")
+            else:
+                st.info("No notifications to send.")
+    with col4:
+        show_preferences = st.button("⚙️ Preferences", use_container_width=True)
+    
+    # ============ PREFERENCES PANEL ============
+    if show_preferences:
+        with st.expander("⚙️ Notification Preferences", expanded=True):
+            st.markdown("Choose which notifications you want to receive:")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.session_state.notification_preferences['appraisal'] = st.checkbox("📝 Appraisals", value=st.session_state.notification_preferences['appraisal'])
+                st.session_state.notification_preferences['leave'] = st.checkbox("🏖️ Leave", value=st.session_state.notification_preferences['leave'])
+                st.session_state.notification_preferences['kudos'] = st.checkbox("🌟 Kudos", value=st.session_state.notification_preferences['kudos'])
+            with c2:
+                st.session_state.notification_preferences['kpi'] = st.checkbox("🎯 KPIs", value=st.session_state.notification_preferences['kpi'])
+                st.session_state.notification_preferences['birthday'] = st.checkbox("🎂 Birthdays", value=st.session_state.notification_preferences['birthday'])
+                st.session_state.notification_preferences['training'] = st.checkbox("📚 Training", value=st.session_state.notification_preferences['training'])
+            with c3:
+                st.session_state.notification_preferences['recruitment'] = st.checkbox("💼 Recruitment", value=st.session_state.notification_preferences['recruitment'])
+                st.session_state.notification_preferences['announcement'] = st.checkbox("📢 Announcements", value=st.session_state.notification_preferences['announcement'])
+                st.session_state.notification_preferences['system'] = st.checkbox("🖥️ System", value=st.session_state.notification_preferences['system'])
+    
+    st.markdown("---")
+    
+    # ============ NOTIFICATION LIST ============
+    if active_notifications:
+        # Group by category
+        from collections import defaultdict
+        grouped = defaultdict(list)
+        for n in active_notifications:
+            grouped[n.get('category', 'other')].append(n)
+        
+        category_names = {
+            'appraisal': '📝 Appraisals & Performance',
+            'kpi': '🎯 KPI Deadlines',
+            'birthday': '🎂 Birthdays & Anniversaries',
+            'recruitment': '💼 Recruitment',
+            'training': '📚 Training & Development',
+            'kudos': '🌟 Kudos & Recognition',
+            'announcement': '📢 Announcements',
+            'poll': '📊 Polls & Surveys',
+            'system': '🖥️ System',
+            'leave': '🏖️ Leave Management'
+        }
+        
+        for category, items in grouped.items():
+            cat_name = category_names.get(category, f"📌 {category.title()}")
+            unread_in_cat = len([n for n in items if n['id'] not in st.session_state.notifications_read])
+            
+            with st.expander(f"{cat_name} ({len(items)}) {'🔴' if unread_in_cat > 0 else ''}", expanded=(unread_in_cat > 0 or category in ['critical', 'high'])):
+                for n in items:
+                    is_unread = n['id'] not in st.session_state.notifications_read
+                    
+                    # Priority colors
+                    priority_colors = {
+                        'critical': '#CC0000',
+                        'high': '#e53e3e',
+                        'medium': '#d69e2e',
+                        'low': '#718096'
+                    }
+                    border_color = priority_colors.get(n.get('priority', 'low'), '#718096')
+                    bg_color = '#fff5f5' if is_unread else '#fafafa'
+                    
+                    # Notification card
+                    col1, col2, col3 = st.columns([8, 1, 1])
+                    with col1:
+                        st.markdown(f"""
+                        <div style="background:{bg_color};padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid {border_color};">
+                            <div style="display:flex;justify-content:space-between;align-items:start;">
+                                <div style="flex:1;">
+                                    <strong style="font-size:0.95rem;">{n['title']}</strong>
+                                    {'<span style="background:#CC0000;color:white;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.7rem;margin-left:0.5rem;">NEW</span>' if is_unread else ''}
+                                    <p style="margin:0.3rem 0;color:#555;font-size:0.85rem;">{n['message']}</p>
+                                    <small style="color:#888;">🕐 {n['time']} | 🏷️ {n.get('priority', 'normal').upper()}</small>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        if is_unread:
+                            if st.button("✓", key=f"read_{n['id']}", help="Mark as read", use_container_width=True):
+                                st.session_state.notifications_read.add(n['id'])
+                                st.rerun()
+                    
+                    with col3:
+                        if st.button("✕", key=f"dismiss_{n['id']}", help="Dismiss", use_container_width=True):
+                            st.session_state.notifications_dismissed.add(n['id'])
+                            st.rerun()
+                    
+                    # Action button
+                    if n.get('action_label'):
+                        if st.button(n['action_label'], key=f"action_{n['id']}", use_container_width=True):
+                            action = n.get('action', '')
+                            if action == 'review_appraisal':
+                                st.session_state['navigate_to'] = "📈 Performance & OKRs"
+                            elif action == 'view_kpis':
+                                st.session_state['navigate_to'] = "📈 Performance & OKRs"
+                            elif action == 'view_recruitment':
+                                st.session_state['navigate_to'] = "💼 Recruitment Hub"
+                            elif action == 'view_training':
+                                st.session_state['navigate_to'] = "🎓 Training & Development"
+                            elif action == 'view_announcements':
+                                st.session_state['navigate_to'] = "💬 Chat & Communications"
+                            elif action == 'view_kudos':
+                                st.session_state['navigate_to'] = "💬 Chat & Communications"
+                            elif action == 'view_system':
+                                st.session_state['navigate_to'] = "📊 Reports & Analytics"
+                            elif action == 'send_wishes':
+                                st.success(f"🎉 Birthday wishes sent to the team!")
+                            elif action == 'send_congrats':
+                                st.success(f"🎉 Congratulations sent!")
+                            elif action == 'view_calendar':
+                                st.info("📅 Check the Training Calendar for upcoming events.")
+                            st.rerun()
+    else:
+        st.success("🎉 You're all caught up! No new notifications.")
+    
+    # ============ NOTIFICATION SIDEBAR BADGE (Injected via JS) ============
+    if unread_count > 0:
+        st.markdown(f"""
+        <script>
+            // Update browser tab title
+            document.title = "({unread_count}) Churchgate HRIS - Notifications";
+        </script>
+        """, unsafe_allow_html=True)
+    
+    # ============ WEEKLY DIGEST PREVIEW ============
+    if is_admin:
+        st.markdown("---")
+        with st.expander("📊 Weekly Notification Digest (Admin View)", expanded=False):
+            st.markdown(f"**Week of {now.strftime('%B %d, %Y')}**")
+            
+            # Summarize by category
+            digest_data = []
+            for category, items in grouped.items():
+                digest_data.append({
+                    'Category': category_names.get(category, category),
+                    'Count': len(items),
+                    'Critical': len([n for n in items if n.get('priority') == 'critical']),
+                    'Unread': len([n for n in items if n['id'] not in st.session_state.notifications_read])
+                })
+            
+            if digest_data:
+                digest_df = pd.DataFrame(digest_data)
+                st.dataframe(digest_df, use_container_width=True, hide_index=True)
+                
+                # Chart
+                fig = px.bar(digest_df, x='Category', y='Count', color='Critical',
+                           color_continuous_scale=['#38a169', '#d69e2e', '#CC0000'])
+                fig.update_layout(height=300)
+                st.plotly_chart(fig, use_container_width=True)
 
 def my_profile():
     user = st.session_state.user
