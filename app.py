@@ -3671,13 +3671,33 @@ def recruitment_hub():
                 closing_date = st.date_input("Application Deadline")
             
             st.markdown("---")
-            jd_text = st.text_area("Full Job Description *", height=200, placeholder="Paste complete job description...")
+            st.markdown("**Full Job Description ***")
+            st.markdown("*Tip: Use markdown for formatting. **Bold**, *italic*, - bullet points, ### headings*")
+            jd_text = st.text_area("Full Job Description *", height=250, placeholder="""### About the Role
+Describe the role here...
+
+### Key Responsibilities
+- Responsibility 1
+- Responsibility 2
+- Responsibility 3
+
+### Requirements
+- Requirement 1
+- Requirement 2
+
+### Benefits
+- Benefit 1
+- Benefit 2""", label_visibility="collapsed")
+            st.markdown("**Preview:**")
+            if jd_text:
+                st.markdown(jd_text)
             
-            st.markdown("### Screening Questions")
-            screening_q1 = st.text_input("Required Skill 1 *", placeholder="e.g., Cisco Certified (CCNP minimum)")
-            screening_q2 = st.text_input("Required Skill 2 *", placeholder="e.g., 5+ years experience")
-            screening_q3 = st.text_input("Required Skill 3", placeholder="e.g., Experience with security systems")
-            screening_q4 = st.text_input("Education Requirement *", placeholder="e.g., B.Sc. Computer Science")
+            st.markdown("### Screening Questions (Optional)")
+            st.markdown("*Leave blank if not needed*")
+            screening_q1 = st.text_input("Screening Question 1", placeholder="e.g., Cisco Certified (CCNP minimum)")
+            screening_q2 = st.text_input("Screening Question 2", placeholder="e.g., 5+ years experience in similar role")
+            screening_q3 = st.text_input("Screening Question 3", placeholder="e.g., Experience with security systems")
+            screening_q4 = st.text_input("Screening Question 4", placeholder="e.g., B.Sc. Computer Science or related field")
             
             st.markdown("### Auto-Post Settings")
             c1, c2, c3 = st.columns(3)
@@ -3720,85 +3740,207 @@ def recruitment_hub():
         if st.session_state.job_requisitions:
             st.markdown("---")
             st.markdown("### 📋 Requisition Approval Dashboard")
+            
+            # Load email service for notifications
+            try:
+                from utils.email_service import EmailService
+                email_svc = EmailService()
+            except:
+                email_svc = None
+            
             for i, req in enumerate(st.session_state.job_requisitions):
-                with st.expander(f"{req['id']} - {req['title']} | {req['status']}", expanded=True):
-                    st.markdown(f"**By:** {req['submitted_by']} | **Dept:** {req['department']} | **Location:** {req['location']}")
+                with st.expander(f"{req['id']} - {req['title']} | {req['department']} | {req['status']}", expanded=True):
                     
+                    # ===== FULL DETAIL VIEW =====
+                    st.markdown(f"**Submitted By:** {req['submitted_by']} | **Date:** {req['date']}")
+                    st.markdown(f"**Department:** {req['department']} | **Location:** {req['location']}")
+                    st.markdown(f"**Type:** {req['type']} | **Level:** {req['level']} | **Positions:** {req.get('positions', 1)}")
+                    st.markdown(f"**Salary Range:** {req.get('salary', 'Not specified')}")
+                    st.markdown(f"**Closing Date:** {req.get('closing', 'Not set')}")
+                    
+                    st.markdown("---")
+                    st.markdown("**📋 Full Job Description:**")
+                    st.markdown(req.get('jd', 'No JD provided')[:500] + ('...' if len(req.get('jd', '')) > 500 else ''))
+                    
+                    if req.get('screening'):
+                        st.markdown("---")
+                        st.markdown("**❓ Screening Questions:**")
+                        for q in req.get('screening', []):
+                            if q:
+                                st.markdown(f"- {q}")
+                    
+                    st.markdown("---")
+                    st.markdown(f"**Platform Posts:** LinkedIn: {'✅' if req.get('posts', {}).get('linkedin') else '❌'} | Indeed: {'✅' if req.get('posts', {}).get('indeed') else '❌'} | Glassdoor: {'✅' if req.get('posts', {}).get('glassdoor') else '❌'}")
+                    
+                    if req.get('lm_comment'):
+                        st.markdown(f"**LM Comment:** {req['lm_comment']}")
+                    if req.get('admin_comment'):
+                        st.markdown(f"**Admin Comment:** {req['admin_comment']}")
+                    if req.get('coo_comment'):
+                        st.markdown(f"**COO Comment:** {req['coo_comment']}")
+                    
+                    # ===== APPROVAL WORKFLOW WITH EDIT ACCESS =====
                     if is_admin or is_manager:
+                        st.markdown("---")
+                        
+                        # LM APPROVAL
                         if req['status'] == 'Pending LM Approval':
-                            lm_comment = st.text_area("Line Manager Comment *", key=f"lm_comment_{i}", placeholder="Reason for approval...")
-                            if st.button(f"✅ LM Approve", key=f"lm_{i}"):
-                                if lm_comment:
-                                    st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
-                                    st.session_state.job_requisitions[i]['lm_comment'] = lm_comment
-                                    # CHANGE 2: Save to database
-                                    try:
-                                        r = st.session_state.job_requisitions[i]
-                                        db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
-                                            r['type'], r['salary'], r['level'], r['positions'], r['closing'],
-                                            r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
-                                            r['lm_comment'], r['admin_comment'], r['coo_comment'])
-                                    except:
-                                        pass
-                                    st.success("✅ LM approved! Sent to Admin.")
-                                    st.rerun()
-                                else:
-                                    st.error("❌ Comment required!")
+                            st.markdown("#### 👔 Line Manager Review")
+                            with st.form(key=f"lm_form_{i}"):
+                                st.markdown("**Edit Access:** You may modify the requisition before approval.")
+                                edit_jd = st.text_area("Edit Job Description (if needed)", value=req.get('jd', ''), height=150, key=f"edit_jd_{i}")
+                                edit_screening = st.text_area("Edit Screening Questions (one per line)", value='\n'.join([q for q in req.get('screening', []) if q]), height=80, key=f"edit_screening_{i}")
+                                lm_comment = st.text_area("Line Manager Comment *", key=f"lm_comment_{i}", placeholder="Reason for approval or any notes...")
+                                
+                                if st.form_submit_button("✅ LM Approve", use_container_width=True):
+                                    if lm_comment:
+                                        st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
+                                        st.session_state.job_requisitions[i]['lm_comment'] = lm_comment
+                                        st.session_state.job_requisitions[i]['jd'] = edit_jd
+                                        st.session_state.job_requisitions[i]['screening'] = [s.strip() for s in edit_screening.split('\n') if s.strip()]
+                                        
+                                        try:
+                                            r = st.session_state.job_requisitions[i]
+                                            db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                                r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                                r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                                r['lm_comment'], r['admin_comment'], r['coo_comment'])
+                                        except:
+                                            pass
+                                        
+                                        # Send email to HR
+                                        if email_svc:
+                                            try:
+                                                hr_emails = []
+                                                hr_users = db._get("users", {"department": "Human Resources"})
+                                                for u in hr_users:
+                                                    if u.get('email'):
+                                                        hr_emails.append(u['email'])
+                                                if hr_emails:
+                                                    email_svc.send_email(
+                                                        hr_emails[0],
+                                                        f"🔔 Job Requisition Approved by LM: {req['title']}",
+                                                        f"Line Manager has approved the job requisition for '{req['title']}' ({req['department']}).\n\nPlease validate the requisition in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nLM Comment: {lm_comment}"
+                                                    )
+                                                    st.info("📧 Email notification sent to HR team")
+                                            except:
+                                                pass
+                                        
+                                        st.success("✅ LM approved! Notification sent to HR for validation.")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Comment required!")
                         
+                        # ADMIN VALIDATION
                         if req['status'] == 'Pending Admin Approval':
-                            admin_comment = st.text_area("Admin Comment *", key=f"admin_comment_{i}", placeholder="Reason for approval...")
-                            if st.button(f"✅ Admin Approve", key=f"adm_{i}"):
-                                if admin_comment:
-                                    st.session_state.job_requisitions[i]['status'] = 'Pending COO Approval'
-                                    st.session_state.job_requisitions[i]['admin_comment'] = admin_comment
-                                    # CHANGE 2: Save to database
-                                    try:
-                                        r = st.session_state.job_requisitions[i]
-                                        db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
-                                            r['type'], r['salary'], r['level'], r['positions'], r['closing'],
-                                            r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
-                                            r['lm_comment'], r['admin_comment'], r['coo_comment'])
-                                    except:
-                                        pass
-                                    st.success("✅ Admin approved! Sent to COO.")
-                                    st.rerun()
-                                else:
-                                    st.error("❌ Comment required!")
+                            st.markdown("#### 🔍 HR Admin Validation")
+                            with st.form(key=f"admin_form_{i}"):
+                                st.markdown("**Edit Access:** HR may modify the requisition before validation.")
+                                edit_jd = st.text_area("Edit Job Description (if needed)", value=req.get('jd', ''), height=150, key=f"edit_jd_admin_{i}")
+                                edit_salary = st.text_input("Edit Salary Range", value=req.get('salary', ''), key=f"edit_salary_{i}")
+                                admin_comment = st.text_area("Admin Validation Comment *", key=f"admin_comment_{i}", placeholder="Confirm JD quality, budget alignment, grade fit...")
+                                
+                                if st.form_submit_button("✅ Validate & Send to COO", use_container_width=True):
+                                    if admin_comment:
+                                        st.session_state.job_requisitions[i]['status'] = 'Pending COO Approval'
+                                        st.session_state.job_requisitions[i]['admin_comment'] = admin_comment
+                                        st.session_state.job_requisitions[i]['jd'] = edit_jd
+                                        st.session_state.job_requisitions[i]['salary'] = edit_salary
+                                        
+                                        try:
+                                            r = st.session_state.job_requisitions[i]
+                                            db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                                r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                                r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                                r['lm_comment'], r['admin_comment'], r['coo_comment'])
+                                        except:
+                                            pass
+                                        
+                                        # Send email to COO
+                                        if email_svc:
+                                            try:
+                                                coo_users = db._get("users", {"department": "Senior Management"})
+                                                coo_email = None
+                                                for u in coo_users:
+                                                    if 'coo' in str(u.get('position', '')).lower():
+                                                        coo_email = u.get('email')
+                                                        break
+                                                if not coo_email and coo_users:
+                                                    coo_email = coo_users[0].get('email')
+                                                if coo_email:
+                                                    email_svc.send_email(
+                                                        coo_email,
+                                                        f"🔔 Job Requisition Ready for Final Approval: {req['title']}",
+                                                        f"HR has validated the job requisition for '{req['title']}' ({req['department']}).\n\nPlease review and give final approval in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}\nLM Comment: {req.get('lm_comment', 'N/A')}"
+                                                    )
+                                                    st.info("📧 Email notification sent to COO")
+                                            except:
+                                                pass
+                                        
+                                        st.success("✅ Validated! Sent to COO for final approval.")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Comment required!")
                         
+                        # COO APPROVAL
                         if req['status'] == 'Pending COO Approval':
-                            coo_comment = st.text_area("COO Comment *", key=f"coo_comment_{i}", placeholder="Reason for approval...")
-                            if st.button(f"✅ COO Approve & Activate", key=f"coo_{i}"):
-                                if coo_comment:
-                                    st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
-                                    st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
-                                    job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{len(st.session_state.active_jobs)+1:03d}"
-                                    # CHANGE 3: URL fix
-                                    public_url = f"{STREAMLIT_URL}/Careers?job={job_ref}"
-                                    st.session_state.active_jobs.append({
-                                        'ref': job_ref, 'title': req['title'], 'department': req['department'],
-                                        'location': req['location'], 'type': req['type'], 'salary': req['salary'],
-                                        'jd': req['jd'], 'screening': req['screening'], 'closing': req['closing'],
-                                        'posts': req['posts'], 'date': datetime.now().strftime('%Y-%m-%d'),
-                                        'applications': 0, 'public_url': public_url
-                                    })
-                                    # CHANGE 2: Save to database
-                                    try:
-                                        r = st.session_state.job_requisitions[i]
-                                        db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
-                                            r['type'], r['salary'], r['level'], r['positions'], r['closing'],
-                                            r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
-                                            r['lm_comment'], r['admin_comment'], r['coo_comment'])
-                                    except:
-                                        pass
-                                    st.success(f"✅ Job LIVE on Careers Page!")
-                                    st.code(public_url, language=None)
-                                    st.balloons()
-                                    st.rerun()
-                                else:
-                                    st.error("❌ Comment required!")
-                    
-                    if req['status'] == 'Approved - Live':
-                        st.success("🟢 LIVE - Accepting applications on Careers Page")
+                            st.markdown("#### 🏢 COO Final Approval")
+                            with st.form(key=f"coo_form_{i}"):
+                                st.markdown("**Review:** Full requisition details are shown above.")
+                                coo_comment = st.text_area("COO Comment *", key=f"coo_comment_{i}", placeholder="Final approval notes...")
+                                
+                                if st.form_submit_button("✅ COO Approve & Activate Job", use_container_width=True):
+                                    if coo_comment:
+                                        st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
+                                        st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
+                                        job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{len(st.session_state.active_jobs)+1:03d}"
+                                        STREAMLIT_URL = "https://churchgate-hris.streamlit.app"
+                                        public_url = f"{STREAMLIT_URL}/Careers?job={job_ref}"
+                                        
+                                        st.session_state.active_jobs.append({
+                                            'ref': job_ref, 'title': req['title'], 'department': req['department'],
+                                            'location': req['location'], 'type': req['type'], 'salary': req['salary'],
+                                            'jd': req['jd'], 'screening': req['screening'], 'closing': req['closing'],
+                                            'posts': req['posts'], 'date': datetime.now().strftime('%Y-%m-%d'),
+                                            'applications': 0, 'public_url': public_url
+                                        })
+                                        
+                                        try:
+                                            r = st.session_state.job_requisitions[i]
+                                            db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                                r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                                r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                                r['lm_comment'], r['admin_comment'], r['coo_comment'])
+                                        except:
+                                            pass
+                                        
+                                        # Send confirmation email
+                                        if email_svc:
+                                            try:
+                                                submitter_email = req.get('submitted_by', '')
+                                                if '@' in str(submitter_email):
+                                                    email_svc.send_email(
+                                                        submitter_email,
+                                                        f"✅ Job Posting LIVE: {req['title']}",
+                                                        f"The job requisition for '{req['title']}' has been fully approved and is now LIVE on the Careers Page.\n\nPublic URL: {public_url}\n\nShare this link with candidates!"
+                                                    )
+                                            except:
+                                                pass
+                                        
+                                        st.success(f"✅ Job is LIVE on Careers Page!")
+                                        st.code(public_url, language=None)
+                                        st.balloons()
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Comment required!")
+                        
+                        # Show LIVE status
+                        if req['status'] == 'Approved - Live':
+                            st.success("🟢 LIVE — Accepting applications on Careers Page")
+                            for job in st.session_state.active_jobs:
+                                if job['title'] == req['title'] and job['department'] == req['department']:
+                                    st.code(job['public_url'], language=None)
+                                    break
     
     # ============ TAB 2: ACTIVE JOBS ============
     with tab2:
@@ -6085,18 +6227,25 @@ def my_profile():
             st.session_state['pic_processed'] = False
             st.rerun()
         
-        uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'])
+        uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'], key="profile_pic_uploader")
         if uploaded_pic is not None:
             try:
                 image_bytes = uploaded_pic.getvalue()
                 user_record = db._get("users", {"email": user_email})
                 if user_record and len(user_record) > 0:
                     uid = user_record[0].get('id')
-                    db.update_profile_picture(int(uid), image_bytes)
-                    st.session_state['profile_pic'] = uploaded_pic
-                    st.success("✅ Profile picture saved permanently!")
+                    if uid:
+                        db.update_profile_picture(int(uid), image_bytes)
+                        st.session_state['profile_pic'] = image_bytes
+                        st.session_state['pic_processed'] = False
+                        st.success("✅ Profile picture updated! Refresh to see changes.")
+                        st.rerun()
+                    else:
+                        st.warning("User ID not found. Try logging out and back in.")
+                else:
+                    st.warning("User record not found. Please contact HR.")
             except Exception as e:
-                st.warning(f"Error: {str(e)}")
+                st.warning(f"Upload failed: {str(e)}")
         
         # Profile Completeness
         st.markdown("---")
