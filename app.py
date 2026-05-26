@@ -3622,7 +3622,7 @@ def recruitment_hub():
             all_reqs = db.get_all_job_requisitions()
             for r in all_reqs:
                 if r.get('status') == 'Approved - Live':
-                    job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{len(st.session_state.active_jobs)+1:03d}"
+                    job_ref = req['id']  # Use the actual req_id
                     public_url = f"{STREAMLIT_URL}/Careers?job={job_ref}"
                     st.session_state.active_jobs.append({
                         'ref': job_ref, 'title': r.get('title', ''),
