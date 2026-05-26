@@ -5,6 +5,8 @@ from datetime import datetime
 import random
 import base64
 import time
+import re
+import pandas as pd
 
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -39,32 +41,31 @@ st.markdown(f"""
     * {{ font-family: 'Inter', sans-serif; }}
     @keyframes fadeInUp {{ from {{ opacity: 0; transform: translateY(30px); }} to {{ opacity: 1; transform: translateY(0); }} }}
     @keyframes fadeIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
-    @keyframes slideInLeft {{ from {{ opacity: 0; transform: translateX(-30px); }} to {{ opacity: 1; transform: translateX(0); }} }}
     .animate-fade-in {{ animation: fadeIn 0.8s ease-out; }}
     .animate-fade-in-up {{ animation: fadeInUp 0.8s ease-out; }}
-    .animate-slide-in {{ animation: slideInLeft 0.6s ease-out; }}
     .career-hero {{ background: linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 50%, #e0e0e0 100%); padding: 3rem 2rem; text-align: center; border-bottom: 4px solid #CC0000; position: relative; overflow: hidden; }}
     .career-hero h1 {{ font-size: 2.8rem; font-weight: 900; margin: 0; color: #1a1a1a; position: relative; }}
     .career-hero p {{ font-size: 1.2rem; margin-top: 1rem; color: #555; position: relative; max-width: 700px; margin-left: auto; margin-right: auto; }}
+    .job-hero {{ background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 1.5rem 2rem; border-bottom: 3px solid #CC0000; margin-bottom: 1.5rem; }}
+    .job-hero h1 {{ color: white; font-size: 1.6rem; margin: 0; font-weight: 700; }}
+    .job-hero p {{ color: #ccc; margin: 0.3rem 0 0 0; font-size: 0.9rem; }}
     .search-bar {{ background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); margin: -2rem 2rem 2rem 2rem; position: relative; z-index: 10; }}
     .job-card {{ background: white; padding: 0; border-radius: 10px; margin-bottom: 1rem; border-left: 4px solid #CC0000; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.3s ease; overflow: hidden; }}
     .job-card:hover {{ transform: translateX(6px); box-shadow: 0 6px 20px rgba(204,0,0,0.12); }}
     .tag {{ display: inline-block; background: #f5f5f5; padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; margin-right: 0.5rem; margin-top: 0.5rem; color: #555; }}
+    .info-card {{ background:white;padding:0.8rem;border-radius:8px;text-align:center;border:1px solid #e0e0e0; }}
     .stButton > button {{ background: #CC0000 !important; color: white !important; border: none !important; padding: 0.8rem 2.5rem !important; border-radius: 8px !important; font-weight: 600 !important; font-size: 1rem !important; }}
     .stButton > button:hover {{ background: #aa0000 !important; transform: translateY(-2px) !important; box-shadow: 0 5px 15px rgba(204,0,0,0.3) !important; }}
-    .share-btn {{ display: inline-block; padding: 0.5rem 1rem; border-radius: 6px; background: #f0f0f0; color: #555; text-decoration: none; font-size: 0.85rem; margin-right: 0.5rem; transition: all 0.2s; }}
-    .share-btn:hover {{ background: #CC0000; color: white; }}
-    .testimonial-card {{ background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center; border-top: 3px solid #CC0000; }}
     .benefit-card {{ background: white; padding: 1.5rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.3s ease; border-bottom: 3px solid transparent; }}
     .benefit-card:hover {{ border-bottom-color: #CC0000; transform: translateY(-5px); }}
     .benefit-icon {{ font-size: 2.5rem; margin-bottom: 0.5rem; }}
+    .testimonial-card {{ background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center; border-top: 3px solid #CC0000; }}
     .social-proof {{ background: white; padding: 2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin: 2rem 0; }}
     .footer {{ background: linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 100%); color: #555; padding: 3rem 2rem; text-align: center; margin-top: 3rem; border-top: 4px solid #CC0000; }}
     .footer h3 {{ color: #CC0000; font-weight: 700; }}
-    .form-container {{ max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }}
-    .success-box {{ background: linear-gradient(135deg, #f0f8f0, #e8f5e9); padding: 2rem; border-radius: 12px; margin-top: 1rem; border: 2px solid #38a169; text-align: center; }}
     .jd-content {{ line-height: 2; font-size: 0.95rem; color: #444; }}
     .jd-content strong {{ color: #1a1a1a; font-size: 1.1rem; }}
+    .success-box {{ background: linear-gradient(135deg, #f0f8f0, #e8f5e9); padding: 2rem; border-radius: 12px; margin-top: 1rem; border: 2px solid #38a169; text-align: center; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -72,6 +73,7 @@ db = DatabaseManager()
 query_params = st.query_params
 selected_job = query_params.get('job', None)
 
+# ============ SINGLE JOB VIEW ============
 if selected_job:
     job_details = None
     try:
@@ -93,7 +95,6 @@ if selected_job:
         job_type_name = job_details.get('job_type', '')
         jd_content = job_details.get('jd', '')
         closing_date = job_details.get('closing', '')
-        screening_questions = job_details.get('screening', [])
     else:
         position_name = selected_job
         dept_name = ''
@@ -101,17 +102,14 @@ if selected_job:
         job_type_name = ''
         jd_content = ''
         closing_date = ''
-        screening_questions = []
     
-    # ===== HERO HEADER (Compact) =====
+    # Compact job hero
     st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 1.5rem 2rem; border-bottom: 3px solid #CC0000; margin-bottom: 1.5rem;">
+    <div class="job-hero animate-fade-in">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
             <div>
-                <h1 style="color: white; font-size: 1.6rem; margin: 0; font-weight: 700;">{position_name}</h1>
-                <p style="color: #ccc; margin: 0.3rem 0 0 0; font-size: 0.9rem;">
-                    🏢 {dept_name} &nbsp;|&nbsp; 📍 {location_name} &nbsp;|&nbsp; 💼 {job_type_name}
-                </p>
+                <h1>{position_name}</h1>
+                <p>🏢 {dept_name} &nbsp;|&nbsp; 📍 {location_name} &nbsp;|&nbsp; 💼 {job_type_name}</p>
             </div>
             <div style="text-align: right;">
                 <span style="background: #CC0000; color: white; padding: 0.4rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">🚀 We're Hiring!</span>
@@ -121,10 +119,9 @@ if selected_job:
     </div>
     """, unsafe_allow_html=True)
     
-    # ===== JOB DESCRIPTION (Collapsible) =====
+    # Job Description
     if jd_content:
         with st.expander("📋 View Full Job Description", expanded=True):
-            import re
             formatted_jd = jd_content
             section_headers = ['About the Role', 'What You Will Do', 'What Success Looks Like', 
                              'What We Are Looking For', 'Preferred Background', 'Key Responsibilities', 
@@ -140,43 +137,23 @@ if selected_job:
     else:
         st.info("📋 Full job description will be available shortly. Please check back or apply below.")
     
-    # ===== KEY INFO CARDS =====
+    # Key info cards
     if dept_name or location_name or job_type_name:
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.markdown(f"""
-            <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border:1px solid #e0e0e0;">
-                <p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Department</p>
-                <p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">🏢 {dept_name}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="info-card"><p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Department</p><p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">🏢 {dept_name}</p></div>', unsafe_allow_html=True)
         with col2:
-            st.markdown(f"""
-            <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border:1px solid #e0e0e0;">
-                <p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Location</p>
-                <p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">📍 {location_name}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="info-card"><p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Location</p><p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">📍 {location_name}</p></div>', unsafe_allow_html=True)
         with col3:
-            st.markdown(f"""
-            <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border:1px solid #e0e0e0;">
-                <p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Type</p>
-                <p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">💼 {job_type_name}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="info-card"><p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Type</p><p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">💼 {job_type_name}</p></div>', unsafe_allow_html=True)
         with col4:
-            st.markdown(f"""
-            <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border:1px solid #e0e0e0;">
-                <p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Closes</p>
-                <p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">📅 {closing_date if closing_date else 'TBA'}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="info-card"><p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Closes</p><p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">📅 {closing_date if closing_date else "TBA"}</p></div>', unsafe_allow_html=True)
     
-    # ===== APPLICATION FORM =====
+    # Application form
     st.markdown("---")
     st.markdown("### ✍️ Submit Your Application")
     
-    with st.form("job_application", clear_on_submit=True):
+    with st.form(f"job_application_{selected_job}", clear_on_submit=True):
         st.markdown("#### Personal Information")
         c1, c2 = st.columns(2)
         with c1:
@@ -257,136 +234,8 @@ if selected_job:
                         from utils.email_service import EmailService
                         EmailService().send_email(email, "Application Received - Churchgate Group",
                             f"Dear {first_name},\n\nThank you for applying for {position_name} at Churchgate Group.\n\nYour Tracking ID: {tracking_id}\n\nWe will review your application and get back to you.\n\nBest regards,\nChurchgate Group HR")
-                        st.info(f"📧 Confirmation email sent to {email}")
                     except:
                         pass
-                    
-                    st.success(f"✅ Thank you, {first_name}! Your application has been submitted.")
-                    st.balloons()
-                    
-                    st.markdown(f"""
-                    <div style="background: linear-gradient(135deg, #f0f8f0, #e8f5e9); padding: 2rem; border-radius: 12px; margin-top: 1rem; border: 2px solid #38a169; text-align: center;">
-                        <h2 style="color: #38a169;">📋 Application Received!</h2>
-                        <p style="font-size: 1.2rem;"><strong>Tracking ID:</strong> {tracking_id}</p>
-                        <p style="font-size: 1.1rem;"><strong>Position:</strong> {position_name}</p>
-                        <p>📧 Confirmation sent to <strong>{email}</strong></p>
-                        <p>🔍 Check status anytime with your Tracking ID</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
-            else:
-                st.error("❌ Please fill all required fields marked with *")
-    
-    hero_html = f"""<div class="career-hero animate-fade-in">
-        {f'<img src="data:image/png;base64,{logo_b64}" style="height: 50px; margin-bottom: 1rem; position: relative;" alt="Churchgate Group">' if logo_b64 else ''}
-        <h1>📝 Apply for {position_name}</h1>
-        <p>{job_details.get('department', '') if job_details else ''} | {job_details.get('location', '') if job_details else ''} | {job_details.get('job_type', '') if job_details else ''}</p>
-    </div>"""
-    st.markdown(hero_html, unsafe_allow_html=True)
-    
-    if job_details:
-        with st.expander("📋 View Full Job Description", expanded=True):
-            jd_text = job_details.get("jd", "")
-            import re
-            section_headers = ['About the Role', 'What You Will Do', 'What Success Looks Like', 'What We Are Looking For', 'Preferred Background', 'Key Responsibilities', 'Requirements', 'Experience', 'Education', 'Skills & Competencies', 'Working Conditions', 'Why Join Churchgate', 'How to Apply', 'Job Summary', 'Job Details', 'About Company']
-            for header in section_headers:
-                jd_text = jd_text.replace(header, f'<br><br><strong style="font-size:1.15rem;color:#1a1a1a;border-bottom:2px solid #CC0000;padding-bottom:3px;">{header}</strong><br>')
-            jd_text = jd_text.replace('• ', '<br>🔹 ').replace('● ', '<br>🔹 ')
-            jd_text = re.sub(r'(?<=\n)- ', '<br>🔹 ', jd_text)
-            jd_text = jd_text.replace('\n\n', '<br><br>').replace('\n', '<br>')
-            st.markdown(f'<div class="jd-content animate-fade-in-up">{jd_text}</div>', unsafe_allow_html=True)
-    
-    st.markdown("<div class='form-container animate-slide-in'>", unsafe_allow_html=True)
-    
-    with st.form("job_application", clear_on_submit=True):
-        st.markdown("### Personal Information")
-        c1, c2 = st.columns(2)
-        with c1:
-            first_name = st.text_input("First Name *")
-            last_name = st.text_input("Last Name *")
-            email = st.text_input("Email *")
-            phone = st.text_input("Phone Number *")
-        with c2:
-            linkedin = st.text_input("LinkedIn Profile URL")
-            github = st.text_input("GitHub / Portfolio URL")
-            current_position = st.text_input("Current/Last Position")
-            years_exp = st.selectbox("Years of Experience", ["0-1", "1-3", "3-5", "5-7", "7-10", "10+", "15+", "20+"])
-        
-        st.markdown("---")
-        cover_letter = st.text_area("Cover Letter (Optional)", height=120)
-        st.markdown("---")
-        resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'])
-        st.markdown("---")
-        st.markdown("### Screening Questions")
-        q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80)
-        q2 = st.text_area("2. What is your proudest professional achievement? *", height=80)
-        q3 = st.text_area("3. Why do you want to join Churchgate Group? *", height=80)
-        st.markdown("*All fields marked with * are required.*")
-        
-        submitted = st.form_submit_button("📤 Submit Application", use_container_width=True)
-        
-        if submitted:
-            if first_name and last_name and email and phone and resume and q1 and q2 and q3:
-                try:
-                    resume_text = ""
-                    file_ext = "pdf"
-                    if resume.type == "application/pdf":
-                        import PyPDF2
-                        pdf_reader = PyPDF2.PdfReader(resume)
-                        for page in pdf_reader.pages:
-                            resume_text += page.extract_text() + "\n"
-                        file_ext = "pdf"
-                    elif "word" in resume.type or "docx" in resume.type:
-                        import docx
-                        doc = docx.Document(resume)
-                        resume_text = "\n".join([p.text for p in doc.paragraphs])
-                        file_ext = "docx"
-                    
-                    tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
-                    
-                    # Upload original file to Supabase Storage
-                    cv_url = ""
-                    try:
-                        resume.seek(0)
-                        file_content = resume.read()
-                        file_name = f"{tracking_id}_{first_name}_{last_name}.{file_ext}"
-                        cv_url = db.upload_file("cvs", file_name, file_content, resume.type)
-                        if cv_url:
-                            st.success("✅ CV uploaded to storage!")
-                    except Exception as e:
-                        st.warning(f"Storage upload: {str(e)}")
-                    
-                    db._post("candidates", {
-                        "candidate_ref": tracking_id, "first_name": first_name, "last_name": last_name,
-                        "email": email, "phone": phone, "linkedin_url": linkedin,
-                        "current_position": current_position, "current_company": "",
-                        "years_of_experience": years_exp.replace("+","").split("-")[0] if "-" in years_exp else years_exp.replace("+",""),
-                        "education_level": "", "skills": "", "location": "",
-                        "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
-                        "resume_text": resume_text[:10000],
-                        "cv_url": cv_url,
-                        "job_id": selected_job,
-                        "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
-                    })
-                    
-                    db._post("applications", {
-                        "tracking_id": tracking_id, "first_name": first_name, "last_name": last_name,
-                        "email": email, "phone": phone, "job_ref": selected_job,
-                        "position_name": position_name, "status": "Received",
-                        "applied_date": datetime.now().strftime('%Y-%m-%d %H:%M WAT')
-                    })
-                    
-                    try:
-                        from utils.email_service import EmailService
-                        result, msg = EmailService().send_email(email, "Application Received - Churchgate Group",
-                            f"Dear {first_name},\n\nThank you for applying for {position_name} at Churchgate Group.\n\nYour Tracking ID: {tracking_id}\n\nWe will review your application and get back to you.\n\nBest regards,\nChurchgate Group HR")
-                        if result:
-                            st.info(f"📧 Confirmation email sent to {email}")
-                        else:
-                            st.warning(f"Email not sent: {msg}")
-                    except Exception as e:
-                        st.warning(f"Email service: {str(e)}")
                     
                     st.success(f"✅ Thank you, {first_name}! Your application has been submitted.")
                     st.balloons()
@@ -397,16 +246,14 @@ if selected_job:
                         <p style="font-size: 1.2rem;"><strong>Tracking ID:</strong> {tracking_id}</p>
                         <p style="font-size: 1.1rem;"><strong>Position:</strong> {position_name}</p>
                         <p>📧 Confirmation sent to <strong>{email}</strong></p>
-                        <p>🔍 Check status anytime with your Tracking ID</p>
                     </div>
                     """, unsafe_allow_html=True)
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
             else:
                 st.error("❌ Please fill all required fields marked with *")
-    
-    st.markdown("</div>", unsafe_allow_html=True)
 
+# ============ MAIN CAREERS LISTING PAGE ============
 else:
     hero_html = f"""<div class="career-hero animate-fade-in">
         {f'<img src="data:image/png;base64,{logo_b64}" style="height: 60px; margin-bottom: 1.5rem; position: relative;" alt="Churchgate Group">' if logo_b64 else ''}
@@ -430,14 +277,17 @@ else:
         all_reqs = db.get_all_job_requisitions()
         for r in all_reqs:
             if r.get('status') == 'Approved - Live':
-                job_ref = f"JOB-{r.get('req_id', '')[-6:]}"
+                req_id = r.get('req_id', '')
+                job_ref = f"JOB-{req_id[-6:]}" if len(req_id) >= 6 else f"JOB-{req_id}"
                 if search_query and search_query.lower() not in r.get('title', '').lower():
                     continue
                 if dept_filter != "All Departments" and r.get('department', '') != dept_filter:
                     continue
                 if type_filter != "All Types" and r.get('job_type', '') != type_filter:
                     continue
-                jobs.append({"ref": job_ref, "title": r.get('title', ''), "dept": r.get('department', ''), "location": r.get('location', ''), "type": r.get('job_type', ''), "closing": r.get('closing', ''), "jd": r.get('jd', '')})
+                jobs.append({"ref": job_ref, "title": r.get('title', ''), "dept": r.get('department', ''), 
+                            "location": r.get('location', ''), "type": r.get('job_type', ''), 
+                            "closing": r.get('closing', ''), "jd": r.get('jd', '')})
     except:
         pass
     
@@ -460,14 +310,14 @@ else:
                 st.markdown("---")
                 
                 jd_text = job["jd"]
-                import re
-                section_headers = ['About the Role', 'What You Will Do', 'What Success Looks Like', 'What We Are Looking For', 'Preferred Background', 'Key Responsibilities', 'Requirements', 'Experience', 'Education', 'Skills & Competencies', 'Working Conditions', 'Why Join Churchgate', 'How to Apply', 'Job Summary', 'Job Details', 'About Company']
+                section_headers = ['About the Role', 'What You Will Do', 'Key Responsibilities', 
+                                 'Requirements', 'Experience', 'Education', 'Skills & Competencies']
                 for header in section_headers:
-                    jd_text = jd_text.replace(header, f'<br><br><strong style="font-size:1.15rem;color:#1a1a1a;border-bottom:2px solid #CC0000;padding-bottom:3px;">{header}</strong><br>')
+                    jd_text = jd_text.replace(header, f'<br><br><strong style="font-size:1.1rem;color:#1a1a1a;border-bottom:2px solid #CC0000;padding-bottom:3px;">{header}</strong><br>')
                 jd_text = jd_text.replace('• ', '<br>🔹 ').replace('● ', '<br>🔹 ')
                 jd_text = re.sub(r'(?<=\n)- ', '<br>🔹 ', jd_text)
                 jd_text = jd_text.replace('\n\n', '<br><br>').replace('\n', '<br>')
-                st.markdown(f'<div class="jd-content animate-fade-in">{jd_text}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="jd-content">{jd_text[:800]}{"..." if len(jd_text) > 800 else ""}</div>', unsafe_allow_html=True)
                 
                 st.markdown(f"<small style='color: #888;'>📅 Closes: {job['closing']} | Ref: {job['ref']}</small>", unsafe_allow_html=True)
                 
@@ -478,7 +328,7 @@ else:
                         st.rerun()
                 with c2:
                     share_url = f"https://churchgate-hris.streamlit.app/Careers?job={job['ref']}"
-                    st.markdown(f"""<div style="margin-top: 0.5rem;"><a href="https://www.linkedin.com/sharing/share-offsite/?url={share_url}" target="_blank" class="share-btn">🔗 LinkedIn</a><a href="https://wa.me/?text=Job%20Opening:%20{job['title']}%20at%20Churchgate%20Group%20-%20Apply%20here:%20{share_url}" target="_blank" class="share-btn">💬 WhatsApp</a><a href="https://twitter.com/intent/tweet?text=Job%20Opening:%20{job['title']}%20at%20Churchgate%20Group&url={share_url}" target="_blank" class="share-btn">🐦 Twitter</a></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style="margin-top: 0.5rem;"><a href="https://www.linkedin.com/sharing/share-offsite/?url={share_url}" target="_blank" style="display:inline-block;padding:0.5rem 1rem;border-radius:6px;background:#f0f0f0;color:#555;text-decoration:none;font-size:0.85rem;margin-right:0.5rem;">🔗 LinkedIn</a><a href="https://wa.me/?text=Job%20Opening:%20{job['title']}%20at%20Churchgate%20Group%20-%20Apply%20here:%20{share_url}" target="_blank" style="display:inline-block;padding:0.5rem 1rem;border-radius:6px;background:#f0f0f0;color:#555;text-decoration:none;font-size:0.85rem;">💬 WhatsApp</a></div>""", unsafe_allow_html=True)
     else:
         st.info("🎯 No open positions at the moment.")
     
