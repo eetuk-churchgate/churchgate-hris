@@ -3675,10 +3675,16 @@ def recruitment_hub():
                 closing_date = st.date_input("Application Deadline")
             
             st.markdown("---")
-            st.markdown("**Full Job Description ***")
-            st.markdown("*Tip: Use markdown for formatting. **Bold**, *italic*, - bullet points, ### headings*")
-            jd_text = st.text_area("Full Job Description *", height=250, placeholder="""### About the Role
-Describe the role here...
+            st.markdown("### 📋 Full Job Description *")
+            st.markdown("*Use the editor below. Markdown supported: **Bold**, *Italic*, - Bullets, ### Headings*")
+            
+            # Template buttons for quick formatting
+            col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+            jd_template = ""
+            with col_t1:
+                if st.button("📝 Basic Template", use_container_width=True, key="jd_basic"):
+                    jd_template = """### About the Role
+[Describe the role and its impact]
 
 ### Key Responsibilities
 - Responsibility 1
@@ -3686,15 +3692,78 @@ Describe the role here...
 - Responsibility 3
 
 ### Requirements
-- Requirement 1
-- Requirement 2
+- Education: [Required degree]
+- Experience: [Years] years in [field]
+- Skills: [Key skills needed]
 
 ### Benefits
-- Benefit 1
-- Benefit 2""", label_visibility="collapsed")
-            st.markdown("**Preview:**")
+- Competitive salary
+- Health insurance
+- Professional development"""
+                    st.rerun()
+            with col_t2:
+                if st.button("💼 Technical Role", use_container_width=True, key="jd_tech"):
+                    jd_template = """### About the Role
+[Describe the technical role]
+
+### Technical Requirements
+- Skill 1: [Advanced, Intermediate, Basic]
+- Skill 2: [Advanced, Intermediate, Basic]
+- Certifications: [Required certs]
+
+### Key Responsibilities
+- Technical delivery of [specific systems]
+- Troubleshooting and maintenance
+- Documentation and knowledge sharing
+
+### Qualifications
+- Degree in [field] or equivalent experience
+- [X]+ years hands-on experience"""
+                    st.rerun()
+            with col_t3:
+                if st.button("👔 Management Role", use_container_width=True, key="jd_mgmt"):
+                    jd_template = """### About the Role
+[Describe the leadership position]
+
+### Strategic Responsibilities
+- Develop and execute strategy for [area]
+- Lead a team of [number] professionals
+- Drive [metric] improvement
+
+### Operational Responsibilities
+- Day-to-day management of [function]
+- Budget ownership of [amount]
+- Stakeholder management
+
+### Requirements
+- [X]+ years leadership experience
+- Proven track record in [industry]"""
+                    st.rerun()
+            with col_t4:
+                if st.button("🧹 Clear", use_container_width=True, key="jd_clear"):
+                    jd_template = ""
+                    st.rerun()
+            
+            # Initialize JD text
+            if 'jd_text_temp' not in st.session_state:
+                st.session_state.jd_text_temp = ""
+            
+            if jd_template:
+                st.session_state.jd_text_temp = jd_template
+            
+            jd_text = st.text_area(
+                "Full Job Description *", 
+                value=st.session_state.jd_text_temp if st.session_state.jd_text_temp else "",
+                height=300, 
+                placeholder="Start typing or click a template above...", 
+                label_visibility="collapsed",
+                key="jd_text_area"
+            )
+            
+            # Live preview
             if jd_text:
-                st.markdown(jd_text)
+                with st.expander("👁️ Live Preview", expanded=True):
+                    st.markdown(jd_text)
             
             st.markdown("### Screening Questions (Optional)")
             st.markdown("*Leave blank if not needed*")
@@ -3763,8 +3832,8 @@ Describe the role here...
                     st.markdown(f"**Closing Date:** {req.get('closing', 'Not set')}")
                     
                     st.markdown("---")
-                    st.markdown("**📋 Full Job Description:**")
-                    st.markdown(req.get('jd', 'No JD provided')[:500] + ('...' if len(req.get('jd', '')) > 500 else ''))
+                    with st.expander("📋 View Full Job Description", expanded=False):
+                        st.markdown(req.get('jd', 'No JD provided'))
                     
                     if req.get('screening'):
                         st.markdown("---")
