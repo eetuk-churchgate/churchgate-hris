@@ -87,6 +87,8 @@ if selected_job:
         pass
     
     if job_details:
+        st.write("DEBUG KEYS:", list(job_details.keys()))
+        st.write("DEBUG JD:", str(job_details.get('jd', 'NO JD KEY'))[:100])
         position_name = job_details.get('title', selected_job)
         dept_name = job_details.get('department', '')
         location_name = job_details.get('location', '')
