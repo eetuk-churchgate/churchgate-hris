@@ -3660,6 +3660,55 @@ def recruitment_hub():
         st.subheader("📋 Job Requisition & Approval Workflow")
         st.info("Workflow: Line Manager → Super Admin → COO → Job Goes LIVE on Careers Page")
         
+        # Template buttons (outside form)
+        col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+        with col_t1:
+            if st.button("📝 Basic", use_container_width=True, key="jd_basic"):
+                st.session_state.jd_text_temp = """### About the Role
+[Describe the role and its impact]
+
+### Key Responsibilities
+- Responsibility 1
+- Responsibility 2
+
+### Requirements
+- Education: [Degree]
+- Experience: [X] years
+
+### Benefits
+- Competitive salary
+- Health insurance"""
+                st.rerun()
+        with col_t2:
+            if st.button("💼 Technical", use_container_width=True, key="jd_tech"):
+                st.session_state.jd_text_temp = """### About the Role
+[Describe the technical role]
+
+### Technical Requirements
+- [Skill 1]
+- [Skill 2]
+
+### Key Responsibilities
+- Technical delivery
+- Troubleshooting"""
+                st.rerun()
+        with col_t3:
+            if st.button("👔 Management", use_container_width=True, key="jd_mgmt"):
+                st.session_state.jd_text_temp = """### About the Role
+[Describe the leadership role]
+
+### Strategic Responsibilities
+- Strategy development
+- Team leadership
+
+### Requirements
+- [X]+ years leadership"""
+                st.rerun()
+        with col_t4:
+            if st.button("🧹 Clear", use_container_width=True, key="jd_clear"):
+                st.session_state.jd_text_temp = ""
+                st.rerun()
+        
         with st.form("job_requisition_form"):
             st.markdown("### New Job Requisition")
             c1, c2 = st.columns(2)
@@ -3676,93 +3725,15 @@ def recruitment_hub():
             
             st.markdown("---")
             st.markdown("### 📋 Full Job Description *")
-            st.markdown("*Use the editor below. Markdown supported: **Bold**, *Italic*, - Bullets, ### Headings*")
-            
-            # Template buttons for quick formatting
-            col_t1, col_t2, col_t3, col_t4 = st.columns(4)
-            jd_template = ""
-            with col_t1:
-                if st.button("📝 Basic Template", use_container_width=True, key="jd_basic"):
-                    jd_template = """### About the Role
-[Describe the role and its impact]
-
-### Key Responsibilities
-- Responsibility 1
-- Responsibility 2
-- Responsibility 3
-
-### Requirements
-- Education: [Required degree]
-- Experience: [Years] years in [field]
-- Skills: [Key skills needed]
-
-### Benefits
-- Competitive salary
-- Health insurance
-- Professional development"""
-                    st.rerun()
-            with col_t2:
-                if st.button("💼 Technical Role", use_container_width=True, key="jd_tech"):
-                    jd_template = """### About the Role
-[Describe the technical role]
-
-### Technical Requirements
-- Skill 1: [Advanced, Intermediate, Basic]
-- Skill 2: [Advanced, Intermediate, Basic]
-- Certifications: [Required certs]
-
-### Key Responsibilities
-- Technical delivery of [specific systems]
-- Troubleshooting and maintenance
-- Documentation and knowledge sharing
-
-### Qualifications
-- Degree in [field] or equivalent experience
-- [X]+ years hands-on experience"""
-                    st.rerun()
-            with col_t3:
-                if st.button("👔 Management Role", use_container_width=True, key="jd_mgmt"):
-                    jd_template = """### About the Role
-[Describe the leadership position]
-
-### Strategic Responsibilities
-- Develop and execute strategy for [area]
-- Lead a team of [number] professionals
-- Drive [metric] improvement
-
-### Operational Responsibilities
-- Day-to-day management of [function]
-- Budget ownership of [amount]
-- Stakeholder management
-
-### Requirements
-- [X]+ years leadership experience
-- Proven track record in [industry]"""
-                    st.rerun()
-            with col_t4:
-                if st.button("🧹 Clear", use_container_width=True, key="jd_clear"):
-                    jd_template = ""
-                    st.rerun()
-            
-            # Initialize JD text
-            if 'jd_text_temp' not in st.session_state:
-                st.session_state.jd_text_temp = ""
-            
-            if jd_template:
-                st.session_state.jd_text_temp = jd_template
-            
             jd_text = st.text_area(
-                "Full Job Description *", 
-                value=st.session_state.jd_text_temp if st.session_state.jd_text_temp else "",
-                height=300, 
-                placeholder="Start typing or click a template above...", 
-                label_visibility="collapsed",
-                key="jd_text_area"
+                "Full Job Description *",
+                value=st.session_state.get('jd_text_temp', ''),
+                height=250,
+                placeholder="Start typing or use template buttons above...",
+                label_visibility="collapsed"
             )
-            
-            # Live preview
             if jd_text:
-                with st.expander("👁️ Live Preview", expanded=True):
+                with st.expander("👁️ Preview"):
                     st.markdown(jd_text)
             
             st.markdown("### Screening Questions (Optional)")
