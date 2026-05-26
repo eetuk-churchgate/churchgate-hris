@@ -113,7 +113,6 @@ if selected_job:
             </div>
             <div style="text-align: right;">
                 <span style="background: #CC0000; color: white; padding: 0.4rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">🚀 We're Hiring!</span>
-                {f'<br><small style="color: #aaa;">📅 Closes: {closing_date}</small>' if closing_date else ''}
             </div>
         </div>
     </div>
