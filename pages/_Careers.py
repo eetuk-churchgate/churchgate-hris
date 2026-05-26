@@ -78,17 +78,205 @@ if selected_job:
         all_reqs = db.get_all_job_requisitions()
         for r in all_reqs:
             if r.get('status') == 'Approved - Live':
-                # Match by req_id or by generated job reference
                 req_id = r.get('req_id', '')
                 job_ref_from_req = f"JOB-{req_id[-6:]}" if len(req_id) >= 6 else f"JOB-{req_id}"
-                # Also check the full selected_job against the req_id
                 if job_ref_from_req == selected_job or req_id == selected_job or f"JOB-{req_id}" == selected_job:
                     job_details = r
                     break
     except:
         pass
     
-    position_name = job_details.get('title', selected_job) if job_details and job_details.get('title') else selected_job
+    if job_details:
+        position_name = job_details.get('title', selected_job)
+        dept_name = job_details.get('department', '')
+        location_name = job_details.get('location', '')
+        job_type_name = job_details.get('job_type', '')
+        jd_content = job_details.get('jd', '')
+        closing_date = job_details.get('closing', '')
+        screening_questions = job_details.get('screening', [])
+    else:
+        position_name = selected_job
+        dept_name = ''
+        location_name = ''
+        job_type_name = ''
+        jd_content = ''
+        closing_date = ''
+        screening_questions = []
+    
+    # ===== HERO HEADER (Compact) =====
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 1.5rem 2rem; border-bottom: 3px solid #CC0000; margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h1 style="color: white; font-size: 1.6rem; margin: 0; font-weight: 700;">{position_name}</h1>
+                <p style="color: #ccc; margin: 0.3rem 0 0 0; font-size: 0.9rem;">
+                    🏢 {dept_name} &nbsp;|&nbsp; 📍 {location_name} &nbsp;|&nbsp; 💼 {job_type_name}
+                </p>
+            </div>
+            <div style="text-align: right;">
+                <span style="background: #CC0000; color: white; padding: 0.4rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.85rem;">🚀 We're Hiring!</span>
+                {f'<br><small style="color: #aaa;">📅 Closes: {closing_date}</small>' if closing_date else ''}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ===== JOB DESCRIPTION (Collapsible) =====
+    if jd_content:
+        with st.expander("📋 View Full Job Description", expanded=True):
+            import re
+            formatted_jd = jd_content
+            section_headers = ['About the Role', 'What You Will Do', 'What Success Looks Like', 
+                             'What We Are Looking For', 'Preferred Background', 'Key Responsibilities', 
+                             'Requirements', 'Experience', 'Education', 'Skills & Competencies', 
+                             'Working Conditions', 'Why Join Churchgate', 'How to Apply', 
+                             'Job Summary', 'Job Details', 'About Company', 'About Us']
+            for header in section_headers:
+                formatted_jd = formatted_jd.replace(header, f'<br><br><strong style="font-size:1.1rem;color:#1a1a1a;border-bottom:2px solid #CC0000;padding-bottom:3px;">{header}</strong><br>')
+            formatted_jd = formatted_jd.replace('• ', '<br>🔹 ').replace('● ', '<br>🔹 ')
+            formatted_jd = re.sub(r'(?<=\n)- ', '<br>🔹 ', formatted_jd)
+            formatted_jd = formatted_jd.replace('\n\n', '<br><br>').replace('\n', '<br>')
+            st.markdown(f'<div style="background:white;padding:1.5rem;border-radius:8px;line-height:1.8;color:#333;">{formatted_jd}</div>', unsafe_allow_html=True)
+    else:
+        st.info("📋 Full job description will be available shortly. Please check back or apply below.")
+    
+    # ===== KEY INFO CARDS =====
+    if dept_name or location_name or job_type_name:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.markdown(f"""
+            <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border:1px solid #e0e0e0;">
+                <p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Department</p>
+                <p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">🏢 {dept_name}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border:1px solid #e0e0e0;">
+                <p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Location</p>
+                <p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">📍 {location_name}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"""
+            <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border:1px solid #e0e0e0;">
+                <p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Type</p>
+                <p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">💼 {job_type_name}</p>
+            </div>
+            """, unsafe_allow_html=True)
+        with col4:
+            st.markdown(f"""
+            <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border:1px solid #e0e0e0;">
+                <p style="color:#888;font-size:0.7rem;margin:0;text-transform:uppercase;">Closes</p>
+                <p style="font-weight:600;margin:0.2rem 0;font-size:0.9rem;">📅 {closing_date if closing_date else 'TBA'}</p>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # ===== APPLICATION FORM =====
+    st.markdown("---")
+    st.markdown("### ✍️ Submit Your Application")
+    
+    with st.form("job_application", clear_on_submit=True):
+        st.markdown("#### Personal Information")
+        c1, c2 = st.columns(2)
+        with c1:
+            first_name = st.text_input("First Name *")
+            last_name = st.text_input("Last Name *")
+            email = st.text_input("Email *")
+            phone = st.text_input("Phone Number *")
+        with c2:
+            linkedin = st.text_input("LinkedIn Profile URL")
+            github = st.text_input("GitHub / Portfolio URL")
+            current_position = st.text_input("Current/Last Position")
+            years_exp = st.selectbox("Years of Experience", ["0-1", "1-3", "3-5", "5-7", "7-10", "10+", "15+", "20+"])
+        
+        st.markdown("---")
+        cover_letter = st.text_area("Cover Letter (Optional)", height=120)
+        st.markdown("---")
+        resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'])
+        
+        st.markdown("---")
+        st.markdown("#### Screening Questions")
+        st.markdown("*Please answer these questions to help us understand your fit for this role.*")
+        q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80)
+        q2 = st.text_area("2. What is your proudest professional achievement? *", height=80)
+        q3 = st.text_area("3. Why do you want to join Churchgate Group? *", height=80)
+        st.markdown("*All fields marked with * are required.*")
+        
+        submitted = st.form_submit_button("📤 Submit Application", use_container_width=True)
+        
+        if submitted:
+            if first_name and last_name and email and phone and resume and q1 and q2 and q3:
+                try:
+                    resume_text = ""
+                    file_ext = "pdf"
+                    if resume.type == "application/pdf":
+                        import PyPDF2
+                        pdf_reader = PyPDF2.PdfReader(resume)
+                        for page in pdf_reader.pages:
+                            resume_text += page.extract_text() + "\n"
+                        file_ext = "pdf"
+                    elif "word" in resume.type or "docx" in resume.type:
+                        import docx
+                        doc = docx.Document(resume)
+                        resume_text = "\n".join([p.text for p in doc.paragraphs])
+                        file_ext = "docx"
+                    
+                    tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
+                    
+                    cv_url = ""
+                    try:
+                        resume.seek(0)
+                        file_content = resume.read()
+                        file_name = f"{tracking_id}_{first_name}_{last_name}.{file_ext}"
+                        cv_url = db.upload_file("cvs", file_name, file_content, resume.type)
+                    except:
+                        pass
+                    
+                    db._post("candidates", {
+                        "candidate_ref": tracking_id, "first_name": first_name, "last_name": last_name,
+                        "email": email, "phone": phone, "linkedin_url": linkedin,
+                        "current_position": current_position, "current_company": "",
+                        "years_of_experience": years_exp.replace("+","").split("-")[0] if "-" in years_exp else years_exp.replace("+",""),
+                        "education_level": "", "skills": "", "location": "",
+                        "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
+                        "resume_text": resume_text[:10000],
+                        "cv_url": cv_url,
+                        "job_id": selected_job,
+                        "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
+                    })
+                    
+                    db._post("applications", {
+                        "tracking_id": tracking_id, "first_name": first_name, "last_name": last_name,
+                        "email": email, "phone": phone, "job_ref": selected_job,
+                        "position_name": position_name, "status": "Received",
+                        "applied_date": datetime.now().strftime('%Y-%m-%d %H:%M WAT')
+                    })
+                    
+                    try:
+                        from utils.email_service import EmailService
+                        EmailService().send_email(email, "Application Received - Churchgate Group",
+                            f"Dear {first_name},\n\nThank you for applying for {position_name} at Churchgate Group.\n\nYour Tracking ID: {tracking_id}\n\nWe will review your application and get back to you.\n\nBest regards,\nChurchgate Group HR")
+                        st.info(f"📧 Confirmation email sent to {email}")
+                    except:
+                        pass
+                    
+                    st.success(f"✅ Thank you, {first_name}! Your application has been submitted.")
+                    st.balloons()
+                    
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #f0f8f0, #e8f5e9); padding: 2rem; border-radius: 12px; margin-top: 1rem; border: 2px solid #38a169; text-align: center;">
+                        <h2 style="color: #38a169;">📋 Application Received!</h2>
+                        <p style="font-size: 1.2rem;"><strong>Tracking ID:</strong> {tracking_id}</p>
+                        <p style="font-size: 1.1rem;"><strong>Position:</strong> {position_name}</p>
+                        <p>📧 Confirmation sent to <strong>{email}</strong></p>
+                        <p>🔍 Check status anytime with your Tracking ID</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
+            else:
+                st.error("❌ Please fill all required fields marked with *")
     
     hero_html = f"""<div class="career-hero animate-fade-in">
         {f'<img src="data:image/png;base64,{logo_b64}" style="height: 50px; margin-bottom: 1rem; position: relative;" alt="Churchgate Group">' if logo_b64 else ''}
