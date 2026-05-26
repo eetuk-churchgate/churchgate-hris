@@ -77,19 +77,23 @@ if selected_job:
     try:
         all_reqs = db.get_all_job_requisitions()
         for r in all_reqs:
-            job_ref = f"JOB-{r.get('req_id', '')[-6:]}"
-            if job_ref == selected_job:
-                job_details = r
-                break
+            if r.get('status') == 'Approved - Live':
+                # Match by req_id or by generated job reference
+                req_id = r.get('req_id', '')
+                job_ref_from_req = f"JOB-{req_id[-6:]}" if len(req_id) >= 6 else f"JOB-{req_id}"
+                # Also check the full selected_job against the req_id
+                if job_ref_from_req == selected_job or req_id == selected_job or f"JOB-{req_id}" == selected_job:
+                    job_details = r
+                    break
     except:
         pass
     
-    position_name = job_details.get('title', selected_job) if job_details else selected_job
+    position_name = job_details.get('title', selected_job) if job_details and job_details.get('title') else selected_job
     
     hero_html = f"""<div class="career-hero animate-fade-in">
         {f'<img src="data:image/png;base64,{logo_b64}" style="height: 50px; margin-bottom: 1rem; position: relative;" alt="Churchgate Group">' if logo_b64 else ''}
         <h1>📝 Apply for {position_name}</h1>
-        <p>{job_details.get('department', '')} | {job_details.get('location', '')} | {job_details.get('job_type', '')}</p>
+        <p>{job_details.get('department', '') if job_details else ''} | {job_details.get('location', '') if job_details else ''} | {job_details.get('job_type', '') if job_details else ''}</p>
     </div>"""
     st.markdown(hero_html, unsafe_allow_html=True)
     
