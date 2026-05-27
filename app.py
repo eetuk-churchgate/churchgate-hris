@@ -3780,6 +3780,15 @@ def recruitment_hub():
                         textArea.dispatchEvent(new Event('input', {{ bubbles: true }}));
                     }}
                 }});
+                // Fix toolbar buttons to focus editor first
+                var toolbar = document.querySelector('.editor-toolbar');
+                if (toolbar) {{
+                    toolbar.addEventListener('click', function(e) {{
+                        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT') {{
+                            editor.focus();
+                        }}
+                    }});
+                }}
             </script>
             """, unsafe_allow_html=True)
             
