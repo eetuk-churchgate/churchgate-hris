@@ -5131,12 +5131,15 @@ def chat_communications():
         team_list = sorted(team_list)
         
         # Show unread notifications as info boxes
-        try:
+         try:
             all_my_msgs = db._get("chat_messages")
             if all_my_msgs:
-                st.info(f"Total messages in DB: {len(all_my_msgs)}")
+                unread = []
                 for m in all_my_msgs:
-                    st.write(f"receiver={m.get('receiver_name')}, is_read={m.get('is_read')}")
+                    if m.get('receiver_name') == 'Gbemisola Balogun' and m.get('is_read') == False:
+                        unread.append(m)
+                if unread:
+                    st.info(f"🔴 **{len(unread)} unread messages** from **Emmanuel Etuk** — Select 'Emmanuel Etuk' below to read")
         except:
             pass
         
