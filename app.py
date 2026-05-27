@@ -4212,7 +4212,12 @@ def recruitment_hub():
             with col1:
                 tier_filter = st.selectbox("🏷️ Tier", ["All", "Tier 1 ⭐", "Tier 2 👍", "Tier 3 🔶", "Tier 4 ❌", "Pending ⏳"], key="tier_filter_t4")
             with col2:
-                job_filter = st.selectbox("📋 Job", ["All Jobs"] + list(candidates['job_id'].dropna().unique()) if 'job_id' in candidates.columns else ["All Jobs"], key="job_filter_t4")
+                dashboard_job_options = ["All Jobs"]
+                if 'job_id' in candidates.columns:
+                    for jid in candidates['job_id'].dropna().unique():
+                        title = job_map.get(jid, jid)
+                        dashboard_job_options.append(title)
+                job_filter = st.selectbox("📋 Job", dashboard_job_options, key="job_filter_t4")
             with col3:
                 sort_by = st.selectbox("🔢 Sort", ["Score (High-Low)", "Name (A-Z)"], key="sort_t4")
             with col4:
@@ -4230,7 +4235,13 @@ def recruitment_hub():
             elif "Pending" in tier_filter:
                 display_df = display_df[(display_df['ai_score'] == 0) | (display_df['ai_tier'].isna())]
             if job_filter != "All Jobs":
-                display_df = display_df[display_df['job_id'] == job_filter]
+                selected_dashboard_job = None
+                for jid in candidates['job_id'].dropna().unique():
+                    if job_map.get(jid, jid) == job_filter:
+                        selected_dashboard_job = jid
+                        break
+                if selected_dashboard_job:
+                    display_df = display_df[display_df['job_id'] == selected_dashboard_job]
             if search_term:
                 s = search_term.lower()
                 display_df = display_df[display_df['first_name'].str.lower().str.contains(s, na=False) | display_df['last_name'].str.lower().str.contains(s, na=False) | display_df['email'].str.lower().str.contains(s, na=False)]
