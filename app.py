@@ -5133,7 +5133,9 @@ def chat_communications():
         dm_options = ["Select colleague..."] + sorted(team_list)
         
         try:
-            unread_msgs = db._get("chat_messages", {"receiver_name": user_name, "is_read": "false"})
+           unread_msgs = db._get("chat_messages", {"receiver_name": user_name})
+            if unread_msgs:
+                unread_msgs = [m for m in unread_msgs if m.get('is_read') == False or m.get('is_read') == 'false' or m.get('is_read') == 0]
             if unread_msgs and len(unread_msgs) > 0:
                 senders = list(set([m['sender_name'] for m in unread_msgs]))
                 for sender in senders:
