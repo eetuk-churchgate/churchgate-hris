@@ -5136,7 +5136,9 @@ def chat_communications():
             if all_my_msgs:
                 all_my_msgs = [m for m in all_my_msgs if m.get('receiver_name') == user_name]
             if all_my_msgs:
-                unread = [m for m in all_my_msgs if m.get('is_read') in [False, 'false', 0, '0']]
+                unread_test = [m for m in all_my_msgs if m.get('is_read') in [False, 'false', 0, '0']]
+                st.write(f"DEBUG: all={len(all_my_msgs)}, unread={len(unread_test)}, first_value={all_my_msgs[0].get('is_read')}, type={type(all_my_msgs[0].get('is_read')).__name__}")
+                unread = unread_test
                 if unread:
                     senders = {}
                     for m in unread:
