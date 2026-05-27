@@ -3750,17 +3750,17 @@ def recruitment_hub():
                 .editor-toolbar select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
             </style>
             <div class="editor-toolbar">
-                <select onchange="document.execCommand('formatBlock', false, this.value); this.selectedIndex=0;">
+                <select onchange="document.execCommand('formatBlock', false, this.value); this.selectedIndex=0;" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;">
                     <option value="">Style</option>
                     <option value="h2">Heading</option>
                     <option value="h3">Subheading</option>
                     <option value="p">Paragraph</option>
                 </select>
-                <button onclick="document.execCommand('bold', false, null); return false;"><b>B</b></button>
-                <button onclick="document.execCommand('italic', false, null); return false;"><i>I</i></button>
-                <button onclick="document.execCommand('underline', false, null); return false;"><u>U</u></button>
-                <button onclick="document.execCommand('insertUnorderedList', false, null); return false;">• List</button>
-                <button onclick="document.execCommand('insertOrderedList', false, null); return false;">1. List</button>
+                <button type="button" onclick="document.execCommand('bold');"><b>B</b></button>
+                <button type="button" onclick="document.execCommand('italic');"><i>I</i></button>
+                <button type="button" onclick="document.execCommand('underline');"><u>U</u></button>
+                <button type="button" onclick="document.execCommand('insertUnorderedList');">• List</button>
+                <button type="button" onclick="document.execCommand('insertOrderedList');">1. List</button>
             </div>
             """, unsafe_allow_html=True)
             
