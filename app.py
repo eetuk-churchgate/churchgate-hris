@@ -4294,7 +4294,7 @@ def recruitment_hub():
                     
                     # Show deep analysis
                     if f"deep_{loop_idx}" in st.session_state:
-                        res = st.session_state[f"deep_{idx}"]
+                        res = st.session_state[f"deep_{loop_idx}"]
                         if isinstance(res, dict):
                             st.markdown("---")
                             st.markdown("#### 🔬 Deep Analysis")
@@ -4322,7 +4322,7 @@ def recruitment_hub():
                                 st.markdown(f"**{i+1}.** {q}")
                             
                             if st.button("🗑️ Clear", key=f"clr_{loop_idx}"):
-                                del st.session_state[f"deep_{idx}"]
+                                del st.session_state[f"deep_{loop_idx}"]
                                 st.rerun()
             
             # Analytics
