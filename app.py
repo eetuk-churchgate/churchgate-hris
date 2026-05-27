@@ -5177,7 +5177,7 @@ def chat_communications():
                         initials = generate_initials(msg['sender'])
                         st.markdown(f"""<div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>{initials} {msg['sender']}</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
             else:
-                st.info(f"No messages with {dm_name} yet. Say hello! 👋")
+                st.info(f"No messages with {dm_with} yet. Say hello! 👋")
             
             # Send message
             with st.form(f"dm_form_{dm_with.replace(' ', '_')}", clear_on_submit=True):
