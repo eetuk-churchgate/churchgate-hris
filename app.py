@@ -3737,26 +3737,11 @@ def recruitment_hub():
             st.markdown("---")
             st.markdown("### 📋 Full Job Description *")
             
-            # Template buttons
-            col_t1, col_t2, col_t3, col_t4 = st.columns(4)
-            with col_t1:
-                if st.button("📝 Basic", use_container_width=True, key="jd_t_basic"):
-                    st.session_state.jd_html_content = "<h3>About the Role</h3><p>Describe the role here...</p><h3>Key Responsibilities</h3><ul><li>Responsibility 1</li><li>Responsibility 2</li></ul><h3>Requirements</h3><ul><li>Education: [Degree]</li><li>Experience: [X] years</li></ul><h3>Benefits</h3><ul><li>Competitive salary</li><li>Health insurance</li></ul>"
-                    st.rerun()
-            with col_t2:
-                if st.button("💼 Technical", use_container_width=True, key="jd_t_tech"):
-                    st.session_state.jd_html_content = "<h3>About the Role</h3><p>We are looking for a skilled technical professional.</p><h3>Technical Requirements</h3><ul><li><strong>Skill 1:</strong> Advanced</li><li><strong>Skill 2:</strong> Intermediate</li></ul><h3>Key Responsibilities</h3><ul><li>Technical delivery</li><li>Troubleshooting</li></ul>"
-                    st.rerun()
-            with col_t3:
-                if st.button("👔 Management", use_container_width=True, key="jd_t_mgmt"):
-                    st.session_state.jd_html_content = "<h3>About the Role</h3><p>We are seeking an experienced leader.</p><h3>Strategic Responsibilities</h3><ul><li>Strategy development</li><li>Team leadership</li></ul><h3>Requirements</h3><ul><li>X+ years leadership</li><li>Proven track record</li></ul>"
-                    st.rerun()
-            with col_t4:
-                if st.button("🧹 Clear", use_container_width=True, key="jd_t_clear"):
-                    st.session_state.jd_html_content = ""
-                    st.rerun()
+            # Initialize state
+            if 'jd_html_content' not in st.session_state:
+                st.session_state.jd_html_content = ""
             
-            # Rich text toolbar using HTML buttons
+            # Simple formatting toolbar using HTML
             st.markdown("""
             <style>
                 .editor-toolbar { display: flex; gap: 2px; flex-wrap: wrap; padding: 6px; background: #f5f5f5; border-radius: 6px 6px 0 0; border: 1px solid #ddd; }
@@ -3779,11 +3764,7 @@ def recruitment_hub():
             </div>
             """, unsafe_allow_html=True)
             
-            # Initialize state
-            if 'jd_html_content' not in st.session_state:
-                st.session_state.jd_html_content = ""
-            
-            # Editable div as rich text area
+            # Editable div
             jd_unique_id = f"jd_editor_{int(time.time())}"
             st.markdown(f"""
             <div id="{jd_unique_id}" contenteditable="true" style="min-height:250px; border:1px solid #ddd; border-top:none; padding:12px; background:white; border-radius:0 0 6px 6px; font-size:14px; line-height:1.6;">
@@ -3802,7 +3783,7 @@ def recruitment_hub():
             </script>
             """, unsafe_allow_html=True)
             
-            # Hidden textarea to capture the HTML
+            # Hidden textarea
             jd_text_for_submission = st.text_area(
                 "JD HTML Content",
                 value=st.session_state.jd_html_content,
