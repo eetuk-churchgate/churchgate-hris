@@ -740,6 +740,7 @@ def sidebar_navigation():
         if st.session_state.user:
             if st.button("🚪 Sign Out", use_container_width=True):
                 st.session_state.user = None
+                st.query_params.clear()
                 st.rerun()
         st.markdown("""<div style="text-align: center; padding: 0.5rem; margin-top: 1rem;"><p style="color: #888; font-size: 0.65rem; margin: 0;">© 2026 Churchgate Group</p><p style="color: #888; font-size: 0.65rem; margin: 0;">HRIS v5.0</p></div>""", unsafe_allow_html=True)
         return selected
