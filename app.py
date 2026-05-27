@@ -4109,23 +4109,44 @@ def recruitment_hub():
             st.markdown("---")
             st.markdown("### 🎯 Screening Controls")
             
+            # Build job filter with real titles
+            job_map = {}
+            try:
+                all_reqs = db.get_all_job_requisitions()
+                for r in all_reqs:
+                    req_id = r.get('req_id', '')
+                    short_id = f"JOB-{req_id[-6:]}" if len(req_id) >= 6 else req_id
+                    title = r.get('title', req_id)
+                    job_map[req_id] = title
+                    job_map[short_id] = title
+            except:
+                pass
+            
+            job_options = ["Select Job..."]
             if 'job_id' in candidates.columns:
-                jobs_list = candidates['job_id'].dropna().unique()
-                job_options = ["Select Job..."] + list(jobs_list)
-            else:
-                job_options = ["Select Job..."]
+                for jid in candidates['job_id'].dropna().unique():
+                    title = job_map.get(jid, jid)
+                    job_options.append(title)
             
             col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
             with col1:
                 screen_job = st.selectbox("📋 Screen by Job Posting", job_options, key="screen_job_t4")
             
+            # Map selected title back to job_id
+            selected_job_id = None
+            if screen_job != "Select Job...":
+                for jid in candidates['job_id'].dropna().unique():
+                    if job_map.get(jid, jid) == screen_job:
+                        selected_job_id = jid
+                        break
+            
             jd_text = ""
             job_title = ""
-            if screen_job != "Select Job...":
+            if selected_job_id:
                 try:
                     all_reqs = db.get_all_job_requisitions()
                     for r in all_reqs:
-                        if r.get('req_id') == screen_job:
+                        if r.get('req_id') == selected_job_id or f"JOB-{r.get('req_id', '')[-6:]}" == selected_job_id:
                             jd_text = r.get('jd', '')
                             job_title = r.get('title', '')
                             break
@@ -4146,7 +4167,7 @@ def recruitment_hub():
             
             # Process job screening
             if btn_job and screen_job != "Select Job...":
-                target = candidates[candidates['job_id'] == screen_job]
+                target = candidates[candidates['job_id'] == selected_job_id]
                 unscreened = target[target['ai_score'] == 0] if 'ai_score' in target.columns else target
                 if len(unscreened) > 0:
                     with st.spinner(f"🤖 Analyzing {len(unscreened)} candidates for '{job_title}'..."):
