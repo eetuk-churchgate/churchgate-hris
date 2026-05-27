@@ -600,6 +600,7 @@ def login_section():
                     if user:
                         st.session_state.user = user
                         st.session_state.authenticated = True
+                        st.query_params['logged_in'] = 'true'
                         st.rerun()
                     else:
                         st.error("❌ Invalid credentials.")
@@ -6794,6 +6795,13 @@ def my_profile():
 def main():
     if 'user' not in st.session_state:
         st.session_state.user = None
+    
+    # Persist login across refreshes
+    if st.session_state.user is None:
+        qp = st.query_params
+        if 'logged_in' in qp:
+            st.session_state.user = {'name': 'Returning User', 'role': 'Employee', 'email': '', 'employee_id': ''}
+            st.rerun()
     
     if st.session_state.user is None:
         login_section()
