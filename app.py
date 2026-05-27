@@ -3720,7 +3720,7 @@ def recruitment_hub():
             submitted = st.form_submit_button("📤 Submit for Approval", use_container_width=True)
             
             if submitted:
-                if job_title and department and jd_text:
+                if job_title and department and jd_text_for_submission:
                     req = {
                         'id': f"REQ-{datetime.now().strftime('%Y%m%d%H%M')}",
                         'title': job_title, 'department': department, 'location': location,
