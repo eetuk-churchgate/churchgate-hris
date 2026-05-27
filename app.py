@@ -4570,15 +4570,38 @@ def ai_recruitment_agent():
         try:
             candidates = db.get_all_candidates()
             if not candidates.empty:
-                # Job filter
+                # Build job filter with real titles
+                job_map = {}
+                try:
+                    all_reqs = db.get_all_job_requisitions()
+                    for r in all_reqs:
+                        req_id = r.get('req_id', '')
+                        # Map both full and short formats
+                        short_id = f"JOB-{req_id[-6:]}" if len(req_id) >= 6 else req_id
+                        title = r.get('title', req_id)
+                        job_map[req_id] = title
+                        job_map[short_id] = title
+                except:
+                    pass
+                
+                # Create display options
+                job_options = ["All Jobs"]
                 if 'job_id' in candidates.columns:
-                    job_list = ["All Jobs"] + list(candidates['job_id'].dropna().unique())
-                else:
-                    job_list = ["All Jobs"]
-                agent_job_filter = st.selectbox("📋 Filter by Job", job_list, key="agent_job_filter")
+                    for jid in candidates['job_id'].dropna().unique():
+                        title = job_map.get(jid, jid)
+                        job_options.append(f"{title}")
+                
+                agent_job_filter = st.selectbox("📋 Filter by Job", job_options, key="agent_job_filter_t7")
                 
                 if agent_job_filter != "All Jobs":
-                    candidates = candidates[candidates['job_id'] == agent_job_filter]
+                    # Find the matching job_id
+                    selected_job_id = None
+                    for jid in candidates['job_id'].dropna().unique():
+                        if job_map.get(jid, jid) == agent_job_filter:
+                            selected_job_id = jid
+                            break
+                    if selected_job_id:
+                        candidates = candidates[candidates['job_id'] == selected_job_id]
                 
                 st.markdown(f"### 📊 {len(candidates)} Applications")
                 
