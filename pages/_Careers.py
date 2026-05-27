@@ -8,7 +8,7 @@ import time
 import re
 import pandas as pd
 
-sys.path.append(str(Path(__file__).parent))
+sys.path.append(str(Path(__file__).parent.parent))
 
 from utils.database import DatabaseManager
 
@@ -43,9 +43,9 @@ st.markdown(f"""
     @keyframes fadeIn {{ from {{ opacity: 0; }} to {{ opacity: 1; }} }}
     .animate-fade-in {{ animation: fadeIn 0.8s ease-out; }}
     .animate-fade-in-up {{ animation: fadeInUp 0.8s ease-out; }}
-    .career-hero {{ background: linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 50%, #e0e0e0 100%); padding: 3rem 2rem; text-align: center; border-bottom: 4px solid #CC0000; position: relative; overflow: hidden; }}
-    .career-hero h1 {{ font-size: 2.8rem; font-weight: 900; margin: 0; color: #1a1a1a; position: relative; }}
-    .career-hero p {{ font-size: 1.2rem; margin-top: 1rem; color: #555; position: relative; max-width: 700px; margin-left: auto; margin-right: auto; }}
+    .career-hero {{ background: linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 50%, #e0e0e0 100%); padding: 1.5rem 2rem; text-align: center; border-bottom: 3px solid #CC0000; position: relative; overflow: hidden; }}
+    .career-hero h1 {{ font-size: 2rem; font-weight: 800; margin: 0; color: #1a1a1a; position: relative; }}
+    .career-hero p {{ font-size: 0.95rem; margin-top: 0.5rem; color: #555; position: relative; max-width: 600px; margin-left: auto; margin-right: auto; }}
     .job-hero {{ background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 1.5rem 2rem; border-bottom: 3px solid #CC0000; margin-bottom: 1.5rem; }}
     .job-hero h1 {{ color: white; font-size: 1.6rem; margin: 0; font-weight: 700; }}
     .job-hero p {{ color: #ccc; margin: 0.3rem 0 0 0; font-size: 0.9rem; }}
@@ -61,8 +61,8 @@ st.markdown(f"""
     .benefit-icon {{ font-size: 2.5rem; margin-bottom: 0.5rem; }}
     .testimonial-card {{ background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center; border-top: 3px solid #CC0000; }}
     .social-proof {{ background: white; padding: 2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin: 2rem 0; }}
-    .footer {{ background: linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 100%); color: #555; padding: 3rem 2rem; text-align: center; margin-top: 3rem; border-top: 4px solid #CC0000; }}
-    .footer h3 {{ color: #CC0000; font-weight: 700; }}
+    .footer {{ background: linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 100%); color: #555; padding: 1.5rem 2rem; text-align: center; margin-top: 2rem; border-top: 3px solid #CC0000; font-size: 0.85rem; }}
+    .footer h3 {{ color: #CC0000; font-weight: 700; font-size: 1rem; margin-bottom: 0.3rem; }}
     .jd-content {{ line-height: 2; font-size: 0.95rem; color: #444; }}
     .jd-content strong {{ color: #1a1a1a; font-size: 1.1rem; }}
     .success-box {{ background: linear-gradient(135deg, #f0f8f0, #e8f5e9); padding: 2rem; border-radius: 12px; margin-top: 1rem; border: 2px solid #38a169; text-align: center; }}
