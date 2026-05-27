@@ -5117,6 +5117,8 @@ def chat_communications():
     
     with tab2:
         st.subheader("👥 Direct Messages")
+        
+        # Build employee list from real data
         if not employees_df.empty:
             team_list = []
             for _, row in employees_df.iterrows():
@@ -5125,22 +5127,63 @@ def chat_communications():
                     team_list.append(f"{full_name} — {row.get('department', '')} — {row.get('position', '')}")
         else:
             team_list = ["Jerome Das — Senior Management — COO", "Sanjeev Purwar — Facility Management — Head, MEP"]
+        
+        # Check for unread messages
+        try:
+            unread_msgs = db._get("chat_messages", {"receiver_name": user_name, "is_read": "false"})
+            if unread_msgs and len(unread_msgs) > 0:
+                senders = set([m['sender_name'] for m in unread_msgs])
+                for sender in senders:
+                    count = len([m for m in unread_msgs if m['sender_name'] == sender])
+                    st.info(f"🔴 {count} unread message{'s' if count > 1 else ''} from **{sender}**")
+        except:
+            pass
+        
         dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + sorted(team_list))
+        
         if dm_with != "Select colleague...":
             dm_name = dm_with.split(" — ")[0]
             dm_dept = dm_with.split(" — ")[1] if " — " in dm_with else ""
-            sorted_key = tuple(sorted([user_name, dm_name]))
-            dm_storage_key = f"dm_{sorted_key[0]}_{sorted_key[1]}"
-            if dm_storage_key not in st.session_state.direct_messages:
-                st.session_state.direct_messages[dm_storage_key] = []
+            
             if dm_dept:
                 st.caption(f"🏢 {dm_dept}")
-            for msg in st.session_state.direct_messages[dm_storage_key][-30:]:
+            
+            # Load messages from database
+            try:
+                sent_msgs = db._get("chat_messages", {"sender_name": user_name, "receiver_name": dm_name})
+                received_msgs = db._get("chat_messages", {"sender_name": dm_name, "receiver_name": user_name})
+                all_msgs = []
+                if sent_msgs:
+                    for m in sent_msgs:
+                        all_msgs.append({'sender': m['sender_name'], 'content': m['message'], 'time': m.get('sent_at', '')[:16]})
+                if received_msgs:
+                    for m in received_msgs:
+                        all_msgs.append({'sender': m['sender_name'], 'content': m['message'], 'time': m.get('sent_at', '')[:16]})
+                        # Mark as read
+                        if not m.get('is_read'):
+                            db._patch("chat_messages", {"is_read": True}, {"id": m['id']})
+                # Sort by time
+                all_msgs.sort(key=lambda x: x['time'])
+            except:
+                all_msgs = []
+            
+            # Display messages
+            for msg in all_msgs[-30:]:
                 if msg['sender'] == user_name:
-                    st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;"><strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;">
+                        <strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
                     initials = generate_initials(msg['sender'])
-                    st.markdown(f"""<div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>{initials} {msg['sender']}</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;">
+                        <strong>{initials} {msg['sender']}</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            # Send message
             with st.form(f"dm_form_{dm_name.replace(' ', '_')}", clear_on_submit=True):
                 col1, col2 = st.columns([4, 1])
                 with col1:
@@ -5148,10 +5191,14 @@ def chat_communications():
                 with col2:
                     if st.form_submit_button("📤", use_container_width=True):
                         if dm_message:
-                            st.session_state.direct_messages[dm_storage_key].append({
-                                'sender': user_name, 'content': dm_message,
-                                'time': datetime.now().strftime('%I:%M %p')
+                            db._post("chat_messages", {
+                                "sender_name": user_name,
+                                "receiver_name": dm_name,
+                                "message": dm_message,
+                                "sent_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                                "is_read": False
                             })
+                            st.success(f"✅ Message sent to {dm_name}!")
                             st.rerun()
     
     with tab3:
