@@ -4253,7 +4253,7 @@ def recruitment_hub():
                             st.progress(score/100)
                     
                     col_a1, col_a2, col_a3 = st.columns(3)
-                     with col_a1:
+                    with col_a1:
                         if st.button("🔍 Deep Analysis", key=f"deep_btn_{i}", use_container_width=True):
                             if cv_text and cv_text != 'None' and len(cv_text) > 50:
                                 with st.spinner("Analyzing..."):
