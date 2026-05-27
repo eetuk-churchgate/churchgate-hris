@@ -3734,75 +3734,64 @@ def recruitment_hub():
                 positions = st.number_input("Number of Positions", min_value=1, value=1)
                 closing_date = st.date_input("Application Deadline")
             
-            st.markdown("---")
-            st.markdown("### 📋 Full Job Description *")
-            
-            # Initialize state
-            if 'jd_html_content' not in st.session_state:
-                st.session_state.jd_html_content = ""
-            
-            # Simple formatting toolbar using HTML
             st.markdown("""
             <style>
-                .editor-toolbar { display: flex; gap: 2px; flex-wrap: wrap; padding: 6px; background: #f5f5f5; border-radius: 6px 6px 0 0; border: 1px solid #ddd; }
-                .editor-toolbar button { padding: 6px 12px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer; font-size: 13px; }
-                .editor-toolbar button:hover { background: #e0e0e0; }
-                .editor-toolbar select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
+                .editor-toolbar { display: flex; gap: 3px; flex-wrap: wrap; padding: 8px; background: #f0f0f0; border-radius: 8px 8px 0 0; border: 1px solid #ddd; border-bottom: none; }
+                .editor-toolbar button { width: 32px; height: 28px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+                .editor-toolbar button:hover { background: #e0e0e0; border-color: #999; }
+                .editor-toolbar select { height: 28px; border: 1px solid #ccc; border-radius: 4px; padding: 2px 6px; cursor: pointer; }
+                #jd_editor { min-height: 250px; border: 1px solid #ddd; border-top: none; padding: 12px; background: white; border-radius: 0 0 8px 8px; font-size: 14px; line-height: 1.6; outline: none; }
+                #jd_editor:focus { border-color: #CC0000; }
             </style>
+            
             <div class="editor-toolbar">
-                <select onchange="document.execCommand('formatBlock', false, this.value); this.selectedIndex=0;" style="padding:6px 8px;border:1px solid #ccc;border-radius:4px;">
-                    <option value="">Style</option>
+                <select onchange="formatDoc('formatBlock', this.value); this.selectedIndex=0;">
+                    <option value="">Normal</option>
                     <option value="h2">Heading</option>
                     <option value="h3">Subheading</option>
-                    <option value="p">Paragraph</option>
+                    <option value="pre">Code</option>
                 </select>
-                <button type="button" onclick="document.execCommand('bold');"><b>B</b></button>
-                <button type="button" onclick="document.execCommand('italic');"><i>I</i></button>
-                <button type="button" onclick="document.execCommand('underline');"><u>U</u></button>
-                <button type="button" onclick="document.execCommand('insertUnorderedList');">• List</button>
-                <button type="button" onclick="document.execCommand('insertOrderedList');">1. List</button>
+                <button type="button" onmousedown="event.preventDefault(); formatDoc('bold');"><b>B</b></button>
+                <button type="button" onmousedown="event.preventDefault(); formatDoc('italic');"><i>I</i></button>
+                <button type="button" onmousedown="event.preventDefault(); formatDoc('underline');"><u>U</u></button>
+                <button type="button" onmousedown="event.preventDefault(); formatDoc('insertUnorderedList');">•</button>
+                <button type="button" onmousedown="event.preventDefault(); formatDoc('insertOrderedList');">1.</button>
             </div>
-            """, unsafe_allow_html=True)
             
-            # Editable div
-            jd_unique_id = f"jd_editor_{int(time.time())}"
-            st.markdown(f"""
-            <div id="{jd_unique_id}" contenteditable="true" style="min-height:250px; border:1px solid #ddd; border-top:none; padding:12px; background:white; border-radius:0 0 6px 6px; font-size:14px; line-height:1.6;">
-                {st.session_state.jd_html_content}
-            </div>
+            <div id="jd_editor" contenteditable="true">{st.session_state.get('jd_html_content', '')}</div>
+            
             <script>
-                var editor = document.getElementById('{jd_unique_id}');
-                editor.addEventListener('input', function() {{
-                    var html = editor.innerHTML;
-                    var textArea = window.parent.document.querySelector('textarea[aria-label="JD HTML Content"]');
-                    if (textArea) {{
-                        textArea.value = html;
-                        textArea.dispatchEvent(new Event('input', {{ bubbles: true }}));
+            function formatDoc(command, value) {{
+                document.getElementById('jd_editor').focus();
+                document.execCommand(command, false, value || null);
+            }}
+            
+            var editor = document.getElementById('jd_editor');
+            editor.addEventListener('input', function() {{
+                var html = editor.innerHTML;
+                var textAreas = window.parent.document.querySelectorAll('textarea');
+                for (var i = 0; i < textAreas.length; i++) {{
+                    if (textAreas[i].getAttribute('aria-label') === 'JD HTML Content') {{
+                        textAreas[i].value = html;
+                        textAreas[i].dispatchEvent(new Event('input', {{ bubbles: true }}));
+                        break;
                     }}
-                }});
-                // Fix toolbar buttons to focus editor first
-                var toolbar = document.querySelector('.editor-toolbar');
-                if (toolbar) {{
-                    toolbar.addEventListener('click', function(e) {{
-                        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT') {{
-                            editor.focus();
-                        }}
-                    }});
                 }}
+            }});
             </script>
             """, unsafe_allow_html=True)
             
-            # Hidden textarea
+            # Hidden textarea to capture HTML
             jd_text_for_submission = st.text_area(
                 "JD HTML Content",
-                value=st.session_state.jd_html_content,
-                key=f"jd_html_{jd_unique_id}",
+                value=st.session_state.get('jd_html_content', ''),
+                key="jd_html_hidden_final",
                 label_visibility="collapsed",
                 height=1
             )
             
             # Preview
-            if st.session_state.jd_html_content and st.session_state.jd_html_content.strip():
+            if st.session_state.get('jd_html_content', '').strip():
                 with st.expander("👁️ Live Preview", expanded=True):
                     st.markdown(st.session_state.jd_html_content, unsafe_allow_html=True)
             else:
