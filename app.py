@@ -5136,10 +5136,15 @@ def chat_communications():
             if all_my_msgs:
                 unread = []
                 for m in all_my_msgs:
-                    if m.get('receiver_name') == 'Gbemisola Balogun' and m.get('is_read') == False:
+                    if m.get('receiver_name').strip() == user_name.strip() and m.get('is_read') == False:
                         unread.append(m)
                 if unread:
-                    st.info(f"🔴 **{len(unread)} unread messages** from **Emmanuel Etuk** — Select 'Emmanuel Etuk' below to read")
+                    senders = {}
+                    for m in unread:
+                        s = m['sender_name']
+                        senders[s] = senders.get(s, 0) + 1
+                    for sender, count in senders.items():
+                        st.info(f"🔴 **{count} unread message{'s' if count > 1 else ''}** from **{sender}** — Select '{sender}' below to read")
         except:
             pass
         
