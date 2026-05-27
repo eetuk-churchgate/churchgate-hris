@@ -3903,13 +3903,21 @@ def recruitment_hub():
                             st.markdown("#### 🏢 COO Final Approval")
                             with st.form(key=f"coo_form_{i}"):
                                 st.markdown("**Review:** Full requisition details are shown above.")
-                                coo_comment = st.text_area("COO Comment *", key=f"coo_comment_{i}", placeholder="Final approval notes...")
+                                coo_comment = st.text_area("COO Comment *", key=f"coo_comment_{i}", placeholder="Final approval notes, rejection reason, or revision request...")
                                 
-                                if st.form_submit_button("✅ COO Approve & Activate Job", use_container_width=True):
+                                col_coo1, col_coo2, col_coo3 = st.columns(3)
+                                with col_coo1:
+                                    approve_btn = st.form_submit_button("✅ Approve & Activate", use_container_width=True)
+                                with col_coo2:
+                                    reject_btn = st.form_submit_button("❌ Reject", use_container_width=True)
+                                with col_coo3:
+                                    revise_btn = st.form_submit_button("🔄 Request Revision", use_container_width=True)
+                                
+                                if approve_btn:
                                     if coo_comment:
                                         st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
                                         st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
-                                        job_ref = f"JOB-{datetime.now().strftime('%Y%m%d')}-{len(st.session_state.active_jobs)+1:03d}"
+                                        job_ref = req['id']
                                         STREAMLIT_URL = "https://churchgate-hris.streamlit.app"
                                         public_url = f"{STREAMLIT_URL}/Careers?job={job_ref}"
                                         
@@ -3930,7 +3938,6 @@ def recruitment_hub():
                                         except:
                                             pass
                                         
-                                        # Send confirmation email
                                         if email_svc:
                                             try:
                                                 submitter_email = req.get('submitted_by', '')
@@ -3949,6 +3956,62 @@ def recruitment_hub():
                                         st.rerun()
                                     else:
                                         st.error("❌ Comment required!")
+                                
+                                if reject_btn:
+                                    if coo_comment:
+                                        st.session_state.job_requisitions[i]['status'] = 'Rejected by COO'
+                                        st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
+                                        try:
+                                            r = st.session_state.job_requisitions[i]
+                                            db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                                r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                                r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                                r['lm_comment'], r['admin_comment'], r['coo_comment'])
+                                        except:
+                                            pass
+                                        if email_svc:
+                                            try:
+                                                submitter_email = req.get('submitted_by', '')
+                                                if '@' in str(submitter_email):
+                                                    email_svc.send_email(
+                                                        submitter_email,
+                                                        f"❌ Job Requisition Rejected: {req['title']}",
+                                                        f"The job requisition for '{req['title']}' has been rejected by the COO.\n\nReason: {coo_comment}\n\nPlease review and resubmit if needed."
+                                                    )
+                                            except:
+                                                pass
+                                        st.error(f"❌ Requisition rejected. Reason: {coo_comment}")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Comment required for rejection!")
+                                
+                                if revise_btn:
+                                    if coo_comment:
+                                        st.session_state.job_requisitions[i]['status'] = 'Revision Requested by COO'
+                                        st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
+                                        try:
+                                            r = st.session_state.job_requisitions[i]
+                                            db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                                r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                                r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                                r['lm_comment'], r['admin_comment'], r['coo_comment'])
+                                        except:
+                                            pass
+                                        if email_svc:
+                                            try:
+                                                submitter_email = req.get('submitted_by', '')
+                                                if '@' in str(submitter_email):
+                                                    email_svc.send_email(
+                                                        submitter_email,
+                                                        f"🔄 Revision Requested: {req['title']}",
+                                                        f"The COO has requested revisions for '{req['title']}'.\n\nRevision Notes: {coo_comment}\n\nPlease update and resubmit for approval."
+                                                    )
+                                            except:
+                                                pass
+                                        st.warning(f"🔄 Revision requested. Reason: {coo_comment}")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Comment required for revision request!")
                         
                         # Show LIVE status
                         if req['status'] == 'Approved - Live':
