@@ -3737,30 +3737,11 @@ def recruitment_hub():
             st.markdown("---")
             st.markdown("### 📋 Full Job Description *")
             
-            # Template buttons (outside the editor)
-            col_t1, col_t2, col_t3, col_t4 = st.columns(4)
-            with col_t1:
-                if st.button("📝 Basic Template", use_container_width=True, key="jd_template_basic"):
-                    st.session_state.jd_html_content = """<h3>About the Role</h3><p>Describe the role and its impact on the organization.</p><h3>Key Responsibilities</h3><ul><li>Responsibility 1</li><li>Responsibility 2</li><li>Responsibility 3</li></ul><h3>Requirements</h3><ul><li><strong>Education:</strong> Required degree or equivalent</li><li><strong>Experience:</strong> X years in relevant field</li><li><strong>Skills:</strong> Key skills needed</li></ul><h3>Benefits</h3><ul><li>Competitive salary package</li><li>Health insurance (HMO)</li><li>Professional development opportunities</li><li>Pension plan</li></ul>"""
-                    st.rerun()
-            with col_t2:
-                if st.button("💼 Technical Role", use_container_width=True, key="jd_template_tech"):
-                    st.session_state.jd_html_content = """<h3>About the Role</h3><p>We are looking for a skilled technical professional to join our team.</p><h3>Technical Requirements</h3><ul><li><strong>Skill 1:</strong> Advanced proficiency</li><li><strong>Skill 2:</strong> Intermediate level</li><li><strong>Certifications:</strong> Required certifications listed</li></ul><h3>Key Responsibilities</h3><ul><li>Technical delivery and system maintenance</li><li>Troubleshooting and problem resolution</li><li>Documentation and knowledge sharing</li></ul><h3>Qualifications</h3><ul><li>Degree in relevant field or equivalent experience</li><li>X+ years hands-on experience</li></ul>"""
-                    st.rerun()
-            with col_t3:
-                if st.button("👔 Management Role", use_container_width=True, key="jd_template_mgmt"):
-                    st.session_state.jd_html_content = """<h3>About the Role</h3><p>We are seeking an experienced leader to drive strategic initiatives.</p><h3>Strategic Responsibilities</h3><ul><li>Develop and execute strategy for the department</li><li>Lead and mentor a high-performing team</li><li>Drive measurable business outcomes</li></ul><h3>Operational Responsibilities</h3><ul><li>Day-to-day management of operations</li><li>Budget planning and oversight</li><li>Stakeholder engagement and reporting</li></ul><h3>Requirements</h3><ul><li>X+ years in leadership role</li><li>Proven track record of delivering results</li><li>Strong communication and presentation skills</li></ul>"""
-                    st.rerun()
-            with col_t4:
-                if st.button("🧹 Clear Editor", use_container_width=True, key="jd_template_clear"):
-                    st.session_state.jd_html_content = ""
-                    st.rerun()
-            
             # Initialize HTML content state
             if 'jd_html_content' not in st.session_state:
                 st.session_state.jd_html_content = ""
             
-            # Rich Text Editor using Quill.js
+            # Rich Text Editor
             st.markdown(f"""
             <div id="quill-editor" style="margin-bottom: 1rem;"></div>
             <script>
