@@ -5134,7 +5134,10 @@ def chat_communications():
         # Show unread notifications as info boxes
         try:
             all_my_msgs = db._get("chat_messages")
-            st.write(f"DEBUG: raw count = {len(all_my_msgs) if all_my_msgs else 0}")
+            if all_my_msgs:
+                for m in all_my_msgs:
+                    if 'gbemisola' in m.get('receiver_name', '').lower():
+                        st.write(f"Found: receiver='{m.get('receiver_name')}' (len={len(m.get('receiver_name',''))})")
             if all_my_msgs:
                 my_msgs = [m for m in all_my_msgs if m.get('receiver_name') == user_name]
                 unread = [m for m in my_msgs if str(m.get('is_read')).lower() in ['false', '0', 'none', '']]
