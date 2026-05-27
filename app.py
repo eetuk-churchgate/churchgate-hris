@@ -3734,66 +3734,26 @@ def recruitment_hub():
                 positions = st.number_input("Number of Positions", min_value=1, value=1)
                 closing_date = st.date_input("Application Deadline")
             
-            st.markdown("""
-            <style>
-                .editor-toolbar { display: flex; gap: 3px; flex-wrap: wrap; padding: 8px; background: #f0f0f0; border-radius: 8px 8px 0 0; border: 1px solid #ddd; border-bottom: none; }
-                .editor-toolbar button { width: 32px; height: 28px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
-                .editor-toolbar button:hover { background: #e0e0e0; border-color: #999; }
-                .editor-toolbar select { height: 28px; border: 1px solid #ccc; border-radius: 4px; padding: 2px 6px; cursor: pointer; }
-                #jd_editor { min-height: 250px; border: 1px solid #ddd; border-top: none; padding: 12px; background: white; border-radius: 0 0 8px 8px; font-size: 14px; line-height: 1.6; outline: none; }
-                #jd_editor:focus { border-color: #CC0000; }
-            </style>
+            st.markdown("---")
+            st.markdown("### 📋 Full Job Description *")
+            st.caption("Use the editor below. Formatting: **Bold**, *Italic*, ### Heading, - Bullets")
             
-            <div class="editor-toolbar">
-                <select onchange="formatDoc('formatBlock', this.value); this.selectedIndex=0;">
-                    <option value="">Normal</option>
-                    <option value="h2">Heading</option>
-                    <option value="h3">Subheading</option>
-                    <option value="pre">Code</option>
-                </select>
-                <button type="button" onmousedown="event.preventDefault(); formatDoc('bold');"><b>B</b></button>
-                <button type="button" onmousedown="event.preventDefault(); formatDoc('italic');"><i>I</i></button>
-                <button type="button" onmousedown="event.preventDefault(); formatDoc('underline');"><u>U</u></button>
-                <button type="button" onmousedown="event.preventDefault(); formatDoc('insertUnorderedList');">•</button>
-                <button type="button" onmousedown="event.preventDefault(); formatDoc('insertOrderedList');">1.</button>
-            </div>
+            if 'jd_text_temp' not in st.session_state:
+                st.session_state.jd_text_temp = ""
             
-            <div id="jd_editor" contenteditable="true">{st.session_state.get('jd_html_content', '')}</div>
-            
-            <script>
-            function formatDoc(command, value) {{
-                document.getElementById('jd_editor').focus();
-                document.execCommand(command, false, value || null);
-            }}
-            
-            var editor = document.getElementById('jd_editor');
-            editor.addEventListener('input', function() {{
-                var html = editor.innerHTML;
-                var textAreas = window.parent.document.querySelectorAll('textarea');
-                for (var i = 0; i < textAreas.length; i++) {{
-                    if (textAreas[i].getAttribute('aria-label') === 'JD HTML Content') {{
-                        textAreas[i].value = html;
-                        textAreas[i].dispatchEvent(new Event('input', {{ bubbles: true }}));
-                        break;
-                    }}
-                }}
-            }});
-            </script>
-            """, unsafe_allow_html=True)
-            
-            # Hidden textarea to capture HTML
             jd_text_for_submission = st.text_area(
-                "JD HTML Content",
-                value=st.session_state.get('jd_html_content', ''),
-                key="jd_html_hidden_final",
-                label_visibility="collapsed",
-                height=1
+                "Full Job Description *",
+                value=st.session_state.get('jd_text_temp', ''),
+                height=300,
+                placeholder="### About the Role\nDescribe the role here...\n\n### Key Responsibilities\n- Point 1\n- Point 2\n\n### Requirements\n- Requirement 1\n- Requirement 2\n\n### Benefits\n- Benefit 1\n- Benefit 2",
+                label_visibility="collapsed"
             )
             
-            # Preview
-            if st.session_state.get('jd_html_content', '').strip():
+            if jd_text_for_submission:
                 with st.expander("👁️ Live Preview", expanded=True):
-                    st.markdown(st.session_state.jd_html_content, unsafe_allow_html=True)
+                    st.markdown(jd_text_for_submission)
+            
+            st.markdown("### Screening Questions (Optional)")
             else:
                 st.info("👆 Use the rich text editor above to create your job description. Click a template to get started.")
             
