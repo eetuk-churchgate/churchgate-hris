@@ -3741,7 +3741,35 @@ def recruitment_hub():
                             req['lm_comment'], req['admin_comment'], req['coo_comment'])
                     except:
                         pass
-                    st.success(f"✅ Job requisition {req['id']} submitted! Awaiting approval chain.")
+                    # Send email to Line Manager
+                    lm_emails = {
+                        'Accounts & Finance': 'jeff@churchgate.com',
+                        'Facility Management': 'deffiong@churchgate.com',
+                        'Human Resources': 'asakote@churchgate.com',
+                        'Legal': 'daiyedun@churchgate.com',
+                        'Operations': 'adeogun@churchgate.com',
+                        'Procurement': 'abora@churchgate.com',
+                        'Sales & Marketing': 'akarim@churchgate.com',
+                        'Security': 'usabdullahi@churchgate.com',
+                        'Technology Group': 'eetuk@churchgate.com',
+                        'Engineering': 'purwar@churchgate.com',
+                        'Central Stores': 'abora@churchgate.com',
+                        'Project Development': 'deffiong@churchgate.com',
+                        'Trade Services': 'akarim@churchgate.com'
+                    }
+                    lm_email = lm_emails.get(department, 'asakote@churchgate.com')
+                    try:
+                        from utils.email_service import EmailService
+                        EmailService().send_email(
+                            lm_email,
+                            f"🔔 New Job Requisition Awaiting Authorization: {job_title}",
+                            f"A new job requisition for '{job_title}' ({department}) has been submitted by {user_name}.\n\nPlease review and authorize in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}"
+                        )
+                        st.info(f"📧 Authorization request sent to Line Manager")
+                    except:
+                        pass
+                    
+                    st.success(f"✅ Job requisition {req['id']} submitted! Awaiting authorization.")
                     st.balloons()
                 else:
                     st.error("❌ Required fields missing!")
@@ -3824,17 +3852,19 @@ def recruitment_hub():
                                         except:
                                             pass
                                         
-                                        # Send email to HR
+                                        # Send email to HR team
                                         if email_svc:
                                             try:
-                                                hr_emails = []
-                                                hr_users = db._get("users", {"department": "Human Resources"})
-                                                for u in hr_users:
-                                                    if u.get('email'):
-                                                        hr_emails.append(u['email'])
-                                                if hr_emails:
+                                                hr_emails = ["asakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                                                for hr_email in hr_emails:
                                                     email_svc.send_email(
-                                                        hr_emails[0],
+                                                        hr_email,
+                                                        f"🔔 Job Requisition Authorized by LM: {req['title']}",
+                                                        f"Line Manager has authorized the job requisition for '{req['title']}' ({req['department']}).\n\nPlease validate the requisition in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nLM Comment: {lm_comment}"
+                                                    )
+                                                st.info("📧 Email notification sent to HR team (Bayo, Gbemisola, Ibeabuchi)")
+                                            except:
+                                                pass
                                                         f"🔔 Job Requisition Approved by LM: {req['title']}",
                                                         f"Line Manager has approved the job requisition for '{req['title']}' ({req['department']}).\n\nPlease validate the requisition in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nLM Comment: {lm_comment}"
                                                     )
@@ -3872,20 +3902,17 @@ def recruitment_hub():
                                         except:
                                             pass
                                         
-                                        # Send email to COO
+                                        # Send email to COO for final approval
                                         if email_svc:
                                             try:
-                                                coo_users = db._get("users", {"department": "Senior Management"})
-                                                coo_email = None
-                                                for u in coo_users:
-                                                    if 'coo' in str(u.get('position', '')).lower():
-                                                        coo_email = u.get('email')
-                                                        break
-                                                if not coo_email and coo_users:
-                                                    coo_email = coo_users[0].get('email')
-                                                if coo_email:
-                                                    email_svc.send_email(
-                                                        coo_email,
+                                                email_svc.send_email(
+                                                    "jeromedas@churchgate.com",
+                                                    f"🔔 Job Requisition Ready for Final Approval: {req['title']}",
+                                                    f"HR has validated the job requisition for '{req['title']}' ({req['department']}).\n\nPlease review and give final approval in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}\nLM Comment: {req.get('lm_comment', 'N/A')}"
+                                                )
+                                                st.info("📧 Email notification sent to COO (Jerome Das)")
+                                            except:
+                                                pass
                                                         f"🔔 Job Requisition Ready for Final Approval: {req['title']}",
                                                         f"HR has validated the job requisition for '{req['title']}' ({req['department']}).\n\nPlease review and give final approval in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}\nLM Comment: {req.get('lm_comment', 'N/A')}"
                                                     )
