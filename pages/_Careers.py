@@ -84,7 +84,7 @@ if selected_job:
     except:
         pass
     
-    position_name = job_details.get('title', selected_job) if job_details else selected_job
+    position_name = job_details.get('title', selected_job).replace('**', '') if job_details else selected_job.replace('**', '')
     
     hero_html = f"""<div class="career-hero animate-fade-in">
         {f'<img src="data:image/png;base64,{logo_b64}" style="height: 50px; margin-bottom: 1rem; position: relative;" alt="Churchgate Group">' if logo_b64 else ''}
