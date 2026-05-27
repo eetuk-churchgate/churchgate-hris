@@ -5134,6 +5134,8 @@ def chat_communications():
         try:
             all_my_msgs = db._get("chat_messages")
             if all_my_msgs:
+                st.write(f"DEBUG user_name='{user_name}'")
+                st.write(f"DEBUG receivers in DB: {[m.get('receiver_name') for m in all_my_msgs]}")
                 all_my_msgs = [m for m in all_my_msgs if m.get('receiver_name') == user_name]
             if all_my_msgs:
                 unread = [m for m in all_my_msgs if m.get('is_read') in [False, 'false', 0, '0']]
