@@ -3587,16 +3587,7 @@ def promotions():
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
     
-    # Rich Text Editor Setup
-    st.markdown("""
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-    <style>
-        .ql-editor { min-height: 250px; font-size: 14px; background: white; }
-        .ql-toolbar { background: #f8f8f8; border-radius: 6px 6px 0 0; }
-        .ql-container { border-radius: 0 0 6px 6px; }
-    </style>
-    """, unsafe_allow_html=True)
+    
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
@@ -3672,54 +3663,8 @@ def recruitment_hub():
         st.subheader("📋 Job Requisition & Approval Workflow")
         st.info("Workflow: Line Manager → Super Admin → COO → Job Goes LIVE on Careers Page")
         
-        # Template buttons (outside form)
-        col_t1, col_t2, col_t3, col_t4 = st.columns(4)
-        with col_t1:
-            if st.button("📝 Basic", use_container_width=True, key="jd_basic"):
-                st.session_state.jd_text_temp = """### About the Role
-[Describe the role and its impact]
+        
 
-### Key Responsibilities
-- Responsibility 1
-- Responsibility 2
-
-### Requirements
-- Education: [Degree]
-- Experience: [X] years
-
-### Benefits
-- Competitive salary
-- Health insurance"""
-                st.rerun()
-        with col_t2:
-            if st.button("💼 Technical", use_container_width=True, key="jd_tech"):
-                st.session_state.jd_text_temp = """### About the Role
-[Describe the technical role]
-
-### Technical Requirements
-- [Skill 1]
-- [Skill 2]
-
-### Key Responsibilities
-- Technical delivery
-- Troubleshooting"""
-                st.rerun()
-        with col_t3:
-            if st.button("👔 Management", use_container_width=True, key="jd_mgmt"):
-                st.session_state.jd_text_temp = """### About the Role
-[Describe the leadership role]
-
-### Strategic Responsibilities
-- Strategy development
-- Team leadership
-
-### Requirements
-- [X]+ years leadership"""
-                st.rerun()
-        with col_t4:
-            if st.button("🧹 Clear", use_container_width=True, key="jd_clear"):
-                st.session_state.jd_text_temp = ""
-                st.rerun()
         
         with st.form("job_requisition_form"):
             st.markdown("### New Job Requisition")
