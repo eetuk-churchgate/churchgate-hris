@@ -3873,9 +3873,22 @@ def recruitment_hub():
                         # ADMIN VALIDATION
                         if req['status'] == 'Pending Admin Approval':
                             st.markdown("#### 🔍 HR Admin Validation")
+                            
+                            # JD Preview
+                            st.markdown("**📋 Job Description Preview:**")
+                            jd_content = req.get('jd', 'No JD provided')
+                            if '<' in jd_content and '>' in jd_content:
+                                st.markdown(jd_content, unsafe_allow_html=True)
+                            else:
+                                st.markdown(jd_content)
+                            st.markdown("---")
+                            
+                            with st.form(key=f"admin_form_{i}"):
+                                st.markdown("**✏️ Edit Job Description:**")
+                                edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"edit_jd_admin_quill_{i}")
                             with st.form(key=f"admin_form_{i}"):
                                 st.markdown("**Edit Access:** HR may modify the requisition before validation.")
-                                edit_jd = st.text_area("Edit Job Description (if needed)", value=req.get('jd', ''), height=150, key=f"edit_jd_admin_{i}")
+                                edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"edit_jd_admin_quill_{i}")
                                 edit_salary = st.text_input("Edit Salary Range", value=req.get('salary', ''), key=f"edit_salary_{i}")
                                 admin_comment = st.text_area("Admin Validation Comment *", key=f"admin_comment_{i}", placeholder="Confirm JD quality, budget alignment, grade fit...")
                                 
