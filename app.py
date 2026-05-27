@@ -3832,11 +3832,7 @@ def recruitment_hub():
                             st.markdown("#### 👔 Line Manager Review")
                             with st.form(key=f"lm_form_{i}"):
                                 st.markdown("**✏️ Edit Job Description:**")
-                                import re as re_module
-                                clean_jd = re_module.sub(r'<[^>]+>', '', jd_content)
-                                clean_jd = clean_jd.replace('&nbsp;', ' ').replace('&amp;', '&').strip()
-                                edit_jd = st.text_area("Edit Job Description", value=clean_jd, height=300, key=f"edit_jd_{i}")
-                                st.caption("Edit the text above. Original formatting will be preserved.")
+                                edit_jd = st_quill(value=jd_content, html=True, key=f"edit_jd_quill_{i}")
                                 edit_screening = st.text_area("Edit Screening Questions (one per line)", value='\n'.join([q for q in req.get('screening', []) if q]), height=80, key=f"edit_screening_{i}")
                                 lm_comment = st.text_area("Line Manager Comment *", key=f"lm_comment_{i}", placeholder="Reason for authorization or any notes...")
                                 
