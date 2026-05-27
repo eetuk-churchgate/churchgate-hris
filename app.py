@@ -600,7 +600,7 @@ def login_section():
                     if user:
                         st.session_state.user = user
                         st.session_state.authenticated = True
-                        st.query_params['logged_in'] = 'true'
+                        st.query_params['logged_in'] = user.get('email', 'true')
                         st.rerun()
                     else:
                         st.error("❌ Invalid credentials.")
@@ -6800,8 +6800,15 @@ def main():
     if st.session_state.user is None:
         qp = st.query_params
         if 'logged_in' in qp:
-            st.session_state.user = {'name': 'Returning User', 'role': 'Employee', 'email': '', 'employee_id': ''}
-            st.rerun()
+            user_email = qp['logged_in']
+            try:
+                result = db._get("users", {"email": user_email})
+                if result and len(result) > 0:
+                    st.session_state.user = result[0]
+                    st.session_state.authenticated = True
+                    st.rerun()
+            except:
+                pass
     
     if st.session_state.user is None:
         login_section()
