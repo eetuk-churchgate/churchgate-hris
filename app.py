@@ -5128,7 +5128,7 @@ def chat_communications():
         else:
             team_list = ["Jerome Das — Senior Management — COO", "Sanjeev Purwar — Facility Management — Head, MEP"]
         
-        # Check for unread messages and set default selection
+       # Check for unread messages and set default selection
         default_index = 0
         try:
             unread_msgs = db._get("chat_messages", {"receiver_name": user_name, "is_read": "false"})
@@ -5142,20 +5142,22 @@ def chat_communications():
         except:
             pass
         
-        # Set dropdown based on stored selection
+        # Build dropdown with stored selection
+        dm_options = ["Select colleague..."] + sorted(team_list)
         if 'open_dm' in st.session_state:
-            for i, t in enumerate(sorted(team_list)):
-                if t.startswith(st.session_state['open_dm']):
-                    default_index = i + 1
+            target = st.session_state['open_dm']
+            for i, t in enumerate(dm_options):
+                if target in t:
+                    default_index = i
                     break
+            # Don't delete yet - let the conversation load first
         
-        dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + sorted(team_list), index=default_index)
-        
-        # Clear stored selection after conversation loads
-        if 'open_dm' in st.session_state and dm_with != "Select colleague...":
-            del st.session_state['open_dm']
+        dm_with = st.selectbox("💬 Chat with", dm_options, index=default_index)
         
         if dm_with != "Select colleague...":
+            # Clear open_dm only when a conversation is actually selected
+            if 'open_dm' in st.session_state:
+                del st.session_state['open_dm']
             dm_name = dm_with.split(" — ")[0]
             dm_dept = dm_with.split(" — ")[1] if " — " in dm_with else ""
             
