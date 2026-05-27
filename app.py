@@ -4570,7 +4570,17 @@ def ai_recruitment_agent():
         try:
             candidates = db.get_all_candidates()
             if not candidates.empty:
-                st.markdown(f"### 📊 {len(candidates)} Applications Received")
+                # Job filter
+                if 'job_id' in candidates.columns:
+                    job_list = ["All Jobs"] + list(candidates['job_id'].dropna().unique())
+                else:
+                    job_list = ["All Jobs"]
+                agent_job_filter = st.selectbox("📋 Filter by Job", job_list, key="agent_job_filter")
+                
+                if agent_job_filter != "All Jobs":
+                    candidates = candidates[candidates['job_id'] == agent_job_filter]
+                
+                st.markdown(f"### 📊 {len(candidates)} Applications")
                 
                 for idx, row in candidates.iterrows():
                     first = str(row.get('first_name') or '')
