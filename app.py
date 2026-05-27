@@ -3831,20 +3831,16 @@ def recruitment_hub():
                         if req['status'] == 'Pending LM Approval':
                             st.markdown("#### 👔 Line Manager Review")
                             with st.form(key=f"lm_form_{i}"):
-                                st.markdown("**Edit Access:** You may modify the requisition before authorizing.")
-                                st.markdown("**📋 Current JD Preview:**")
-                                jd_content = req.get('jd', '')
-                                if '<' in jd_content and '>' in jd_content:
-                                    st.markdown(jd_content, unsafe_allow_html=True)
-                                else:
-                                    st.markdown(jd_content)
-                                st.markdown("---")
-                                st.markdown("**✏️ Edit HTML (if needed):**")
-                                edit_jd = st.text_area("Edit Job Description", value=jd_content, height=150, key=f"edit_jd_{i}")
+                                st.markdown("**✏️ Edit Job Description:**")
+                                import re as re_module
+                                clean_jd = re_module.sub(r'<[^>]+>', '', jd_content)
+                                clean_jd = clean_jd.replace('&nbsp;', ' ').replace('&amp;', '&').strip()
+                                edit_jd = st.text_area("Edit Job Description", value=clean_jd, height=300, key=f"edit_jd_{i}")
+                                st.caption("Edit the text above. Original formatting will be preserved.")
                                 edit_screening = st.text_area("Edit Screening Questions (one per line)", value='\n'.join([q for q in req.get('screening', []) if q]), height=80, key=f"edit_screening_{i}")
-                                lm_comment = st.text_area("Line Manager Comment *", key=f"lm_comment_{i}", placeholder="Reason for approval or any notes...")
+                                lm_comment = st.text_area("Line Manager Comment *", key=f"lm_comment_{i}", placeholder="Reason for authorization or any notes...")
                                 
-                                if st.form_submit_button("✅ LM Approve", use_container_width=True):
+                                if st.form_submit_button("✅ Authorize & Send to HR", use_container_width=True):
                                     if lm_comment:
                                         st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
                                         st.session_state.job_requisitions[i]['lm_comment'] = lm_comment
@@ -3860,7 +3856,6 @@ def recruitment_hub():
                                         except:
                                             pass
                                         
-                                        # Send email to HR team
                                         if email_svc:
                                             try:
                                                 hr_emails = ["asakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
@@ -3868,14 +3863,13 @@ def recruitment_hub():
                                                     email_svc.send_email(
                                                         hr_email,
                                                         f"🔔 Job Requisition Authorized by LM: {req['title']}",
-                                                        f"Line Manager has authorized the job requisition for '{req['title']}' ({req['department']}).\n\nPlease validate the requisition in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nLM Comment: {lm_comment}"
+                                                        f"Line Manager has authorized '{req['title']}' ({req['department']}).\n\nValidate at: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}"
                                                     )
-                                                st.info("📧 Email notification sent to HR team (Bayo, Gbemisola, Ibeabuchi)")
+                                                st.info("📧 HR team notified")
                                             except:
                                                 pass
-                                                        
                                         
-                                        st.success("✅ LM approved! Notification sent to HR for validation.")
+                                        st.success("✅ Authorized!")
                                         st.rerun()
                                     else:
                                         st.error("❌ Comment required!")
