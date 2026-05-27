@@ -5118,99 +5118,83 @@ def chat_communications():
     with tab2:
         st.subheader("👥 Direct Messages")
         
-        # Build employee list from real data
+        # Build employee list
         if not employees_df.empty:
             team_list = []
             for _, row in employees_df.iterrows():
                 full_name = f"{row['first_name']} {row['last_name']}"
                 if full_name != user_name:
-                    team_list.append(f"{full_name} — {row.get('department', '')} — {row.get('position', '')}")
+                    team_list.append(full_name)
         else:
-            team_list = ["Jerome Das — Senior Management — COO", "Sanjeev Purwar — Facility Management — Head, MEP"]
+            team_list = ["Jerome Das", "Sanjeev Purwar", "Ahmed Karim"]
         
-       # Check for unread messages
-        default_index = 0
-        dm_options = ["Select colleague..."] + sorted(team_list)
+        team_list = sorted(team_list)
         
+        # Show unread notifications as info boxes
         try:
-            unread_msgs = db._get("chat_messages", {"receiver_name": user_name})
-            if unread_msgs:
-                unread_msgs = [m for m in unread_msgs if m.get('is_read') == False or m.get('is_read') == 'false' or m.get('is_read') == 0]
-            if unread_msgs and len(unread_msgs) > 0:
-                senders = list(set([m['sender_name'] for m in unread_msgs]))
-                for sender in senders:
-                    count = len([m for m in unread_msgs if m['sender_name'] == sender])
-                    if st.button(f"🔴 {count} unread from **{sender}** — Click to open", key=f"unread_dm_{sender}", use_container_width=True):
-                        for i, opt in enumerate(dm_options):
-                            if sender in opt:
-                                default_index = i
-                                break
+            all_my_msgs = db._get("chat_messages", {"receiver_name": user_name})
+            if all_my_msgs:
+                unread = [m for m in all_my_msgs if m.get('is_read') in [False, 'false', 0, '0']]
+                if unread:
+                    senders = {}
+                    for m in unread:
+                        s = m['sender_name']
+                        senders[s] = senders.get(s, 0) + 1
+                    for sender, count in senders.items():
+                        st.info(f"🔴 **{count} unread message{'s' if count > 1 else ''}** from **{sender}** — Select '{sender}' below to read")
         except:
             pass
         
-        dm_with = st.selectbox("💬 Chat with", dm_options, index=default_index)
+        # Simple dropdown - no fancy auto-select
+        dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + team_list)
         
         if dm_with != "Select colleague...":
-            # Clear open_dm only when a conversation is actually selected
-            if 'open_dm' in st.session_state:
-                del st.session_state['open_dm']
-            dm_name = dm_with.split(" — ")[0]
-            dm_dept = dm_with.split(" — ")[1] if " — " in dm_with else ""
-            
-            if dm_dept:
-                st.caption(f"🏢 {dm_dept}")
-            
-            # Load messages from database
+            # Load conversation from database
             try:
-                sent_msgs = db._get("chat_messages", {"sender_name": user_name, "receiver_name": dm_name})
-                received_msgs = db._get("chat_messages", {"sender_name": dm_name, "receiver_name": user_name})
+                sent = db._get("chat_messages", {"sender_name": user_name, "receiver_name": dm_with})
+                received = db._get("chat_messages", {"sender_name": dm_with, "receiver_name": user_name})
+                
                 all_msgs = []
-                if sent_msgs:
-                    for m in sent_msgs:
-                        all_msgs.append({'sender': m['sender_name'], 'content': m['message'], 'time': m.get('sent_at', '')[:16]})
-                if received_msgs:
-                    for m in received_msgs:
-                        all_msgs.append({'sender': m['sender_name'], 'content': m['message'], 'time': m.get('sent_at', '')[:16]})
+                if sent:
+                    for m in sent:
+                        all_msgs.append({'sender': m['sender_name'], 'content': m['message'], 'time': str(m.get('sent_at', ''))[:16]})
+                if received:
+                    for m in received:
+                        all_msgs.append({'sender': m['sender_name'], 'content': m['message'], 'time': str(m.get('sent_at', ''))[:16]})
                         # Mark as read
-                        if not m.get('is_read'):
+                        if m.get('is_read') in [False, 'false', 0, '0']:
                             db._patch("chat_messages", {"is_read": True}, {"id": m['id']})
-                # Sort by time
+                
                 all_msgs.sort(key=lambda x: x['time'])
             except:
                 all_msgs = []
             
-            # Display messages
-            for msg in all_msgs[-30:]:
-                if msg['sender'] == user_name:
-                    st.markdown(f"""
-                    <div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;">
-                        <strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    initials = generate_initials(msg['sender'])
-                    st.markdown(f"""
-                    <div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;">
-                        <strong>{initials} {msg['sender']}</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
+            if all_msgs:
+                for msg in all_msgs[-30:]:
+                    if msg['sender'] == user_name:
+                        st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;"><strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+                    else:
+                        initials = generate_initials(msg['sender'])
+                        st.markdown(f"""<div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>{initials} {msg['sender']}</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+            else:
+                st.info(f"No messages with {dm_name} yet. Say hello! 👋")
             
             # Send message
-            with st.form(f"dm_form_{dm_name.replace(' ', '_')}", clear_on_submit=True):
+            with st.form(f"dm_form_{dm_with.replace(' ', '_')}", clear_on_submit=True):
                 col1, col2 = st.columns([4, 1])
                 with col1:
-                    dm_message = st.text_input("Type message...", placeholder=f"Message {dm_name}...", label_visibility="collapsed", key=f"dm_input_{dm_name}")
+                    dm_message = st.text_input("Type message...", placeholder=f"Message {dm_with}...", label_visibility="collapsed", key=f"dm_input_{dm_with}")
                 with col2:
                     if st.form_submit_button("📤", use_container_width=True):
                         if dm_message:
                             db._post("chat_messages", {
                                 "sender_name": user_name,
-                                "receiver_name": dm_name,
+                                "receiver_name": dm_with,
                                 "message": dm_message,
                                 "sent_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
                                 "is_read": False
                             })
-                            st.success(f"✅ Message sent to {dm_name}!")
+                            st.success(f"✅ Sent to {dm_with}!")
                             st.rerun()
     
     with tab3:
