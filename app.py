@@ -5135,12 +5135,11 @@ def chat_communications():
         try:
             all_my_msgs = db._get("chat_messages")
             if all_my_msgs:
+                unread = []
                 for m in all_my_msgs:
-                    if 'gbemisola' in m.get('receiver_name', '').lower():
-                        st.write(f"Found: receiver='{m.get('receiver_name')}' (len={len(m.get('receiver_name',''))})")
-            if all_my_msgs:
-                my_msgs = [m for m in all_my_msgs if m.get('receiver_name') == user_name]
-                unread = [m for m in my_msgs if str(m.get('is_read')).lower() in ['false', '0', 'none', '']]
+                    if m.get('receiver_name', '').strip().lower() == user_name.strip().lower():
+                        if str(m.get('is_read')).lower() in ['false', '0', 'none', '']:
+                            unread.append(m)
                 if unread:
                     senders = {}
                     for m in unread:
@@ -5148,8 +5147,8 @@ def chat_communications():
                         senders[s] = senders.get(s, 0) + 1
                     for sender, count in senders.items():
                         st.info(f"🔴 **{count} unread message{'s' if count > 1 else ''}** from **{sender}** — Select '{sender}' below to read")
-        except Exception as e:
-            st.error(f"Error loading messages: {e}")
+        except:
+            pass
         
         # Simple dropdown - no fancy auto-select
         dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + team_list)
