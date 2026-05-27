@@ -5151,9 +5151,14 @@ def chat_communications():
         if dm_with != "Select colleague...":
             try:
                 all_for_me = db._get("chat_messages", {"receiver_name": user_name})
-                st.write(f"DEBUG: Total messages for {user_name}: {len(all_for_me) if all_for_me else 0}")
-            except:
-                pass
+                st.write(f"DEBUG: Total for '{user_name}': {len(all_for_me) if all_for_me else 0}")
+                all_msgs = db._get("chat_messages")
+                if all_msgs:
+                    st.write(f"DEBUG: Total in table: {len(all_msgs)}")
+                    for m in all_msgs:
+                        st.write(f"  receiver='{m.get('receiver_name')}' sender='{m.get('sender_name')}'")
+            except Exception as e:
+                st.write(f"DEBUG Error: {e}")
             # Load conversation from database
             try:
                 sent = db._get("chat_messages", {"sender_name": user_name, "receiver_name": dm_with})
