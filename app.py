@@ -5128,16 +5128,31 @@ def chat_communications():
         else:
             team_list = ["Jerome Das — Senior Management — COO", "Sanjeev Purwar — Facility Management — Head, MEP"]
         
-        # Check for unread messages
+         # Check for unread messages
         try:
             unread_msgs = db._get("chat_messages", {"receiver_name": user_name, "is_read": "false"})
             if unread_msgs and len(unread_msgs) > 0:
-                senders = set([m['sender_name'] for m in unread_msgs])
+                senders = list(set([m['sender_name'] for m in unread_msgs]))
                 for sender in senders:
                     count = len([m for m in unread_msgs if m['sender_name'] == sender])
-                    st.info(f"🔴 {count} unread message{'s' if count > 1 else ''} from **{sender}**")
+                    if st.button(f"🔴 {count} unread from **{sender}** — Click to open", key=f"unread_{sender}", use_container_width=True):
+                        st.session_state['open_dm_with'] = sender
+                        st.rerun()
         except:
             pass
+        
+        # Auto-select if clicked from notification
+        if 'open_dm_with' in st.session_state:
+            default_dm = None
+            for t in team_list:
+                if t.startswith(st.session_state['open_dm_with']):
+                    default_dm = team_list.index(t)
+                    break
+            dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + sorted(team_list), 
+                                  index=default_dm + 1 if default_dm is not None else 0)
+            del st.session_state['open_dm_with']
+        else:
+            dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + sorted(team_list))
         
         dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + sorted(team_list))
         
