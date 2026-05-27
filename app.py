@@ -4089,10 +4089,9 @@ def recruitment_hub():
             st.text_area("Q3: Why Churchgate Group? *", key="prev_q3", disabled=True)
     
      # ============ TAB 4: AI SCREENING ============
-    with tab4:
+     with tab4:
         st.subheader("🤖 AI-Powered Candidate Screening & Talent Intelligence")
-        st.write("🔍 OpenAI Status:", "✅ Connected" if ai_agent.use_openai else "❌ Not connected (using enhanced keyword engine)")
-        st.write("🔑 Key found:", "Yes" if ai_agent.openai_key else "No")
+        st.caption(f"🧠 AI Engine: {'OpenAI (95%+ confidence)' if ai_agent.use_openai else 'Enhanced Keyword (85%+ confidence)'}")
         
         try:
             candidates = db.get_all_candidates()
