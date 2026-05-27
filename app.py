@@ -4321,7 +4321,7 @@ def recruitment_hub():
                             for i, q in enumerate(res.get('interview_questions', [])[:3]):
                                 st.markdown(f"**{i+1}.** {q}")
                             
-                            if st.button("🗑️ Clear", key=f"clr_{loop_idx}":
+                            if st.button("🗑️ Clear", key=f"clr_{loop_idx}"):
                                 del st.session_state[f"deep_{idx}"]
                                 st.rerun()
             
