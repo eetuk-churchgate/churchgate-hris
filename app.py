@@ -5133,23 +5133,22 @@ def chat_communications():
         dm_options = ["Select colleague..."] + sorted(team_list)
         
         try:
-             unread_msgs = db._get("chat_messages", {"receiver_name": user_name})
+            unread_msgs = db._get("chat_messages", {"receiver_name": user_name})
             if unread_msgs:
                 unread_msgs = [m for m in unread_msgs if m.get('is_read') == False or m.get('is_read') == 'false' or m.get('is_read') == 0]
             if unread_msgs and len(unread_msgs) > 0:
                 senders = list(set([m['sender_name'] for m in unread_msgs]))
                 for sender in senders:
                     count = len([m for m in unread_msgs if m['sender_name'] == sender])
-                    # Use a form submit button instead of regular button
                     if st.button(f"🔴 {count} unread from **{sender}** — Click to open", key=f"unread_dm_{sender}", use_container_width=True):
-                        # Find this sender in the dropdown options
                         for i, opt in enumerate(dm_options):
                             if sender in opt:
                                 default_index = i
                                 break
-                        # Don't rerun - let the dropdown use this index
         except:
             pass
+        
+        dm_with = st.selectbox("💬 Chat with", dm_options, index=default_index)
         
         dm_with = st.selectbox("💬 Chat with", dm_options, index=default_index)
         
