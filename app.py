@@ -3737,51 +3737,82 @@ def recruitment_hub():
             st.markdown("---")
             st.markdown("### 📋 Full Job Description *")
             
-            # Initialize HTML content state
+            # Template buttons
+            col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+            with col_t1:
+                if st.button("📝 Basic", use_container_width=True, key="jd_t_basic"):
+                    st.session_state.jd_html_content = "<h3>About the Role</h3><p>Describe the role here...</p><h3>Key Responsibilities</h3><ul><li>Responsibility 1</li><li>Responsibility 2</li></ul><h3>Requirements</h3><ul><li>Education: [Degree]</li><li>Experience: [X] years</li></ul><h3>Benefits</h3><ul><li>Competitive salary</li><li>Health insurance</li></ul>"
+                    st.rerun()
+            with col_t2:
+                if st.button("💼 Technical", use_container_width=True, key="jd_t_tech"):
+                    st.session_state.jd_html_content = "<h3>About the Role</h3><p>We are looking for a skilled technical professional.</p><h3>Technical Requirements</h3><ul><li><strong>Skill 1:</strong> Advanced</li><li><strong>Skill 2:</strong> Intermediate</li></ul><h3>Key Responsibilities</h3><ul><li>Technical delivery</li><li>Troubleshooting</li></ul>"
+                    st.rerun()
+            with col_t3:
+                if st.button("👔 Management", use_container_width=True, key="jd_t_mgmt"):
+                    st.session_state.jd_html_content = "<h3>About the Role</h3><p>We are seeking an experienced leader.</p><h3>Strategic Responsibilities</h3><ul><li>Strategy development</li><li>Team leadership</li></ul><h3>Requirements</h3><ul><li>X+ years leadership</li><li>Proven track record</li></ul>"
+                    st.rerun()
+            with col_t4:
+                if st.button("🧹 Clear", use_container_width=True, key="jd_t_clear"):
+                    st.session_state.jd_html_content = ""
+                    st.rerun()
+            
+            # Rich text toolbar using HTML buttons
+            st.markdown("""
+            <style>
+                .editor-toolbar { display: flex; gap: 2px; flex-wrap: wrap; padding: 6px; background: #f5f5f5; border-radius: 6px 6px 0 0; border: 1px solid #ddd; }
+                .editor-toolbar button { padding: 6px 12px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer; font-size: 13px; }
+                .editor-toolbar button:hover { background: #e0e0e0; }
+                .editor-toolbar select { padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
+            </style>
+            <div class="editor-toolbar">
+                <select onchange="document.execCommand('formatBlock', false, this.value); this.selectedIndex=0;">
+                    <option value="">Style</option>
+                    <option value="h2">Heading</option>
+                    <option value="h3">Subheading</option>
+                    <option value="p">Paragraph</option>
+                </select>
+                <button onclick="document.execCommand('bold', false, null); return false;"><b>B</b></button>
+                <button onclick="document.execCommand('italic', false, null); return false;"><i>I</i></button>
+                <button onclick="document.execCommand('underline', false, null); return false;"><u>U</u></button>
+                <button onclick="document.execCommand('insertUnorderedList', false, null); return false;">• List</button>
+                <button onclick="document.execCommand('insertOrderedList', false, null); return false;">1. List</button>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Initialize state
             if 'jd_html_content' not in st.session_state:
                 st.session_state.jd_html_content = ""
             
-            # Rich Text Editor
+            # Editable div as rich text area
+            jd_unique_id = f"jd_editor_{int(time.time())}"
             st.markdown(f"""
-            <div id="quill-editor" style="margin-bottom: 1rem;"></div>
+            <div id="{jd_unique_id}" contenteditable="true" style="min-height:250px; border:1px solid #ddd; border-top:none; padding:12px; background:white; border-radius:0 0 6px 6px; font-size:14px; line-height:1.6;">
+                {st.session_state.jd_html_content}
+            </div>
             <script>
-            var quill = new Quill('#quill-editor', {{
-                theme: 'snow',
-                modules: {{
-                    toolbar: [
-                        [{{ 'header': [1, 2, 3, false] }}],
-                        ['bold', 'italic', 'underline', 'strike'],
-                        [{{ 'color': [] }}, {{ 'background': [] }}],
-                        [{{ 'list': 'ordered'}}, {{ 'list': 'bullet' }}],
-                        [{{ 'align': [] }}],
-                        ['blockquote', 'code-block'],
-                        ['link', 'image'],
-                        ['clean']
-                    ]
-                }},
-                placeholder: 'Start typing your job description here...'
-            }});
-            var initialContent = '{st.session_state.jd_html_content.replace(chr(39), "\\'").replace(chr(10), " ")}';
-            if (initialContent) {{ quill.root.innerHTML = initialContent; }}
-            quill.on('text-change', function() {{
-                var html = quill.root.innerHTML;
-                var textArea = window.parent.document.querySelector('textarea[aria-label="JD HTML Content (hidden)"]');
-                if (textArea) {{ textArea.value = html; textArea.dispatchEvent(new Event('input', {{ bubbles: true }})); }}
-            }});
+                var editor = document.getElementById('{jd_unique_id}');
+                editor.addEventListener('input', function() {{
+                    var html = editor.innerHTML;
+                    var textArea = window.parent.document.querySelector('textarea[aria-label="JD HTML Content"]');
+                    if (textArea) {{
+                        textArea.value = html;
+                        textArea.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                    }}
+                }});
             </script>
             """, unsafe_allow_html=True)
             
-            # Hidden field to capture HTML
+            # Hidden textarea to capture the HTML
             jd_text_for_submission = st.text_area(
-                "JD HTML Content (hidden)",
+                "JD HTML Content",
                 value=st.session_state.jd_html_content,
-                key="jd_html_hidden",
+                key=f"jd_html_{jd_unique_id}",
                 label_visibility="collapsed",
                 height=1
             )
             
             # Preview
-            if st.session_state.jd_html_content:
+            if st.session_state.jd_html_content and st.session_state.jd_html_content.strip():
                 with st.expander("👁️ Live Preview", expanded=True):
                     st.markdown(st.session_state.jd_html_content, unsafe_allow_html=True)
             else:
