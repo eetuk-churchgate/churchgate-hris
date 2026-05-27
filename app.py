@@ -4226,8 +4226,7 @@ def recruitment_hub():
                 display_df = display_df.sort_values('first_name')
             
             st.markdown(f"**Showing {len(display_df)} candidates**")
-            
-            for idx, row in display_df.iterrows():
+          for loop_idx, (idx, row) in enumerate(display_df.iterrows()):
                 first = str(row.get('first_name', ''))
                 last = str(row.get('last_name', ''))
                 email_val = str(row.get('email', ''))
@@ -4260,7 +4259,7 @@ def recruitment_hub():
                     
                     col_a1, col_a2, col_a3 = st.columns(3)
                     with col_a1:
-                        if st.button("🔍 Deep Analysis", key=f"deep_{idx}", use_container_width=True):
+                        if st.button("🔍 Deep Analysis", key=f"deep_{loop_idx}", use_container_width=True):
                             if cv_text and cv_text != 'None' and len(cv_text) > 50:
                                 with st.spinner("Analyzing..."):
                                     job_jd = ""
@@ -4278,7 +4277,7 @@ def recruitment_hub():
                                         st.session_state[f"deep_{idx}"] = res
                                         st.rerun()
                     with col_a2:
-                        if st.button("📊 Quick Score", key=f"quick_{idx}", use_container_width=True):
+                        if st.button("📊 Quick Score", key=f"quick_{loop_idx}", use_container_width=True):
                             if cv_text and cv_text != 'None' and len(cv_text) > 50:
                                 res = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
                                 if isinstance(res, dict):
@@ -4287,13 +4286,13 @@ def recruitment_hub():
                                     st.rerun()
                     with col_a3:
                         if score >= 85:
-                            if st.button("📅 Shortlist", key=f"short_{idx}", use_container_width=True):
+                            if st.button("📅 Shortlist", key=f"short_{loop_idx}", use_container_width=True):
                                 db._patch("candidates", {"status": "Shortlisted"}, {"candidate_ref": row.get('candidate_ref', '')})
                                 st.success("✅ Shortlisted!")
                                 st.rerun()
                     
                     # Show deep analysis
-                    if f"deep_{idx}" in st.session_state:
+                    if f"deep_{loop_idx}" in st.session_state:
                         res = st.session_state[f"deep_{idx}"]
                         if isinstance(res, dict):
                             st.markdown("---")
@@ -4321,7 +4320,7 @@ def recruitment_hub():
                             for i, q in enumerate(res.get('interview_questions', [])[:3]):
                                 st.markdown(f"**{i+1}.** {q}")
                             
-                            if st.button("🗑️ Clear", key=f"clr_{idx}"):
+                            if st.button("🗑️ Clear", key=f"clr_{loop_idx}":
                                 del st.session_state[f"deep_{idx}"]
                                 st.rerun()
             
