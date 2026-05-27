@@ -5577,7 +5577,7 @@ def training_development():
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Team Member'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
-    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_name = st.session_state.user['name'].strip() if st.session_state.user else 'Staff'
     
     # Learning streak
     if 'learning_streak' not in st.session_state:
