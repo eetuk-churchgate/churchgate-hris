@@ -5151,16 +5151,7 @@ def chat_communications():
         dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + team_list)
         
         if dm_with != "Select colleague...":
-            try:
-                all_msgs = db._get("chat_messages")
-                all_for_me = [m for m in all_msgs if m.get('receiver_name') == user_name] if all_msgs else []
-                st.write(f"DEBUG: Total for '{user_name}': {len(all_for_me)}")
-                st.write(f"DEBUG: Total in table: {len(all_msgs) if all_msgs else 0}")
-                if all_msgs:
-                    for m in all_msgs:
-                        st.write(f"  receiver='{m.get('receiver_name')}' sender='{m.get('sender_name')}'")
-            except Exception as e:
-                st.write(f"DEBUG Error: {e}")
+            
             # Load conversation from database (fetch all and filter)
             try:
                 all_msgs_raw = db._get("chat_messages")
