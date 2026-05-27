@@ -3587,14 +3587,7 @@ def promotions():
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
     
-    # Prevent infinite loops
-    if 'recruitment_rerun_count' not in st.session_state:
-        st.session_state.recruitment_rerun_count = 0
-    st.session_state.recruitment_rerun_count += 1
-    if st.session_state.recruitment_rerun_count > 10:
-        st.session_state.recruitment_rerun_count = 0
-        st.error("⚠️ Too many reloads detected. Please refresh the page manually.")
-        st.stop()
+    
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
@@ -4274,23 +4267,26 @@ def recruitment_hub():
                                                     break
                                         except:
                                             pass
-                                    res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                     res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
                                     if isinstance(res, dict):
                                         st.session_state[f"deep_{i}"] = res
+                                        time.sleep(0.3)
                                         st.rerun()
                     with col_a2:
                         if st.button("📊 Quick Score", key=f"quick_btn_{i}", use_container_width=True):
                             if cv_text and cv_text != 'None' and len(cv_text) > 50:
                                 res = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
                                 if isinstance(res, dict):
-                                    db._patch("candidates", {"ai_score": int(res.get('overall_score', 0)), "ai_tier": res.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
-                                    st.success(f"Scored: {int(res.get('overall_score', 0))}%")
+                                        db._patch("candidates", {"ai_score": int(res.get('overall_score', 0)), "ai_tier": res.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
+                                        st.success(f"Scored: {int(res.get('overall_score', 0))}%")
+                                    time.sleep(0.3)
                                     st.rerun()
                     with col_a3:
                         if score >= 85:
                             if st.button("📅 Shortlist", key=f"short_btn_{i}", use_container_width=True):
                                 db._patch("candidates", {"status": "Shortlisted"}, {"candidate_ref": row.get('candidate_ref', '')})
                                 st.success("✅ Shortlisted!")
+                                time.sleep(0.3)
                                 st.rerun()
                     
                     if f"deep_{i}" in st.session_state:
