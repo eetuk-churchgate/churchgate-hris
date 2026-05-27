@@ -246,7 +246,9 @@ else:
                     continue
                 if type_filter != "All Types" and r.get('job_type', '') != type_filter:
                     continue
-                jobs.append({"ref": job_ref, "title": r.get('title', ''), "dept": r.get('department', ''), "location": r.get('location', ''), "type": r.get('job_type', ''), "closing": r.get('closing', ''), "jd": r.get('jd', '')})
+                jobs.append({"ref": job_ref, "title": r.get('title', '').replace('**', ''), "dept": r.get('department', ''), 
+                            "location": r.get('location', ''), "type": r.get('job_type', ''), 
+                            "closing": r.get('closing', ''), "jd": r.get('jd', '')})
     except:
         pass
     
