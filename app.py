@@ -593,7 +593,7 @@ def login_section():
             with col2:
                 forgot_clicked = st.form_submit_button("🔑 Forgot Password?", use_container_width=True)
             
-           if submit:
+            if submit:
                 if 'login_attempts' not in st.session_state:
                     st.session_state.login_attempts = 0
                 if 'login_locked_until' not in st.session_state:
