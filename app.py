@@ -5130,22 +5130,19 @@ def chat_communications():
         
         team_list = sorted(team_list)
         
-        # Show unread notifications as info boxes
+        # Show unread notifications
         try:
             all_my_msgs = db._get("chat_messages")
             if all_my_msgs:
-                st.write(f"DEBUG: user_name='{user_name}' len={len(user_name)}")
-                unread = []
+                unread_by_sender = {}
                 for m in all_my_msgs:
-                    if m.get('receiver_name', '').replace('\xa0', ' ').strip() == user_name.replace('\xa0', ' ').strip() and m.get('is_read') == False:
-                        unread.append(m)
-                if unread:
-                    senders = {}
-                    for m in unread:
-                        s = m['sender_name']
-                        senders[s] = senders.get(s, 0) + 1
-                    for sender, count in senders.items():
-                        st.info(f"🔴 **{count} unread message{'s' if count > 1 else ''}** from **{sender}** — Select '{sender}' below to read")
+                    receiver = str(m.get('receiver_name', '')).strip().lower()
+                    my_name = str(user_name).strip().lower()
+                    if receiver == my_name and m.get('is_read') == False:
+                        sender = m.get('sender_name', 'Unknown')
+                        unread_by_sender[sender] = unread_by_sender.get(sender, 0) + 1
+                for sender, count in unread_by_sender.items():
+                    st.info(f"🔴 **{count} unread message{'s' if count > 1 else ''}** from **{sender}** — Select '{sender}' below to read")
         except:
             pass
         
