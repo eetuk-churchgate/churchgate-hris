@@ -3586,6 +3586,17 @@ def promotions():
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
     
+    # Rich Text Editor Setup
+    st.markdown("""
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <style>
+        .ql-editor { min-height: 250px; font-size: 14px; background: white; }
+        .ql-toolbar { background: #f8f8f8; border-radius: 6px 6px 0 0; }
+        .ql-container { border-radius: 0 0 6px 6px; }
+    </style>
+    """, unsafe_allow_html=True)
+    
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
@@ -3725,16 +3736,75 @@ def recruitment_hub():
             
             st.markdown("---")
             st.markdown("### 📋 Full Job Description *")
-            jd_text = st.text_area(
-                "Full Job Description *",
-                value=st.session_state.get('jd_text_temp', ''),
-                height=250,
-                placeholder="Start typing or use template buttons above...",
-                label_visibility="collapsed"
+            
+            # Template buttons (outside the editor)
+            col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+            with col_t1:
+                if st.button("📝 Basic Template", use_container_width=True, key="jd_template_basic"):
+                    st.session_state.jd_html_content = """<h3>About the Role</h3><p>Describe the role and its impact on the organization.</p><h3>Key Responsibilities</h3><ul><li>Responsibility 1</li><li>Responsibility 2</li><li>Responsibility 3</li></ul><h3>Requirements</h3><ul><li><strong>Education:</strong> Required degree or equivalent</li><li><strong>Experience:</strong> X years in relevant field</li><li><strong>Skills:</strong> Key skills needed</li></ul><h3>Benefits</h3><ul><li>Competitive salary package</li><li>Health insurance (HMO)</li><li>Professional development opportunities</li><li>Pension plan</li></ul>"""
+                    st.rerun()
+            with col_t2:
+                if st.button("💼 Technical Role", use_container_width=True, key="jd_template_tech"):
+                    st.session_state.jd_html_content = """<h3>About the Role</h3><p>We are looking for a skilled technical professional to join our team.</p><h3>Technical Requirements</h3><ul><li><strong>Skill 1:</strong> Advanced proficiency</li><li><strong>Skill 2:</strong> Intermediate level</li><li><strong>Certifications:</strong> Required certifications listed</li></ul><h3>Key Responsibilities</h3><ul><li>Technical delivery and system maintenance</li><li>Troubleshooting and problem resolution</li><li>Documentation and knowledge sharing</li></ul><h3>Qualifications</h3><ul><li>Degree in relevant field or equivalent experience</li><li>X+ years hands-on experience</li></ul>"""
+                    st.rerun()
+            with col_t3:
+                if st.button("👔 Management Role", use_container_width=True, key="jd_template_mgmt"):
+                    st.session_state.jd_html_content = """<h3>About the Role</h3><p>We are seeking an experienced leader to drive strategic initiatives.</p><h3>Strategic Responsibilities</h3><ul><li>Develop and execute strategy for the department</li><li>Lead and mentor a high-performing team</li><li>Drive measurable business outcomes</li></ul><h3>Operational Responsibilities</h3><ul><li>Day-to-day management of operations</li><li>Budget planning and oversight</li><li>Stakeholder engagement and reporting</li></ul><h3>Requirements</h3><ul><li>X+ years in leadership role</li><li>Proven track record of delivering results</li><li>Strong communication and presentation skills</li></ul>"""
+                    st.rerun()
+            with col_t4:
+                if st.button("🧹 Clear Editor", use_container_width=True, key="jd_template_clear"):
+                    st.session_state.jd_html_content = ""
+                    st.rerun()
+            
+            # Initialize HTML content state
+            if 'jd_html_content' not in st.session_state:
+                st.session_state.jd_html_content = ""
+            
+            # Rich Text Editor using Quill.js
+            st.markdown(f"""
+            <div id="quill-editor" style="margin-bottom: 1rem;"></div>
+            <script>
+            var quill = new Quill('#quill-editor', {{
+                theme: 'snow',
+                modules: {{
+                    toolbar: [
+                        [{{ 'header': [1, 2, 3, false] }}],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{{ 'color': [] }}, {{ 'background': [] }}],
+                        [{{ 'list': 'ordered'}}, {{ 'list': 'bullet' }}],
+                        [{{ 'align': [] }}],
+                        ['blockquote', 'code-block'],
+                        ['link', 'image'],
+                        ['clean']
+                    ]
+                }},
+                placeholder: 'Start typing your job description here...'
+            }});
+            var initialContent = '{st.session_state.jd_html_content.replace(chr(39), "\\'").replace(chr(10), " ")}';
+            if (initialContent) {{ quill.root.innerHTML = initialContent; }}
+            quill.on('text-change', function() {{
+                var html = quill.root.innerHTML;
+                var textArea = window.parent.document.querySelector('textarea[aria-label="JD HTML Content (hidden)"]');
+                if (textArea) {{ textArea.value = html; textArea.dispatchEvent(new Event('input', {{ bubbles: true }})); }}
+            }});
+            </script>
+            """, unsafe_allow_html=True)
+            
+            # Hidden field to capture HTML
+            jd_text_for_submission = st.text_area(
+                "JD HTML Content (hidden)",
+                value=st.session_state.jd_html_content,
+                key="jd_html_hidden",
+                label_visibility="collapsed",
+                height=1
             )
-            if jd_text:
-                with st.expander("👁️ Preview"):
-                    st.markdown(jd_text)
+            
+            # Preview
+            if st.session_state.jd_html_content:
+                with st.expander("👁️ Live Preview", expanded=True):
+                    st.markdown(st.session_state.jd_html_content, unsafe_allow_html=True)
+            else:
+                st.info("👆 Use the rich text editor above to create your job description. Click a template to get started.")
             
             st.markdown("### Screening Questions (Optional)")
             st.markdown("*Leave blank if not needed*")
@@ -3761,7 +3831,7 @@ def recruitment_hub():
                         'title': job_title, 'department': department, 'location': location,
                         'type': employment_type, 'salary': salary_range, 'level': experience_level,
                         'positions': positions, 'closing': closing_date.strftime('%Y-%m-%d'),
-                        'jd': jd_text, 'screening': [screening_q1, screening_q2, screening_q3, screening_q4],
+                        'jd': jd_text_for_submission, 'screening': [screening_q1, screening_q2, screening_q3, screening_q4],
                         'posts': {'linkedin': post_linkedin, 'indeed': post_indeed, 'glassdoor': post_glassdoor},
                         'status': 'Pending LM Approval',
                         'submitted_by': user_name, 'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
