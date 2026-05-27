@@ -593,8 +593,16 @@ def login_section():
             with col2:
                 forgot_clicked = st.form_submit_button("🔑 Forgot Password?", use_container_width=True)
             
-            if submit:
-                if email and password:
+           if submit:
+                if 'login_attempts' not in st.session_state:
+                    st.session_state.login_attempts = 0
+                if 'login_locked_until' not in st.session_state:
+                    st.session_state.login_locked_until = None
+                
+                if st.session_state.login_locked_until and datetime.now() < st.session_state.login_locked_until:
+                    remaining = int((st.session_state.login_locked_until - datetime.now()).total_seconds() / 60)
+                    st.error(f"🔒 Too many failed attempts. Try again in {remaining} minute{'s' if remaining > 1 else ''}.")
+                elif email and password:
                     hashed_pw = hashlib.sha256(password.encode()).hexdigest()
                     user = db.verify_user(email, hashed_pw)
                     if user:
@@ -603,7 +611,13 @@ def login_section():
                         st.query_params['logged_in'] = user.get('email', 'true')
                         st.rerun()
                     else:
-                        st.error("❌ Invalid credentials.")
+                        st.session_state.login_attempts += 1
+                        remaining = 3 - st.session_state.login_attempts
+                        if st.session_state.login_attempts >= 3:
+                            st.session_state.login_locked_until = datetime.now() + timedelta(minutes=15)
+                            st.error("🔒 Account locked for 15 minutes due to too many failed attempts.")
+                        else:
+                            st.error(f"❌ Invalid credentials. {remaining} attempt{'s' if remaining > 1 else ''} remaining.")
                 else:
                     st.warning("⚠️ Please enter your email and password.")
             
@@ -6959,6 +6973,18 @@ def main():
                     st.rerun()
             except:
                 pass
+    
+    if st.session_state.user is not None:
+        if 'last_activity' not in st.session_state:
+            st.session_state.last_activity = datetime.now()
+        idle_time = (datetime.now() - st.session_state.last_activity).total_seconds()
+        if idle_time > 900:
+            st.session_state.user = None
+            st.session_state.last_activity = None
+            st.query_params.clear()
+            st.warning("⏰ Session expired due to inactivity. Please log in again.")
+            st.rerun()
+        st.session_state.last_activity = datetime.now()
     
     if st.session_state.user is None:
         login_section()
