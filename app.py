@@ -3754,10 +3754,6 @@ def recruitment_hub():
                     st.markdown(jd_text_for_submission)
             
             st.markdown("### Screening Questions (Optional)")
-            else:
-                st.info("👆 Use the rich text editor above to create your job description. Click a template to get started.")
-            
-            st.markdown("### Screening Questions (Optional)")
             st.markdown("*Leave blank if not needed*")
             screening_q1 = st.text_input("Screening Question 1", placeholder="e.g., Cisco Certified (CCNP minimum)")
             screening_q2 = st.text_input("Screening Question 2", placeholder="e.g., 5+ years experience in similar role")
