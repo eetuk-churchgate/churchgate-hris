@@ -4275,8 +4275,8 @@ def recruitment_hub():
                                             pass
                                     res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
                                     if isinstance(res, dict):
-                                        st.session_state[f"deep_{idx}"] = res
-                                        st.rerun()
+                                        st.session_state[f"deep_{loop_idx}"] = res
+                                    st.rerun()
                     with col_a2:
                         if st.button("📊 Quick Score", key=f"quick_{loop_idx}", use_container_width=True):
                             if cv_text and cv_text != 'None' and len(cv_text) > 50:
