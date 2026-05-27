@@ -4226,7 +4226,8 @@ def recruitment_hub():
                 display_df = display_df.sort_values('first_name')
             
             st.markdown(f"**Showing {len(display_df)} candidates**")
-          for loop_idx, (idx, row) in enumerate(display_df.iterrows()):
+            
+            for loop_idx, (idx, row) in enumerate(display_df.iterrows()):
                 first = str(row.get('first_name', ''))
                 last = str(row.get('last_name', ''))
                 email_val = str(row.get('email', ''))
