@@ -3870,7 +3870,7 @@ def recruitment_hub():
                                     else:
                                         st.error("❌ Comment required!")
                         
-                        # ADMIN VALIDATION
+                        # ===== ADMIN VALIDATION =====
                         if req['status'] == 'Pending Admin Approval':
                             st.markdown("#### 🔍 HR Admin Validation")
                             
@@ -3885,9 +3885,6 @@ def recruitment_hub():
                             
                             with st.form(key=f"admin_form_{i}"):
                                 st.markdown("**✏️ Edit Job Description:**")
-                                edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"edit_jd_admin_quill_{i}")
-                            with st.form(key=f"admin_form_{i}"):
-                                st.markdown("**Edit Access:** HR may modify the requisition before validation.")
                                 edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"edit_jd_admin_quill_{i}")
                                 edit_salary = st.text_input("Edit Salary Range", value=req.get('salary', ''), key=f"edit_salary_{i}")
                                 admin_comment = st.text_area("Admin Validation Comment *", key=f"admin_comment_{i}", placeholder="Confirm JD quality, budget alignment, grade fit...")
@@ -3908,18 +3905,16 @@ def recruitment_hub():
                                         except:
                                             pass
                                         
-                                        # Send email to COO for final approval
                                         if email_svc:
                                             try:
                                                 email_svc.send_email(
                                                     "jeromedas@churchgate.com",
                                                     f"🔔 Job Requisition Ready for Final Approval: {req['title']}",
-                                                    f"HR has validated the job requisition for '{req['title']}' ({req['department']}).\n\nPlease review and give final approval in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}\nLM Comment: {req.get('lm_comment', 'N/A')}"
+                                                    f"HR has validated '{req['title']}' ({req['department']}).\n\nApprove at: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}"
                                                 )
-                                                st.info("📧 Email notification sent to COO (Jerome Das)")
+                                                st.info("📧 Email sent to COO (Jerome Das)")
                                             except:
                                                 pass
-                                                        
                                         
                                         st.success("✅ Validated! Sent to COO for final approval.")
                                         st.rerun()
