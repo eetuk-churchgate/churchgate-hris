@@ -5149,6 +5149,11 @@ def chat_communications():
         dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + team_list)
         
         if dm_with != "Select colleague...":
+            try:
+                all_for_me = db._get("chat_messages", {"receiver_name": user_name})
+                st.write(f"DEBUG: Total messages for {user_name}: {len(all_for_me) if all_for_me else 0}")
+            except:
+                pass
             # Load conversation from database
             try:
                 sent = db._get("chat_messages", {"sender_name": user_name, "receiver_name": dm_with})
