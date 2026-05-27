@@ -5357,12 +5357,34 @@ def chat_communications():
             else:
                 st.markdown(f"""<div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>🤖 HRIS Bot</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
         st.markdown("**Quick Questions:**")
-        qc1, qc2, qc3, qc4, qc5 = st.columns(5)
-        quick_questions = {"Leave": "How do I apply for leave?", "KPIs": "How do I set my KPIs?", "Benefits": "What are my benefits?", "Training": "What training is available?", "Payroll": "When is payroll processed?"}
-        for col, (label, question) in zip([qc1, qc2, qc3, qc4, qc5], quick_questions.items()):
+        quick_questions = [
+            ("Leave", "How do I apply for leave?"), 
+            ("KPIs", "How do I set my KPIs?"), 
+            ("Benefits", "What are my benefits?"), 
+            ("Training", "What training is available?"), 
+            ("Payroll", "When is payroll processed?"),
+            ("HSE", "What is the HSE policy?"),
+            ("HR Policy", "What are the working hours?"),
+            ("Discipline", "What is the disciplinary procedure?"),
+            ("Safety", "What are the fire safety procedures?"),
+            ("Maternity", "What is the maternity leave policy?")
+        ]
+        row1 = st.columns(5)
+        row2 = st.columns(5)
+        for i, (label, question) in enumerate(quick_questions):
+            col = row1[i] if i < 5 else row2[i-5]
             with col:
                 if st.button(f"❓ {label}", key=f"qq_{label}", use_container_width=True):
-                    bot_question = question
+                    st.session_state.bot_conversation.append({'role': 'user', 'content': question, 'time': datetime.now().strftime('%I:%M %p')})
+                    # Search policy knowledge base for the answer
+                    answer = "I can help with many topics! Try asking about leave, benefits, safety, or HR policies."
+                    question_lower = question.lower()
+                    for key, val in policy_kb.items():
+                        if key in question_lower:
+                            answer = val
+                            break
+                    st.session_state.bot_conversation.append({'role': 'bot', 'content': answer, 'time': datetime.now().strftime('%I:%M %p')})
+                    st.rerun()
         with st.form("bot_form", clear_on_submit=True):
             col1, col2 = st.columns([4, 1])
             with col1:
