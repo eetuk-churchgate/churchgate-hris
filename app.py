@@ -3831,8 +3831,16 @@ def recruitment_hub():
                         if req['status'] == 'Pending LM Approval':
                             st.markdown("#### 👔 Line Manager Review")
                             with st.form(key=f"lm_form_{i}"):
-                                st.markdown("**Edit Access:** You may modify the requisition before approval.")
-                                edit_jd = st.text_area("Edit Job Description (if needed)", value=req.get('jd', ''), height=150, key=f"edit_jd_{i}")
+                                st.markdown("**Edit Access:** You may modify the requisition before authorizing.")
+                                st.markdown("**📋 Current JD Preview:**")
+                                jd_content = req.get('jd', '')
+                                if '<' in jd_content and '>' in jd_content:
+                                    st.markdown(jd_content, unsafe_allow_html=True)
+                                else:
+                                    st.markdown(jd_content)
+                                st.markdown("---")
+                                st.markdown("**✏️ Edit HTML (if needed):**")
+                                edit_jd = st.text_area("Edit Job Description", value=jd_content, height=150, key=f"edit_jd_{i}")
                                 edit_screening = st.text_area("Edit Screening Questions (one per line)", value='\n'.join([q for q in req.get('screening', []) if q]), height=80, key=f"edit_screening_{i}")
                                 lm_comment = st.text_area("Line Manager Comment *", key=f"lm_comment_{i}", placeholder="Reason for approval or any notes...")
                                 
