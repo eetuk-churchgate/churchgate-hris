@@ -5132,7 +5132,9 @@ def chat_communications():
         
         # Show unread notifications as info boxes
         try:
-            all_my_msgs = db._get("chat_messages", {"receiver_name": user_name})
+            all_my_msgs = db._get("chat_messages")
+            if all_my_msgs:
+                all_my_msgs = [m for m in all_my_msgs if m.get('receiver_name') == user_name]
             if all_my_msgs:
                 unread = [m for m in all_my_msgs if m.get('is_read') in [False, 'false', 0, '0']]
                 if unread:
@@ -5159,10 +5161,19 @@ def chat_communications():
                         st.write(f"  receiver='{m.get('receiver_name')}' sender='{m.get('sender_name')}'")
             except Exception as e:
                 st.write(f"DEBUG Error: {e}")
-            # Load conversation from database
+            # Load conversation from database (fetch all and filter)
             try:
-                sent = db._get("chat_messages", {"sender_name": user_name, "receiver_name": dm_with})
-                received = db._get("chat_messages", {"sender_name": dm_with, "receiver_name": user_name})
+                all_msgs_raw = db._get("chat_messages")
+                sent = []
+                received = []
+                if all_msgs_raw:
+                    for m in all_msgs_raw:
+                        if m.get('sender_name') == user_name and m.get('receiver_name') == dm_with:
+                            sent.append(m)
+                        if m.get('sender_name') == dm_with and m.get('receiver_name') == user_name:
+                            received.append(m)
+                            if m.get('is_read') in [False, 'false', 0, '0']:
+                                db._patch("chat_messages", {"is_read": True}, {"id": m['id']})
                 
                 all_msgs = []
                 if sent:
