@@ -4090,7 +4090,10 @@ def recruitment_hub():
     
      # ============ TAB 4: AI SCREENING ============
     with tab4:
+        with tab4:
         st.subheader("🤖 AI-Powered Candidate Screening & Talent Intelligence")
+        st.write("🔍 OpenAI Status:", "✅ Connected" if ai_agent.use_openai else "❌ Not connected (using enhanced keyword engine)")
+        st.write("🔑 Key found:", "Yes" if ai_agent.openai_key else "No")
         
         try:
             candidates = db.get_all_candidates()
