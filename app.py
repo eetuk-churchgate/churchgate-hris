@@ -3908,12 +3908,7 @@ def recruitment_hub():
                                                 st.info("📧 Email notification sent to COO (Jerome Das)")
                                             except:
                                                 pass
-                                                        f"🔔 Job Requisition Ready for Final Approval: {req['title']}",
-                                                        f"HR has validated the job requisition for '{req['title']}' ({req['department']}).\n\nPlease review and give final approval in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}\nLM Comment: {req.get('lm_comment', 'N/A')}"
-                                                    )
-                                                    st.info("📧 Email notification sent to COO")
-                                            except:
-                                                pass
+                                                        
                                         
                                         st.success("✅ Validated! Sent to COO for final approval.")
                                         st.rerun()
