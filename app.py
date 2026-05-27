@@ -5128,29 +5128,26 @@ def chat_communications():
         else:
             team_list = ["Jerome Das — Senior Management — COO", "Sanjeev Purwar — Facility Management — Head, MEP"]
         
-       # Check for unread messages and set default selection
+       # Check for unread messages
         default_index = 0
+        dm_options = ["Select colleague..."] + sorted(team_list)
+        
         try:
             unread_msgs = db._get("chat_messages", {"receiver_name": user_name, "is_read": "false"})
             if unread_msgs and len(unread_msgs) > 0:
                 senders = list(set([m['sender_name'] for m in unread_msgs]))
                 for sender in senders:
                     count = len([m for m in unread_msgs if m['sender_name'] == sender])
-                    if st.button(f"🔴 {count} unread from **{sender}** — Click to open", key=f"unread_{sender}", use_container_width=True):
-                        st.session_state['open_dm'] = sender
-                        st.rerun()
+                    # Use a form submit button instead of regular button
+                    if st.button(f"🔴 {count} unread from **{sender}** — Click to open", key=f"unread_dm_{sender}", use_container_width=True):
+                        # Find this sender in the dropdown options
+                        for i, opt in enumerate(dm_options):
+                            if sender in opt:
+                                default_index = i
+                                break
+                        # Don't rerun - let the dropdown use this index
         except:
             pass
-        
-        # Build dropdown with stored selection
-        dm_options = ["Select colleague..."] + sorted(team_list)
-        if 'open_dm' in st.session_state:
-            target = st.session_state['open_dm']
-            for i, t in enumerate(dm_options):
-                if target in t:
-                    default_index = i
-                    break
-            # Don't delete yet - let the conversation load first
         
         dm_with = st.selectbox("💬 Chat with", dm_options, index=default_index)
         
