@@ -5117,7 +5117,6 @@ def chat_communications():
     
     with tab2:
         st.subheader("👥 Direct Messages")
-        st.write("DEBUG: Tab 2 loaded")
         
         # Build employee list
         if not employees_df.empty:
