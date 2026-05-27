@@ -5131,7 +5131,7 @@ def chat_communications():
         team_list = sorted(team_list)
         
         # Show unread notifications as info boxes
-         try:
+        try:
             all_my_msgs = db._get("chat_messages")
             if all_my_msgs:
                 unread = []
