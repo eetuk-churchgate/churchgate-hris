@@ -3865,12 +3865,7 @@ def recruitment_hub():
                                                 st.info("📧 Email notification sent to HR team (Bayo, Gbemisola, Ibeabuchi)")
                                             except:
                                                 pass
-                                                        f"🔔 Job Requisition Approved by LM: {req['title']}",
-                                                        f"Line Manager has approved the job requisition for '{req['title']}' ({req['department']}).\n\nPlease validate the requisition in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nLM Comment: {lm_comment}"
-                                                    )
-                                                    st.info("📧 Email notification sent to HR team")
-                                            except:
-                                                pass
+                                                        
                                         
                                         st.success("✅ LM approved! Notification sent to HR for validation.")
                                         st.rerun()
