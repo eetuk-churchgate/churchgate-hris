@@ -44,9 +44,9 @@ st.markdown(f"""
     .animate-fade-in {{ animation: fadeIn 0.8s ease-out; }}
     .animate-fade-in-up {{ animation: fadeInUp 0.8s ease-out; }}
     .animate-slide-in {{ animation: slideInLeft 0.6s ease-out; }}
-    .career-hero {{ background: linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 50%, #e0e0e0 100%); padding: 3rem 2rem; text-align: center; border-bottom: 4px solid #CC0000; position: relative; overflow: hidden; }}
-    .career-hero h1 {{ font-size: 2.8rem; font-weight: 900; margin: 0; color: #1a1a1a; position: relative; }}
-    .career-hero p {{ font-size: 1.2rem; margin-top: 1rem; color: #555; position: relative; max-width: 700px; margin-left: auto; margin-right: auto; }}
+    .career-hero {{ background: linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 50%, #e0e0e0 100%); padding: 1.5rem 2rem; text-align: center; border-bottom: 3px solid #CC0000; position: relative; overflow: hidden; }}
+    .career-hero h1 {{ font-size: 2rem; font-weight: 800; margin: 0; color: #1a1a1a; position: relative; }}
+    .career-hero p {{ font-size: 0.95rem; margin-top: 0.5rem; color: #555; position: relative; max-width: 600px; margin-left: auto; margin-right: auto; }}
     .search-bar {{ background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); margin: -2rem 2rem 2rem 2rem; position: relative; z-index: 10; }}
     .job-card {{ background: white; padding: 0; border-radius: 10px; margin-bottom: 1rem; border-left: 4px solid #CC0000; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.3s ease; overflow: hidden; }}
     .job-card:hover {{ transform: translateX(6px); box-shadow: 0 6px 20px rgba(204,0,0,0.12); }}
@@ -60,8 +60,8 @@ st.markdown(f"""
     .benefit-card:hover {{ border-bottom-color: #CC0000; transform: translateY(-5px); }}
     .benefit-icon {{ font-size: 2.5rem; margin-bottom: 0.5rem; }}
     .social-proof {{ background: white; padding: 2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin: 2rem 0; }}
-    .footer {{ background: linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 100%); color: #555; padding: 3rem 2rem; text-align: center; margin-top: 3rem; border-top: 4px solid #CC0000; }}
-    .footer h3 {{ color: #CC0000; font-weight: 700; }}
+    .footer {{ background: linear-gradient(135deg, #e8e8e8 0%, #d5d5d5 100%); color: #555; padding: 1.5rem 2rem; text-align: center; margin-top: 2rem; border-top: 3px solid #CC0000; font-size: 0.85rem; }}
+    .footer h3 {{ color: #CC0000; font-weight: 700; font-size: 1rem; margin-bottom: 0.3rem; }}
     .form-container {{ max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }}
     .success-box {{ background: linear-gradient(135deg, #f0f8f0, #e8f5e9); padding: 2rem; border-radius: 12px; margin-top: 1rem; border: 2px solid #38a169; text-align: center; }}
     .jd-content {{ line-height: 2; font-size: 0.95rem; color: #444; }}
@@ -104,7 +104,7 @@ if selected_job:
     <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 1.5rem 2rem; border-bottom: 3px solid #CC0000; margin-bottom: 1.5rem;">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
             <div>
-                <h1 style="color: white; font-size: 1.6rem; margin: 0; font-weight: 700;">{position_name}</h1>
+                <h1 style="color: white; font-size: 1.6rem; margin: 0; font-weight: 700;">{position_name.replace('**', '')}</h1>
                 <p style="color: #ccc; margin: 0.3rem 0 0 0; font-size: 0.9rem;">
                     🏢 {dept_name} &nbsp;|&nbsp; 📍 {location_name} &nbsp;|&nbsp; 💼 {job_type_name}
                 </p>
@@ -166,7 +166,11 @@ if selected_job:
         st.markdown("---")
         cover_letter = st.text_area("Cover Letter (Optional)", height=120)
         st.markdown("---")
-        resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'])
+        st.markdown("#### Upload Documents")
+                        resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'], key=f"cv_{selected_job}")
+                        cover_letter_file = st.file_uploader("Upload Cover Letter (Optional)", type=['pdf', 'docx'], key=f"cl_{selected_job}")
+                        portfolio = st.file_uploader("Upload Portfolio/Certifications (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'jpeg'], key=f"port_{selected_job}")
+                        st.caption("Accepted: PDF, DOCX, JPG, PNG. Max 200MB per file.")
         st.markdown("---")
         st.markdown("### Screening Questions")
         q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80)
