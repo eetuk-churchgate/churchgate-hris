@@ -5134,18 +5134,9 @@ def chat_communications():
         try:
             all_my_msgs = db._get("chat_messages")
             if all_my_msgs:
-                unread = []
+                st.info(f"Total messages in DB: {len(all_my_msgs)}")
                 for m in all_my_msgs:
-                    if m.get('receiver_name', '').strip().lower() == user_name.strip().lower():
-                        if str(m.get('is_read')).lower() in ['false', '0', 'none', '']:
-                            unread.append(m)
-                if unread:
-                    senders = {}
-                    for m in unread:
-                        s = m['sender_name']
-                        senders[s] = senders.get(s, 0) + 1
-                    for sender, count in senders.items():
-                        st.info(f"🔴 **{count} unread message{'s' if count > 1 else ''}** from **{sender}** — Select '{sender}' below to read")
+                    st.write(f"receiver={m.get('receiver_name')}, is_read={m.get('is_read')}")
         except:
             pass
         
