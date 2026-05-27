@@ -3769,7 +3769,14 @@ def recruitment_hub():
                     
                     st.markdown("---")
                     with st.expander("📋 View Full Job Description", expanded=False):
-                        st.markdown(req.get('jd', 'No JD provided'))
+                        jd_content = req.get('jd', 'No JD provided')
+                        # Check if JD is HTML or plain text
+                        if '<' in jd_content and '>' in jd_content:
+                            st.markdown(jd_content, unsafe_allow_html=True)
+                        else:
+                            # Format plain text with proper paragraphs
+                            formatted = jd_content.replace('\n\n', '<br><br>').replace('\n', '<br>')
+                            st.markdown(formatted, unsafe_allow_html=True)
                     
                     if req.get('screening'):
                         st.markdown("---")
