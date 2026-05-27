@@ -5144,8 +5144,8 @@ def chat_communications():
                         senders[s] = senders.get(s, 0) + 1
                     for sender, count in senders.items():
                         st.info(f"🔴 **{count} unread message{'s' if count > 1 else ''}** from **{sender}** — Select '{sender}' below to read")
-        except:
-            pass
+        except Exception as e:
+            st.error(f"Error loading messages: {e}")
         
         # Simple dropdown - no fancy auto-select
         dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + team_list)
