@@ -85,6 +85,7 @@ if selected_job:
         pass
     
     position_name = job_details.get('title', selected_job).replace('**', '') if job_details else selected_job.replace('**', '')
+    position_name = position_name.replace('**', '')
     
     hero_html = f"""<div class="career-hero animate-fade-in">
         {f'<img src="data:image/png;base64,{logo_b64}" style="height: 50px; margin-bottom: 1rem; position: relative;" alt="Churchgate Group">' if logo_b64 else ''}
@@ -263,7 +264,8 @@ else:
             
             dept_icon = dept_icons.get(job['dept'], "🏢")
             
-            with st.expander(f"{dept_icon} **{job['title']}** — {job['dept']} | {job['location']}", expanded=False):
+            clean_title = job['title'].replace('**', '')
+            with st.expander(f"{dept_icon} **{clean_title}** — {job['dept']} | {job['location']}", expanded=False):
                 st.markdown(f"""<span class="tag">💼 {job['type']}</span><span class="tag">📍 {job['location']}</span><span class="tag">🏢 {job['dept']}</span><span class="tag">{days_text}</span>""", unsafe_allow_html=True)
                 st.markdown("---")
                 
