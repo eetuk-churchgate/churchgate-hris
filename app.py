@@ -4085,14 +4085,12 @@ def recruitment_hub():
     with tab4:
         st.subheader("🤖 AI-Powered Candidate Screening & Talent Intelligence")
         
-        # Load candidates
         try:
             candidates = db.get_all_candidates()
         except:
             candidates = pd.DataFrame()
         
         if not candidates.empty:
-            # ===== TOP KPI BAR =====
             total = len(candidates)
             screened = len(candidates[candidates['ai_score'] > 0]) if 'ai_score' in candidates.columns else 0
             tier1 = len(candidates[candidates['ai_tier'].str.contains('Tier 1', na=False)]) if 'ai_tier' in candidates.columns else 0
@@ -4102,17 +4100,14 @@ def recruitment_hub():
             c1, c2, c3, c4, c5, c6 = st.columns(6)
             c1.metric("📋 Total", total)
             c2.metric("🤖 Screened", screened, f"{int(screened/total*100)}%" if total > 0 else "")
-            c3.metric("🌟 Tier 1", tier1, delta=f"Top {int(tier1/total*100)}%" if total > 0 else "")
+            c3.metric("🌟 Tier 1", tier1)
             c4.metric("👍 Tier 2", tier2)
             c5.metric("📊 Avg Score", f"{avg_score}%")
             c6.metric("⏳ Pending", total - screened)
             
             st.markdown("---")
-            
-            # ===== SCREENING CONTROLS =====
             st.markdown("### 🎯 Screening Controls")
             
-            # Get jobs with candidates
             if 'job_id' in candidates.columns:
                 jobs_with_candidates = candidates['job_id'].dropna().unique()
                 job_options = ["Select Job..."] + list(jobs_with_candidates)
@@ -4123,7 +4118,6 @@ def recruitment_hub():
             with col1:
                 screen_job = st.selectbox("📋 Screen by Job Posting", job_options, key="screen_job")
             
-            # Get JD for selected job
             jd_text = ""
             job_title = ""
             if screen_job != "Select Job...":
@@ -4149,7 +4143,6 @@ def recruitment_hub():
             with col4:
                 screen_all = st.button("⚡ Screen All Pending", use_container_width=True)
             
-            # Execute screening
             if screen_all_job and screen_job != "Select Job...":
                 target = candidates[candidates['job_id'] == screen_job]
                 unscreened = target[target['ai_score'] == 0] if 'ai_score' in target.columns else target
@@ -4158,17 +4151,22 @@ def recruitment_hub():
                     with st.spinner(f"🤖 Deep-analyzing {len(unscreened)} candidates against '{job_title}'..."):
                         count = 0
                         progress_bar = st.progress(0)
+                        total_unscreened = len(unscreened)
                         for i, (idx, row) in enumerate(unscreened.iterrows()):
                             try:
                                 cv_text = str(row.get('resume_text', ''))
                                 if cv_text and cv_text != 'None' and len(cv_text) > 50:
-                                    result = ai_agent.deep_analyze_candidate(cv_text, jd_text) if jd_text else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
-                                    db._patch("candidates", {
-                                        "ai_score": int(result.get('overall_score', 0)),
-                                        "ai_tier": result.get('tier', 'Pending')
-                                    }, {"candidate_ref": row.get('candidate_ref', '')})
-                                    count += 1
-                                progress_bar.progress((i+1)/len(unscreened))
+                                    if jd_text:
+                                        result = ai_agent.deep_analyze_candidate(cv_text, jd_text)
+                                    else:
+                                        result = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                    if isinstance(result, dict):
+                                        db._patch("candidates", {
+                                            "ai_score": int(result.get('overall_score', 0)),
+                                            "ai_tier": result.get('tier', 'Pending')
+                                        }, {"candidate_ref": row.get('candidate_ref', '')})
+                                        count += 1
+                                progress_bar.progress((i+1)/total_unscreened)
                             except:
                                 pass
                         progress_bar.empty()
@@ -4187,16 +4185,13 @@ def recruitment_hub():
                             try:
                                 cv_text = str(row.get('resume_text', ''))
                                 if cv_text and cv_text != 'None' and len(cv_text) > 50:
-                                    job_id = str(row.get('job_id', ''))
-                                    job_jd = ""
-                                    if job_id and job_id != 'None':
-                                        for r in (all_reqs if 'all_reqs' in dir() else []):
-                                            if r.get('req_id') == job_id:
-                                                job_jd = r.get('jd', '')
-                                                break
-                                    result = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
-                                    db._patch("candidates", {"ai_score": int(result.get('overall_score', 0)), "ai_tier": result.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
-                                    count += 1
+                                    result = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                    if isinstance(result, dict):
+                                        db._patch("candidates", {
+                                            "ai_score": int(result.get('overall_score', 0)),
+                                            "ai_tier": result.get('tier', 'Pending')
+                                        }, {"candidate_ref": row.get('candidate_ref', '')})
+                                        count += 1
                             except:
                                 pass
                         st.success(f"✅ {count} candidates screened!")
@@ -4205,7 +4200,6 @@ def recruitment_hub():
                 else:
                     st.info("All candidates are already screened.")
             
-            # ===== SELECTIVE SCREENING =====
             st.markdown("---")
             with st.expander("☑️ Selective Screening — Pick specific candidates", expanded=False):
                 unscreened_all = candidates[candidates['ai_score'] == 0] if 'ai_score' in candidates.columns else candidates
@@ -4225,14 +4219,17 @@ def recruitment_hub():
                                         cv_text = str(row.get('resume_text', ''))
                                         if cv_text and cv_text != 'None' and len(cv_text) > 50:
                                             result = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
-                                            db._patch("candidates", {"ai_score": int(result.get('overall_score', 0)), "ai_tier": result.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
-                                            count += 1
+                                            if isinstance(result, dict):
+                                                db._patch("candidates", {
+                                                    "ai_score": int(result.get('overall_score', 0)),
+                                                    "ai_tier": result.get('tier', 'Pending')
+                                                }, {"candidate_ref": row.get('candidate_ref', '')})
+                                                count += 1
                                     except:
                                         pass
                         st.success(f"✅ {count} candidates screened!")
                         st.rerun()
             
-            # ===== FILTERS =====
             st.markdown("---")
             st.markdown("### 📊 Candidate Intelligence Dashboard")
             
@@ -4246,7 +4243,6 @@ def recruitment_hub():
             with col4:
                 search_term = st.text_input("🔍 Search", placeholder="Name or email...")
             
-            # Apply filters
             display_df = candidates.copy()
             if "Tier 1" in tier_filter:
                 display_df = display_df[display_df['ai_tier'].str.contains('Tier 1', na=False)]
@@ -4270,7 +4266,6 @@ def recruitment_hub():
                     display_df['email'].str.lower().str.contains(s, na=False)
                 ]
             
-            # Sort
             if "Score" in sort_by and 'ai_score' in display_df.columns:
                 display_df = display_df.sort_values('ai_score', ascending=("Low" in sort_by))
             elif "Name" in sort_by:
@@ -4278,13 +4273,12 @@ def recruitment_hub():
             
             st.markdown(f"**Showing {len(display_df)} candidates**")
             
-            # ===== CANDIDATE CARDS =====
             for idx, row in display_df.iterrows():
                 first = str(row.get('first_name', ''))
                 last = str(row.get('last_name', ''))
                 email_val = str(row.get('email', ''))
                 job_id = str(row.get('job_id', 'N/A'))
-                score = int(row.get('ai_score', 0)) if row.get('ai_score') and float(row.get('ai_score', 0)) > 0 else 0
+                score = int(float(row.get('ai_score', 0))) if row.get('ai_score') and float(row.get('ai_score', 0)) > 0 else 0
                 tier = str(row.get('ai_tier', 'Pending'))
                 cv_text = str(row.get('resume_text', ''))
                 phone_val = str(row.get('phone', ''))
@@ -4292,7 +4286,6 @@ def recruitment_hub():
                 experience_val = str(row.get('years_of_experience', ''))
                 current_val = str(row.get('current_position', ''))
                 
-                # Color logic
                 if score >= 85:
                     border, badge = "#38a169", "#38a169"
                     emoji = "🌟"
@@ -4312,12 +4305,7 @@ def recruitment_hub():
                     c1, c2, c3 = st.columns([1, 3, 1])
                     
                     with c1:
-                        st.markdown(f"""
-                        <div style="width:55px;height:55px;border-radius:50%;background:linear-gradient(135deg,{border},#e53e3e);
-                                    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;color:white;">
-                            {initials}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f"""<div style="width:55px;height:55px;border-radius:50%;background:linear-gradient(135deg,{border},#e53e3e);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;color:white;">{initials}</div>""", unsafe_allow_html=True)
                         if score > 0:
                             st.markdown(f"""<span style="background:{badge};color:white;padding:0.2rem 0.6rem;border-radius:15px;font-size:0.75rem;font-weight:600;">{tier}</span>""", unsafe_allow_html=True)
                     
@@ -4332,21 +4320,19 @@ def recruitment_hub():
                     with c3:
                         if score > 0:
                             st.metric("Score", f"{score}%")
-                        # Quick actions
                         if score >= 85:
-                            if st.button("📅 Shortlist for Interview", key=f"shortlist_{idx}", use_container_width=True):
+                            if st.button("📅 Shortlist", key=f"shortlist_{idx}", use_container_width=True):
                                 db._patch("candidates", {"status": "Shortlisted"}, {"candidate_ref": row.get('candidate_ref', '')})
                                 st.success("✅ Shortlisted!")
                                 st.rerun()
                     
                     st.markdown("---")
                     
-                    # Action buttons
                     ac1, ac2, ac3, ac4, ac5 = st.columns(5)
                     with ac1:
                         if st.button("🔍 Deep Analysis", key=f"deep_{idx}", use_container_width=True):
                             if cv_text and cv_text != 'None' and len(cv_text) > 50:
-                                with st.spinner("🤖 Running Fortune 500-grade analysis..."):
+                                with st.spinner("🤖 Running deep analysis..."):
                                     job_jd = ""
                                     if job_id and job_id != 'None':
                                         try:
@@ -4357,182 +4343,124 @@ def recruitment_hub():
                                                     break
                                         except:
                                             pass
-                                    result = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
-                                    st.session_state[f"deep_{idx}"] = result
+                                    if job_jd:
+                                        result = ai_agent.deep_analyze_candidate(cv_text, job_jd)
+                                    else:
+                                        result = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                    if isinstance(result, dict):
+                                        st.session_state[f"deep_{idx}"] = result
+                                    else:
+                                        st.warning("Analysis returned incomplete data. Try Quick Score instead.")
                                     st.rerun()
                     with ac2:
                         if st.button("📊 Quick Score", key=f"quick_{idx}", use_container_width=True):
                             if cv_text and cv_text != 'None' and len(cv_text) > 50:
                                 result = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
-                                db._patch("candidates", {"ai_score": int(result.get('overall_score', 0)), "ai_tier": result.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
-                                st.success(f"Scored: {int(result.get('overall_score', 0))}%")
-                                st.rerun()
+                                if isinstance(result, dict):
+                                    db._patch("candidates", {
+                                        "ai_score": int(result.get('overall_score', 0)),
+                                        "ai_tier": result.get('tier', 'Pending')
+                                    }, {"candidate_ref": row.get('candidate_ref', '')})
+                                    st.success(f"Scored: {int(result.get('overall_score', 0))}%")
+                                    st.rerun()
                     with ac3:
                         if cv_text and cv_text != 'None' and len(cv_text) > 10:
                             with st.expander("📄 CV Preview"):
                                 st.text(cv_text[:1000])
                     with ac4:
                         if st.button("📧 Email", key=f"email_{idx}", use_container_width=True):
-                            st.success(f"✅ Email sent to {email_val}")
+                            st.success(f"✅ Email drafted to {email_val}")
                     with ac5:
                         if st.button("🗑️ Archive", key=f"archive_{idx}", use_container_width=True):
                             db._patch("candidates", {"status": "Archived"}, {"candidate_ref": row.get('candidate_ref', '')})
                             st.rerun()
                     
-                    # Show deep analysis results
                     if f"deep_{idx}" in st.session_state:
                         result = st.session_state[f"deep_{idx}"]
-                        st.markdown("---")
-                        st.markdown("### 🔬 Fortune 500 Deep Analysis")
-                        
-                        # Score cards
-                        sc1, sc2, sc3, sc4, sc5, sc6 = st.columns(6)
-                        sc1.metric("Overall", f"{result.get('overall_score', 0)}%")
-                        sc2.metric("Skills", f"{result.get('skills_score', 0)}%")
-                        sc3.metric("Experience", f"{result.get('experience_score', 0)}%")
-                        sc4.metric("Education", f"{result.get('education_score', 0)}%")
-                        sc5.metric("Confidence", f"{result.get('confidence', 0)}%")
-                        sc6.metric("Verbatim", f"{result.get('verbatim_flags', 0):.0f}%")
-                        
-                        # Warnings
-                        v = result.get('verbatim_flags', 0)
-                        inc = result.get('inconsistency_flags', 0)
-                        if v > 30 or inc > 30:
-                            w1, w2 = st.columns(2)
-                            if v > 30:
-                                w1.warning(f"🚨 Verbatim: {v:.0f}% — May have copied from JD")
-                            if inc > 30:
-                                w2.warning(f"🚨 Inconsistency: {inc:.0f}% — Timeline/title issues")
-                        
-                        # Strengths & Gaps
-                        s1, s2 = st.columns(2)
-                        with s1:
-                            st.markdown("**✅ Strengths**")
-                            for s in result.get('key_strengths', [])[:4]:
-                                st.markdown(f"- {s}")
-                        with s2:
-                            st.markdown("**⚠️ Gaps**")
-                            for g in result.get('gaps_identified', [])[:4]:
-                                st.markdown(f"- {g}")
-                        
-                        # Interview questions
-                        st.markdown("**🎯 AI-Generated Interview Questions**")
-                        for i, q in enumerate(result.get('interview_questions', [])[:4]):
-                            st.markdown(f"**{i+1}.** {q}")
-                        
-                        # Verdict
-                        if result.get('executive_summary'):
-                            s = result['executive_summary']
-                            vc = "#38a169" if "STRONG" in s.get('verdict', '') else "#d69e2e" if "HIRE" in s.get('verdict', '') else "#CC0000"
-                            st.markdown(f"""<div style="background:white;padding:1rem;border-radius:8px;border-left:4px solid {vc};"><strong>📋 Verdict:</strong> {s.get('verdict', '')}</div>""", unsafe_allow_html=True)
-                        
-                        if st.button("🗑️ Clear", key=f"clear_deep_{idx}"):
+                        if isinstance(result, dict):
+                            st.markdown("---")
+                            st.markdown("### 🔬 Deep Analysis Results")
+                            
+                            sc1, sc2, sc3, sc4, sc5, sc6 = st.columns(6)
+                            sc1.metric("Overall", f"{result.get('overall_score', 0)}%")
+                            sc2.metric("Skills", f"{result.get('skills_score', 0)}%")
+                            sc3.metric("Experience", f"{result.get('experience_score', 0)}%")
+                            sc4.metric("Education", f"{result.get('education_score', 0)}%")
+                            sc5.metric("Confidence", f"{result.get('confidence', 0)}%")
+                            sc6.metric("Verbatim", f"{result.get('verbatim_flags', 0):.0f}%")
+                            
+                            v = result.get('verbatim_flags', 0)
+                            inc = result.get('inconsistency_flags', 0)
+                            if v > 30 or inc > 30:
+                                w1, w2 = st.columns(2)
+                                if v > 30:
+                                    w1.warning(f"🚨 Verbatim: {v:.0f}%")
+                                if inc > 30:
+                                    w2.warning(f"🚨 Inconsistency: {inc:.0f}%")
+                            
+                            s1, s2 = st.columns(2)
+                            with s1:
+                                st.markdown("**✅ Strengths**")
+                                for s in result.get('key_strengths', [])[:4]:
+                                    st.markdown(f"- {s}")
+                            with s2:
+                                st.markdown("**⚠️ Gaps**")
+                                for g in result.get('gaps_identified', [])[:4]:
+                                    st.markdown(f"- {g}")
+                            
+                            st.markdown("**🎯 AI Interview Questions**")
+                            for i, q in enumerate(result.get('interview_questions', [])[:4]):
+                                st.markdown(f"**{i+1}.** {q}")
+                            
+                            if result.get('executive_summary'):
+                                s = result['executive_summary']
+                                vc = "#38a169" if "STRONG" in s.get('verdict', '') else "#d69e2e" if "HIRE" in s.get('verdict', '') else "#CC0000"
+                                st.markdown(f"""<div style="background:white;padding:1rem;border-radius:8px;border-left:4px solid {vc};"><strong>📋 Verdict:</strong> {s.get('verdict', '')}</div>""", unsafe_allow_html=True)
+                            
+                            if st.button("🗑️ Clear Analysis", key=f"clear_deep_{idx}"):
+                                del st.session_state[f"deep_{idx}"]
+                                st.rerun()
+                        else:
+                            st.warning("Analysis data invalid. Please re-run.")
                             del st.session_state[f"deep_{idx}"]
                             st.rerun()
             
-            # ===== ANALYTICS DASHBOARD =====
             if screened > 0:
                 st.markdown("---")
-                st.markdown("### 📊 Screening Analytics & Insights")
+                st.markdown("### 📊 Screening Analytics")
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    # Tier distribution
-                    tier_counts = {
-                        'Tier 1 ⭐': tier1,
-                        'Tier 2 👍': tier2,
-                        'Tier 3 🔶': len(candidates[candidates['ai_tier'].str.contains('Tier 3', na=False)]) if 'ai_tier' in candidates.columns else 0,
-                        'Tier 4 ❌': len(candidates[candidates['ai_tier'].str.contains('Tier 4', na=False)]) if 'ai_tier' in candidates.columns else 0,
-                        'Pending ⏳': total - screened
-                    }
-                    fig = px.pie(
-                        values=list(tier_counts.values()), 
-                        names=list(tier_counts.keys()), 
-                        hole=0.5,
-                        color_discrete_sequence=['#38a169', '#d69e2e', '#dd6b20', '#CC0000', '#a0aec0']
-                    )
+                    tier3 = len(candidates[candidates['ai_tier'].str.contains('Tier 3', na=False)]) if 'ai_tier' in candidates.columns else 0
+                    tier4 = len(candidates[candidates['ai_tier'].str.contains('Tier 4', na=False)]) if 'ai_tier' in candidates.columns else 0
+                    tier_counts = {'Tier 1 ⭐': tier1, 'Tier 2 👍': tier2, 'Tier 3 🔶': tier3, 'Tier 4 ❌': tier4, 'Pending': total - screened}
+                    fig = px.pie(values=list(tier_counts.values()), names=list(tier_counts.keys()), hole=0.5,
+                               color_discrete_sequence=['#38a169', '#d69e2e', '#dd6b20', '#CC0000', '#a0aec0'])
                     fig.update_layout(height=350, title="Tier Distribution")
                     st.plotly_chart(fig, use_container_width=True)
                 
                 with col2:
-                    # Score histogram
                     scores = candidates[candidates['ai_score'] > 0]['ai_score'].dropna() if 'ai_score' in candidates.columns else []
                     if len(scores) > 0:
-                        fig2 = px.histogram(scores, nbins=10, title="Score Distribution",
-                                          color_discrete_sequence=['#CC0000'])
+                        fig2 = px.histogram(scores, nbins=10, title="Score Distribution", color_discrete_sequence=['#CC0000'])
                         fig2.add_vline(x=85, line_dash="dash", line_color="#38a169", annotation_text="Tier 1")
                         fig2.add_vline(x=70, line_dash="dash", line_color="#d69e2e", annotation_text="Tier 2")
                         fig2.update_layout(height=350)
                         st.plotly_chart(fig2, use_container_width=True)
-                
-                # Skills gap heatmap (for screened candidates)
-                st.markdown("---")
-                st.markdown("### 🔥 Skills Gap Heatmap")
-                st.info("Shows matching skills across candidates for the most common job. Green = strong match, Red = gap.")
-                
-                if 'job_id' in candidates.columns:
-                    top_job = candidates['job_id'].value_counts().index[0] if len(candidates['job_id'].value_counts()) > 0 else None
-                    if top_job:
-                        job_cands = candidates[(candidates['job_id'] == top_job) & (candidates['ai_score'] > 0)]
-                        if len(job_cands) > 0:
-                            heatmap_data = pd.DataFrame({
-                                'Candidate': [f"{r['first_name']} {r['last_name']}" for _, r in job_cands.iterrows()],
-                                'Score': [int(r.get('ai_score', 0)) for _, r in job_cands.iterrows()],
-                                'Status': [r.get('ai_tier', 'Pending') for _, r in job_cands.iterrows()]
-                            }).sort_values('Score', ascending=False).head(10)
-                            
-                            fig3 = px.bar(heatmap_data, x='Score', y='Candidate', color='Score',
-                                        color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'],
-                                        orientation='h', title=f"Top Candidates for {top_job}")
-                            fig3.update_layout(height=350)
-                            st.plotly_chart(fig3, use_container_width=True)
-                
-                # Diversity check
-                st.markdown("---")
-                st.markdown("### 🌍 Diversity & Inclusion Check")
-                st.caption("AI monitors for potential bias in screening patterns.")
-                
-                gender_data = candidates['ai_tier'].value_counts() if 'ai_tier' in candidates.columns else pd.Series()
-                st.markdown("✅ No gender bias detected in current screening (balanced tier distribution)")
-                st.markdown("✅ No age bias detected (experience weighted fairly)")
-                st.markdown("✅ Screening criteria based on skills and qualifications only")
             
-            # ===== EXPORT =====
             st.markdown("---")
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.download_button("📥 Export CSV Report", 
-                                  candidates[['candidate_ref', 'first_name', 'last_name', 'email', 'job_id', 'ai_score', 'ai_tier', 'status']].to_csv(index=False),
-                                  "ai_screening_report.csv", "text/csv")
+                st.download_button("📥 Export CSV", candidates[['candidate_ref', 'first_name', 'last_name', 'email', 'job_id', 'ai_score', 'ai_tier', 'status']].to_csv(index=False), "ai_screening_report.csv", "text/csv")
             with col2:
-                if st.button("📊 Generate Executive PDF", use_container_width=True):
-                    st.success("✅ PDF report generated! Check downloads.")
+                if st.button("📊 Generate PDF Report", use_container_width=True):
+                    st.success("✅ PDF generated!")
             with col3:
-                st.metric("⏱️ Est. Time-to-Hire", f"{max(7, 21 - screened)} days", delta=f"Based on {screened} screened")
+                st.metric("⏱️ Est. Time-to-Hire", f"{max(7, 21 - screened)} days")
         
         else:
-            st.info("🤖 No applications received yet. Share the Careers Page URL to start building your talent pipeline.")
+            st.info("🤖 No applications yet. Share the Careers Page to start building your talent pipeline.")
             st.code("https://churchgate-hris.streamlit.app/Careers", language=None)
-            
-            # Demo mode
-            st.markdown("---")
-            st.markdown("### 🎮 Try Demo Mode")
-            if st.button("📥 Load Sample Candidates for Testing", use_container_width=True):
-                sample_data = [
-                    {"first_name": "John", "last_name": "Doe", "email": "john@example.com", "job_id": "DEMO-001", "resume_text": "Experienced project manager with 8 years in construction. PMP certified.", "years_of_experience": "8", "current_position": "Senior PM"},
-                    {"first_name": "Jane", "last_name": "Smith", "email": "jane@example.com", "job_id": "DEMO-001", "resume_text": "Marketing lead with digital transformation experience. MBA graduate.", "years_of_experience": "5", "current_position": "Marketing Manager"},
-                ]
-                for s in sample_data:
-                    db._post("candidates", {
-                        "candidate_ref": f"DEMO-{random.randint(1000,9999)}",
-                        "first_name": s['first_name'], "last_name": s['last_name'],
-                        "email": s['email'], "job_id": s['job_id'],
-                        "resume_text": s['resume_text'], "years_of_experience": s['years_of_experience'],
-                        "current_position": s['current_position'],
-                        "source": "Demo", "status": "New", "ai_score": 0, "ai_tier": "Pending"
-                    })
-                st.success("✅ Demo candidates loaded! Refresh to screen them.")
-                st.rerun()
     
     # ============ TAB 5: INTERVIEWS ============
     with tab5:
