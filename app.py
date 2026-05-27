@@ -3587,7 +3587,14 @@ def promotions():
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
     
-    
+    # Prevent infinite loops
+    if 'recruitment_rerun_count' not in st.session_state:
+        st.session_state.recruitment_rerun_count = 0
+    st.session_state.recruitment_rerun_count += 1
+    if st.session_state.recruitment_rerun_count > 10:
+        st.session_state.recruitment_rerun_count = 0
+        st.error("⚠️ Too many reloads detected. Please refresh the page manually.")
+        st.stop()
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
