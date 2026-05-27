@@ -5150,8 +5150,6 @@ def chat_communications():
         
         dm_with = st.selectbox("💬 Chat with", dm_options, index=default_index)
         
-        dm_with = st.selectbox("💬 Chat with", dm_options, index=default_index)
-        
         if dm_with != "Select colleague...":
             # Clear open_dm only when a conversation is actually selected
             if 'open_dm' in st.session_state:
