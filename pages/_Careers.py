@@ -267,7 +267,7 @@ else:
             dept_icon = dept_icons.get(job['dept'], "🏢")
             
             clean_title = job['title'].replace('**', '')
-            with st.expander(f"{dept_icon} **{clean_title}** — {job['dept']} | {job['location']}", expanded=False):
+            with st.expander(f"{dept_icon} {clean_title} — {job['dept']} | {job['location']}", expanded=False):
                 st.markdown(f"""<span class="tag">💼 {job['type']}</span><span class="tag">📍 {job['location']}</span><span class="tag">🏢 {job['dept']}</span><span class="tag">{days_text}</span>""", unsafe_allow_html=True)
                 st.markdown("---")
                 
