@@ -4253,7 +4253,7 @@ def recruitment_hub():
                             st.progress(score/100)
                     
                     col_a1, col_a2, col_a3 = st.columns(3)
-                    with col_a1:
+                     with col_a1:
                         if st.button("🔍 Deep Analysis", key=f"deep_btn_{i}", use_container_width=True):
                             if cv_text and cv_text != 'None' and len(cv_text) > 50:
                                 with st.spinner("Analyzing..."):
@@ -4267,7 +4267,7 @@ def recruitment_hub():
                                                     break
                                         except:
                                             pass
-                                     res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                    res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
                                     if isinstance(res, dict):
                                         st.session_state[f"deep_{i}"] = res
                                         time.sleep(0.3)
