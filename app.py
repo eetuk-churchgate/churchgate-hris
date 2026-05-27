@@ -4273,21 +4273,15 @@ def recruitment_hub():
                                         time.sleep(0.3)
                                         st.rerun()
                     with col_a2:
+                       with col_a2:
                         if st.button("📊 Quick Score", key=f"quick_btn_{i}", use_container_width=True):
                             if cv_text and cv_text != 'None' and len(cv_text) > 50:
                                 res = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
                                 if isinstance(res, dict):
-                                        db._patch("candidates", {"ai_score": int(res.get('overall_score', 0)), "ai_tier": res.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
-                                        st.success(f"Scored: {int(res.get('overall_score', 0))}%")
+                                    db._patch("candidates", {"ai_score": int(res.get('overall_score', 0)), "ai_tier": res.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
+                                    st.success(f"Scored: {int(res.get('overall_score', 0))}%")
                                     time.sleep(0.3)
                                     st.rerun()
-                    with col_a3:
-                        if score >= 85:
-                            if st.button("📅 Shortlist", key=f"short_btn_{i}", use_container_width=True):
-                                db._patch("candidates", {"status": "Shortlisted"}, {"candidate_ref": row.get('candidate_ref', '')})
-                                st.success("✅ Shortlisted!")
-                                time.sleep(0.3)
-                                st.rerun()
                     
                     if f"deep_{i}" in st.session_state:
                         res = st.session_state[f"deep_{i}"]
