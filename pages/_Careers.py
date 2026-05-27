@@ -8,7 +8,7 @@ import time
 import re
 import pandas as pd
 
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).parent))
 
 from utils.database import DatabaseManager
 
