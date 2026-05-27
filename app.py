@@ -5370,27 +5370,97 @@ def chat_communications():
             with col2:
                 ask = st.form_submit_button("🤖 Ask", use_container_width=True)
             if ask and bot_question:
-                responses = {
-                    'leave': f"🏖️ **How to Apply for Leave:**\n\n1. Go to Employee Dashboard\n2. View your leave balance\n3. Click 'Request Leave'\n4. Submit for manager approval\n\nYour department ({user_dept}) has specific leave policies. Contact your HOD for details.",
-                    'payroll': "💰 Payroll processed on 25th monthly. Pay stubs in My Profile → Documents.",
-                    'training': "🎓 Available courses: BMS Advanced, AI in FM, Leadership Excellence, Data Analytics. Check Training & Development tab.",
-                    'policy': "📋 Company policies available in Employee Handbook. Contact HR for specific policies.",
-                    'benefits': "🎁 Benefits: HMO, Pension, 20 days leave, Training support, Performance bonuses.",
-                    'performance': "📈 Performance measured across 4 Strategic Pillars. Set KPIs in Performance & OKRs.",
-                    'promotion': "🚀 A-Players evaluated on Performance (40%), Leadership (25%), Strategic Impact (20%), Readiness (15%).",
-                    'kpi': "📊 **KPI Setup:**\n1. Go to Performance & OKRs\n2. Click My KPIs\n3. Select Strategic Pillar\n4. Enter title, target, weight, deadline\n5. Save!",
-                    'appraisal': "📝 Appraisal: Self-Assessment → HOD Review → Accept/Reject → Sr. Management escalation if needed.",
-                    'profile': "👤 Update profile in My Profile → Info tab. Upload photo for sidebar and greeting header.",
-                    'password': "🔒 Change password in My Profile → Security tab. Forgot password on login page.",
-                    'recruitment': "💼 Submit job requisition in Recruitment Hub → Job Requisition. Approval: LM → Admin → COO.",
-                    'onboarding': "🎯 New hire checklist in Recruitment Hub → Onboarding tab.",
-                    'help': "🤖 I can help with leave, payroll, training, KPIs, performance, promotions, profile, password, recruitment, and more!",
+                # ===== COMBINED KNOWLEDGE BASE =====
+                policy_kb = {
+                    # HR POLICY MANUAL
+                    'working hours': "**Working Hours (Policy Article 2.13):** Normal work hours are 0800hrs to 1730hrs, Monday to Friday at Abuja offices. Lagos offices: 0830hrs to 1800hrs, Monday to Friday. One hour lunch break. Shift work may require continuous coverage. Overtime is compensated when pre-approved.",
+                    'overtime': "**Overtime (Policy Article 2.14):** Overtime is time worked beyond normal hours. Rate: Normal rate (100%) per hour after closing hours Mon-Sat, 150% on Sundays and Public Holidays. Only employees within Levels 1 and 2 are eligible. Must be pre-approved and recorded on overtime sheets.",
+                    'probation': "**Probation (Policy Article 2.9):** Every new employee undergoes 6 months probation. Two performance evaluations are conducted — at 3 months and 6 months. Confirmation depends on satisfactory performance. Extension possible for 3 more months. Failure after extension leads to termination.",
+                    'termination': "**Termination (Policy Article 2.16):** After confirmation, either party may terminate with one month's notice or payment in lieu. Summary dismissal applies for gross misconduct. The Group may refuse resignation during investigation, suspension, or pending disciplinary cases.",
+                    'resignation': "**Resignation (Policy Article 2.16):** During probation, resignation can be without notice. After confirmation, one month's notice or salary in lieu is required. The Group reserves the right to refuse resignation if the employee is under investigation, on suspension, or has a pending disciplinary case.",
+                    'dress code': "**Dress Code (Policy Article 2.21):** All office staff must dress corporately and decently at all times. Indecent dressing (provocative clothes, exposing body parts, sagging trousers) is prohibited. 1st offense: verbal warning, 2nd: warning letter, 3rd: 3-day suspension without pay. Repeated violations may lead to termination.",
+                    'misconduct': "**Acts of Misconduct (Policy Article 2.22):** Includes quarrelling, abusive language, threatening colleagues, fighting, stealing, drunkenness, sleeping on duty, discrimination, smoking in non-designated areas, forgery/fraud, and misuse of office equipment. All proven acts attract disciplinary action.",
+                    'disciplinary': "**Disciplinary Procedure (Policy Article 3.3):** When misconduct occurs, a query is issued requiring response within 24 hours. Investigation follows. Depending on gravity, outcomes range from verbal caution, warning letter, penalization, to summary dismissal. HR must be copied on all warnings and queries.",
+                    'grievance': "**Grievance Procedure (Policy Article 3.4):** Step 1: Discuss with Unit Head. Step 2: If unresolved within 2 working days, escalate to HOD who must respond within 3 working days. Step 3: If still unresolved, refer to HR department for a hearing committee to resolve.",
+                    'suspension': "**Suspension (Policy Article 3.5.4):** Employee may be suspended with half pay or without pay pending investigation (1-6 weeks). Must report daily for 2 hours to designated area and sign compliance. If exonerated, balance salary is paid. If guilty, disciplinary procedure applies.",
+                    'summary dismissal': "**Summary Dismissal (Policy Article 3.5.5):** Applies for theft, fraud, wilful disobedience, drunkenness/drugs, divulging confidential information, criminal conviction, prolonged absence, fighting, conflict of interest, and other extreme misconduct. No notice given. All benefits forfeited.",
+                    'annual leave': "**Annual Leave (Policy Article 7.1):** Levels 4 & 5: 30 working days. Levels 2 & 3: 28 working days. Level 1H: 21 working days. Level 1: 14 working days. Expatriates: 30 calendar days. Must complete full calendar year to be eligible. Leave must be approved by management. Apply via ERP two weeks prior. Unused leave is forfeited.",
+                    'maternity leave': "**Maternity Leave (Policy Article 7.2):** Confirmed female employees entitled to 90 calendar days with full pay, once in 2 years. Must provide medical certificate from Ob-Gyn. Cannot take annual leave and maternity leave in same year. Unconfirmed employees get 90 days without pay. Nursing mothers may close 1 hour early for 3 months after return.",
+                    'sick leave': "**Sick Leave (Policy Article 7.5 & 6.5):** Requires medical certificate from Group-approved hospital. Under 6 months service: 1 month full pay. 6 months-3 years: 1 month full, 2nd month half. 3-5 years: 2 months full, 3rd month half. 5-10 years: 2 months full, next 2 months half. 10+ years: 3 months full, next 3 months half. Self-inflicted illness: no pay.",
+                    'compassionate leave': "**Compassionate Leave (Policy Article 7.3):** Up to 5 calendar days paid leave per year for death of spouse, parent, or child. Duration depends on circumstances and distance. Death certificate required. Not a right but a privilege at management discretion.",
+                    'study leave': "**Study Leave (Policy Article 7.4):** Up to 24 months without pay for Master's Degree in relevant field. Requires minimum 5 years service. Period counts as service if employee returns for at least 2 years. Approval at management discretion.",
+                    'pension': "**Pension Scheme (Policy Article 6.1):** Employee contributes 8% of monthly emoluments, Group contributes 10%, remitted to employee's chosen PFA, as required by the Pension Reform Act 2014.",
+                    'medical': "**Medical Facilities (Policy Article 6.4):** Available to all permanent employees. Levels 1 & 2: self only. Levels 3-5: self, spouse, and up to 2 children through Group-approved HMO. Full details in separate HMO document.",
+                    'salary': "**Salary Policy (Policy Article 5.1 & 5.2):** Annual gross salary includes basic pay, housing, transport, meal subsidy, utility, and education allowances. Paid monthly by last day of each month after deductions (PAYE, Pension, Surcharges). Paid directly to employee's bank account.",
+                    'salary advance': "**Salary Advance (Policy Article 8.2):** Cannot exceed 40% of net monthly salary. Not available during probation or in two consecutive months. Requires Executive Director approval. Refunded at next salary payment.",
+                    'housing loan': "**Housing Loan/Rent Advance (Policy Article 8.1):** Discretionary. Requires two existing employee guarantors. Repayment within 10 months. Total loan repayments cannot exceed 1/3 of monthly take-home pay. Must authorize salary deduction.",
+                    'bonus': "**End of Year Bonus (Policy Article 5.5):** Discretionary payment equal to one month's basic salary. Must have worked from first business day of year to December 31st for full payment. Those with 6+ months service and confirmed by December 31st receive pro-rata.",
+                    'promotion': "**Promotion (Policy Article 4.5):** Based on performance evaluation, available positions, demonstrated merit, potential, skills and ability for higher responsibilities. Management may promote without salary increment at its discretion.",
+                    'performance evaluation': "**Performance Evaluation (Policy Article 4.1):** Two evaluations per financial year. First in Q1 (or 3 months after employment for new staff). Second in Q1 of preceding year. Average of both forms basis for training, promotion, salary increment decisions. Score below 65% for two consecutive evaluations leads to automatic exit.",
+                    'retirement': "**Retirement (Policy Article 2.11):** Compulsory retirement at age 60. Voluntary early retirement allowed. Management may send employee to early retirement for dwindling performance. Employees over 60 may be retained on contract at management discretion.",
+                    'redundancy': "**Redundancy (Policy Article 11.8):** Involuntary loss of employment through no fault of employee due to excess manpower or work contraction. Implemented in line with prevailing Nigerian law.",
+                    'conflict of interest': "**Conflict of Interest (Policy Article 2.7):** All employees must make periodic Conflict of Interest Declaration. False declaration may result in summary dismissal. Facilitated by HR department.",
+                    'confidentiality': "**Confidentiality (Policy Article 2.19):** All employees must maintain confidentiality. No documents removed without authorization. Client information not disclosed without court order or written consent. Breach may lead to summary dismissal.",
+                    'sexual harassment': "**Sexual Harassment (Policy Article 11.9):** Unacceptable and against corporate values. Includes unwelcome sexual advances, requests for favors, verbal or physical harassment. Confirmed offenders face 2-week suspension without pay or summary dismissal depending on severity as determined by Disciplinary Committee.",
+                    'bullying': "**Intimidation & Bullying (Policy Article 11.11):** Ongoing misuse of power through verbal, threatening, abusive, or manipulative behavior. Will not be tolerated. Offenders face 2-week suspension without pay or summary dismissal.",
+                    'religious activities': "**Religious Activities in Office (Policy Article 11.12):** Practicing faith is welcomed but bringing practices to office that make others uncomfortable is prohibited. No solicitation, sharing tracts/fliers, preaching during working hours. 1st offense: verbal warning. 2nd: warning letter. 3rd: 3-day suspension without pay.",
+                    'financial impropriety': "**Financial Impropriety (Policy Article 11.13):** Includes fraud, embezzlement, theft, misappropriation, falsifying records, bribery, unauthorized transactions. Offenders face summary dismissal or one-month suspension without pay depending on severity.",
+                    'transfer': "**Transfer (Policy Article 2.18 & 11.2):** Employee may be transferred to another subsidiary within the Group. Same-city transfers: no allowance. Different city temporary transfer: hotel/guest house, intra-city transport, meal allowance. Permanent transfer: fixed amount in lieu of accommodation. Employee-initiated transfer: no costs covered.",
+                    'training development': "**Training & Development (Policy Article 4.2):** Group provides training based on identified needs from performance evaluations. Employees may suggest courses. Management has sole discretion on training provision. Self-learning is actively supported.",
+                    'professional development': "**Professional Development (Policy Article 4.4):** Performing employees may request sponsorship for professional qualifications relevant to their job. If approved, employee signs bond to remain for specified period or repay full amount. Bond length depends on program value and duration.",
+                    'long service award': "**Long Service Award (Policy Article 6.2):** Recognition every 5 years of full-time employment. Congratulatory message from Chairman and certificate on anniversary date. 10+ years (in multiples of 5): additional gift and/or certificate presented within the completion year.",
+                    'death benefits': "**Death Benefits (Policy Article 10.2):** Group Life Insurance pays 3 times annual emoluments (basic salary, housing, transport allowances) to next of kin. Facilitated through HR department.",
+                    'acting allowance': "**Acting Allowance (Policy Article 5.6):** When performing duties in higher grade for not less than 1 month, employee receives monthly acting allowance equal to 20% of monthly basic salary.",
+                    'notice period': "**Notice Period (Policy Article 2.16):** After confirmation, employment may be terminated by either side giving one month's notice or payment of equivalent basic salary in lieu of notice. Individual employment contract terms supersede this policy.",
+                    'identity card': "**Staff Identification (Policy Article 2.10):** Identity cards issued to all employees and must be displayed at all times. Must be worn when visiting other Churchgate offices or representing the Group. Lost cards: replacement cost borne by employee if due to carelessness. Surrender to HR upon exit.",
+                    # HSE MANUAL
+                    'safety': "**HSE Policy (HSE Manual Chapter 3):** Churchgate is committed to providing a safe and healthy workplace. The policy covers Preventative Action (risk assessments, PPE, training), Emergency Management (fire alarms, sprinklers, extinguishers, evacuation plans, first-aid kits, fire drills), and Additional Measures (policy updates, incident analysis, expert consultation).",
+                    'electrical': "**Electrical Safety (HSE Manual Chapter 4):** Live parts must be de-energized before work. Lockout/Tagout procedures must be followed. Only qualified persons may work on energized equipment. Portable equipment must be visually inspected before use. Damaged items must be removed from service.",
+                    'lockout': "**Lockout/Tagout (HSE Manual Chapter 4.4-4.8):** Circuits must be locked out or tagged out before work. Verification of de-energized condition required. Only the person who applied the lock may remove it.",
+                    'hot work': "**Hot Work (HSE Manual Chapter 5):** Includes welding, cutting, brazing. Fire hazards must be removed or guarded. Fire extinguishing equipment must be ready. Fire watch required when combustibles within 35 feet.",
+                    'fire': "**Fire Safety (HSE Manual Chapter 6):** Emergency plan for fire-fighting and evacuation must be available. Fire extinguishers installed throughout workplace. Fire drills practiced regularly.",
+                    'confined space': "**Confined Space Safety (HSE Manual Chapter 7):** Atmosphere must be tested before entry. Oxygen must be 19.5-23.5%. Entry permit required. At least one standby person outside. Rescue plan must be in place.",
+                    'ppe': "**PPE Program (HSE Manual Chapter 12):** PPE protects employees from workplace hazards. Facility Manager responsible for ensuring sufficient PPE, training, and periodic re-evaluation. Defective PPE must be immediately replaced.",
+                    'heights': "**Safety at Heights (HSE Manual Chapter 11):** Workers must be medically checked. Rope access kit includes working line, safety line, ascender, backup device, helmet, harness. Ladders inspected daily. Use fall arrestor above 6 feet.",
+                    'ladder': "**Ladder Safety (HSE Manual Chapter 11.1-11.3):** Daily inspection required. Never stand on top rung. Face ladder when climbing. Extension ladder must extend 3 feet above support point.",
+                    'waste': "**Waste Management (HSE Manual Chapter 9):** Segregate waste into Recyclable and Non-Recyclable. Use labelled bins. PPE required. 3R Principle: Recycle, Reduce, Reuse. Dispose through authorized vendor.",
+                    'chemical': "**Chemical Management (HSE Manual Chapter 10):** Maintain chemical inventory. MSDS must be available. Hazardous chemicals stored separately. PPE mandatory when handling chemicals.",
+                    'air quality': "**Indoor Air Quality (HSE Manual Chapter 14):** HVAC filters changed quarterly. Relative humidity 30-60%. Duct cleaning outside occupied hours. Source control is most effective solution.",
+                    'ergonomics': "**Ergonomics (HSE Manual Chapter 13):** Chair: thighs parallel to floor. Monitor: top at or below eye level. Elbows at 90 degrees. Wrists straight. Take regular breaks.",
+                    'lift': "**Lift/Elevator Safety (HSE Manual Chapter 15):** Daily checks required. Monthly inspection. Emergency rescue: isolate power, release brake, manually move to nearest floor.",
+                    'incident': "**Incident Reporting (HSE Manual Chapter 18):** All injuries must be reported immediately. Near Miss: 48 hours. Minor: 36 hours. Serious: 24 hours. Severe: 18 hours. Investigation determines root cause.",
+                    'energy': "**Energy Management (HSE Manual Chapter 17):** Turn off nonessential lighting. Set thermostats at 25°C. Use LED lamps. Regular HVAC maintenance. Switch off equipment when not in use.",
+                    'housekeeping': "**Housekeeping Safety (HSE Manual Chapter 8):** Wipe spills immediately. Keep walkways clear. Most common injuries: slips, trips, falls. Use appropriate footwear. Use handrails.",
+                    'diesel': "**Diesel Storage (HSE Manual Chapter 16.4-16.6):** No smoking. Authorized persons only. Fire extinguishers required. Two people for filling day tanks. Stop at 90% level.",
+                    'spill': "**Spill Management (HSE Manual Chapter 16.8):** Minor: assess, stop source, contain, clean, record. Major: consult MSDS, wear PPE, contain with booms, report, notify authorities if entering drain.",
+                    'environment': "**Environment Policy (HSE Manual Chapter 2):** Minimize waste, reuse/recycle, minimize energy and water use, purchase environmentally-friendly products, train employees, promote awareness.",
                 }
-                response = "I can help with many topics! Try asking about leave, KPIs, training, benefits, or anything HR-related."
-                for key, val in responses.items():
-                    if key in bot_question.lower():
+                
+                # Search knowledge base
+                response = "I can help with many topics! Try asking about leave, benefits, safety procedures, working hours, disciplinary processes, or anything HR/HSE-related."
+                question_lower = bot_question.lower()
+                for key, val in policy_kb.items():
+                    if key in question_lower:
                         response = val
                         break
+                
+                # Fallback to HRIS navigation
+                if response == "I can help with many topics! Try asking about leave, benefits, safety procedures, working hours, disciplinary processes, or anything HR/HSE-related.":
+                    hris_fallback = {
+                        'leave': f"🏖️ **How to Apply for Leave:**\n\n1. Go to Employee Dashboard\n2. View your leave balance\n3. Click 'Request Leave'\n4. Submit for manager approval\n\nYour department ({user_dept}) has specific leave policies. Contact your HOD for details.",
+                        'payroll': "💰 Payroll processed on 25th monthly. Pay stubs in My Profile → Documents.",
+                        'training': "🎓 Available courses: BMS Advanced, AI in FM, Leadership Excellence, Data Analytics. Check Training & Development tab.",
+                        'kpi': "📊 **KPI Setup:**\n1. Go to Performance & OKRs\n2. Click My KPIs\n3. Select Strategic Pillar\n4. Enter title, target, weight, deadline\n5. Save!",
+                        'appraisal': "📝 Appraisal: Self-Assessment → HOD Review → Accept/Reject → Sr. Management escalation if needed.",
+                        'profile': "👤 Update profile in My Profile → Info tab. Upload photo for sidebar and greeting header.",
+                        'password': "🔒 Change password in My Profile → Security tab. Forgot password on login page.",
+                        'recruitment': "💼 Submit job requisition in Recruitment Hub → Job Requisition. Approval: LM → Admin → COO.",
+                        'onboarding': "🎯 New hire checklist in Recruitment Hub → Onboarding tab.",
+                    }
+                    for key, val in hris_fallback.items():
+                        if key in question_lower:
+                            response = val
+                            break
                 st.session_state.bot_conversation.append({'role': 'user', 'content': bot_question, 'time': datetime.now().strftime('%I:%M %p')})
                 st.session_state.bot_conversation.append({'role': 'bot', 'content': response, 'time': datetime.now().strftime('%I:%M %p')})
                 st.rerun()
