@@ -5137,7 +5137,7 @@ def chat_communications():
                 st.write(f"DEBUG: user_name='{user_name}' len={len(user_name)}")
                 unread = []
                 for m in all_my_msgs:
-                    if m.get('receiver_name').strip() == user_name.strip() and m.get('is_read') == False:
+                    if m.get('receiver_name', '').strip() == user_name.strip() and m.get('is_read') == False:
                         unread.append(m)
                 if unread:
                     senders = {}
