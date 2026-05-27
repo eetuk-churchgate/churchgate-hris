@@ -5139,17 +5139,21 @@ def chat_communications():
                     if st.button(f"🔴 {count} unread from **{sender}** — Click to open", key=f"unread_{sender}", use_container_width=True):
                         st.session_state['open_dm'] = sender
                         st.rerun()
-                # Set default dropdown to first unread sender
-                if 'open_dm' in st.session_state:
-                    for i, t in enumerate(sorted(team_list)):
-                        if t.startswith(st.session_state['open_dm']):
-                            default_index = i + 1
-                            break
-                    del st.session_state['open_dm']
         except:
             pass
         
+        # Set dropdown based on stored selection
+        if 'open_dm' in st.session_state:
+            for i, t in enumerate(sorted(team_list)):
+                if t.startswith(st.session_state['open_dm']):
+                    default_index = i + 1
+                    break
+        
         dm_with = st.selectbox("💬 Chat with", ["Select colleague..."] + sorted(team_list), index=default_index)
+        
+        # Clear stored selection after conversation loads
+        if 'open_dm' in st.session_state and dm_with != "Select colleague...":
+            del st.session_state['open_dm']
         
         if dm_with != "Select colleague...":
             dm_name = dm_with.split(" — ")[0]
