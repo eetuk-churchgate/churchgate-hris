@@ -4089,7 +4089,7 @@ def recruitment_hub():
             st.text_area("Q3: Why Churchgate Group? *", key="prev_q3", disabled=True)
     
      # ============ TAB 4: AI SCREENING ============
-     with tab4:
+    with tab4:
         st.subheader("🤖 AI-Powered Candidate Screening & Talent Intelligence")
         st.caption(f"🧠 AI Engine: {'OpenAI (95%+ confidence)' if ai_agent.use_openai else 'Enhanced Keyword (85%+ confidence)'}")
         
