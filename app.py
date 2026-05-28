@@ -697,13 +697,11 @@ def login_section():
                                 st.success("✅ Password reset successfully! Please login with your new password.")
                                 st.balloons()
                                 st.session_state.show_forgot_password = False
-                                    st.session_state.show_reset_form = False
-                                    st.session_state.reset_code = None
-                                    st.session_state.reset_email = None
-                                    time.sleep(2)
-                                    st.rerun()
-                                except:
-                                    st.error("❌ Reset failed. Try again.")
+                                st.session_state.show_reset_form = False
+                                st.session_state.reset_code = None
+                                st.session_state.reset_email = None
+                                time.sleep(2)
+                                st.rerun()
                             else:
                                 st.warning("⚠️ Password must be at least 6 characters.")
                         else:
