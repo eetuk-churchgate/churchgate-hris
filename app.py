@@ -7420,7 +7420,7 @@ def company_calendar():
                         else:
                             week_str += f" {day} |"
                 day += 1
-            st.markdown(week_str)
+            st.markdown(week_str, unsafe_allow_html=True)
         
         # Legend
         st.markdown("---")
