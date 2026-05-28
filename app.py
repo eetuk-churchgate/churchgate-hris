@@ -736,8 +736,8 @@ def sidebar_navigation():
             menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "👤 My Profile"]
         elif user_role == 'Manager':
             menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "👤 My Profile"]
-        else:
-            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "👤 My Profile"]
+         else:
+            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "👤 My Profile"]
         selected = option_menu(menu_title=None, options=menu_options, icons=["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "person-circle"][:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
@@ -6799,6 +6799,237 @@ def notifications_page():
                 fig.update_layout(height=300)
                 st.plotly_chart(fig, use_container_width=True)
 
+def my_documents():
+    st.markdown("""<div class="churchgate-header"><h1>📋 My Documents Vault</h1><p>Pay Slips | Contracts | Tax Documents | Certificates | Personal Files</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_id = st.session_state.user.get('employee_id', '') if st.session_state.user else ''
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
+    
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "💰 Pay Slips", "📄 Contracts", "📊 Tax & Reviews", 
+        "🎓 Certificates", "📁 My Files", "📤 Requests"
+    ])
+    
+    # Load employee documents
+    def load_docs(doc_type=None):
+        try:
+            all_docs = db._get("employee_documents")
+            if all_docs:
+                my_docs = [d for d in all_docs if d.get('employee_id') == user_id or d.get('is_public') == True]
+                if doc_type:
+                    my_docs = [d for d in my_docs if d.get('document_type') == doc_type]
+                return my_docs
+        except:
+            pass
+        return []
+    
+    # ============ TAB 1: PAY SLIPS ============
+    with tab1:
+        st.subheader("💰 Pay Slips")
+        st.info("Monthly pay stubs are automatically generated and stored here.")
+        
+        pay_slips = load_docs('payslip')
+        
+        if pay_slips:
+            for doc in pay_slips:
+                month = doc.get('month_year', '')
+                with st.expander(f"📄 Pay Slip — {month}", expanded=False):
+                    st.markdown(f"**Period:** {month}")
+                    st.markdown(f"**Generated:** {doc.get('uploaded_at', '')[:10]}")
+                    if doc.get('file_url'):
+                        st.markdown(f"📥 [Download Pay Slip]({doc['file_url']})")
+                    else:
+                        st.info("Document available on request.")
+        else:
+            st.info("No pay slips available yet. Pay slips are generated monthly by HR/Accounts.")
+            
+            # Generate sample payslip button (admin only for testing)
+            if is_admin:
+                if st.button("🧪 Generate Sample Pay Slip", use_container_width=True):
+                    db._post("employee_documents", {
+                        "employee_id": user_id,
+                        "document_name": f"Pay Slip - {datetime.now().strftime('%B %Y')}",
+                        "document_type": "payslip",
+                        "month_year": datetime.now().strftime('%B %Y'),
+                        "uploaded_by": "System",
+                        "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        "is_public": False
+                    })
+                    st.success("✅ Sample pay slip generated!")
+                    st.rerun()
+    
+    # ============ TAB 2: CONTRACTS ============
+    with tab2:
+        st.subheader("📄 Employment Contracts & Agreements")
+        
+        contracts = load_docs('contract')
+        
+        if contracts:
+            for doc in contracts:
+                with st.expander(f"📄 {doc.get('document_name', 'Contract')}", expanded=False):
+                    st.markdown(f"**Uploaded:** {doc.get('uploaded_at', '')[:10]}")
+                    st.markdown(f"**By:** {doc.get('uploaded_by', 'HR')}")
+                    if doc.get('file_url'):
+                        st.markdown(f"📥 [Download Document]({doc['file_url']})")
+        else:
+            st.info("Your employment contract will appear here once uploaded by HR.")
+        
+        # HR upload section
+        if is_admin:
+            st.markdown("---")
+            st.markdown("### 📤 Upload Contract (Admin)")
+            with st.form("upload_contract"):
+                contract_employee = st.text_input("Employee ID", value=user_id)
+                contract_name = st.text_input("Document Name", placeholder="e.g., Employment Contract 2026")
+                contract_file = st.file_uploader("Upload PDF", type=['pdf'])
+                if st.form_submit_button("📤 Upload", use_container_width=True):
+                    if contract_file and contract_name:
+                        file_url = ""
+                        try:
+                            file_url = db.upload_file("documents", f"{contract_employee}_{contract_name}.pdf", contract_file.read(), "application/pdf")
+                        except:
+                            pass
+                        db._post("employee_documents", {
+                            "employee_id": contract_employee,
+                            "document_name": contract_name,
+                            "document_type": "contract",
+                            "file_url": file_url,
+                            "uploaded_by": user_name,
+                            "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                        })
+                        st.success("✅ Contract uploaded!")
+                        st.rerun()
+    
+    # ============ TAB 3: TAX & REVIEWS ============
+    with tab3:
+        st.subheader("📊 Tax Documents & Performance Reviews")
+        
+        tax_docs = load_docs('tax')
+        review_docs = load_docs('review')
+        
+        st.markdown("### 🧾 Tax Documents")
+        if tax_docs:
+            for doc in tax_docs:
+                st.markdown(f"📥 **{doc.get('document_name', 'Tax Document')}** — {doc.get('uploaded_at', '')[:10]}")
+        else:
+            st.info("Annual tax certificates will appear here.")
+        
+        st.markdown("---")
+        st.markdown("### 📈 Performance Reviews")
+        if review_docs:
+            for doc in review_docs:
+                st.markdown(f"📥 **{doc.get('document_name', 'Review')}** — {doc.get('uploaded_at', '')[:10]}")
+        else:
+            st.info("Completed appraisal reports will appear here.")
+    
+    # ============ TAB 4: CERTIFICATES ============
+    with tab4:
+        st.subheader("🎓 Training Certificates")
+        
+        certs = load_docs('certificate')
+        
+        if certs:
+            for doc in certs:
+                with st.expander(f"🏅 {doc.get('document_name', 'Certificate')}", expanded=False):
+                    st.markdown(f"**Earned:** {doc.get('uploaded_at', '')[:10]}")
+                    if doc.get('file_url'):
+                        st.markdown(f"📥 [Download Certificate]({doc['file_url']})")
+        else:
+            st.info("Training certificates will appear here once you complete courses.")
+        
+        # Upload personal certificate
+        with st.form("upload_cert"):
+            st.markdown("### 📤 Upload Your Certificate")
+            cert_name = st.text_input("Certificate Name")
+            cert_file = st.file_uploader("Upload Certificate", type=['pdf', 'jpg', 'png'])
+            if st.form_submit_button("📤 Upload", use_container_width=True):
+                if cert_file and cert_name:
+                    file_url = ""
+                    try:
+                        file_url = db.upload_file("documents", f"{user_id}_{cert_name}.pdf", cert_file.read(), "application/pdf")
+                    except:
+                        pass
+                    db._post("employee_documents", {
+                        "employee_id": user_id,
+                        "document_name": cert_name,
+                        "document_type": "certificate",
+                        "file_url": file_url,
+                        "uploaded_by": user_name,
+                        "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                    })
+                    st.success("✅ Certificate uploaded!")
+                    st.rerun()
+    
+    # ============ TAB 5: MY FILES ============
+    with tab5:
+        st.subheader("📁 My Personal Files")
+        st.info("Upload personal documents like ID, educational certificates, professional licenses, etc.")
+        
+        personal_docs = load_docs('personal')
+        
+        if personal_docs:
+            for doc in personal_docs:
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.markdown(f"📎 **{doc.get('document_name', 'File')}** — {doc.get('uploaded_at', '')[:10]}")
+                with col2:
+                    if st.button("🗑️", key=f"del_{doc.get('id')}"):
+                        db._delete("employee_documents", {"id": doc.get('id')})
+                        st.rerun()
+        
+        st.markdown("---")
+        with st.form("upload_personal"):
+            st.markdown("### 📤 Upload Personal Document")
+            file_name = st.text_input("File Name / Description")
+            uploaded_file = st.file_uploader("Choose File", type=['pdf', 'jpg', 'png', 'docx'])
+            if st.form_submit_button("📤 Upload", use_container_width=True):
+                if uploaded_file and file_name:
+                    file_url = ""
+                    try:
+                        file_url = db.upload_file("documents", f"{user_id}_{file_name}", uploaded_file.read(), uploaded_file.type)
+                    except:
+                        pass
+                    db._post("employee_documents", {
+                        "employee_id": user_id,
+                        "document_name": file_name,
+                        "document_type": "personal",
+                        "file_url": file_url,
+                        "uploaded_by": user_name,
+                        "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                    })
+                    st.success("✅ File uploaded!")
+                    st.rerun()
+    
+    # ============ TAB 6: REQUESTS ============
+    with tab6:
+        st.subheader("📤 Document Requests")
+        st.info("Request a document from HR. You'll be notified when it's available.")
+        
+        with st.form("request_doc"):
+            doc_request = st.selectbox("Document Type", [
+                "Employment Confirmation Letter",
+                "Salary Certificate",
+                "Tax Certificate",
+                "Service Letter",
+                "Promotion Letter",
+                "Other"
+            ])
+            purpose = st.text_area("Purpose / Notes")
+            if st.form_submit_button("📤 Submit Request", use_container_width=True):
+                if purpose:
+                    db._post("employee_documents", {
+                        "employee_id": user_id,
+                        "document_name": f"REQUEST: {doc_request}",
+                        "document_type": "request",
+                        "uploaded_by": user_name,
+                        "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        "month_year": purpose
+                    })
+                    st.success(f"✅ {doc_request} requested! HR will process it shortly.")
+                    st.balloons()
+
 def my_profile():
     user = st.session_state.user
     user_email = user.get('email', '') if user else ''
@@ -7126,6 +7357,7 @@ def main():
             "💬 Chat & Communications": chat_communications,
             "🎓 Training & Development": training_development,
             "🔔 Notifications": notifications_page,
+            "📋 My Documents": my_documents,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)
