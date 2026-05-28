@@ -691,9 +691,9 @@ def login_section():
                     if user_code == st.session_state.get('reset_code', ''):
                         if new_pw == confirm_pw:
                             if len(new_pw) >= 6:
-                                hashed_pw = hashlib.sha256(new_pw.encode()).hexdigest()
-                                try:
-                                    db.supabase.table("users").update({"password": hashed_pw}).eq("email", st.session_state.reset_email).execute()
+                                import bcrypt
+                                            hashed_pw = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                                            db.supabase.table("users").update({"password": hashed_pw}).eq("email", st.session_state.reset_email).execute()
                                     st.success("✅ Password reset successfully! Please login with your new password.")
                                     st.balloons()
                                     st.session_state.show_forgot_password = False
