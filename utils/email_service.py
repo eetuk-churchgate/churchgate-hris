@@ -10,13 +10,13 @@ from datetime import datetime
 
 class EmailService:
     def __init__(self):
-        # SMTP Configuration - UPDATE THESE
-        self.smtp_server = "smtp.gmail.com"  # Change if using Outlook/Office365
+        import streamlit as st
+        self.smtp_server = "smtp.gmail.com"
         self.smtp_port = 587
-        self.sender_email = "eetuk@churchgate.com"  # CHANGE THIS
+        self.sender_email = st.secrets.get("SMTP_EMAIL", "eetuk@churchgate.com")
         self.sender_name = "Churchgate Group HRIS"
-        self.smtp_username = "eetuk@churchgate.com"  # CHANGE THIS
-        self.smtp_password = "tdcudaojvwujoruh"  # CHANGE THIS
+        self.smtp_username = st.secrets.get("SMTP_EMAIL", "eetuk@churchgate.com")
+        self.smtp_password = st.secrets.get("SMTP_PASSWORD", "")
     
     def _create_html_email(self, subject, body_content):
         """Create professional HTML email with Churchgate branding"""
@@ -86,40 +86,20 @@ class EmailService:
             print(f"❌ Email failed for {to_email}: {str(e)}")
             return False, str(e)
     
-    def send_welcome_email(self, employee_name, employee_email, password, role, login_url="https://churchgate-hris.streamlit.app"):
-        """Send captivating welcome email to new employee"""
-        
-        if role in ['Admin', 'HR Director']:
-            subject = f"🏢 Welcome to Churchgate Group HRIS, {employee_name}!"
-            body = f"""
-            <h2>Dear {employee_name},</h2>
-            <p style="font-size: 15px; line-height: 1.6;">Welcome to the <strong>Churchgate Group HRIS Portal</strong> — your all-in-one Human Resource Information System.</p>
-            <p style="font-size: 15px; line-height: 1.6;">As a member of our <strong style="color: #CC0000;">Senior Leadership Team</strong>, you have full access to the Executive Dashboard, Strategic Pillars, and all management functions.</p>
-            <div class="info-box">
-                <p style="margin: 0;"><strong>🔗 Login Portal:</strong><br><a href="{login_url}" style="color: #CC0000; font-size: 16px;">{login_url}</a></p>
-                <p style="margin: 10px 0 0 0;"><strong>📧 Email:</strong> {employee_email}</p>
-                <p style="margin: 5px 0 0 0;"><strong>🔒 Password:</strong> {password}</p>
-                <p style="margin: 5px 0 0 0; font-size: 12px; color: #CC0000;">⚠️ Please change your password on first login</p>
-            </div>
-            <a href="{login_url}" class="btn">🚀 Launch HRIS Portal</a>
-            <p style="margin-top: 20px; font-size: 13px; color: #888;">For assistance, contact HR at hr@churchgate.com</p>
-            """
-        else:
-            subject = f"🎉 Welcome to Churchgate Group, {employee_name}!"
-            body = f"""
-            <h2>Dear {employee_name},</h2>
-            <p style="font-size: 15px; line-height: 1.6;">Welcome aboard! Your <strong>Churchgate Group HRIS Portal</strong> account is now active.</p>
-            <p style="font-size: 15px; line-height: 1.6;">This is your personal hub for everything HR — profile, performance, training, and team connection.</p>
-            <div class="info-box">
-                <p style="margin: 0;"><strong>🔗 Login Here:</strong><br><a href="{login_url}" style="color: #CC0000; font-size: 16px;">{login_url}</a></p>
-                <p style="margin: 10px 0 0 0;"><strong>📧 Email:</strong> {employee_email}</p>
-                <p style="margin: 5px 0 0 0;"><strong>🔒 Password:</strong> {password}</p>
-                <p style="margin: 5px 0 0 0; font-size: 12px; color: #CC0000;">⚠️ Please change your password after first login</p>
-            </div>
-            <a href="{login_url}" class="btn">🚀 Log In Now</a>
-            <p style="margin-top: 20px; font-size: 13px; color: #888;">We're excited to have you on board! — Churchgate Group HR Team</p>
-            """
-        
+    def send_welcome_email(self, employee_name, employee_email, login_url="https://churchgate-hris.streamlit.app"):
+        subject = f"🎉 Welcome to Churchgate Group, {employee_name}!"
+        body = f"""
+        <h2>Dear {employee_name},</h2>
+        <p style="font-size: 15px; line-height: 1.6;">Welcome aboard! Your <strong>Churchgate Group HRIS Portal</strong> account is now active.</p>
+        <p style="font-size: 15px; line-height: 1.6;">This is your personal hub for everything HR — profile, performance, training, and team connection.</p>
+        <div class="info-box">
+            <p style="margin: 0;"><strong>🔗 Login Here:</strong><br><a href="{login_url}" style="color: #CC0000; font-size: 16px;">{login_url}</a></p>
+            <p style="margin: 10px 0 0 0;"><strong>📧 Email:</strong> {employee_email}</p>
+            <p style="margin: 5px 0 0 0; font-size: 12px; color: #CC0000;">🔒 For security, use the "Forgot Password" link on the login page to set your password.</p>
+        </div>
+        <a href="{login_url}" class="btn">🚀 Log In Now</a>
+        <p style="margin-top: 20px; font-size: 13px; color: #888;">We're excited to have you on board! — Churchgate Group HR Team</p>
+        """
         return self.send_email(employee_email, subject, body)
     
     def send_birthday_alert(self, employee_name, employee_email, birth_date):
