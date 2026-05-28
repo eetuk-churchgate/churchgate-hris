@@ -176,6 +176,7 @@ if selected_job:
                         "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
                         "resume_text": resume_text[:10000],
                         "cv_url": cv_url,
+                        "other_docs": str(other_docs.name) if other_docs else "",
                         "job_id": selected_job,
                         "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
                     })
