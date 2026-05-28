@@ -7410,9 +7410,9 @@ def company_calendar():
                     if is_today:
                         if day_events:
                             badge = ' '.join([event_icons.get(e.get('event_type', ''), '📌') for e in day_events])
-                            week_str += f" <span style='background:#38a169;color:white;padding:2px 6px;border-radius:12px;font-weight:700;'>{day}</span> {badge} |"
+                            week_str += f" 🟢**{day}** {badge} |"
                         else:
-                            week_str += f" <span style='background:#38a169;color:white;padding:2px 6px;border-radius:12px;font-weight:700;'>{day}</span> |"
+                            week_str += f" 🟢**{day}** |"
                     else:
                         if day_events:
                             badge = ' '.join([event_icons.get(e.get('event_type', ''), '📌') for e in day_events])
