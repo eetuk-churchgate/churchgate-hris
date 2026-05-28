@@ -1242,6 +1242,57 @@ def executive_dashboard():
     
     metrics = st.session_state.portfolio_metrics
     
+    # ============ CELEBRATION EMAIL BLAST ============
+    if is_admin:
+        today = datetime.now()
+        has_celebration = False
+        try:
+            emp_df = db.get_all_employees()
+            if not emp_df.empty:
+                for _, emp in emp_df.iterrows():
+                    dob = emp.get('date_of_birth')
+                    if dob and str(dob) != 'None' and str(dob) != 'nan':
+                        try:
+                            dob_date = pd.to_datetime(dob)
+                            if dob_date.month == today.month and dob_date.day == today.day:
+                                has_celebration = True
+                                break
+                        except:
+                            pass
+                    jd = emp.get('join_date')
+                    if jd and str(jd) != 'None' and str(jd) != 'nan':
+                        try:
+                            jd_date = pd.to_datetime(jd)
+                            if jd_date.month == today.month and jd_date.day == today.day:
+                                years = today.year - jd_date.year
+                                if years > 0:
+                                    has_celebration = True
+                                    break
+                        except:
+                            pass
+        except:
+            pass
+        
+        if has_celebration:
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #fff5f5, #fffbf0); padding: 0.8rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border: 2px solid #CC0000;">
+                <strong>🎉 Today's Celebrations!</strong> There are birthdays or work anniversaries today. Send celebration emails to all employees.
+            </div>
+            """, unsafe_allow_html=True)
+            
+            col_btn1, col_btn2 = st.columns([1, 3])
+            with col_btn1:
+                if st.button("📧 Send Celebration Emails", use_container_width=True, type="primary"):
+                    with st.spinner("📧 Sending celebration emails to all employees..."):
+                        bdays, annivs, msg = send_celebration_emails()
+                        if bdays > 0 or annivs > 0:
+                            st.success(f"✅ Sent! {bdays} birthday(s) and {annivs} anniversary(s). {msg}")
+                            st.balloons()
+                        else:
+                            st.info(msg)
+            with col_btn2:
+                st.caption("Emails are sent to all employees at once. Use this in the morning (7:30 AM recommended).")
+    
     # ============ ALERTS BAR ============
     alerts = []
     if escalated_count > 0:
@@ -8521,6 +8572,118 @@ def wellness_perks():
         st.markdown("### 🏆 Wellness Leaderboard")
         st.info("Leaderboard coming soon! Complete challenges to earn points and compete with colleagues.")
 
+
+def send_celebration_emails():
+    """Send birthday and work anniversary celebration emails to all employees"""
+    today = datetime.now()
+    today_str = today.strftime('%Y-%m-%d')
+    
+    try:
+        emp_df = db.get_all_employees()
+        if emp_df.empty:
+            return 0, 0, "No employees found"
+        
+        # Get all employee emails
+        all_emails = emp_df['email'].dropna().unique()
+        
+        birthdays_today = []
+        anniversaries_today = []
+        
+        for _, emp in emp_df.iterrows():
+            # Check birthdays
+            dob = emp.get('date_of_birth')
+            if dob and str(dob) != 'None' and str(dob) != 'nan':
+                try:
+                    dob_date = pd.to_datetime(dob)
+                    if dob_date.month == today.month and dob_date.day == today.day:
+                        birthdays_today.append({
+                            'name': f"{emp['first_name']} {emp['last_name']}",
+                            'department': emp.get('department', ''),
+                            'position': emp.get('position', '')
+                        })
+                except:
+                    pass
+            
+            # Check work anniversaries
+            join_date = emp.get('join_date')
+            if join_date and str(join_date) != 'None' and str(join_date) != 'nan':
+                try:
+                    jd = pd.to_datetime(join_date)
+                    if jd.month == today.month and jd.day == today.day:
+                        years = today.year - jd.year
+                        if years > 0:
+                            anniversaries_today.append({
+                                'name': f"{emp['first_name']} {emp['last_name']}",
+                                'department': emp.get('department', ''),
+                                'years': years
+                            })
+                except:
+                    pass
+        
+        if not birthdays_today and not anniversaries_today:
+            return 0, 0, "No celebrations today"
+        
+        # Build email content
+        subject_parts = []
+        if birthdays_today:
+            subject_parts.append(f"🎂 {len(birthdays_today)} Birthday{'s' if len(birthdays_today) > 1 else ''}")
+        if anniversaries_today:
+            subject_parts.append(f"⭐ {len(anniversaries_today)} Work Anniversary{'s' if len(anniversaries_today) > 1 else ''}")
+        
+        subject = " | ".join(subject_parts) + " Today! 🎉"
+        
+        # Build HTML email body
+        body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #CC0000; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0;">Churchgate Group</h1>
+                <p style="color: #ffcccc; margin: 5px 0 0 0;">Celebrating Our People</p>
+            </div>
+            <div style="background: white; padding: 25px; border: 1px solid #e0e0e0; border-top: none;">
+                <h2 style="color: #1a1a1a;">🎉 Today's Celebrations — {today.strftime('%B %d, %Y')}</h2>
+        """
+        
+        if birthdays_today:
+            body += '<h3 style="color: #CC0000;">🎂 Happy Birthday!</h3><p>Join us in wishing a very happy birthday to:</p>'
+            for b in birthdays_today:
+                body += f'<div style="background: #fff5f5; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #CC0000;"><strong>{b["name"]}</strong><br><small>{b["position"]} — {b["department"]}</small></div>'
+        
+        if anniversaries_today:
+            body += '<h3 style="color: #d69e2e;">⭐ Work Anniversary!</h3><p>Celebrating dedication and loyalty:</p>'
+            for a in anniversaries_today:
+                body += f'<div style="background: #fffbf0; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #d69e2e;"><strong>{a["name"]}</strong> — {a["years"]} year{"s" if a["years"] > 1 else ""} at Churchgate<br><small>{a["department"]}</small></div>'
+        
+        body += f"""
+                <div style="background: #f8f8f8; padding: 15px; margin-top: 20px; border-radius: 6px; text-align: center;">
+                    <p style="color: #666; margin: 0;">💡 <strong>Take a moment today</strong> to reach out and celebrate your colleague! A simple message, a call, or a coffee together goes a long way.</p>
+                </div>
+            </div>
+            <div style="background: #1a1a1a; padding: 15px; text-align: center; border-radius: 0 0 8px 8px;">
+                <p style="color: #888; margin: 0; font-size: 12px;">Churchgate Group HRIS | hr@churchgate.com</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Send emails
+        sent_count = 0
+        from utils.email_service import EmailService
+        email_svc = EmailService()
+        
+        for email in all_emails:
+            if email and '@' in str(email):
+                try:
+                    email_svc.send_email(email, subject, body)
+                    sent_count += 1
+                except:
+                    pass
+        
+        return len(birthdays_today), len(anniversaries_today), f"Sent to {sent_count} employees"
+    
+    except Exception as e:
+        return 0, 0, f"Error: {str(e)}"
+
 def my_profile():
     user = st.session_state.user
     user_email = user.get('email', '') if user else ''
@@ -8801,6 +8964,16 @@ def my_profile():
 def main():
     if 'user' not in st.session_state:
         st.session_state.user = None
+    
+    # Automated celebration email trigger (called by cron job)
+    query_params = st.query_params
+    if 'trigger_celebration' in query_params:
+        try:
+            bdays, annivs, msg = send_celebration_emails()
+            st.write(f"Celebration emails: {bdays} birthdays, {annivs} anniversaries. {msg}")
+        except Exception as e:
+            st.write(f"Celebration email error: {e}")
+        st.stop()
     
     # Persist login across refreshes
     if st.session_state.user is None:
