@@ -180,6 +180,23 @@ st.markdown("""
         .metric-value { font-size: 1rem !important; }
         .stColumns { gap: 0.3rem !important; }
     }
+    
+    /* Sidebar toggle visibility */
+    [data-testid="collapsedControl"] {
+        position: fixed !important;
+        top: 10px !important;
+        left: 10px !important;
+        z-index: 999 !important;
+        background: #CC0000 !important;
+        color: white !important;
+        border-radius: 50% !important;
+        width: 35px !important;
+        height: 35px !important;
+        opacity: 0.9 !important;
+    }
+    [data-testid="collapsedControl"]:hover {
+        opacity: 1 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
