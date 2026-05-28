@@ -9010,6 +9010,18 @@ def main():
         st.session_state.last_activity = datetime.now()
     
     if st.session_state.user is None:
+        qp = st.query_params
+        if 'logged_in' in qp:
+            user_email = qp['logged_in']
+            try:
+                result = db._get("users", {"email": user_email})
+                if result and len(result) > 0:
+                    st.session_state.user = result[0]
+                    st.rerun()
+            except:
+                pass
+    
+    if st.session_state.user is None:
         login_section()
     else:
         page = sidebar_navigation()
