@@ -99,9 +99,12 @@ st.markdown("""
     .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .stImage { display: flex; justify-content: center; }
     .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
-    footer {visibility: hidden;}
-    #MainMenu {visibility: hidden;}
-    header {visibility: hidden;}
+    footer {display: none !important;}
+    #MainMenu {display: none !important;}
+    header[data-testid="stHeader"] {display: none !important;}
+    .stDeployButton {display: none !important;}
+    .stApp footer {display: none !important;}
+    div[data-testid="stToolbar"] {display: none !important;}
 .greeting-header {
         background: #d5d5d5;
         padding: 1rem 2rem;
