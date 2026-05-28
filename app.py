@@ -7615,11 +7615,11 @@ def company_calendar():
                     try:
                         dob_date = pd.to_datetime(dob)
                         if dob_date.month == today.month:
-                            birthday_found = True
-                            days_to = (dob_date.replace(year=today.year) - today).days
-                            if days_to < 0:
-                                days_to += 365
-                            st.markdown(f"🎂 **{emp['first_name']} {emp['last_name']}** — {dob_date.strftime('%B %d')} ({emp.get('department', '')}) {'🎉 Today!' if days_to == 0 else f'in {days_to} days'}")
+                            bday_this_year = dob_date.replace(year=today.year)
+                            days_to = (bday_this_year - today).days
+                            if days_to >= 0:
+                                birthday_found = True
+                                st.markdown(f"🎂 **{emp['first_name']} {emp['last_name']}** — {dob_date.strftime('%B %d')} ({emp.get('department', '')}) {'🎉 Today!' if days_to == 0 else f'in {days_to} days'}")
                     except:
                         pass
             if not birthday_found:
