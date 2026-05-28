@@ -7405,18 +7405,20 @@ def company_calendar():
                 else:
                     date_str = f"{year}-{month:02d}-{day:02d}"
                     day_events = [e for e in events if e.get('event_date', '')[:10] == date_str]
+                    is_today = (date_str == today.strftime('%Y-%m-%d'))
                     
-                    if day_events:
-                        badge = ' '.join([event_icons.get(e.get('event_type', ''), '📌') for e in day_events])
-                        if date_str == today.strftime('%Y-%m-%d'):
-                        week_str += f" <span style='background:#38a169;color:white;padding:2px 6px;border-radius:12px;font-weight:700;'>{day}</span> {badge} |"
+                    if is_today:
+                        if day_events:
+                            badge = ' '.join([event_icons.get(e.get('event_type', ''), '📌') for e in day_events])
+                            week_str += f" <span style='background:#38a169;color:white;padding:2px 6px;border-radius:12px;font-weight:700;'>{day}</span> {badge} |"
+                        else:
+                            week_str += f" <span style='background:#38a169;color:white;padding:2px 6px;border-radius:12px;font-weight:700;'>{day}</span> |"
                     else:
-                        week_str += f" {day} {badge} |"
-                else:
-                    if date_str == today.strftime('%Y-%m-%d'):
-                        week_str += f" <span style='background:#38a169;color:white;padding:2px 6px;border-radius:12px;font-weight:700;'>{day}</span> |"
-                    else:
-                        week_str += f" {day} |"
+                        if day_events:
+                            badge = ' '.join([event_icons.get(e.get('event_type', ''), '📌') for e in day_events])
+                            week_str += f" {day} {badge} |"
+                        else:
+                            week_str += f" {day} |"
                 day += 1
             st.markdown(week_str)
         
