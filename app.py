@@ -733,11 +733,11 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "👤 My Profile"]
         elif user_role == 'Manager':
-            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "👤 My Profile"]
         else:
-            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "👤 My Profile"]
         selected = option_menu(menu_title=None, options=menu_options, icons=["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "person-circle"][:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
@@ -7030,6 +7030,220 @@ def my_documents():
                     st.success(f"✅ {doc_request} requested! HR will process it shortly.")
                     st.balloons()
 
+def ideas_box():
+    st.markdown("""<div class="churchgate-header"><h1>💡 Ideas & Innovation Box</h1><p>Submit Ideas | Vote | Collaborate | Drive Innovation</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_id = st.session_state.user.get('employee_id', '') if st.session_state.user else ''
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director', 'Manager', 'HOD'] if st.session_state.user else False
+    
+    tab1, tab2, tab3 = st.tabs(["📝 Submit Idea", "💡 All Ideas", "📊 Dashboard"])
+    
+    # Load ideas
+    def load_ideas(status_filter=None):
+        try:
+            data = db._get("ideas_box")
+            if data:
+                if status_filter:
+                    data = [d for d in data if d.get('status') == status_filter]
+                return sorted(data, key=lambda x: x.get('votes', 0), reverse=True)
+        except:
+            pass
+        return []
+    
+    # ============ TAB 1: SUBMIT IDEA ============
+    with tab1:
+        st.subheader("📝 Share Your Idea")
+        st.info("Great ideas drive innovation. Submit yours and get votes from colleagues!")
+        
+        with st.form("submit_idea"):
+            idea_title = st.text_input("Idea Title *", placeholder="Give your idea a clear, catchy name")
+            idea_category = st.selectbox("Category", [
+                "💻 Technology & Digital",
+                "🏢 Operations & Facilities",
+                "👥 People & Culture",
+                "💰 Cost Savings",
+                "😊 Customer Experience",
+                "🌱 Sustainability",
+                "📈 Revenue Growth",
+                "🔧 Process Improvement",
+                "🎉 Employee Experience",
+                "💡 Other"
+            ])
+            idea_description = st.text_area("Describe Your Idea *", height=150, 
+                placeholder="What's the problem? What's your solution? How would it benefit Churchgate?")
+            
+            if st.form_submit_button("🚀 Submit Idea", use_container_width=True):
+                if idea_title and idea_description:
+                    db._post("ideas_box", {
+                        "employee_id": user_id,
+                        "employee_name": user_name,
+                        "department": user_dept,
+                        "title": idea_title,
+                        "description": idea_description,
+                        "category": idea_category,
+                        "status": "Submitted",
+                        "votes": 0,
+                        "voters": "[]",
+                        "submitted_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                    })
+                    st.success("✅ Idea submitted! Colleagues can now see and vote on it.")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.error("❌ Title and description are required!")
+        
+        # Show user's own ideas
+        st.markdown("---")
+        st.markdown("### 📋 My Submitted Ideas")
+        all_ideas = load_ideas()
+        my_ideas = [i for i in all_ideas if i.get('employee_id') == user_id]
+        if my_ideas:
+            for idea in my_ideas:
+                status_color = "#38a169" if idea.get('status') == 'Approved' else "#d69e2e" if idea.get('status') == 'Under Review' else "#a0aec0"
+                with st.expander(f"{idea.get('title', 'Untitled')} — {idea.get('votes', 0)} votes | {idea.get('status', 'Submitted')}"):
+                    st.markdown(f"**Category:** {idea.get('category', 'N/A')}")
+                    st.markdown(f"**Description:** {idea.get('description', '')}")
+                    st.markdown(f"**Submitted:** {idea.get('submitted_at', '')[:10]}")
+                    if idea.get('admin_response'):
+                        st.success(f"**Admin Response:** {idea.get('admin_response')}")
+        else:
+            st.info("You haven't submitted any ideas yet.")
+    
+    # ============ TAB 2: ALL IDEAS ============
+    with tab2:
+        st.subheader("💡 Innovation Board")
+        
+        # Filters
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            category_filter = st.selectbox("Category", ["All"] + list(set([i.get('category', '') for i in load_ideas()])))
+        with col2:
+            status_filter = st.selectbox("Status", ["All", "Submitted", "Under Review", "Approved", "Implemented"])
+        with col3:
+            sort_by = st.selectbox("Sort", ["Most Votes", "Newest", "Oldest"])
+        
+        all_ideas = load_ideas()
+        
+        # Apply filters
+        if category_filter != "All":
+            all_ideas = [i for i in all_ideas if i.get('category') == category_filter]
+        if status_filter != "All":
+            all_ideas = [i for i in all_ideas if i.get('status') == status_filter]
+        if sort_by == "Newest":
+            all_ideas = sorted(all_ideas, key=lambda x: x.get('submitted_at', ''), reverse=True)
+        elif sort_by == "Oldest":
+            all_ideas = sorted(all_ideas, key=lambda x: x.get('submitted_at', ''))
+        
+        st.markdown(f"**{len(all_ideas)} ideas**")
+        
+        if all_ideas:
+            for idea in all_ideas:
+                voter_list = []
+                try:
+                    voter_list = json.loads(idea.get('voters', '[]'))
+                except:
+                    voter_list = []
+                
+                has_voted = user_id in voter_list
+                
+                with st.expander(f"💡 {idea.get('title', 'Untitled')} — {idea.get('votes', 0)} votes | by {idea.get('employee_name', 'Unknown')} | {idea.get('status', 'Submitted')}"):
+                    col1, col2 = st.columns([3, 1])
+                    
+                    with col1:
+                        st.markdown(f"**Category:** {idea.get('category', 'N/A')}")
+                        st.markdown(f"**Department:** {idea.get('department', 'N/A')}")
+                        st.markdown(f"**Description:** {idea.get('description', '')}")
+                        st.markdown(f"**Submitted:** {idea.get('submitted_at', '')[:10]}")
+                        if idea.get('admin_response'):
+                            st.success(f"**Response:** {idea.get('admin_response')}")
+                    
+                    with col2:
+                        if has_voted:
+                            st.success(f"✅ Voted ({idea.get('votes', 0)})")
+                        else:
+                            if st.button(f"👍 Upvote ({idea.get('votes', 0)})", key=f"vote_{idea.get('id')}", use_container_width=True):
+                                voter_list.append(user_id)
+                                db._patch("ideas_box", {
+                                    "votes": int(idea.get('votes', 0)) + 1,
+                                    "voters": json.dumps(voter_list)
+                                }, {"id": idea.get('id')})
+                                st.rerun()
+                    
+                    # Admin actions
+                    if is_admin:
+                        st.markdown("---")
+                        st.markdown("**Admin Actions:**")
+                        col_a1, col_a2, col_a3 = st.columns(3)
+                        new_status = col_a1.selectbox("Status", ["Submitted", "Under Review", "Approved", "Implemented"], key=f"status_{idea.get('id')}")
+                        admin_response = col_a2.text_input("Response", key=f"resp_{idea.get('id')}")
+                        if col_a3.button("Update", key=f"upd_{idea.get('id')}", use_container_width=True):
+                            db._patch("ideas_box", {
+                                "status": new_status,
+                                "admin_response": admin_response
+                            }, {"id": idea.get('id')})
+                            st.success("✅ Updated!")
+                            st.rerun()
+        else:
+            st.info("No ideas yet. Be the first to submit one!")
+    
+    # ============ TAB 3: DASHBOARD ============
+    with tab3:
+        st.subheader("📊 Innovation Dashboard")
+        
+        all_ideas = load_ideas()
+        
+        if all_ideas:
+            total = len(all_ideas)
+            implemented = len([i for i in all_ideas if i.get('status') == 'Implemented'])
+            approved = len([i for i in all_ideas if i.get('status') == 'Approved'])
+            under_review = len([i for i in all_ideas if i.get('status') == 'Under Review'])
+            total_votes = sum([i.get('votes', 0) for i in all_ideas])
+            
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("💡 Total Ideas", total)
+            c2.metric("✅ Implemented", implemented)
+            c3.metric("👍 Approved", approved)
+            c4.metric("🔍 Under Review", under_review)
+            c5.metric("🗳️ Total Votes", total_votes)
+            
+            st.markdown("---")
+            
+            # Top ideas
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("### 🏆 Top Voted Ideas")
+                top = sorted(all_ideas, key=lambda x: x.get('votes', 0), reverse=True)[:5]
+                for i, idea in enumerate(top):
+                    medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else "⭐"
+                    st.markdown(f"{medal} **{idea.get('title', '')}** — {idea.get('votes', 0)} votes by {idea.get('employee_name', '')}")
+            
+            with col2:
+                st.markdown("### 📈 By Category")
+                categories = {}
+                for idea in all_ideas:
+                    cat = idea.get('category', 'Other')
+                    categories[cat] = categories.get(cat, 0) + 1
+                if categories:
+                    cat_df = pd.DataFrame({'Category': list(categories.keys()), 'Count': list(categories.values())})
+                    fig = px.pie(cat_df, values='Count', names='Category', hole=0.5)
+                    fig.update_layout(height=300)
+                    st.plotly_chart(fig, use_container_width=True)
+            
+            # Top contributors
+            st.markdown("---")
+            st.markdown("### 🌟 Top Contributors")
+            contributors = {}
+            for idea in all_ideas:
+                name = idea.get('employee_name', 'Unknown')
+                contributors[name] = contributors.get(name, 0) + 1
+            top_contributors = sorted(contributors.items(), key=lambda x: x[1], reverse=True)[:5]
+            for i, (name, count) in enumerate(top_contributors):
+                st.markdown(f"⭐ **{name}** — {count} idea{'s' if count > 1 else ''}")
+        else:
+            st.info("Submit the first idea to see the dashboard!")
+
 def my_profile():
     user = st.session_state.user
     user_email = user.get('email', '') if user else ''
@@ -7358,6 +7572,7 @@ def main():
             "🎓 Training & Development": training_development,
             "🔔 Notifications": notifications_page,
             "📋 My Documents": my_documents,
+            "💡 Ideas Box": ideas_box,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)
