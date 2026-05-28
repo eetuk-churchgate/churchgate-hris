@@ -99,12 +99,15 @@ st.markdown("""
     .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .stImage { display: flex; justify-content: center; }
     .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
-    footer {display: none !important;}
-    #MainMenu {display: none !important;}
+    footer {display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; overflow: hidden !important;}
+    #MainMenu {display: none !important; visibility: hidden !important;}
     header[data-testid="stHeader"] {display: none !important;}
     .stDeployButton {display: none !important;}
     .stApp footer {display: none !important;}
     div[data-testid="stToolbar"] {display: none !important;}
+    [data-testid="stFooter"] {display: none !important;}
+    .css-1jc7ptx {display: none !important;}
+    a[href*="streamlit"] {display: none !important;}
 .greeting-header {
         background: #d5d5d5;
         padding: 1rem 2rem;
