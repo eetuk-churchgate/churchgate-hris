@@ -1016,7 +1016,72 @@ def employee_dashboard():
         ]
         import random
         st.info(f"💡 {random.choice(tips)}")
+    # ============ ORGANIZATIONAL STRUCTURE ============
+    st.markdown("---")
+    st.subheader("📊 Organizational Structure")
+    st.info("GMD → COO (All Depts) / VP Sales (Sales & Mkt) / GEA | Regions: Abuja & Lagos")
     
+    # Simple org view for dashboard
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown("""
+        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #CC0000;">
+            <strong>Vinay Mahtani</strong><br>
+            <small style="color:#CC0000;">GMD/CEO</small><br>
+            <small style="color:#888;">Group-wide</small>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #e53e3e;">
+            <strong>Jerome Das</strong><br>
+            <small style="color:#e53e3e;">COO</small><br>
+            <small style="color:#888;">All Departments</small>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #dd6b20;">
+            <strong>Ahmed Karim</strong><br>
+            <small style="color:#dd6b20;">VP Sales</small><br>
+            <small style="color:#888;">Sales & Marketing</small>
+        </div>
+        """, unsafe_allow_html=True)
+    with col4:
+        st.markdown("""
+        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #805ad5;">
+            <strong>Partab Lalchandani</strong><br>
+            <small style="color:#805ad5;">GEA</small><br>
+            <small style="color:#888;">Group Advisor</small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Department heads from real data
+    st.markdown("---")
+    st.markdown("**Department Heads**")
+    try:
+        emp_df = db.get_all_employees()
+        if not emp_df.empty:
+            hod_df = emp_df[emp_df['grade'].isin(['Manager', 'HOD', 'C-Level'])]
+            dept_list = hod_df['department'].unique()
+            cols = st.columns(min(len(dept_list), 5))
+            for i, dept in enumerate(dept_list[:10]):
+                dept_hod = hod_df[hod_df['department'] == dept].head(1)
+                if len(dept_hod) > 0:
+                    hod = dept_hod.iloc[0]
+                    with cols[i % 5]:
+                        st.markdown(f"""
+                        <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;margin-bottom:0.5rem;border:1px solid #e0e0e0;">
+                            <strong style="font-size:0.85rem;">{hod['first_name']} {hod['last_name']}</strong><br>
+                            <small style="color:#888;font-size:0.75rem;">{dept}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+    except:
+        pass
+    
+    if st.button("📊 View Full Org Chart", use_container_width=True):
+        st.session_state['navigate_to'] = "👥 Employee Management"
+        st.rerun()
     # ============ UPCOMING TRAINING ============
     st.markdown("---")
     st.subheader("🎓 Recommended Training & Webinars")
