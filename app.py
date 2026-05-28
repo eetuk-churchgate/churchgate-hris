@@ -1242,6 +1242,41 @@ def executive_dashboard():
     
     metrics = st.session_state.portfolio_metrics
     
+    
+    # ============ ALERTS BAR ============
+    alerts = []
+    if escalated_count > 0:
+        alerts.append(f"🚨 {escalated_count} escalated appraisal(s) need attention")
+    if open_positions > 0:
+        alerts.append(f"📢 {open_positions} open positions to fill")
+    
+    if alerts:
+        alert_html = " | ".join(alerts)
+        st.markdown(f"""
+        <div style="background:#fff3cd;padding:0.8rem 1.5rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid #d69e2e;">
+            <strong>⚠️ Executive Alerts:</strong> {alert_html}
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # ============ TOP KPI CARDS - ALL REAL DATA ============
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    with c1:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Total Employees</div><div class="metric-value">{total_employees}</div><small style="color:#38a169;">{active_employees} active</small></div>""", unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏢 Departments</div><div class="metric-value">{departments}</div><small style="color:#38a169;">2 regions</small></div>""", unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📋 Open Positions</div><div class="metric-value">{open_positions}</div><small style="color:#CC0000;">Active hiring</small></div>""", unsafe_allow_html=True)
+    with c4:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏠 Occupancy</div><div class="metric-value">{metrics['occupancy']}%</div><small style="color:#38a169;">Portfolio avg</small></div>""", unsafe_allow_html=True)
+    with c5:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">💰 Revenue</div><div class="metric-value">{metrics['revenue']}%</div><small style="color:#d69e2e;">vs budget</small></div>""", unsafe_allow_html=True)
+    with c6:
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">{metrics['rating']}</div><small style="color:#38a169;">Tenant satisfaction</small></div>""", unsafe_allow_html=True)
+    
+    # ============ ADMIN UPDATE METRICS ============
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
+    is_sr_mgmt = st.session_state.user.get('department') == 'Senior Management' if st.session_state.user else False
+    
     # ============ CELEBRATION EMAIL BLAST ============
     if is_admin:
         today = datetime.now()
@@ -1292,40 +1327,6 @@ def executive_dashboard():
                             st.info(msg)
             with col_btn2:
                 st.caption("Emails are sent to all employees at once. Use this in the morning (7:30 AM recommended).")
-    
-    # ============ ALERTS BAR ============
-    alerts = []
-    if escalated_count > 0:
-        alerts.append(f"🚨 {escalated_count} escalated appraisal(s) need attention")
-    if open_positions > 0:
-        alerts.append(f"📢 {open_positions} open positions to fill")
-    
-    if alerts:
-        alert_html = " | ".join(alerts)
-        st.markdown(f"""
-        <div style="background:#fff3cd;padding:0.8rem 1.5rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid #d69e2e;">
-            <strong>⚠️ Executive Alerts:</strong> {alert_html}
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # ============ TOP KPI CARDS - ALL REAL DATA ============
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    with c1:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Total Employees</div><div class="metric-value">{total_employees}</div><small style="color:#38a169;">{active_employees} active</small></div>""", unsafe_allow_html=True)
-    with c2:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏢 Departments</div><div class="metric-value">{departments}</div><small style="color:#38a169;">2 regions</small></div>""", unsafe_allow_html=True)
-    with c3:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">📋 Open Positions</div><div class="metric-value">{open_positions}</div><small style="color:#CC0000;">Active hiring</small></div>""", unsafe_allow_html=True)
-    with c4:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏠 Occupancy</div><div class="metric-value">{metrics['occupancy']}%</div><small style="color:#38a169;">Portfolio avg</small></div>""", unsafe_allow_html=True)
-    with c5:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">💰 Revenue</div><div class="metric-value">{metrics['revenue']}%</div><small style="color:#d69e2e;">vs budget</small></div>""", unsafe_allow_html=True)
-    with c6:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">{metrics['rating']}</div><small style="color:#38a169;">Tenant satisfaction</small></div>""", unsafe_allow_html=True)
-    
-    # ============ ADMIN UPDATE METRICS ============
-    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
-    is_sr_mgmt = st.session_state.user.get('department') == 'Senior Management' if st.session_state.user else False
     
     if is_admin or is_sr_mgmt:
         with st.expander("⚙️ Update Portfolio Metrics (Admin)", expanded=False):
