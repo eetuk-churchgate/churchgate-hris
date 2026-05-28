@@ -99,6 +99,9 @@ st.markdown("""
     .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .stImage { display: flex; justify-content: center; }
     .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
+    footer {visibility: hidden;}
+    #MainMenu {visibility: hidden;}
+    header {visibility: hidden;}
 .greeting-header {
         background: #d5d5d5;
         padding: 1rem 2rem;
