@@ -108,6 +108,7 @@ st.markdown("""
     [data-testid="stFooter"] {display: none !important;}
     .css-1jc7ptx {display: none !important;}
     a[href*="streamlit"] {display: none !important;}
+    [data-testid="stFooter"] a {color: #888 !important; font-size: 10px !important;}
 .greeting-header {
         background: #d5d5d5;
         padding: 1rem 2rem;
