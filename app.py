@@ -733,11 +733,11 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "👤 My Profile"]
         elif user_role == 'Manager':
-            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "👤 My Profile"]
         else:
-            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "👤 My Profile"]
         selected = option_menu(menu_title=None, options=menu_options, icons=["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "person-circle"][:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
@@ -7654,6 +7654,202 @@ def company_calendar():
             except:
                 st.success("✅ Calendar queued for delivery!")
 
+
+def personal_goals():
+    st.markdown("""<div class="churchgate-header"><h1>🎯 Personal Goals & OKRs</h1><p>Set Goals | Track Progress | Align to Strategic Pillars | Drive Your Growth</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_id = st.session_state.user.get('employee_id', '') if st.session_state.user else ''
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    
+    pillars = [
+        "1. Occupancy & Revenue Growth",
+        "2. Process Simplification",
+        "3. Asset Reliability & Digitalization",
+        "4. People & Culture"
+    ]
+    
+    pillar_colors = {
+        "1. Occupancy & Revenue Growth": "#CC0000",
+        "2. Process Simplification": "#38a169",
+        "3. Asset Reliability & Digitalization": "#3182ce",
+        "4. People & Culture": "#d69e2e"
+    }
+    
+    pillar_icons = {
+        "1. Occupancy & Revenue Growth": "💰",
+        "2. Process Simplification": "⚙️",
+        "3. Asset Reliability & Digitalization": "🔧",
+        "4. People & Culture": "👥"
+    }
+    
+    def load_goals():
+        try:
+            data = db._get("personal_goals")
+            if data:
+                return [g for g in data if g.get('employee_id') == user_id]
+        except:
+            pass
+        return []
+    
+    tab1, tab2, tab3 = st.tabs(["📊 My Goals Dashboard", "➕ Add Goal", "📈 Progress Tracker"])
+    
+    goals = load_goals()
+    
+    # ============ TAB 1: DASHBOARD ============
+    with tab1:
+        st.subheader("📊 My Goals & OKRs")
+        
+        if goals:
+            total = len(goals)
+            completed = len([g for g in goals if g.get('status') == 'Completed'])
+            in_progress = len([g for g in goals if g.get('status') == 'In Progress'])
+            avg_progress = int(sum([g.get('progress', 0) for g in goals]) / total) if total > 0 else 0
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("🎯 Total Goals", total)
+            c2.metric("✅ Completed", completed)
+            c3.metric("🔄 In Progress", in_progress)
+            c4.metric("📊 Avg Progress", f"{avg_progress}%")
+            
+            st.markdown("---")
+            
+            for goal in goals:
+                pillar = goal.get('pillar', '')
+                color = pillar_colors.get(pillar, '#CC0000')
+                icon = pillar_icons.get(pillar, '🎯')
+                progress = int(goal.get('progress', 0))
+                status = goal.get('status', 'In Progress')
+                
+                status_color = "#38a169" if status == 'Completed' else "#d69e2e" if status == 'In Progress' else "#a0aec0"
+                
+                with st.expander(f"{icon} {goal.get('goal_title', 'Untitled')} — {progress}% — {status}"):
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"**Pillar:** {pillar}")
+                        st.markdown(f"**Description:** {goal.get('goal_description', '')}")
+                        st.markdown(f"**Target Date:** {goal.get('target_date', '')[:10]}")
+                        st.progress(progress / 100)
+                    with col2:
+                        st.markdown(f"**Status:** <span style='color:{status_color};font-weight:600;'>{status}</span>", unsafe_allow_html=True)
+                        new_progress = st.slider("Progress", 0, 100, progress, key=f"prog_{goal.get('id')}")
+                        new_status = st.selectbox("Status", ["In Progress", "Completed", "On Hold"], 
+                                                  index=0 if status == 'In Progress' else 0, key=f"stat_{goal.get('id')}")
+                        if st.button("💾 Update", key=f"upd_{goal.get('id')}", use_container_width=True):
+                            db._patch("personal_goals", {
+                                "progress": new_progress,
+                                "status": new_status
+                            }, {"id": goal.get('id')})
+                            st.success("✅ Updated!")
+                            st.rerun()
+                        if st.button("🗑️ Delete", key=f"del_{goal.get('id')}", use_container_width=True):
+                            db._delete("personal_goals", {"id": goal.get('id')})
+                            st.rerun()
+            
+            # Pillar breakdown
+            st.markdown("---")
+            st.markdown("### 📊 Goals by Strategic Pillar")
+            pillar_data = {}
+            for p in pillars:
+                pillar_goals = [g for g in goals if g.get('pillar') == p]
+                pillar_data[p] = len(pillar_goals)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                fig = px.pie(values=list(pillar_data.values()), names=list(pillar_data.keys()), hole=0.5,
+                           color_discrete_sequence=list(pillar_colors.values()))
+                fig.update_layout(height=350, showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            with col2:
+                for p in pillars:
+                    p_goals = [g for g in goals if g.get('pillar') == p]
+                    if p_goals:
+                        avg_p = int(sum([g.get('progress', 0) for g in p_goals]) / len(p_goals))
+                        st.markdown(f"**{pillar_icons.get(p, '🎯')} {p[:40]}...** — {len(p_goals)} goal(s), {avg_p}% avg")
+                        st.progress(avg_p / 100)
+        else:
+            st.info("You haven't set any personal goals yet. Go to the 'Add Goal' tab to start!")
+            st.markdown("### 💡 Why Set Personal Goals?")
+            st.markdown("""
+            - **Align your work** with Churchgate's strategic pillars
+            - **Track your growth** and achievements
+            - **Prepare for appraisals** with documented progress
+            - **Stand out** as a proactive, goal-oriented professional
+            """)
+    
+    # ============ TAB 2: ADD GOAL ============
+    with tab2:
+        st.subheader("➕ Set a New Goal")
+        st.info("Align your personal goals with Churchgate's 4 strategic pillars. Set SMART goals that drive impact.")
+        
+        with st.form("add_goal"):
+            goal_title = st.text_input("Goal Title *", placeholder="e.g., Complete BMS Advanced Certification")
+            goal_pillar = st.selectbox("Strategic Pillar *", pillars)
+            goal_description = st.text_area("Description *", height=100, 
+                placeholder="What do you want to achieve? How will you measure success?")
+            col1, col2 = st.columns(2)
+            with col1:
+                target_date = st.date_input("Target Completion Date")
+            with col2:
+                initial_progress = st.slider("Current Progress %", 0, 100, 0)
+            
+            if st.form_submit_button("🎯 Set Goal", use_container_width=True):
+                if goal_title and goal_description:
+                    db._post("personal_goals", {
+                        "employee_id": user_id,
+                        "employee_name": user_name,
+                        "department": user_dept,
+                        "pillar": goal_pillar,
+                        "goal_title": goal_title,
+                        "goal_description": goal_description,
+                        "target_date": target_date.strftime('%Y-%m-%d'),
+                        "progress": initial_progress,
+                        "status": "In Progress",
+                        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                    })
+                    st.success("✅ Goal set! Track your progress in the Dashboard.")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.error("❌ Title and description are required!")
+    
+    # ============ TAB 3: PROGRESS TRACKER ============
+    with tab3:
+        st.subheader("📈 Progress Tracker")
+        
+        if goals:
+            for goal in goals:
+                progress = int(goal.get('progress', 0))
+                color = pillar_colors.get(goal.get('pillar', ''), '#CC0000')
+                
+                if progress >= 85:
+                    emoji = "🌟"
+                elif progress >= 50:
+                    emoji = "🔥"
+                elif progress >= 25:
+                    emoji = "🚀"
+                else:
+                    emoji = "📌"
+                
+                st.markdown(f"""
+                <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {color};">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <strong>{emoji} {goal.get('goal_title', 'Untitled')}</strong>
+                            <br><small style="color:#888;">{goal.get('pillar', '')} | Target: {goal.get('target_date', '')[:10]}</small>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size:1.2rem;font-weight:700;color:{color};">{progress}%</span>
+                        </div>
+                    </div>
+                    <div style="background:#e0e0e0;height:8px;border-radius:4px;margin-top:0.5rem;">
+                        <div style="background:{color};width:{progress}%;height:8px;border-radius:4px;"></div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Set your first goal to see the progress tracker!")
+
 def my_profile():
     user = st.session_state.user
     user_email = user.get('email', '') if user else ''
@@ -7984,6 +8180,7 @@ def main():
             "📋 My Documents": my_documents,
             "💡 Ideas Box": ideas_box,
             "📅 Calendar": company_calendar,
+            "🎯 My Goals": personal_goals,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)
