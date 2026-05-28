@@ -695,8 +695,8 @@ def login_section():
                                 hashed_pw = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                                 db.supabase.table("users").update({"password": hashed_pw}).eq("email", st.session_state.reset_email).execute()
                                 st.success("✅ Password reset successfully! Please login with your new password.")
-                                    st.balloons()
-                                    st.session_state.show_forgot_password = False
+                                st.balloons()
+                                st.session_state.show_forgot_password = False
                                     st.session_state.show_reset_form = False
                                     st.session_state.reset_code = None
                                     st.session_state.reset_email = None
