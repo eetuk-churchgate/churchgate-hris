@@ -126,6 +126,7 @@ if selected_job:
         cover_letter = st.text_area("Cover Letter (Optional)", height=120)
         st.markdown("---")
         resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'])
+        other_docs = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'jpeg'], accept_multiple_files=True)
         st.markdown("---")
         st.markdown("### Screening Questions")
         q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80)
