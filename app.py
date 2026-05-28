@@ -613,8 +613,7 @@ def login_section():
                     remaining = int((st.session_state.login_locked_until - datetime.now()).total_seconds() / 60)
                     st.error(f"🔒 Too many failed attempts. Try again in {remaining} minute{'s' if remaining > 1 else ''}.")
                 elif email and password:
-                    hashed_pw = hashlib.sha256(password.encode()).hexdigest()
-                    user = db.verify_user(email, hashed_pw)
+                    user = db.verify_user(email, password)
                     if user:
                         st.session_state.user = user
                         st.session_state.authenticated = True
