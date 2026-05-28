@@ -61,7 +61,9 @@ class DatabaseManager:
         if self.use_supabase:
             data = self._get("users", {"email": email})
             if data and len(data) > 0:
-                return data[0]
+                stored_user = data[0]
+                if stored_user.get('password') == password:
+                    return stored_user
             return None
     
     def create_user(self, employee_id, name, email, password, role, department, position):
