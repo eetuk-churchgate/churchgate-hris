@@ -1079,9 +1079,64 @@ def employee_dashboard():
     except:
         pass
     
-    if st.button("📊 View Full Org Chart", use_container_width=True):
-        st.session_state['navigate_to'] = "👥 Employee Management"
-        st.rerun()
+    with st.expander("📊 View Full Org Chart", expanded=False):
+        st.markdown("### 🔗 Group Reporting Hierarchy")
+        st.info("GMD → COO (All Depts) / VP Sales (Sales & Mkt) / GEA | Regions: Abuja & Lagos")
+        
+        labels = ['GMD', 'COO', 'VP Sales', 'GEA',
+            'Technology (Abuja)', 'Technology (Lagos)',
+            'Facility Mgmt (Abuja)', 'Facility Mgmt (Lagos)',
+            'Engineering/MEP', 'HR', 'Accounts & Finance',
+            'Sales & Marketing', 'Procurement', 'Security',
+            'Legal', 'Operations']
+        
+        colors = ['#CC0000', '#e53e3e', '#dd6b20', '#805ad5',
+            '#3182ce', '#3182ce', '#38a169', '#38a169',
+            '#d53f8c', '#d69e2e', '#805ad5',
+            '#dd6b20', '#2b6cb0', '#718096',
+            '#e53e3e', '#319795']
+        
+        sources = [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3]
+        targets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 11, 15]
+        values = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        
+        for i in range(4, 16):
+            sources.append(i)
+            targets.append(16)
+            values.append(1)
+        
+        sources += [16, 16, 17, 17]
+        targets += [17, 18, 18, 19]
+        values += [10, 5, 12, 30]
+        
+        labels += ['Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members']
+        colors += ['#FF6B35', '#38a169', '#d69e2e', '#2b6cb0', '#718096']
+        
+        fig = go.Figure(data=[go.Sankey(
+            node=dict(pad=20, thickness=18, label=labels, color=colors),
+            link=dict(source=sources, target=targets, value=values,
+                color=['rgba(204,0,0,0.2)'] * len(sources))
+        )])
+        fig.update_layout(height=500)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("### 👥 Department Heads")
+        try:
+            emp_df = db.get_all_employees()
+            if not emp_df.empty:
+                hod_df = emp_df[emp_df['grade'].isin(['Manager', 'HOD', 'C-Level'])]
+                hod_data = []
+                for _, row in hod_df.iterrows():
+                    hod_data.append({
+                        'Department': row['department'],
+                        'Name': f"{row['first_name']} {row['last_name']}",
+                        'Position': row['position']
+                    })
+                if hod_data:
+                    st.dataframe(pd.DataFrame(hod_data), use_container_width=True, hide_index=True)
+        except:
+            pass
     # ============ UPCOMING TRAINING ============
     st.markdown("---")
     st.subheader("🎓 Recommended Training & Webinars")
