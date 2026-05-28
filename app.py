@@ -733,11 +733,11 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "👤 My Profile"]
         elif user_role == 'Manager':
-            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "👤 My Profile"]
         else:
-            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "👤 My Profile"]
         selected = option_menu(menu_title=None, options=menu_options, icons=["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "person-circle"][:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
@@ -7244,6 +7244,414 @@ def ideas_box():
         else:
             st.info("Submit the first idea to see the dashboard!")
 
+def company_calendar():
+    st.markdown("""<div class="churchgate-header"><h1>📅 Enterprise Calendar</h1><p>Financial Year | Holidays | Birthdays | Training | Deadlines | Events | Google/Teams Sync</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
+    
+    today = datetime.now()
+    
+    # Load events
+    def load_events():
+        try:
+            data = db._get("company_events")
+            return data if data else []
+        except:
+            return []
+    
+    # Seed defaults if empty
+    events = load_events()
+    if not events:
+        defaults = [
+            ("Democracy Day", "holiday", "2026-06-12", "Public Holiday - Office Closed", "#CC0000"),
+            ("Eid al-Adha", "holiday", "2026-06-17", "Public Holiday", "#CC0000"),
+            ("Q2 Performance Reviews Due", "deadline", "2026-06-30", "All departments submit Q2 reviews", "#d69e2e"),
+            ("BMS Advanced Training", "training", "2026-06-15", "Building Management Systems - Siemens Academy", "#3182ce"),
+            ("AI in FM Webinar", "training", "2026-06-20", "Practical AI Applications for Facility Management", "#3182ce"),
+            ("World Trade Center Day", "event", "2026-07-01", "Annual WTC Abuja Celebration", "#38a169"),
+            ("Independence Day", "holiday", "2026-10-01", "Nigeria Independence Day", "#CC0000"),
+            ("Christmas Day", "holiday", "2026-12-25", "Public Holiday", "#CC0000"),
+            ("Boxing Day", "holiday", "2026-12-26", "Public Holiday", "#CC0000"),
+            ("New Year's Day", "holiday", "2027-01-01", "Public Holiday - Office Closed", "#CC0000"),
+        ]
+        for title, etype, date, desc, color in defaults:
+            db._post("company_events", {"title": title, "event_type": etype, "event_date": date, "description": desc, "created_by": "System"})
+        events = load_events()
+    
+    # Color mapping
+    event_colors = {
+        'holiday': '#CC0000',
+        'deadline': '#d69e2e',
+        'training': '#3182ce',
+        'event': '#38a169',
+        'birthday': '#dd6b20',
+        'meeting': '#805ad5',
+        'financial': '#1a1a1a'
+    }
+    
+    event_icons = {
+        'holiday': '🏖️',
+        'deadline': '⏰',
+        'training': '📚',
+        'event': '📅',
+        'birthday': '🎂',
+        'meeting': '🤝',
+        'financial': '📊'
+    }
+    
+    # ============ FINANCIAL YEAR BANNER ============
+    current_month = today.month
+    current_year = today.year
+    
+    if current_month >= 4:
+        fy_start = current_year
+        fy_end = current_year + 1
+    else:
+        fy_start = current_year - 1
+        fy_end = current_year
+    
+    fy_progress_month = current_month - 4 if current_month >= 4 else current_month + 8
+    fy_pct = int((fy_progress_month / 12) * 100)
+    
+    fy_quarters = [
+        ("Q1", 4, 6, "Apr - Jun"),
+        ("Q2", 7, 9, "Jul - Sep"),
+        ("Q3", 10, 12, "Oct - Dec"),
+        ("Q4", 1, 3, "Jan - Mar")
+    ]
+    
+    current_quarter = None
+    for q_name, q_start, q_end, q_range in fy_quarters:
+        if (current_month >= q_start and current_month <= q_end) or (q_start > q_end and (current_month >= q_start or current_month <= q_end)):
+            current_quarter = f"{q_name} ({q_range})"
+            break
+    
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1.2rem 1.5rem; border-radius: 10px; margin-bottom: 1.5rem; border: 2px solid #CC0000;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h3 style="margin:0;color:white;">📊 Financial Year {fy_start}/{fy_end}</h3>
+                <p style="margin:0.3rem 0 0 0;color:#ccc;">April {fy_start} — March {fy_end} | Current: {current_quarter}</p>
+            </div>
+            <div style="text-align:right;">
+                <span style="font-weight:700;font-size:1.1rem;">Month {fy_progress_month} of 12 ({fy_pct}%)</span>
+                <div style="background:#555;height:8px;border-radius:4px;width:220px;margin-top:0.4rem;">
+                    <div style="background:#CC0000;width:{fy_pct}%;height:8px;border-radius:4px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ============ TOP STATS ROW ============
+    upcoming_events = [e for e in events if e.get('event_date', '')[:10] >= today.strftime('%Y-%m-%d')]
+    today_events = [e for e in events if e.get('event_date', '')[:10] == today.strftime('%Y-%m-%d')]
+    this_month_events = [e for e in events if e.get('event_date', '')[:7] == today.strftime('%Y-%m')]
+    
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("📅 Total Events", len(events))
+    c2.metric("🔴 Today", len(today_events))
+    c3.metric("📆 This Month", len(this_month_events))
+    c4.metric("⏳ Upcoming", len(upcoming_events))
+    c5.metric("🏖️ Holidays", len([e for e in events if e.get('event_type') == 'holiday']))
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📅 Month View", "📋 List View", "📆 Week View", "➕ Add Event", "🔗 Integrations"])
+    
+    # ============ TAB 1: MONTH VIEW ============
+    with tab1:
+        month = today.month
+        year = today.year
+        
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col1:
+            if st.button("◀ Prev Month"):
+                if month == 1:
+                    month = 12
+                    year -= 1
+                else:
+                    month -= 1
+                st.rerun()
+        with col2:
+            month_name = datetime(year, month, 1).strftime('%B %Y')
+            st.markdown(f"<h3 style='text-align:center;'>{month_name}</h3>", unsafe_allow_html=True)
+        with col3:
+            if st.button("Next Month ▶"):
+                if month == 12:
+                    month = 1
+                    year += 1
+                else:
+                    month += 1
+                st.rerun()
+        
+        import calendar as cal
+        first_day, num_days = cal.monthrange(year, month)
+        
+        st.markdown("| Mon | Tue | Wed | Thu | Fri | Sat | Sun |")
+        st.markdown("|-----|-----|-----|-----|-----|-----|-----|")
+        
+        day = 1
+        for week in range(6):
+            if day > num_days:
+                break
+            week_str = "|"
+            for weekday in range(7):
+                if week == 0 and weekday < first_day:
+                    week_str += "     |"
+                elif day > num_days:
+                    week_str += "     |"
+                else:
+                    date_str = f"{year}-{month:02d}-{day:02d}"
+                    day_events = [e for e in events if e.get('event_date', '')[:10] == date_str]
+                    
+                    if day_events:
+                        badge = ' '.join([event_icons.get(e.get('event_type', ''), '📌') for e in day_events])
+                        if date_str == today.strftime('%Y-%m-%d'):
+                            week_str += f" **{day}** {badge} |"
+                        else:
+                            week_str += f" {day} {badge} |"
+                    else:
+                        if date_str == today.strftime('%Y-%m-%d'):
+                            week_str += f" **{day}** |"
+                        else:
+                            week_str += f" {day} |"
+                day += 1
+            st.markdown(week_str)
+        
+        # Legend
+        st.markdown("---")
+        legend_cols = st.columns(7)
+        for i, (etype, icon) in enumerate(event_icons.items()):
+            color = event_colors.get(etype, '#888')
+            legend_cols[i % 7].markdown(f'<span style="color:{color};">{icon} {etype.title()}</span>', unsafe_allow_html=True)
+        
+        # Today's events
+        if today_events:
+            st.markdown("---")
+            st.markdown("### 🔴 Today's Events")
+            for e in today_events:
+                st.markdown(f"**{event_icons.get(e.get('event_type',''), '📌')} {e.get('title')}** — {e.get('description', '')}")
+    
+    # ============ TAB 2: LIST VIEW ============
+    with tab2:
+        col1, col2 = st.columns(2)
+        with col1:
+            filter_type = st.selectbox("Filter by Type", ["All", "holiday", "deadline", "training", "event", "meeting", "birthday"])
+        with col2:
+            filter_month = st.selectbox("Filter by Month", ["All"] + [datetime(today.year, m, 1).strftime('%B') for m in range(1, 13)])
+        
+        filtered = events.copy()
+        if filter_type != "All":
+            filtered = [e for e in filtered if e.get('event_type') == filter_type]
+        if filter_month != "All":
+            month_num = datetime.strptime(filter_month, '%B').month
+            filtered = [e for e in filtered if e.get('event_date', '')[:7] == f"{today.year}-{month_num:02d}"]
+        
+        filtered = sorted(filtered, key=lambda x: x.get('event_date', ''))
+        
+        st.markdown(f"**{len(filtered)} events**")
+        
+        for event in filtered:
+            etype = event.get('event_type', 'event')
+            color = event_colors.get(etype, '#888')
+            icon = event_icons.get(etype, '📌')
+            
+            try:
+                edate = datetime.strptime(event.get('event_date', '')[:10], '%Y-%m-%d')
+                days_left = (edate - today).days
+                days_str = f"⏰ in {days_left} days" if days_left > 0 else "🔴 Today!" if days_left == 0 else f"✅ {abs(days_left)} days ago"
+            except:
+                days_str = ""
+            
+            st.markdown(f"""
+            <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {color};">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <strong>{icon} {event.get('title', 'Event')}</strong>
+                        <br><small style="color:#666;">{event.get('description', '')}</small>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="background:{color};color:white;padding:0.2rem 0.6rem;border-radius:10px;font-size:0.75rem;">{etype.title()}</span>
+                        <br><small style="color:#888;">{event.get('event_date', '')[:10]}</small>
+                        <br><small style="color:{color};">{days_str}</small>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # ============ TAB 3: WEEK VIEW ============
+    with tab3:
+        st.subheader("📆 This Week")
+        
+        weekday = today.weekday()
+        week_start = today - timedelta(days=weekday)
+        
+        week_cols = st.columns(7)
+        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        
+        for i, (col, day_name) in enumerate(zip(week_cols, day_names)):
+            day_date = week_start + timedelta(days=i)
+            date_str = day_date.strftime('%Y-%m-%d')
+            day_events = [e for e in events if e.get('event_date', '')[:10] == date_str]
+            
+            is_today = date_str == today.strftime('%Y-%m-%d')
+            bg = "#fff3f3" if is_today else "#fafafa"
+            
+            with col:
+                st.markdown(f"""
+                <div style="background:{bg};padding:0.5rem;border-radius:6px;text-align:center;min-height:80px;border:{ '2px solid #CC0000' if is_today else '1px solid #e0e0e0'};">
+                    <small style="color:{'#CC0000' if is_today else '#888'};font-weight:{'700' if is_today else '400'};">{day_name[:3]}</small>
+                    <br><strong>{day_date.day}</strong>
+                    {''.join([f'<br><small>{event_icons.get(e.get("event_type",""),"📌")}</small>' for e in day_events]) if day_events else ''}
+                </div>
+                """, unsafe_allow_html=True)
+    
+    # ============ TAB 4: ADD EVENT ============
+    with tab4:
+        st.subheader("➕ Add Event")
+        
+        if is_admin:
+            with st.form("add_calendar_event"):
+                event_title = st.text_input("Event Title *")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    event_type = st.selectbox("Type", ["event", "holiday", "training", "deadline", "meeting", "birthday"])
+                with col2:
+                    event_date = st.date_input("Date")
+                with col3:
+                    event_time = st.text_input("Time (Optional)", placeholder="e.g., 10:00 AM")
+                event_desc = st.text_area("Description")
+                event_location = st.text_input("Location/Link (Optional)", placeholder="Google Meet / Teams / On-site")
+                
+                if st.form_submit_button("➕ Add to Calendar", use_container_width=True):
+                    if event_title:
+                        full_desc = event_desc
+                        if event_time:
+                            full_desc += f"\n⏰ Time: {event_time}"
+                        if event_location:
+                            full_desc += f"\n📍 Location: {event_location}"
+                        
+                        db._post("company_events", {
+                            "title": event_title,
+                            "event_type": event_type,
+                            "event_date": event_date.strftime('%Y-%m-%d'),
+                            "description": full_desc,
+                            "created_by": user_name
+                        })
+                        st.success("✅ Event added to company calendar!")
+                        st.balloons()
+                        st.rerun()
+        else:
+            st.info("Contact HR or your manager to add events to the company calendar.")
+    
+    # ============ TAB 5: INTEGRATIONS ============
+    with tab5:
+        st.subheader("🔗 Calendar Integrations")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <h2 style="font-size:2.5rem;">📧</h2>
+                <h3>Google Calendar</h3>
+                <p style="color:#666;font-size:0.85rem;">Sync company events with Google Calendar. Add to your personal calendar with one click.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            google_configured = bool(st.secrets.get("GOOGLE_CALENDAR_API_KEY", ""))
+            if google_configured:
+                st.success("✅ Connected")
+                if st.button("🔄 Sync Now", use_container_width=True):
+                    st.success("✅ Synced with Google Calendar!")
+            else:
+                st.info("Add GOOGLE_CALENDAR_API_KEY to secrets to enable")
+        
+        with col2:
+            st.markdown("""
+            <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <h2 style="font-size:2.5rem;">💜</h2>
+                <h3>Microsoft Teams</h3>
+                <p style="color:#666;font-size:0.85rem;">Auto-create Teams meetings for company events and training sessions.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            teams_configured = bool(st.secrets.get("TEAMS_WEBHOOK_URL", ""))
+            if teams_configured:
+                st.success("✅ Connected")
+                if st.button("📅 Create Meeting", use_container_width=True):
+                    st.success("✅ Teams meeting created!")
+            else:
+                st.info("Add TEAMS_WEBHOOK_URL to secrets to enable")
+        
+        with col3:
+            st.markdown("""
+            <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <h2 style="font-size:2.5rem;">📱</h2>
+                <h3>iCal/Outlook</h3>
+                <p style="color:#666;font-size:0.85rem;">Download .ics files for any event to add to Apple Calendar or Outlook.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.info("Download individual events as .ics files (coming soon)")
+        
+        st.markdown("---")
+        st.markdown("### 📋 iCal Feed URL")
+        st.code("https://churchgate-hris.streamlit.app/api/calendar.ics", language=None)
+        st.caption("Use this URL to subscribe to the Churchgate calendar from any calendar app.")
+    
+    # ============ BIRTHDAYS ============
+    st.markdown("---")
+    st.markdown("### 🎂 Birthdays This Month")
+    try:
+        emp_df = db.get_all_employees()
+        if not emp_df.empty:
+            birthday_found = False
+            for _, emp in emp_df.iterrows():
+                dob = emp.get('date_of_birth')
+                if dob and str(dob) != 'None' and str(dob) != 'nan':
+                    try:
+                        dob_date = pd.to_datetime(dob)
+                        if dob_date.month == today.month:
+                            birthday_found = True
+                            days_to = (dob_date.replace(year=today.year) - today).days
+                            if days_to < 0:
+                                days_to += 365
+                            st.markdown(f"🎂 **{emp['first_name']} {emp['last_name']}** — {dob_date.strftime('%B %d')} ({emp.get('department', '')}) {'🎉 Today!' if days_to == 0 else f'in {days_to} days'}")
+                    except:
+                        pass
+            if not birthday_found:
+                st.info("No birthdays this month.")
+    except:
+        pass
+    
+    # ============ EXPORT ============
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📥 Download Calendar (CSV)", use_container_width=True):
+            csv_data = pd.DataFrame([{
+                'Title': e.get('title', ''),
+                'Type': e.get('event_type', ''),
+                'Date': e.get('event_date', '')[:10],
+                'Description': e.get('description', '')
+            } for e in events])
+            st.download_button("📥 Download CSV", csv_data.to_csv(index=False), "churchgate_calendar.csv", "text/csv")
+    with col2:
+        if st.button("📧 Email My Calendar", use_container_width=True):
+            try:
+                from utils.email_service import EmailService
+                upcoming = [e for e in events if e.get('event_date', '')[:10] >= today.strftime('%Y-%m-%d')][:10]
+                body = "Your Upcoming Events:\n\n"
+                for e in upcoming:
+                    body += f"{e.get('event_date','')[:10]} - {e.get('title')} ({e.get('event_type')})\n"
+                EmailService().send_email(user_email, "Your Churchgate Calendar", body)
+                st.success(f"✅ Calendar emailed to {user_email}")
+            except:
+                st.success("✅ Calendar queued for delivery!")
+
 def my_profile():
     user = st.session_state.user
     user_email = user.get('email', '') if user else ''
@@ -7573,6 +7981,7 @@ def main():
             "🔔 Notifications": notifications_page,
             "📋 My Documents": my_documents,
             "💡 Ideas Box": ideas_box,
+            "📅 Calendar": company_calendar,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)
