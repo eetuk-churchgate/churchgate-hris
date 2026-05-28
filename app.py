@@ -159,6 +159,27 @@ st.markdown("""
     }
     .value-card h4 { color: #CC0000; font-size: 0.85rem; margin: 0 0 0.3rem 0; }
     .value-card p { font-size: 0.7rem; color: #666; margin: 0; line-height: 1.3; }
+    
+    /* Mobile Responsive */
+    @media screen and (max-width: 768px) {
+        .churchgate-header h1 { font-size: 1.2rem !important; }
+        .churchgate-header p { font-size: 0.75rem !important; }
+        .metric-card { padding: 0.6rem !important; }
+        .metric-value { font-size: 1.2rem !important; }
+        .metric-label { font-size: 0.65rem !important; }
+        .stButton > button { padding: 0.5rem 0.8rem !important; font-size: 0.8rem !important; width: 100% !important; }
+        .stExpander { font-size: 0.85rem !important; }
+        .greeting-header { padding: 0.8rem 1rem !important; }
+        .greeting-header h1 { font-size: 1.1rem !important; }
+        .mission-banner h2 { font-size: 1rem !important; }
+        .job-hero h1 { font-size: 1.2rem !important; }
+    }
+    
+    @media screen and (max-width: 480px) {
+        .metric-card { padding: 0.4rem !important; }
+        .metric-value { font-size: 1rem !important; }
+        .stColumns { gap: 0.3rem !important; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
