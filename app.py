@@ -7313,7 +7313,7 @@ def company_calendar():
         fy_start = current_year - 1
         fy_end = current_year
     
-    fy_progress_month = current_month - 4 if current_month >= 4 else current_month + 8
+    fy_progress_month = (current_month - 4 if current_month >= 4 else current_month + 8) + 1
     fy_pct = int((fy_progress_month / 12) * 100)
     
     fy_quarters = [
