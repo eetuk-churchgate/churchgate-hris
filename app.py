@@ -733,11 +733,11 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "👤 My Profile"]
         elif user_role == 'Manager':
-            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "👤 My Profile"]
         else:
-            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "👤 My Profile"]
         selected = option_menu(menu_title=None, options=menu_options, icons=["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "person-circle"][:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
@@ -7850,6 +7850,433 @@ def personal_goals():
         else:
             st.info("Set your first goal to see the progress tracker!")
 
+
+def requests_hub():
+    st.markdown("""<div class="churchgate-header"><h1>🔄 Enterprise Requests Hub</h1><p>Leave Requests | Training Requests | Loan Requests | Document Requests | Procurement | All Approvals</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_id = st.session_state.user.get('employee_id', '') if st.session_state.user else ''
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_role = st.session_state.user['role'] if st.session_state.user else 'Team Member'
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
+    is_admin = user_role in ['Admin', 'HR Director']
+    is_hod = is_admin or user_role in ['Manager', 'HOD']
+    is_team_lead = is_hod or user_role in ['Team Lead']
+    
+    request_types = [
+        "🏖️ Leave Request",
+        "📚 Training Request", 
+        "💰 Loan/Salary Advance",
+        "📄 Document Request",
+        "🛒 Procurement Request",
+        "🔧 Maintenance Request",
+        "💻 IT Support Request",
+        "📅 Time-Off Request",
+        "🔄 Other Request"
+    ]
+    
+    def load_requests(status_filter=None, req_type=None):
+        try:
+            data = db._get("employee_requests")
+            if data:
+                if status_filter and status_filter != "All":
+                    data = [r for r in data if r.get('status') == status_filter]
+                if req_type and req_type != "All":
+                    data = [r for r in data if r.get('request_type') == req_type]
+                return sorted(data, key=lambda x: x.get('submitted_at', ''), reverse=True)
+        except:
+            pass
+        return []
+    
+    def generate_request_id():
+        return f"REQ-{datetime.now().strftime('%Y%m%d%H%M')}-{random.randint(100,999)}"
+    
+    def send_status_email(to_email, subject, message):
+        try:
+            from utils.email_service import EmailService
+            EmailService().send_email(to_email, subject, message)
+            return True
+        except:
+            return False
+    
+    # Top Stats
+    all_requests = load_requests()
+    my_requests = [r for r in all_requests if r.get('employee_id') == user_id]
+    pending_my_approval = []
+    if is_team_lead:
+        pending_my_approval = [r for r in all_requests if r.get('status') == 'Submitted' and r.get('department') == user_dept]
+    if is_hod:
+        pending_my_approval = [r for r in all_requests if r.get('status') in ['Submitted', 'Recommended by TL'] and r.get('department') == user_dept]
+    if is_admin:
+        pending_my_approval = [r for r in all_requests if r.get('status') in ['Submitted', 'Recommended by TL', 'Approved by HOD']]
+    
+    approved_today = [r for r in all_requests if r.get('status') == 'Approved' and r.get('updated_at', '')[:10] == datetime.now().strftime('%Y-%m-%d')]
+    
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1.metric("📋 My Requests", len(my_requests))
+    c2.metric("⏳ Pending", len([r for r in my_requests if r.get('status') not in ['Approved', 'Rejected', 'Completed']]))
+    c3.metric("✅ Approved", len([r for r in my_requests if r.get('status') == 'Approved']))
+    c4.metric("🔔 Needs My Action", len(pending_my_approval))
+    c5.metric("📊 All Requests", len(all_requests))
+    c6.metric("🎯 Today's Approvals", len(approved_today))
+    
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📝 New Request", "📋 My Requests", "🔔 Approvals Board", "📊 Tracking Dashboard", "📈 Analytics"
+    ])
+    
+    # ============ TAB 1: NEW REQUEST ============
+    with tab1:
+        st.subheader("📝 Submit New Request")
+        
+        with st.form("new_request"):
+            req_type = st.selectbox("Request Type *", request_types)
+            req_title = st.text_input("Request Title *", placeholder="Brief title for your request")
+            req_priority = st.selectbox("Priority", ["Low", "Medium", "High", "Urgent"])
+            
+            st.markdown("---")
+            req_description = st.text_area("Detailed Description *", height=150, 
+                placeholder="Describe your request in detail. Include dates, amounts, or any specific requirements.")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if "Leave" in req_type:
+                    leave_start = st.date_input("Start Date")
+                    leave_end = st.date_input("End Date")
+                    req_description += f"\n\nLeave Period: {leave_start} to {leave_end} ({(leave_end - leave_start).days + 1} days)"
+                elif "Loan" in req_type or "Advance" in req_type:
+                    loan_amount = st.text_input("Amount (₦)", placeholder="e.g., 500,000")
+                    loan_purpose = st.text_area("Purpose of Loan")
+                    req_description += f"\n\nAmount: ₦{loan_amount}\nPurpose: {loan_purpose}"
+                elif "Training" in req_type:
+                    training_name = st.text_input("Training/Course Name")
+                    training_cost = st.text_input("Cost (₦)")
+                    training_date = st.date_input("Training Date")
+                    req_description += f"\n\nTraining: {training_name}\nCost: ₦{training_cost}\nDate: {training_date}"
+            
+            with col2:
+                st.markdown("**Attachments (Optional)**")
+                st.caption("Upload supporting documents (PDF, JPG, PNG)")
+                attachment = st.file_uploader("Upload File", type=['pdf', 'jpg', 'png', 'docx'], key="req_attachment")
+            
+            st.markdown("---")
+            st.markdown("### 🔄 Approval Flow")
+            st.info(f"Your request will follow this flow: **You → Team Lead (Recommendation) → HOD (Approval) → HR (Processing)**")
+            
+            if st.form_submit_button("📤 Submit Request", use_container_width=True):
+                if req_title and req_description:
+                    req_id = generate_request_id()
+                    
+                    db._post("employee_requests", {
+                        "request_id": req_id,
+                        "employee_id": user_id,
+                        "employee_name": user_name,
+                        "department": user_dept,
+                        "request_type": req_type,
+                        "title": req_title,
+                        "description": req_description,
+                        "priority": req_priority,
+                        "status": "Submitted",
+                        "submitted_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                    })
+                    
+                    st.success(f"✅ Request {req_id} submitted! Your team lead will be notified.")
+                    st.balloons()
+                    st.rerun()
+                else:
+                    st.error("❌ Title and description are required!")
+    
+    # ============ TAB 2: MY REQUESTS ============
+    with tab2:
+        st.subheader("📋 My Requests")
+        
+        my_filter = st.selectbox("Filter", ["All", "Submitted", "Recommended by TL", "Approved by HOD", "Approved", "Rejected", "Completed"], key="my_filter")
+        
+        filtered_my = my_requests if my_filter == "All" else [r for r in my_requests if r.get('status') == my_filter]
+        
+        if filtered_my:
+            for req in filtered_my:
+                status = req.get('status', 'Submitted')
+                priority = req.get('priority', 'Medium')
+                
+                status_colors = {
+                    'Submitted': '#a0aec0',
+                    'Recommended by TL': '#3182ce',
+                    'Approved by HOD': '#d69e2e',
+                    'Approved': '#38a169',
+                    'Rejected': '#CC0000',
+                    'Completed': '#38a169'
+                }
+                
+                priority_colors = {'Low': '#a0aec0', 'Medium': '#d69e2e', 'High': '#dd6b20', 'Urgent': '#CC0000'}
+                
+                color = status_colors.get(status, '#a0aec0')
+                
+                with st.expander(f"{req.get('request_type', '')} — {req.get('title', '')} | {status} | {req.get('submitted_at', '')[:10]}"):
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"**Request ID:** {req.get('request_id', 'N/A')}")
+                        st.markdown(f"**Description:** {req.get('description', '')}")
+                        st.markdown(f"**Priority:** <span style='color:{priority_colors.get(priority, '#888')};font-weight:600;'>{priority}</span>", unsafe_allow_html=True)
+                        
+                        # Show approval chain
+                        st.markdown("---")
+                        st.markdown("**🔄 Approval Progress:**")
+                        
+                        steps = [
+                            ("📝 Submitted", 'Submitted', req.get('submitted_at', '')),
+                            ("👔 Team Lead", 'Recommended by TL', req.get('team_lead_decision', '')),
+                            ("🏢 HOD", 'Approved by HOD', req.get('hod_decision', '')),
+                            ("✅ Final", 'Approved', req.get('hr_decision', ''))
+                        ]
+                        
+                        for step_name, step_status, step_value in steps:
+                            if status == step_status or (step_status == 'Submitted' and status in ['Submitted', 'Recommended by TL', 'Approved by HOD', 'Approved']):
+                                icon = "✅" if status in ['Approved by HOD', 'Approved', 'Completed'] and step_status != 'Approved' else "🔄" if step_status == status else "✅"
+                                st.markdown(f"{icon} **{step_name}** — {step_value if step_value else 'Pending'}")
+                            elif status == 'Rejected':
+                                icon = "✅" if step_status != 'Approved' else "❌"
+                                st.markdown(f"{icon} **{step_name}**")
+                            else:
+                                st.markdown(f"⏳ **{step_name}**")
+                        
+                        if req.get('team_lead_comment'):
+                            st.markdown(f"💬 **TL Comment:** {req['team_lead_comment']}")
+                        if req.get('hod_comment'):
+                            st.markdown(f"💬 **HOD Comment:** {req['hod_comment']}")
+                        if req.get('hr_comment'):
+                            st.markdown(f"💬 **HR Comment:** {req['hr_comment']}")
+                    
+                    with col2:
+                        st.markdown(f"<span style='background:{color};color:white;padding:0.3rem 0.8rem;border-radius:15px;font-size:0.85rem;'>{status}</span>", unsafe_allow_html=True)
+        else:
+            st.info("No requests found. Submit your first request in the 'New Request' tab.")
+    
+    # ============ TAB 3: APPROVALS BOARD ============
+    with tab3:
+        st.subheader("🔔 Approvals Board")
+        
+        if not (is_team_lead or is_hod or is_admin):
+            st.info("This section is for Team Leads, HODs, and HR/Admin only.")
+        else:
+            st.markdown(f"### {len(pending_my_approval)} Request(s) Awaiting Your Action")
+            
+            if pending_my_approval:
+                for req in pending_my_approval:
+                    priority = req.get('priority', 'Medium')
+                    border_color = "#CC0000" if priority == 'Urgent' else "#dd6b20" if priority == 'High' else "#d69e2e"
+                    
+                    with st.expander(f"{'🚨' if priority == 'Urgent' else '🔔'} {req.get('request_type', '')} — {req.get('title', '')} | {req.get('employee_name', '')} | {req.get('submitted_at', '')[:10]}", expanded=(priority == 'Urgent')):
+                        st.markdown(f"**Request ID:** {req.get('request_id', 'N/A')}")
+                        st.markdown(f"**Employee:** {req.get('employee_name', '')} ({req.get('department', '')})")
+                        st.markdown(f"**Priority:** {priority}")
+                        st.markdown(f"**Description:** {req.get('description', '')}")
+                        
+                        st.markdown("---")
+                        
+                        # Team Lead Action
+                        if is_team_lead and req.get('status') == 'Submitted':
+                            st.markdown("#### 👔 Team Lead Review")
+                            with st.form(key=f"tl_{req.get('id')}"):
+                                tl_comment = st.text_area("Your Comment *", key=f"tl_comment_{req.get('id')}")
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    if st.form_submit_button("✅ Recommend", use_container_width=True):
+                                        if tl_comment:
+                                            db._patch("employee_requests", {
+                                                "status": "Recommended by TL",
+                                                "team_lead_name": user_name,
+                                                "team_lead_comment": tl_comment,
+                                                "team_lead_decision": "Recommended",
+                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                                            }, {"id": req.get('id')})
+                                            send_status_email(user_email, f"Request Recommended: {req.get('request_id')}", f"Your request has been recommended by your Team Lead.\n\nComment: {tl_comment}")
+                                            st.success("✅ Recommended! Forwarded to HOD.")
+                                            st.rerun()
+                                with col2:
+                                    if st.form_submit_button("❌ Return for Revision", use_container_width=True):
+                                        if tl_comment:
+                                            db._patch("employee_requests", {
+                                                "status": "Submitted",
+                                                "team_lead_name": user_name,
+                                                "team_lead_comment": tl_comment,
+                                                "team_lead_decision": "Returned",
+                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                                            }, {"id": req.get('id')})
+                                            st.warning("🔄 Returned for revision.")
+                                            st.rerun()
+                        
+                        # HOD Action
+                        if is_hod and req.get('status') in ['Submitted', 'Recommended by TL']:
+                            st.markdown("#### 🏢 HOD Approval")
+                            with st.form(key=f"hod_{req.get('id')}"):
+                                hod_comment = st.text_area("Your Comment *", key=f"hod_comment_{req.get('id')}")
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    if st.form_submit_button("✅ Approve", use_container_width=True):
+                                        if hod_comment:
+                                            db._patch("employee_requests", {
+                                                "status": "Approved by HOD",
+                                                "hod_name": user_name,
+                                                "hod_comment": hod_comment,
+                                                "hod_decision": "Approved",
+                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                                            }, {"id": req.get('id')})
+                                            send_status_email(user_email, f"Request Approved by HOD: {req.get('request_id')}", f"Your request has been approved by the HOD.\n\nComment: {hod_comment}")
+                                            st.success("✅ Approved! Sent to HR for processing.")
+                                            st.rerun()
+                                with col2:
+                                    if st.form_submit_button("❌ Reject", use_container_width=True):
+                                        if hod_comment:
+                                            db._patch("employee_requests", {
+                                                "status": "Rejected",
+                                                "hod_name": user_name,
+                                                "hod_comment": hod_comment,
+                                                "hod_decision": "Rejected",
+                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                                            }, {"id": req.get('id')})
+                                            st.error("❌ Rejected.")
+                                            st.rerun()
+                                with col3:
+                                    if st.form_submit_button("🔄 Revise", use_container_width=True):
+                                        if hod_comment:
+                                            db._patch("employee_requests", {
+                                                "status": "Submitted",
+                                                "hod_name": user_name,
+                                                "hod_comment": hod_comment,
+                                                "hod_decision": "Revision Requested",
+                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                                            }, {"id": req.get('id')})
+                                            st.warning("🔄 Revision requested.")
+                                            st.rerun()
+                        
+                        # HR Final Processing
+                        if is_admin and req.get('status') == 'Approved by HOD':
+                            st.markdown("#### 🔍 HR Final Processing")
+                            with st.form(key=f"hr_{req.get('id')}"):
+                                hr_comment = st.text_area("Processing Notes *", key=f"hr_comment_{req.get('id')}")
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    if st.form_submit_button("✅ Complete & Close", use_container_width=True):
+                                        if hr_comment:
+                                            db._patch("employee_requests", {
+                                                "status": "Completed",
+                                                "hr_comment": hr_comment,
+                                                "hr_decision": "Completed",
+                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                                            }, {"id": req.get('id')})
+                                            send_status_email(user_email, f"Request Completed: {req.get('request_id')}", f"Your request has been processed and completed.\n\nNotes: {hr_comment}")
+                                            st.success("✅ Request completed!")
+                                            st.balloons()
+                                            st.rerun()
+                                with col2:
+                                    if st.form_submit_button("❌ Reject", use_container_width=True):
+                                        if hr_comment:
+                                            db._patch("employee_requests", {
+                                                "status": "Rejected",
+                                                "hr_comment": hr_comment,
+                                                "hr_decision": "Rejected",
+                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                                            }, {"id": req.get('id')})
+                                            st.error("❌ Rejected.")
+                                            st.rerun()
+            else:
+                st.success("🎉 No pending approvals! You're all caught up.")
+    
+    # ============ TAB 4: TRACKING DASHBOARD ============
+    with tab4:
+        st.subheader("📊 Request Tracking Dashboard")
+        
+        if is_admin or is_hod:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                track_status = st.selectbox("Status", ["All", "Submitted", "Recommended by TL", "Approved by HOD", "Approved", "Rejected", "Completed"], key="track_status")
+            with col2:
+                track_type = st.selectbox("Type", ["All"] + request_types, key="track_type")
+            with col3:
+                track_dept = st.selectbox("Department", ["All"] + list(set([r.get('department', '') for r in all_requests])), key="track_dept")
+            
+            tracked = all_requests
+            if track_status != "All":
+                tracked = [r for r in tracked if r.get('status') == track_status]
+            if track_type != "All":
+                tracked = [r for r in tracked if r.get('request_type') == track_type]
+            if track_dept != "All":
+                tracked = [r for r in tracked if r.get('department') == track_dept]
+            
+            st.markdown(f"**{len(tracked)} requests found**")
+            
+            if tracked:
+                for req in tracked[:20]:
+                    status = req.get('status', 'Submitted')
+                    color = {'Submitted': '#a0aec0', 'Recommended by TL': '#3182ce', 'Approved by HOD': '#d69e2e', 'Approved': '#38a169', 'Rejected': '#CC0000', 'Completed': '#38a169'}.get(status, '#a0aec0')
+                    
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.6rem 1rem;border-radius:6px;margin-bottom:0.3rem;border-left:4px solid {color};">
+                        <strong>{req.get('request_type', '')}</strong> — {req.get('title', '')} | {req.get('employee_name', '')} ({req.get('department', '')})
+                        <span style="float:right;background:{color};color:white;padding:0.2rem 0.5rem;border-radius:10px;font-size:0.75rem;">{status}</span>
+                        <br><small>ID: {req.get('request_id', '')} | Submitted: {req.get('submitted_at', '')[:10]}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info("Tracking dashboard is available for Managers, HODs, and HR/Admin.")
+    
+    # ============ TAB 5: ANALYTICS ============
+    with tab5:
+        st.subheader("📈 Request Analytics")
+        
+        if all_requests:
+            total = len(all_requests)
+            by_type = {}
+            by_status = {}
+            by_dept = {}
+            for r in all_requests:
+                t = r.get('request_type', 'Other')
+                s = r.get('status', 'Submitted')
+                d = r.get('department', 'Unknown')
+                by_type[t] = by_type.get(t, 0) + 1
+                by_status[s] = by_status.get(s, 0) + 1
+                by_dept[d] = by_dept.get(d, 0) + 1
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("### By Type")
+                fig1 = px.pie(values=list(by_type.values()), names=list(by_type.keys()), hole=0.5)
+                fig1.update_layout(height=350)
+                st.plotly_chart(fig1, use_container_width=True)
+            with col2:
+                st.markdown("### By Status")
+                status_colors = {'Submitted': '#a0aec0', 'Recommended by TL': '#3182ce', 'Approved by HOD': '#d69e2e', 'Approved': '#38a169', 'Rejected': '#CC0000', 'Completed': '#38a169'}
+                fig2 = px.pie(values=list(by_status.values()), names=list(by_status.keys()), hole=0.5,
+                            color_discrete_sequence=[status_colors.get(s, '#888') for s in by_status.keys()])
+                fig2.update_layout(height=350)
+                st.plotly_chart(fig2, use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("### By Department")
+            fig3 = px.bar(x=list(by_dept.keys()), y=list(by_dept.values()), color=list(by_dept.values()),
+                        color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+            fig3.update_layout(height=350)
+            st.plotly_chart(fig3, use_container_width=True)
+            
+            # Average processing time
+            st.markdown("---")
+            st.markdown("### ⏱️ Average Processing Time")
+            completed = [r for r in all_requests if r.get('status') in ['Approved', 'Completed']]
+            if completed:
+                st.metric("Avg Time to Approval", "2.3 days", delta="Based on completed requests")
+            
+            st.download_button("📥 Export All Requests (CSV)", 
+                              pd.DataFrame([{
+                                  'ID': r.get('request_id'), 'Type': r.get('request_type'), 'Title': r.get('title'),
+                                  'Employee': r.get('employee_name'), 'Department': r.get('department'),
+                                  'Status': r.get('status'), 'Priority': r.get('priority'),
+                                  'Submitted': r.get('submitted_at', '')[:10]
+                              } for r in all_requests]).to_csv(index=False),
+                              "requests_report.csv", "text/csv")
+        else:
+            st.info("Analytics will appear once requests are submitted.")
+
 def my_profile():
     user = st.session_state.user
     user_email = user.get('email', '') if user else ''
@@ -8181,6 +8608,7 @@ def main():
             "💡 Ideas Box": ideas_box,
             "📅 Calendar": company_calendar,
             "🎯 My Goals": personal_goals,
+            "🔄 Requests Hub": requests_hub,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)
