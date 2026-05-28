@@ -733,11 +733,11 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "👤 My Profile"]
         elif user_role == 'Manager':
-            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "👤 My Profile"]
         else:
-            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "👤 My Profile"]
         selected = option_menu(menu_title=None, options=menu_options, icons=["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "person-circle"][:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
@@ -8277,6 +8277,250 @@ def requests_hub():
         else:
             st.info("Analytics will appear once requests are submitted.")
 
+
+def employee_directory_readonly():
+    st.markdown("""<div class="churchgate-header"><h1>🌐 Employee Directory</h1><p>Search Colleagues | Contact Info | Org Structure</p></div>""", unsafe_allow_html=True)
+    
+    try:
+        emp_df = db.get_all_employees()
+        if not emp_df.empty:
+            search = st.text_input("🔍 Search by name, department, or position", placeholder="Type to find colleagues...")
+            
+            filtered = emp_df.copy()
+            if search:
+                s = search.lower()
+                filtered = filtered[
+                    filtered['first_name'].str.lower().str.contains(s, na=False) |
+                    filtered['last_name'].str.lower().str.contains(s, na=False) |
+                    filtered['department'].str.lower().str.contains(s, na=False) |
+                    filtered['position'].str.lower().str.contains(s, na=False)
+                ]
+            
+            st.markdown(f"**{len(filtered)} colleagues found**")
+            
+            # Department filter chips
+            depts = sorted(emp_df['department'].dropna().unique())
+            selected_dept = st.selectbox("Filter by Department", ["All Departments"] + list(depts))
+            if selected_dept != "All Departments":
+                filtered = filtered[filtered['department'] == selected_dept]
+            
+            cols = st.columns(3)
+            for i, (_, emp) in enumerate(filtered.iterrows()):
+                initials = (emp['first_name'][:1] + emp['last_name'][:1]).upper()
+                with cols[i % 3]:
+                    st.markdown(f"""
+                    <div style="background:white;padding:1rem;border-radius:8px;margin-bottom:0.8rem;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.05);border-top:3px solid #CC0000;">
+                        <div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;margin:0 auto;font-size:1.1rem;">{initials}</div>
+                        <strong style="display:block;margin-top:0.5rem;">{emp['first_name']} {emp['last_name']}</strong>
+                        <small style="color:#666;">{emp.get('position', '')}</small><br>
+                        <small style="color:#888;">🏢 {emp.get('department', '')}</small><br>
+                        <small style="color:#888;">📧 {emp.get('email', 'N/A')}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info("Employee directory loading...")
+    except:
+        st.info("Directory temporarily unavailable.")
+
+
+def knowledge_base():
+    st.markdown("""<div class="churchgate-header"><h1>📚 Knowledge Base</h1><p>Policies | SOPs | How-To Guides | Training Materials | Company Wiki</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
+    
+    def load_articles():
+        try:
+            data = db._get("knowledge_base")
+            return data if data else []
+        except:
+            return []
+    
+    # Seed default articles if empty
+    articles = load_articles()
+    if not articles:
+        defaults = [
+            ("HR Policy Manual", "Policies", "The complete Human Resource Policy Manual covering employment terms, leave, benefits, discipline, and more."),
+            ("HSE Manual", "Policies", "Health, Safety & Environment Manual covering workplace safety, electrical safety, fire procedures, and more."),
+            ("How to Set Your KPIs", "How-To", "Step-by-step guide on setting up your KPIs in the Performance & OKRs module."),
+            ("Leave Application Process", "How-To", "How to apply for annual leave, sick leave, maternity leave, and other leave types."),
+            ("IT & Email Setup Guide", "How-To", "Setting up your Churchgate email, accessing shared drives, and IT resources."),
+            ("Expense Reimbursement Process", "How-To", "How to submit expense claims and get reimbursed."),
+            ("Onboarding Checklist", "HR", "New employee onboarding checklist covering documents, IT setup, and orientation."),
+            ("Churchgate Values & Culture", "Company", "Our purpose, vision, mission, and corporate shared values."),
+        ]
+        for title, cat, content in defaults:
+            db._post("knowledge_base", {"title": title, "category": cat, "content": content, "author": "System"})
+        articles = load_articles()
+    
+    tab1, tab2 = st.tabs(["📖 Browse Articles", "➕ Add Article"])
+    
+    with tab1:
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            kb_search = st.text_input("🔍 Search knowledge base", placeholder="Search articles...")
+        with col2:
+            kb_cat = st.selectbox("Category", ["All"] + list(set([a.get('category', '') for a in articles])))
+        
+        filtered_articles = articles
+        if kb_search:
+            s = kb_search.lower()
+            filtered_articles = [a for a in filtered_articles if s in a.get('title', '').lower() or s in a.get('content', '').lower()]
+        if kb_cat != "All":
+            filtered_articles = [a for a in filtered_articles if a.get('category') == kb_cat]
+        
+        st.markdown(f"**{len(filtered_articles)} articles**")
+        
+        for article in filtered_articles:
+            with st.expander(f"📄 {article.get('title', 'Untitled')} — {article.get('category', '')}"):
+                st.markdown(article.get('content', ''))
+                st.caption(f"By {article.get('author', 'System')} | Updated: {article.get('updated_at', '')[:10]} | Views: {article.get('views', 0)}")
+    
+    with tab2:
+        if is_admin:
+            st.subheader("➕ Add New Article")
+            with st.form("add_article"):
+                art_title = st.text_input("Article Title *")
+                art_category = st.selectbox("Category", ["Policies", "How-To", "HR", "IT", "Finance", "Operations", "Company", "Other"])
+                art_content = st.text_area("Content *", height=200)
+                if st.form_submit_button("📝 Publish Article", use_container_width=True):
+                    if art_title and art_content:
+                        db._post("knowledge_base", {"title": art_title, "category": art_category, "content": art_content, "author": user_name})
+                        st.success("✅ Article published!")
+                        st.rerun()
+        else:
+            st.info("Contact HR to add or update knowledge base articles.")
+
+
+def wellness_perks():
+    st.markdown("""<div class="churchgate-header"><h1>🎉 Wellness & Perks Corner</h1><p>Wellness Tips | Mental Health | Employee Discounts | Lifestyle Benefits</p></div>""", unsafe_allow_html=True)
+    
+    import random
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["💪 Wellness Tips", "🧠 Mental Health", "🎁 Perks & Discounts", "🏆 Wellness Challenge"])
+    
+    with tab1:
+        st.subheader("💪 Daily Wellness Tips")
+        
+        tips = [
+            ("🧘 Stretch Break", "Take a 5-minute stretch break every hour. It improves circulation and reduces muscle tension."),
+            ("💧 Stay Hydrated", "Aim for 8 glasses of water today. Dehydration causes fatigue and reduces focus."),
+            ("🚶 Walk & Talk", "Take walking meetings when possible. Fresh air boosts creativity by 60%."),
+            ("👁️ 20-20-20 Rule", "Every 20 minutes, look at something 20 feet away for 20 seconds to reduce eye strain."),
+            ("🪑 Posture Check", "Sit up straight! Keep your feet flat, back supported, and screen at eye level."),
+            ("🍎 Healthy Snacking", "Swap processed snacks for fruits, nuts, or yogurt. Better energy, no crash."),
+            ("😴 Sleep Matters", "Aim for 7-8 hours of quality sleep. Good sleep improves decision-making and mood."),
+            ("🤝 Social Connection", "Take 5 minutes to chat with a colleague. Social connections reduce stress."),
+            ("📵 Digital Detox", "Take 30 minutes without screens during lunch. Your mind needs real breaks."),
+            ("🏃 Quick Exercise", "Even 10 minutes of brisk walking can boost your mood and energy levels."),
+        ]
+        
+        tip = random.choice(tips)
+        st.markdown(f"""
+        <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:4px solid #38a169;">
+            <h2 style="font-size:3rem;">{tip[0].split()[0]}</h2>
+            <h3>{tip[0]}</h3>
+            <p style="color:#666;">{tip[1]}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔄 New Tip", use_container_width=True):
+            st.rerun()
+        
+        st.markdown("---")
+        st.markdown("### 📋 All Wellness Tips")
+        for icon_title, desc in tips:
+            with st.expander(f"{icon_title}"):
+                st.markdown(desc)
+    
+    with tab2:
+        st.subheader("🧠 Mental Health & Wellbeing")
+        st.info("Your mental health matters. Churchgate is committed to supporting your wellbeing.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("""
+            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #805ad5;">
+                <h4>🧘 Mindfulness</h4>
+                <p style="color:#666;font-size:0.9rem;">Practice deep breathing for 2 minutes between meetings. Inhale for 4 counts, hold for 4, exhale for 4.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            st.markdown("""
+            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #3182ce;">
+                <h4>💬 Talk to Someone</h4>
+                <p style="color:#666;font-size:0.9rem;">HR offers confidential counseling. Reach out to Adebayo Sakote or Ibeabuchi Chukwunonye anytime.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown("""
+            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #d69e2e;">
+                <h4>🏖️ Take Your Leave</h4>
+                <p style="color:#666;font-size:0.9rem;">Rest is productive. Use your annual leave days — they're part of your compensation.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            st.markdown("""
+            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #38a169;">
+                <h4>🤝 Peer Support</h4>
+                <p style="color:#666;font-size:0.9rem;">Connect with colleagues through our Interest Groups. Social connection is a proven stress reducer.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.markdown("### 📞 Mental Health Resources")
+        st.markdown("- **HR Confidential Line:** hr@churchgate.com")
+        st.markdown("- **Employee Assistance Program:** Available 24/7")
+        st.markdown("- **Lagos University Teaching Hospital (LUTH):** +234-1-0000000")
+    
+    with tab3:
+        st.subheader("🎁 Employee Perks & Discounts")
+        
+        perks = [
+            ("🏥", "Comprehensive HMO", "Full medical coverage for you and your family"),
+            ("💰", "Pension Plan", "8% employee contribution + 10% employer contribution"),
+            ("📚", "Learning Stipend", "Annual training budget for professional development"),
+            ("🏖️", "Generous Leave", "Up to 30 working days annual leave based on grade"),
+            ("🎉", "Birthday Gift", "Special recognition on your birthday"),
+            ("⭐", "Long Service Award", "Recognition every 5 years with gifts and certificates"),
+            ("🚗", "Transport Allowance", "Monthly transport support for eligible roles"),
+            ("🍽️", "Lunch Subsidy", "Meal allowance included in monthly salary"),
+        ]
+        
+        cols = st.columns(2)
+        for i, (icon, title, desc) in enumerate(perks):
+            with cols[i % 2]:
+                st.markdown(f"""
+                <div style="background:white;padding:1rem;border-radius:8px;margin-bottom:0.6rem;border-left:4px solid #CC0000;">
+                    <h3>{icon} {title}</h3>
+                    <p style="color:#666;font-size:0.9rem;">{desc}</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.markdown("### 🛍️ Partner Discounts")
+        st.info("Coming soon: Exclusive discounts for Churchgate employees at partner restaurants, gyms, and stores.")
+    
+    with tab4:
+        st.subheader("🏆 Monthly Wellness Challenge")
+        st.info("Join our monthly wellness challenges! Earn points and win prizes.")
+        
+        challenges = [
+            ("🚶 Step Challenge", "Walk 10,000 steps daily for 30 days", "🏅 Gold: 25+ days | 🥈 Silver: 20+ days | 🥉 Bronze: 15+ days"),
+            ("💧 Hydration Challenge", "Drink 8 glasses of water daily for 30 days", "Track with water bottle markings"),
+            ("🧘 Meditation Challenge", "5 minutes of daily meditation for 21 days", "Use any meditation app of your choice"),
+            ("📵 Digital Detox", "No screens during lunch for 14 days", "Read a book, take a walk, or chat with colleagues"),
+        ]
+        
+        for title, desc, reward in challenges:
+            with st.expander(f"{title}"):
+                st.markdown(f"**Challenge:** {desc}")
+                st.markdown(f"**Rewards:** {reward}")
+                if st.button(f"✅ Join Challenge", key=f"challenge_{title[:10]}"):
+                    st.success(f"✅ You've joined the {title}!")
+        
+        st.markdown("---")
+        st.markdown("### 🏆 Wellness Leaderboard")
+        st.info("Leaderboard coming soon! Complete challenges to earn points and compete with colleagues.")
+
 def my_profile():
     user = st.session_state.user
     user_email = user.get('email', '') if user else ''
@@ -8609,6 +8853,9 @@ def main():
             "📅 Calendar": company_calendar,
             "🎯 My Goals": personal_goals,
             "🔄 Requests Hub": requests_hub,
+            "🌐 Directory": employee_directory_readonly,
+            "📚 Knowledge Base": knowledge_base,
+            "🎉 Wellness & Perks": wellness_perks,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)
