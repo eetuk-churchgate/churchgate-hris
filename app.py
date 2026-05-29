@@ -720,7 +720,9 @@ def sidebar_navigation():
                 pass
             
             initials = generate_initials(user['name'])
+            st.write(f"DEBUG: user id = {user.get('id')}")
             db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
+            st.write(f"DEBUG: db_pic found = {db_pic is not None}")
             
             if db_pic is not None:
                 import base64
@@ -8700,7 +8702,6 @@ def my_profile():
                     uid = user_record[0].get('id')
                     if uid:
                         db.update_profile_picture(int(uid), image_bytes)
-                        st.write(f"DEBUG: Save result = True")
                         st.session_state['profile_pic'] = image_bytes
                         st.session_state['pic_processed'] = False
                         st.success("✅ Profile picture updated! Refresh the page to see your new photo.")
