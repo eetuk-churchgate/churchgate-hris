@@ -63,6 +63,8 @@ st.markdown(f"""
     .footer h3 {{ color: #CC0000; font-weight: 700; }}
     .form-container {{ max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }}
     .success-box {{ background: linear-gradient(135deg, #f0f8f0, #e8f5e9); padding: 2rem; border-radius: 12px; margin-top: 1rem; border: 2px solid #38a169; text-align: center; }}
+    [data-testid="stSidebarNav"] {display: none !important;}
+    section[data-testid="stSidebar"] {display: none !important;}
     .jd-content {{ line-height: 2; font-size: 0.95rem; color: #444; }}
     .jd-content strong {{ color: #1a1a1a; font-size: 1.1rem; }}
 </style>
