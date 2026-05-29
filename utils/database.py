@@ -83,8 +83,12 @@ class DatabaseManager:
             return None
     
     def create_user(self, employee_id, name, email, password, role, department, position):
-        import bcrypt
-        hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        try:
+            import bcrypt
+            hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        except:
+            import hashlib
+            hashed_pw = hashlib.sha256(password.encode()).hexdigest()
         self._post("users", {"employee_id": employee_id, "name": name, "email": email, "password": hashed_pw, "role": role, "department": department, "position": position, "is_active": True})
         return True, "Created"
     
