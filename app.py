@@ -8694,21 +8694,22 @@ def my_profile():
         
           uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'], key="profile_pic_uploader")
         if uploaded_pic is not None:
-            image_bytes = uploaded_pic.getvalue()
-            user_record = db._get("users", {"email": user_email})
-            if user_record and len(user_record) > 0:
-                uid = user_record[0].get('id')
-                if uid:
-                    db.update_profile_picture(int(uid), image_bytes)
-                    st.session_state['profile_pic'] = image_bytes
-                    st.session_state['pic_processed'] = False
-                    st.success("✅ Profile picture updated!")
-                    time.sleep(1)
-                    st.rerun()
+            try:
+                image_bytes = uploaded_pic.getvalue()
+                user_record = db._get("users", {"email": user_email})
+                if user_record and len(user_record) > 0:
+                    uid = user_record[0].get('id')
+                    if uid:
+                        db.update_profile_picture(int(uid), image_bytes)
+                        st.session_state['profile_pic'] = image_bytes
+                        st.session_state['pic_processed'] = False
+                        st.success("✅ Profile picture updated!")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.warning("User ID not found.")
                 else:
-                    st.warning("User ID not found. Try logging out and back in.")
-            else:
-                st.warning("User record not found. Please contact HR.")
+                    st.warning("User record not found.")
             except Exception as e:
                 st.warning(f"Upload failed: {str(e)}")
         
