@@ -100,7 +100,6 @@ st.markdown("""
     .stImage { display: flex; justify-content: center; }
     .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
     footer {display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; overflow: hidden !important;}
-    header[data-testid="stHeader"] {display: none !important;}
     .stDeployButton {display: none !important;}
     .stApp footer {display: none !important;}
     div[data-testid="stToolbar"] {display: none !important;}
