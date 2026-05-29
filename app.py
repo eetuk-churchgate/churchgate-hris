@@ -182,18 +182,28 @@ st.markdown("""
     /* Sidebar toggle visibility */
     [data-testid="collapsedControl"] {
         position: fixed !important;
-        top: 10px !important;
-        left: 10px !important;
-        z-index: 999 !important;
+        top: 15px !important;
+        left: 15px !important;
+        z-index: 9999 !important;
         background: #CC0000 !important;
         color: white !important;
         border-radius: 50% !important;
-        width: 35px !important;
-        height: 35px !important;
-        opacity: 0.9 !important;
+        width: 40px !important;
+        height: 40px !important;
+        opacity: 0.85 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     [data-testid="collapsedControl"]:hover {
         opacity: 1 !important;
+        transform: scale(1.1) !important;
+    }
+    button[kind="header"] {
+        background: #CC0000 !important;
+        color: white !important;
+        border-radius: 50% !important;
     }
 </style>
 """, unsafe_allow_html=True)
