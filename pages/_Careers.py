@@ -64,8 +64,8 @@ st.markdown(f"""
     .jd-content {{ line-height: 2; font-size: 0.95rem; color: #444; }}
     .jd-content strong {{ color: #1a1a1a; font-size: 1.1rem; }}
     .success-box {{ background: linear-gradient(135deg, #f0f8f0, #e8f5e9); padding: 2rem; border-radius: 12px; margin-top: 1rem; border: 2px solid #38a169; text-align: center; }}
-    [data-testid="stSidebarNav"] {display: none !important;}
-    section[data-testid="stSidebar"] {display: none !important;}
+    div[data-testid="stSidebarNav"] {{display: none !important;}}
+    div[data-testid="stSidebar"] {{display: none !important;}}
 </style>
 """, unsafe_allow_html=True)
 
