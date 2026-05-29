@@ -8691,23 +8691,20 @@ def my_profile():
             </div>
             """, unsafe_allow_html=True)
         
-        if st.button("🔄 Reset Photo Upload"):
-            st.session_state['pic_processed'] = False
-            st.rerun()
         
-        uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'], key="profile_pic_uploader")
+         uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'], key="profile_pic_uploader")
         if uploaded_pic is not None:
-            try:
-                image_bytes = uploaded_pic.getvalue()
-                user_record = db._get("users", {"email": user_email})
-                if user_record and len(user_record) > 0:
-                    uid = user_record[0].get('id')
-                    if uid:
-                        db.update_profile_picture(int(uid), image_bytes)
-                        st.session_state['profile_pic'] = image_bytes
-                        st.session_state['pic_processed'] = False
-                        st.success("✅ Profile picture updated! Refresh to see changes.")
-                        st.rerun()
+            image_bytes = uploaded_pic.getvalue()
+            user_record = db._get("users", {"email": user_email})
+            if user_record and len(user_record) > 0:
+                uid = user_record[0].get('id')
+                if uid:
+                    db.update_profile_picture(int(uid), image_bytes)
+                    st.session_state['profile_pic'] = image_bytes
+                    st.session_state['pic_processed'] = False
+                    st.success("✅ Profile picture updated!")
+                    time.sleep(1)
+                    st.rerun()
                     else:
                         st.warning("User ID not found. Try logging out and back in.")
                 else:
