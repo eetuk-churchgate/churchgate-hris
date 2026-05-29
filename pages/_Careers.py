@@ -78,10 +78,13 @@ if selected_job:
     try:
         all_reqs = db.get_all_job_requisitions()
         for r in all_reqs:
-            job_ref = f"JOB-{r.get('req_id', '')[-6:]}"
-            if job_ref == selected_job:
-                job_details = r
-                break
+            if r.get('status') == 'Approved - Live':
+                req_id = r.get('req_id', '')
+                # Match by req_id OR old JOB format
+                job_ref = f"JOB-{req_id[-6:]}" if len(req_id) >= 6 else req_id
+                if req_id == selected_job or job_ref == selected_job or f"JOB-{req_id}" == selected_job:
+                    job_details = r
+                    break
     except:
         pass
     
