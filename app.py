@@ -8702,9 +8702,7 @@ def my_profile():
                         db.update_profile_picture(int(uid), image_bytes)
                         st.session_state['profile_pic'] = image_bytes
                         st.session_state['pic_processed'] = False
-                        st.success("✅ Profile picture updated!")
-                        time.sleep(1)
-                        st.rerun()
+                        st.success("✅ Profile picture updated! Refresh the page to see your new photo.")
             except Exception as e:
                 st.warning(f"Upload failed: {str(e)}")
         
