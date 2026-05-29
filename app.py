@@ -3682,6 +3682,11 @@ def recruitment_hub():
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     is_manager = is_admin or user_role in ['Manager', 'HOD']
     
+    try:
+        employees_df = db.get_all_employees()
+    except:
+        employees_df = pd.DataFrame()
+    
     STREAMLIT_URL = "https://churchgate-hris.streamlit.app"
     
     # CHANGE 1: Load from database
