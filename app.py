@@ -99,14 +99,6 @@ st.markdown("""
     .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .stImage { display: flex; justify-content: center; }
     .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
-    
-    .stDeployButton {display: none !important;}
-    .stApp footer {display: none !important;}
-    div[data-testid="stToolbar"] {display: none !important;}
-    [data-testid="stFooter"] {display: none !important;}
-    .css-1jc7ptx {display: none !important;}
-    a[href*="streamlit"] {display: none !important;}
-    [data-testid="stFooter"] a {color: #888 !important; font-size: 10px !important;}
 .greeting-header {
         background: #d5d5d5;
         padding: 1rem 2rem;
@@ -157,54 +149,6 @@ st.markdown("""
     }
     .value-card h4 { color: #CC0000; font-size: 0.85rem; margin: 0 0 0.3rem 0; }
     .value-card p { font-size: 0.7rem; color: #666; margin: 0; line-height: 1.3; }
-    
-    /* Mobile Responsive */
-    @media screen and (max-width: 768px) {
-        .churchgate-header h1 { font-size: 1.2rem !important; }
-        .churchgate-header p { font-size: 0.75rem !important; }
-        .metric-card { padding: 0.6rem !important; }
-        .metric-value { font-size: 1.2rem !important; }
-        .metric-label { font-size: 0.65rem !important; }
-        .stButton > button { padding: 0.5rem 0.8rem !important; font-size: 0.8rem !important; width: 100% !important; }
-        .stExpander { font-size: 0.85rem !important; }
-        .greeting-header { padding: 0.8rem 1rem !important; }
-        .greeting-header h1 { font-size: 1.1rem !important; }
-        .mission-banner h2 { font-size: 1rem !important; }
-        .job-hero h1 { font-size: 1.2rem !important; }
-    }
-    
-    @media screen and (max-width: 480px) {
-        .metric-card { padding: 0.4rem !important; }
-        .metric-value { font-size: 1rem !important; }
-        .stColumns { gap: 0.3rem !important; }
-    }
-    
-    /* Sidebar toggle visibility */
-    [data-testid="collapsedControl"] {
-        position: fixed !important;
-        top: 15px !important;
-        left: 15px !important;
-        z-index: 9999 !important;
-        background: #CC0000 !important;
-        color: white !important;
-        border-radius: 50% !important;
-        width: 40px !important;
-        height: 40px !important;
-        opacity: 0.85 !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    [data-testid="collapsedControl"]:hover {
-        opacity: 1 !important;
-        transform: scale(1.1) !important;
-    }
-    button[kind="header"] {
-        background: #CC0000 !important;
-        color: white !important;
-        border-radius: 50% !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
