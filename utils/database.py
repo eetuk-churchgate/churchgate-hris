@@ -103,13 +103,17 @@ class DatabaseManager:
     def update_profile_picture(self, user_id, image_bytes):
         import base64
         b64_str = base64.b64encode(image_bytes).decode('utf-8')
+        # Delete old picture first
+        self._delete("profile_pics", {"user_id": str(user_id)})
+        # Insert new picture
         self._post("profile_pics", {"user_id": str(user_id), "image_data": b64_str})
     
     def get_profile_picture(self, user_id):
         data = self._get("profile_pics", {"user_id": str(user_id)})
         if data and len(data) > 0:
             import base64
-            return base64.b64decode(data[0]['image_data'])
+            # Return the LAST (most recent) picture
+            return base64.b64decode(data[-1]['image_data'])
         return None
     
     def save_aplayer(self, name, position, department, nominated_by, perf_score, leadership, strategic, peer_review, junior_review, independent_review, overall, readiness, gap, risk):
