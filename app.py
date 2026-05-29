@@ -37,6 +37,8 @@ if logo_icon.exists():
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon=str(logo_icon), layout="wide", initial_sidebar_state="expanded")
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
+    st.write("JPEG exists:", Path(__file__).parent.joinpath("churchgate-logo.jpeg").exists())
+    st.write("PNG exists:", Path(__file__).parent.joinpath("churchgate_logo.png").exists())
 
 CHURCHGATE_RED = "#CC0000"
 CHURCHGATE_DARK = "#1a1a1a"
