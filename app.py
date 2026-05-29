@@ -8673,10 +8673,11 @@ def my_profile():
     c1, c2 = st.columns([1, 2])
     
     with c1:
-        initials = generate_initials(user['name'])
-            db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
-            
-            if db_pic is not None:
+        initials = generate_initials(user_name)
+        
+        db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
+        
+        if db_pic is not None:
             st.image(db_pic, width=150)
         else:
             st.markdown(f"""
