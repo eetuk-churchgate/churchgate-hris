@@ -8692,7 +8692,7 @@ def my_profile():
             """, unsafe_allow_html=True)
         
         
-         uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'], key="profile_pic_uploader")
+          uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'], key="profile_pic_uploader")
         if uploaded_pic is not None:
             image_bytes = uploaded_pic.getvalue()
             user_record = db._get("users", {"email": user_email})
@@ -8705,10 +8705,10 @@ def my_profile():
                     st.success("✅ Profile picture updated!")
                     time.sleep(1)
                     st.rerun()
-                    else:
-                        st.warning("User ID not found. Try logging out and back in.")
                 else:
-                    st.warning("User record not found. Please contact HR.")
+                    st.warning("User ID not found. Try logging out and back in.")
+            else:
+                st.warning("User record not found. Please contact HR.")
             except Exception as e:
                 st.warning(f"Upload failed: {str(e)}")
         
