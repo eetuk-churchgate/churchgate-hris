@@ -90,6 +90,14 @@ class DatabaseManager:
             import hashlib
             hashed_pw = hashlib.sha256(password.encode()).hexdigest()
         self._post("users", {"employee_id": employee_id, "name": name, "email": email, "password": hashed_pw, "role": role, "department": department, "position": position, "is_active": True})
+        
+        # Send welcome email
+        try:
+            from utils.email_service import EmailService
+            EmailService().send_welcome_email(name, email)
+        except:
+            pass
+        
         return True, "Created"
     
     def update_profile_picture(self, user_id, image_bytes):
