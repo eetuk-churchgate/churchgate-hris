@@ -8689,10 +8689,9 @@ def my_profile():
                 <p style="color:#666;">{emp_position}</p>
                 <p style="color:#CC0000;font-weight:600;">ID: {user_id}</p>
             </div>
-            """, unsafe_allow_html=True)
+             """, unsafe_allow_html=True)
         
-        
-          uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'], key="profile_pic_uploader")
+        uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'], key="profile_pic_uploader")
         if uploaded_pic is not None:
             try:
                 image_bytes = uploaded_pic.getvalue()
@@ -8706,10 +8705,6 @@ def my_profile():
                         st.success("✅ Profile picture updated!")
                         time.sleep(1)
                         st.rerun()
-                    else:
-                        st.warning("User ID not found.")
-                else:
-                    st.warning("User record not found.")
             except Exception as e:
                 st.warning(f"Upload failed: {str(e)}")
         
