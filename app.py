@@ -682,7 +682,7 @@ def login_section():
                             if len(new_pw) >= 6:
                                 import bcrypt
                                 hashed_pw = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                                 db._patch("users", {"password": hashed_pw}, {"email": st.session_state.reset_email})
+                                db._patch("users", {"password": hashed_pw}, {"email": st.session_state.reset_email})
                                 st.success("✅ Password reset successfully! Please login with your new password.")
                                 st.balloons()
                                 st.session_state.show_forgot_password = False
