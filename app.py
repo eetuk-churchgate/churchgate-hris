@@ -2295,7 +2295,7 @@ def employee_management():
             st.dataframe(employees_df.describe(), use_container_width=True)
 
 def performance_okrs():
-    st.markdown("""<div class="churchgate-header"><h1>📈 Performance & Appraisal Engine</h1><p>KPI Management | Self-Assessment | HOD Review | Goal Cascading | Evidence Upload | Smart Notifications | Audit Trail</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>📈 Performance & Appraisal Engine</h1><p>KPI Management | Self-Assessment | HOD Review | Goal Cascading | Benchmark Reports | Smart Notifications | Audit Trail</p></div>""", unsafe_allow_html=True)
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
@@ -2305,6 +2305,7 @@ def performance_okrs():
     is_sr_mgmt = user_dept == 'Senior Management'
     is_hod = is_admin or user_role in ['Manager', 'HOD']
     
+    # WAT Timezone
     from datetime import timezone, timedelta
     wat = timezone(timedelta(hours=1))
     now_wat = datetime.now(wat)
@@ -2313,6 +2314,7 @@ def performance_okrs():
                  'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 
                  'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     
+    # Session state initialization
     if 'appraisal_cycle_active' not in st.session_state:
         st.session_state.appraisal_cycle_active = False
     if 'appraisal_cycle_name' not in st.session_state:
@@ -2369,6 +2371,7 @@ def performance_okrs():
         except:
             pass
     
+    # Load performance data from database
     performance_data = {}
     try:
         db_perf = db.get_performance_data()
@@ -2408,34 +2411,11 @@ def performance_okrs():
         parts = re.split(r'(\d+)', key)
         return [int(p) if p.isdigit() else p for p in parts]
     
-    # ============ APPRAISAL CYCLE STATUS BANNER ============
-    if st.session_state.appraisal_cycle_active:
-        try:
-            end_date = datetime.strptime(st.session_state.appraisal_end, '%Y-%m-%d')
-            days_left = (end_date - datetime.now()).days
-            if days_left > 0:
-                color = "#38a169" if days_left > 14 else "#d69e2e" if days_left > 7 else "#CC0000"
-                st.markdown(f"""
-                <div style="background:white;padding:1rem 1.5rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {color};">
-                    <strong>📊 Appraisal Cycle Active: {st.session_state.appraisal_cycle_name}</strong>
-                    <span style="float:right;color:{color};font-weight:700;">⏰ {days_left} day{'s' if days_left > 1 else ''} remaining</span>
-                    <br><small>Start: {st.session_state.appraisal_start} | Deadline: {st.session_state.appraisal_end}</small>
-                </div>
-                """, unsafe_allow_html=True)
-            elif days_left == 0:
-                st.warning(f"🚨 Appraisal deadline is TODAY! Submit immediately.")
-            else:
-                st.error(f"⚠️ Appraisal cycle ended on {st.session_state.appraisal_end}")
-        except:
-            pass
-    else:
-        st.info("📊 No active appraisal cycle. HR will notify you when the next cycle begins.")
-    
+    # ============ TAB 1: STRATEGIC PILLARS ============ (unchanged) ============
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "🌟 Exceptional Achievements", "📊 Dashboard"
     ])
     
-    # ============ TAB 1: STRATEGIC PILLARS (unchanged) ============
     with tab1:
         st.subheader("🎯 Strategic Pillars Console — Corporate Strategy 2026-2027")
         
@@ -2457,7 +2437,6 @@ def performance_okrs():
             c3.metric("At Risk", str(sum(1 for p in dept_data.values() if p['status'] == 'At Risk')))
             c4.metric("Completed", str(sum(1 for p in dept_data.values() if p['status'] == 'Completed')))
             
-            # Department comparison for admins
             if is_admin:
                 st.markdown("---")
                 st.markdown("### 🏢 Department Comparison")
@@ -2480,14 +2459,13 @@ def performance_okrs():
                     fig.update_layout(height=350)
                     st.plotly_chart(fig, use_container_width=True)
             
-            # Goal cascading for admin
             if is_admin:
                 st.markdown("---")
                 st.markdown("### 🎯 Goal Cascading")
                 with st.form("cascade_form"):
                     cascade_pillar = st.selectbox("Pillar", ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture'])
-                    cascade_kpi = st.text_input("Group KPI *")
-                    cascade_target = st.text_input("Target *")
+                    cascade_kpi = st.text_input("Group KPI *", placeholder="e.g., Achieve 95% tenant satisfaction")
+                    cascade_target = st.text_input("Target *", placeholder="e.g., 95%")
                     c1, c2 = st.columns(2)
                     with c1:
                         if st.form_submit_button("📤 Cascade to All Departments"):
@@ -2504,7 +2482,7 @@ def performance_okrs():
                                     except:
                                         pass
                                 log_audit('Goal Cascaded', f'KPI cascaded to all depts: {cascade_kpi}')
-                                st.success(f"✅ Group KPI cascaded to all departments!")
+                                st.success(f"✅ Group KPI cascaded to all {len(all_depts)} departments!")
                                 st.balloons()
                                 st.rerun()
                     with c2:
@@ -2515,6 +2493,7 @@ def performance_okrs():
                                     'current': '0%', 'status': 'In Progress',
                                     'deadline': '2026-12-31', 'owner': 'Group'
                                 })
+                                pd_data = performance_data[selected_dept][cascade_pillar]
                                 try:
                                     db.save_performance_data(selected_dept, cascade_pillar, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
                                 except:
@@ -2558,12 +2537,12 @@ def performance_okrs():
                             except:
                                 kpi_progress = 0
                             kpi_status, kpi_color = get_kpi_status(kpi_progress)
-                            st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid {kpi_color};"><div style="display: flex; justify-content: space-between;"><strong>{kpi['kpi'][:60]}</strong><span style="color: {kpi_color}; font-weight: 600;">{kpi_status}</span></div><small>Target: {kpi.get('target', 'N/A')} | Current: {kpi.get('current', '0')} | Deadline: {kpi.get('deadline', 'N/A')}</small></div>""", unsafe_allow_html=True)
+                            st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid {kpi_color};"><div style="display: flex; justify-content: space-between;"><strong>{kpi['kpi'][:60]}</strong><span style="color: {kpi_color}; font-weight: 600;">{kpi_status}</span></div><small>Target: {kpi.get('target', 'N/A')} | Current: {kpi.get('current', '0')} | Deadline: {kpi.get('deadline', 'N/A')}</small><div style="background: #e0e0e0; height: 4px; border-radius: 2px; margin-top: 0.3rem;"><div style="background: {kpi_color}; width: {kpi_progress}%; height: 4px; border-radius: 2px;"></div></div></div>""", unsafe_allow_html=True)
     
-    # ============ TAB 2: MY KPIs ============
+    # ============ TAB 2: MY KPIs (unchanged) ============
     with tab2:
         st.subheader("✏️ My KPIs & Objectives")
-        st.info("Set unlimited KPIs aligned to the 4 strategic pillars. All fields are required.")
+        st.info("Set your KPIs aligned to the 4 strategic pillars. All fields are required.")
         
         if is_hod and user_dept in performance_data:
             with st.expander("📋 One-Click Copy KPIs to Team"):
@@ -2576,7 +2555,7 @@ def performance_okrs():
                         st.warning("No KPIs in this pillar to copy.")
         
         with st.form("my_kpi_form"):
-            st.markdown("### Add New KPI")
+            st.markdown("### * Required Fields")
             c1, c2 = st.columns(2)
             with c1:
                 pillar_choice = st.selectbox("Strategic Pillar *", ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture'])
@@ -2662,7 +2641,7 @@ def performance_okrs():
                 for h in history_data[-10:]:
                     st.markdown(f"- **{h.get('created_at', 'N/A')}**: {h.get('action', '')} — {h.get('kpi_name', '')[:50]} by {h.get('user_name', '')}")
     
-    # ============ TAB 3: SELF-ASSESSMENT (UPGRADED) ============
+    # ============ TAB 3: SELF-ASSESSMENT (UPDATED) ============
     with tab3:
         st.subheader("📝 Self-Assessment")
         
@@ -2678,7 +2657,7 @@ def performance_okrs():
                 pass
         
         if is_admin:
-            with st.expander("⚙️ Appraisal Cycle Settings (Admin)", expanded=False):
+            with st.expander("⚙️ Appraisal Cycle Settings (Admin)"):
                 st.session_state.appraisal_cycle_active = st.checkbox("Activate Appraisal Cycle", value=st.session_state.appraisal_cycle_active)
                 st.session_state.appraisal_cycle_name = st.text_input("Cycle Name", st.session_state.appraisal_cycle_name)
                 c1, c2 = st.columns(2)
@@ -2687,12 +2666,9 @@ def performance_okrs():
                 with c2:
                     st.session_state.appraisal_end = st.text_input("End Date", st.session_state.appraisal_end)
                 st.session_state.appraisal_locked = st.checkbox("Lock Scores", value=st.session_state.appraisal_locked)
-                if st.button("💾 Activate Appraisal Cycle", use_container_width=True):
-                    log_audit('Cycle Activated', f'Appraisal cycle {st.session_state.appraisal_cycle_name} activated')
-                    sent = send_appraisal_cycle_email('activated', st.session_state.appraisal_cycle_name, st.session_state.appraisal_start, st.session_state.appraisal_end)
-                    st.success(f"✅ Cycle activated! Email sent to {sent} employees.")
-                    st.balloons()
-                    st.rerun()
+                if st.button("💾 Save Cycle Settings"):
+                    log_audit('Cycle Updated', f'Appraisal cycle settings saved')
+                    st.success("✅ Cycle settings saved!")
         
         if st.session_state.appraisal_cycle_active:
             st.success(f"🔓 Appraisal Active: {st.session_state.appraisal_cycle_name}")
@@ -2701,21 +2677,13 @@ def performance_okrs():
                 st.warning("🔒 Scores are locked.")
             else:
                 st.markdown("### Rate Yourself (0-100%)")
-                st.info("Provide justification and attach evidence for each pillar. Evidence files strengthen your assessment.")
+                st.info("Provide justification for each pillar. Attach evidence if available.")
                 
                 if user_dept in performance_data:
                     pillar_evidence = {}
                     for pillar_name, pillar_data in performance_data[user_dept].items():
                         if pillar_data['kpis']:
-                            st.markdown(f"**📎 Evidence for {pillar_name}** (Optional — up to 5 files)")
-                            evidence_files = []
-                            ev_cols = st.columns(5)
-                            for j in range(5):
-                                with ev_cols[j]:
-                                    ev_file = st.file_uploader(f"File {j+1}", type=['pdf', 'docx', 'jpg', 'png', 'xlsx'], key=f"pe_{pillar_name}_{j}", label_visibility="collapsed")
-                                    if ev_file:
-                                        evidence_files.append(ev_file)
-                            pillar_evidence[pillar_name] = evidence_files if evidence_files else None
+                            pillar_evidence[pillar_name] = st.file_uploader(f"Attach Evidence for {pillar_name} (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'xlsx'], key=f"pe_{pillar_name}")
                     
                     with st.form("self_assessment_form"):
                         scores = {}
@@ -2741,21 +2709,6 @@ def performance_okrs():
                             if not scores or not overall_comments or not all_comments_filled:
                                 st.error("❌ All scores, pillar justifications, and overall comments are required!")
                             else:
-                                # Upload evidence files
-                                evidence_urls = {}
-                                for p_name, files in pillar_evidence.items():
-                                    if files:
-                                        urls = []
-                                        for f in files:
-                                            try:
-                                                url = db.upload_file("evidence", f"{user_name}_{p_name}_{f.name}", f.read(), f.type)
-                                                if url:
-                                                    urls.append(url)
-                                            except:
-                                                pass
-                                        if urls:
-                                            evidence_urls[p_name] = urls
-                                
                                 try:
                                     db.save_appraisal(user_name, user_email, user_dept, 
                                         st.session_state.appraisal_cycle_name, 'Submitted',
@@ -2766,10 +2719,11 @@ def performance_okrs():
                                 st.session_state.self_assessments[user_name] = {
                                     'scores': scores, 'comments': overall_comments,
                                     'pillar_comments': pillar_comments,
-                                    'evidence_urls': evidence_urls,
+                                    'pillar_evidence': {k: v.name if v else None for k, v in pillar_evidence.items()},
                                     'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
                                     'status': 'Submitted', 'department': user_dept, 'email': user_email,
-                                    'hod_scores': None, 'hod_comments': None, 'acceptance': None
+                                    'hod_scores': None, 'hod_comments': None, 'acceptance': None,
+                                    'reject_count': 0
                                 }
                                 log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
                                 st.success("✅ Submitted! Saved to database. Awaiting HOD review.")
@@ -2777,17 +2731,11 @@ def performance_okrs():
         else:
             st.info("⏳ Appraisal cycle not active.")
         
-        # Show submission status and HOD review
         if user_name in st.session_state.self_assessments:
-            a = st.session_state.self_assessments[user_name]
             st.markdown("---")
             st.markdown("### 📋 Your Submission")
+            a = st.session_state.self_assessments[user_name]
             st.markdown(f"**Status:** {a['status']} | **Date:** {a['date']}")
-            
-            if a.get('evidence_urls'):
-                st.markdown("**📎 Evidence Uploaded:**")
-                for p, urls in a['evidence_urls'].items():
-                    st.markdown(f"- {p}: {len(urls)} file(s)")
             
             if a.get('hod_scores'):
                 st.success("✅ HOD review complete")
@@ -2807,6 +2755,12 @@ def performance_okrs():
                     st.markdown(f"**Your Comments:** {a.get('comments', 'N/A')}")
                     st.markdown(f"**HOD Comments:** {a.get('hod_comments', 'N/A')}")
                     
+                    if a.get('hod_pillar_comments'):
+                        st.markdown("**HOD Pillar Justifications:**")
+                        for pillar, comment in a['hod_pillar_comments'].items():
+                            st.markdown(f"- **{pillar}:** {comment}")
+                    
+                    st.markdown("---")
                     c1, c2 = st.columns(2)
                     with c1:
                         if st.button("✅ Accept HOD Review", use_container_width=True):
@@ -2819,7 +2773,6 @@ def performance_okrs():
                             except:
                                 pass
                             log_audit('Appraisal Accepted', f'{user_name} accepted HOD review')
-                            send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, '', '')
                             st.success("✅ Appraisal accepted! Cycle complete. Certificate available below.")
                             st.balloons()
                             st.rerun()
@@ -2833,9 +2786,150 @@ def performance_okrs():
                             st.rerun()
                 elif a.get('acceptance') == 'Accepted':
                     st.success("🎉 Appraisal Complete! Cycle closed.")
-                    # Certificate download button (existing code)
+                    if st.button("📜 Download Appraisal Certificate (PDF)", use_container_width=True, key=f"cert_{user_name}"):
+                        try:
+                            import fpdf
+                            FPDF = fpdf.FPDF
+                            pdf = FPDF(orientation='L', unit='mm', format='A4')
+                            pdf.set_auto_page_break(auto=True, margin=10)
+                            pdf.add_page()
+                            
+                            # GOLD BORDER
+                            avg_score = sum(a['hod_scores'].values()) / len(a['hod_scores']) if a['hod_scores'] else 0
+                            if avg_score >= 85:
+                                rating, rating_color, border_color = "GOLD", (212, 175, 55), (212, 175, 55)
+                            elif avg_score >= 70:
+                                rating, rating_color, border_color = "SILVER", (192, 192, 192), (150, 150, 150)
+                            else:
+                                rating, rating_color, border_color = "BRONZE", (205, 127, 50), (180, 100, 40)
+                            
+                            pdf.set_draw_color(*border_color)
+                            pdf.set_line_width(1.5)
+                            pdf.rect(5, 5, 287, 200)
+                            pdf.set_line_width(0.5)
+                            pdf.set_draw_color(*border_color)
+                            pdf.rect(8, 8, 281, 194)
+                            
+                            # HEADER
+                            pdf.set_fill_color(26, 26, 26)
+                            pdf.rect(0, 0, 297, 40, 'F')
+                            pdf.set_fill_color(*rating_color)
+                            pdf.rect(0, 40, 297, 4, 'F')
+                            
+                            # Logo placeholder
+                            pdf.set_font('Helvetica', 'B', 28)
+                            pdf.set_text_color(255, 255, 255)
+                            pdf.cell(0, 22, 'CHURCHGATE GROUP', ln=True, align='C')
+                            pdf.set_font('Helvetica', 'B', 13)
+                            pdf.set_text_color(*rating_color)
+                            pdf.cell(0, 10, 'OFFICIAL APPRAISAL CERTIFICATE', ln=True, align='C')
+                            pdf.ln(10)
+                            
+                            # RATING BADGE
+                            pdf.set_fill_color(*rating_color)
+                            badge_x = 100
+                            badge_y = pdf.get_y()
+                            pdf.rect(badge_x, badge_y, 97, 18, 'F')
+                            pdf.set_font('Helvetica', 'B', 20)
+                            pdf.set_text_color(255, 255, 255)
+                            pdf.set_xy(badge_x, badge_y + 2)
+                            pdf.cell(97, 14, f'{rating} RATING', 0, 0, 'C')
+                            pdf.set_y(badge_y + 22)
+                            pdf.ln(6)
+                            
+                            # EMPLOYEE DETAILS
+                            pdf.set_font('Helvetica', 'B', 16)
+                            pdf.set_text_color(26, 26, 26)
+                            pdf.cell(0, 10, f'Presented to: {user_name}', ln=True, align='C')
+                            pdf.ln(2)
+                            pdf.set_font('Helvetica', '', 12)
+                            pdf.set_text_color(80, 80, 80)
+                            pdf.cell(0, 8, f'Department: {user_dept}', ln=True, align='C')
+                            pdf.cell(0, 8, f'Appraisal Cycle: {st.session_state.appraisal_cycle_name}', ln=True, align='C')
+                            pdf.cell(0, 8, f'Date: {now_wat.strftime("%B %d, %Y - %H:%M WAT")}', ln=True, align='C')
+                            pdf.ln(4)
+                            
+                            # SCORE SUMMARY TABLE
+                            pdf.set_fill_color(26, 26, 26)
+                            pdf.set_text_color(255, 255, 255)
+                            pdf.set_font('Helvetica', 'B', 9)
+                            table_x = 25
+                            pdf.set_x(table_x)
+                            pdf.cell(90, 7, ' PERFORMANCE PILLAR', 1, 0, 'L', True)
+                            pdf.cell(35, 7, 'STAFF SCORE', 1, 0, 'C', True)
+                            pdf.cell(35, 7, 'HOD SCORE', 1, 0, 'C', True)
+                            pdf.cell(35, 7, 'FINAL', 1, 0, 'C', True)
+                            pdf.cell(52, 7, ' RATING', 1, 0, 'C', True)
+                            pdf.ln()
+                            
+                            pillar_scores = {}
+                            for score_key, staff_score in sorted(a['scores'].items(), key=natural_sort_key):
+                                pillar = '_'.join(score_key.split('_')[:2])
+                                if pillar not in pillar_scores:
+                                    pillar_scores[pillar] = {'staff': [], 'hod': []}
+                                pillar_scores[pillar]['staff'].append(staff_score)
+                                hod_score = a['hod_scores'].get(score_key, staff_score) if a['hod_scores'] else staff_score
+                                pillar_scores[pillar]['hod'].append(hod_score)
+                            
+                            pdf.set_font('Helvetica', '', 8)
+                            pdf.set_text_color(60, 60, 60)
+                            for pillar, scores in pillar_scores.items():
+                                avg_staff = sum(scores['staff']) / len(scores['staff'])
+                                avg_hod = sum(scores['hod']) / len(scores['hod'])
+                                final = avg_hod
+                                if final >= 85: pr = 'GOLD'
+                                elif final >= 70: pr = 'SILVER'
+                                else: pr = 'BRONZE'
+                                
+                                pdf.set_x(table_x)
+                                pdf.cell(90, 6, f' {pillar[:50]}', 1, 0, 'L')
+                                pdf.cell(35, 6, f'{avg_staff:.1f}%', 1, 0, 'C')
+                                pdf.cell(35, 6, f'{avg_hod:.1f}%', 1, 0, 'C')
+                                pdf.cell(35, 6, f'{final:.1f}%', 1, 0, 'C')
+                                pdf.cell(52, 6, f' {pr}', 1, 0, 'C')
+                                pdf.ln()
+                            
+                            pdf.ln(4)
+                            pdf.set_font('Helvetica', 'B', 14)
+                            pdf.set_text_color(*rating_color)
+                            pdf.cell(0, 8, f'OVERALL FINAL SCORE: {avg_score:.1f}% - {rating}', ln=True, align='C')
+                            
+                            # SIGNATURE LINES
+                            pdf.ln(8)
+                            pdf.set_draw_color(150, 150, 150)
+                            pdf.set_line_width(0.3)
+                            sig_y = pdf.get_y()
+                            pdf.line(30, sig_y + 15, 110, sig_y + 15)
+                            pdf.line(130, sig_y + 15, 240, sig_y + 15)
+                            pdf.line(250, sig_y + 15, 280, sig_y + 15)
+                            pdf.set_font('Helvetica', '', 8)
+                            pdf.set_text_color(100, 100, 100)
+                            pdf.set_xy(30, sig_y + 16)
+                            pdf.cell(80, 5, 'HOD / Line Manager', 0, 0, 'C')
+                            pdf.set_xy(130, sig_y + 16)
+                            pdf.cell(110, 5, 'Human Resources Director', 0, 0, 'C')
+                            pdf.set_xy(250, sig_y + 16)
+                            pdf.cell(30, 5, 'Date', 0, 0, 'C')
+                            
+                            # FOOTER
+                            pdf.set_y(-22)
+                            pdf.set_fill_color(26, 26, 26)
+                            pdf.rect(0, pdf.get_y()-2, 297, 24, 'F')
+                            pdf.set_font('Helvetica', 'I', 7)
+                            pdf.set_text_color(180, 180, 180)
+                            pdf.cell(0, 5, 'Churchgate Group - Official Appraisal Document', ln=True, align='C')
+                            pdf.cell(0, 5, 'World Trade Center, Abuja | hr@churchgate.com | This certificate is system-generated and valid without signature.', ln=True, align='C')
+                            pdf.cell(0, 5, f'Certificate ID: CG-APP-{user_name[:3].upper()}-{datetime.now().strftime("%Y%m%d%H%M")}', ln=True, align='C')
+                            
+                            st.download_button("📥 Download World-Class Certificate", bytes(pdf.output()), f"{user_name}_certificate.pdf", "application/pdf")
+                        except Exception as e:
+                            st.warning(f"Certificate error: {str(e)}")
+                elif a.get('acceptance') == 'Rejected':
+                    if a.get('status') == 'Awaiting HOD Re-review':
+                        st.warning("⚠️ Awaiting HOD re-review.")
+                    else:
+                        st.warning("⚠️ Under review by Sr. Management.")
     
-    # ============ TAB 4: HOD REVIEW ============
     with tab4:
         st.subheader("👔 HOD Review & Approval")
         
@@ -2865,12 +2959,6 @@ def performance_okrs():
                             st.warning(f"⚠️ {staff_name} has rejected your initial review (Rejection #{assessment.get('reject_count', 1)}). Please re-review.")
                         
                         st.markdown(f"**Overall Comments:** {assessment.get('comments', 'N/A')}")
-                        
-                        # Show evidence if uploaded
-                        if assessment.get('evidence_urls'):
-                            st.markdown("**📎 Evidence Provided:**")
-                            for p, urls in assessment['evidence_urls'].items():
-                                st.markdown(f"- **{p}:** {len(urls)} file(s)")
                         
                         if assessment.get('pillar_comments'):
                             st.markdown("**Staff Justifications by Pillar:**")
@@ -2935,21 +3023,19 @@ def performance_okrs():
                                     st.session_state.self_assessments[staff_name]['acceptance'] = 'Rejected'
                                     st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores if hod_scores else assessment.get('hod_scores', {})
                                     st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall if hod_overall else assessment.get('hod_comments', '')
+                                    st.session_state.self_assessments[staff_name]['hod_pillar_comments'] = hod_pillar_comments if hod_pillar_comments else assessment.get('hod_pillar_comments', {})
                                     log_audit('HOD Stands Firm', f'{staff_name} escalated to Sr. Management')
+                                    try:
+                                        db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
+                                            st.session_state.appraisal_cycle_name, 'Approved',
+                                            assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}),
+                                            assessment.get('hod_scores', {}), assessment.get('hod_comments', ''), assessment.get('hod_pillar_comments', {}),
+                                            'Rejected', None,
+                                            assessment.get('date', ''))
+                                    except:
+                                        pass
                                     st.warning(f"✋ Standing firm. Escalated to Sr. Management.")
                                     st.rerun()
-                            with c3:
-                                if st.button(f"📧 Send Reminder", key=f"remind_{staff_name}"):
-                                    try:
-                                        from utils.email_service import EmailService
-                                        EmailService().send_email(
-                                            assessment.get('email', ''),
-                                            f"⏰ Appraisal Re-Review Ready: {st.session_state.appraisal_cycle_name}",
-                                            f"Dear {staff_name},\n\nYour HOD has revised your appraisal scores. Please log in to review and accept.\n\nhttps://churchgate-hris.streamlit.app"
-                                        )
-                                        st.success(f"✅ Reminder sent to {staff_name}")
-                                    except:
-                                        st.info("Reminder queued")
                         else:
                             c1, c2 = st.columns(2)
                             with c1:
@@ -2983,7 +3069,6 @@ def performance_okrs():
             else:
                 st.info("No pending assessments for your team.")
         
-        # Sr Management escalation (unchanged)
         if is_sr_mgmt:
             st.markdown("---")
             st.markdown("### ⚖️ Escalated Appraisals (Final Committee)")
@@ -3004,11 +3089,6 @@ def performance_okrs():
                                 st.markdown(f"**HOD:** {hod_score}%")
                             with c3:
                                 st.markdown(f"*{score_key}*")
-                        
-                        if assessment.get('evidence_urls'):
-                            st.markdown("**📎 Staff Evidence:**")
-                            for p, urls in assessment['evidence_urls'].items():
-                                st.markdown(f"- {p}: {len(urls)} file(s)")
                         
                         if assessment.get('pillar_comments') or assessment.get('hod_pillar_comments'):
                             st.markdown("---")
@@ -3037,7 +3117,25 @@ def performance_okrs():
                                         now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                                 except:
                                     pass
-                                send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, '', '')
+                                try:
+                                    db._delete("appraisals", {"user_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                    db._post("appraisals", {
+                                        "user_name": staff_name, "user_email": assessment.get('email', ''),
+                                        "department": assessment.get('department', ''),
+                                        "cycle_name": st.session_state.appraisal_cycle_name,
+                                        "status": "Completed",
+                                        "scores": json.dumps(assessment['scores']),
+                                        "comments": assessment.get('comments', ''),
+                                        "pillar_comments": json.dumps(assessment.get('pillar_comments', {})),
+                                        "hod_scores": json.dumps(assessment.get('hod_scores', {})),
+                                        "hod_comments": assessment.get('hod_comments', ''),
+                                        "hod_pillar_comments": json.dumps(assessment.get('hod_pillar_comments', {})),
+                                        "acceptance": "Accepted",
+                                        "sr_decision": "HOD Upheld",
+                                        "submitted_date": assessment.get('date', '')
+                                    })
+                                except:
+                                    pass
                                 st.success(f"✅ HOD decision upheld. Appraisal complete.")
                                 st.balloons()
                                 time.sleep(1.5)
@@ -3057,7 +3155,25 @@ def performance_okrs():
                                         now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                                 except:
                                     pass
-                                send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, '', '')
+                                try:
+                                    db._delete("appraisals", {"user_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                    db._post("appraisals", {
+                                        "user_name": staff_name, "user_email": assessment.get('email', ''),
+                                        "department": assessment.get('department', ''),
+                                        "cycle_name": st.session_state.appraisal_cycle_name,
+                                        "status": "Completed",
+                                        "scores": json.dumps(assessment['scores']),
+                                        "comments": assessment.get('comments', ''),
+                                        "pillar_comments": json.dumps(assessment.get('pillar_comments', {})),
+                                        "hod_scores": json.dumps(assessment['scores']),
+                                        "hod_comments": assessment.get('hod_comments', ''),
+                                        "hod_pillar_comments": json.dumps(assessment.get('hod_pillar_comments', {})),
+                                        "acceptance": "Accepted",
+                                        "sr_decision": "Overturned in Favor of Staff",
+                                        "submitted_date": assessment.get('date', '')
+                                    })
+                                except:
+                                    pass
                                 st.success(f"🔄 Decision overturned in favor of {staff_name}. Appraisal complete.")
                                 st.balloons()
                                 time.sleep(1.5)
@@ -3067,11 +3183,11 @@ def performance_okrs():
         elif not is_hod:
             st.info("HOD Review section is for Managers, HODs, Admin, and Senior Management.")
 
-    # ============ TAB 5: EXCEPTIONAL ACHIEVEMENTS ============
     with tab5:
         st.subheader("🌟 Exceptional Achievements")
-        st.info("Document accomplishments outside your formal KPIs — achievements that had significant impact on customers, colleagues, departments, or the organization.")
+        st.info("Document accomplishments outside your formal KPIs — achievements that had significant impact on customers, colleagues, departments, or the organization. These are reviewed during appraisals.")
         
+        # Achievement categories
         categories = {
             "💡 Innovation": "New ideas, process improvements, creative solutions",
             "👑 Leadership": "Leading teams, mentoring, stepping up in crisis",
@@ -3097,14 +3213,31 @@ def performance_okrs():
             for i, ach in enumerate(sorted(my_achievements, key=lambda x: x.get('date', ''), reverse=True)):
                 cat_icon = ach.get('category', '💡')
                 impact_stars = "⭐" * (3 if ach.get('impact') == 'Organization' else 2 if ach.get('impact') == 'Department' else 1)
+                badge = ""
+                if ach.get('impact') == 'Organization':
+                    badge = "🏅 Org Impact"
+                elif ach.get('impact') == 'Department':
+                    badge = "🎖️ Dept Impact"
+                
                 with st.expander(f"{cat_icon} {ach.get('title', 'Achievement')} {impact_stars} — {ach.get('date', '')}", expanded=i==0):
                     col1, col2 = st.columns([3, 1])
                     with col1:
                         st.markdown(f"**Description:** {ach.get('description', '')}")
                         st.markdown(f"**Outcome:** {ach.get('outcome', '')}")
+                        if ach.get('recognized_by'):
+                            st.markdown(f"**Recognized by:** 👤 {ach.get('recognized_by')}")
                     with col2:
-                        if ach.get('include_in_appraisal'):
-                            st.success("📎 Included in Appraisal")
+                        if badge:
+                            st.success(badge)
+                        st.markdown(f"**Category:** {cat_icon}")
+                    
+                    endorsements = ach.get('endorsements', [])
+                    if endorsements:
+                        for end in endorsements:
+                            st.markdown(f"- 👤 **{end.get('name', 'Colleague')}**: {end.get('comment', '')}")
+                    else:
+                        st.markdown("*No endorsements yet.*")
+                    
                     if st.button(f"👍 Endorse", key=f"endorse_{i}"):
                         if 'endorsements' not in ach:
                             ach['endorsements'] = []
@@ -3112,7 +3245,7 @@ def performance_okrs():
                         st.success("✅ Endorsed!")
                         st.rerun()
         else:
-            st.info("🎯 No achievements recorded yet.")
+            st.info("🎯 No achievements recorded yet. Add your first exceptional achievement below!")
         
         st.markdown("---")
         st.markdown("### ➕ Add New Achievement")
@@ -3126,68 +3259,40 @@ def performance_okrs():
             with c2:
                 ach_description = st.text_area("Description *", height=100)
                 ach_outcome = st.text_area("Outcome / Result *", height=100)
+                recognized_by = st.text_input("Recognized By (Optional)")
             
-            include_in_appraisal = st.checkbox("Include in Appraisal Review", value=True)
+            evidence_file = st.file_uploader("📎 Attach Evidence (Optional)", type=['pdf', 'docx', 'jpg', 'png'])
             
-            if st.form_submit_button("💾 Save Achievement", use_container_width=True):
+            col1, col2 = st.columns(2)
+            with col1:
+                submitted = st.form_submit_button("💾 Save Achievement", use_container_width=True)
+            with col2:
+                include_in_appraisal = st.checkbox("Include in Appraisal Review", value=True)
+            
+            if submitted:
                 if ach_title and ach_description and ach_outcome:
                     if user_name not in st.session_state.exceptional_achievements:
                         st.session_state.exceptional_achievements[user_name] = []
+                    
                     st.session_state.exceptional_achievements[user_name].append({
                         'title': ach_title, 'category': ach_category,
                         'description': ach_description, 'impact': ach_impact,
                         'outcome': ach_outcome, 'date': ach_date.strftime('%Y-%m-%d'),
+                        'recognized_by': recognized_by,
+                        'evidence': evidence_file.name if evidence_file else None,
                         'include_in_appraisal': include_in_appraisal, 'endorsements': []
                     })
-                    st.success("✅ Achievement saved!")
+                    st.success("✅ Achievement saved! This will be visible during your appraisal.")
                     st.balloons()
                     st.rerun()
                 else:
                     st.error("❌ Title, Description, and Outcome are required!")
     
-    # ============ TAB 6: DASHBOARD (UPGRADED) ============
     with tab6:
-        st.subheader("📊 My Appraisal Status & Performance")
+        st.subheader("📊 My Performance Dashboard")
         
-        # Status tracker
-        if st.session_state.appraisal_cycle_active:
-            user_assessment = st.session_state.self_assessments.get(user_name, {})
-            current_status = user_assessment.get('status', 'Not Started')
-            
-            steps = [
-                ("Set KPIs", 1),
-                ("Self-Assessment", 2),
-                ("HOD Review", 3),
-                ("Acceptance", 4),
-                ("Complete", 5)
-            ]
-            
-            status_map = {'Not Started': 0, 'KPIs Set': 1, 'Submitted': 2, 'Approved': 3, 'Accepted': 4, 'Completed': 5}
-            current_step = status_map.get(current_status, 0)
-            
-            st.markdown("### 🔄 Your Appraisal Progress")
-            cols = st.columns(5)
-            for i, (step_name, step_num) in enumerate(steps):
-                with cols[i]:
-                    if step_num < current_step:
-                        st.success(f"✅ {step_name}")
-                    elif step_num == current_step:
-                        st.info(f"🔄 {step_name}")
-                    else:
-                        st.markdown(f"⏳ {step_name}")
-            
-            # Countdown
-            try:
-                end_date = datetime.strptime(st.session_state.appraisal_end, '%Y-%m-%d')
-                days_left = (end_date - datetime.now()).days
-                if days_left >= 0:
-                    st.progress((30 - min(days_left, 30)) / 30)
-                    st.caption(f"⏰ {days_left} days until deadline")
-            except:
-                pass
-        
-        # Performance summary
         user_assessment = st.session_state.self_assessments.get(user_name, {})
+        
         if user_assessment.get('status') == 'Approved' and user_assessment.get('acceptance') == 'Accepted':
             st.success("✅ Appraisal Complete!")
             final_scores = user_assessment.get('hod_scores', user_assessment.get('scores', {}))
@@ -3248,7 +3353,7 @@ def performance_okrs():
         except:
             st.info("History loading...")
         
-        # Reports
+        # Appraisal Reports
         st.markdown("---")
         st.markdown("### 📥 Appraisal Reports")
         c1, c2 = st.columns(2)
