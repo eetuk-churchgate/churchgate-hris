@@ -57,13 +57,12 @@ class DatabaseManager:
     def create_tables(self):
         pass
     
-   def verify_user(self, email, password):
+    def verify_user(self, email, password):
         if self.use_supabase:
             import hashlib
             data = self._get("users", {"email": email})
             if data and len(data) > 0:
                 stored_user = data[0]
-                # Check password_hash column
                 stored_hash = stored_user.get('password_hash', '')
                 input_hash = hashlib.sha256(password.encode()).hexdigest()
                 if stored_hash == input_hash:
