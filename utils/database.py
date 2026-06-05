@@ -64,7 +64,7 @@ class DatabaseManager:
             data = self._get("users", {"email": email})
             if data and len(data) > 0:
                 stored_user = data[0]
-                stored_pw = stored_user.get('password', '')
+                stored_pw = stored_user.get('password_hash', stored_user.get('password', ''))
                 
                 # Try bcrypt first (new format)
                 try:
