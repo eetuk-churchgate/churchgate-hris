@@ -701,11 +701,6 @@ def login_section():
 
 def sidebar_navigation():
     with st.sidebar:
-        # Safety: ensure user has required fields
-        if st.session_state.user and not st.session_state.user.get('name'):
-            st.session_state.user['name'] = st.session_state.user.get('email', 'Staff')
-        if st.session_state.user and not st.session_state.user.get('role'):
-            st.session_state.user['role'] = 'Team Member'
         logo = get_logo()
         if logo:
             st.image(logo, width=220)
@@ -724,11 +719,8 @@ def sidebar_navigation():
             except:
                 pass
             
-            initials = generate_initials(user.get('name', 'Staff'))
-            try:
-                db_pic = db.get_profile_picture(int(user.get('id', 0) or 0)) if user.get('id') else None
-            except:
-                db_pic = None
+            initials = generate_initials(user['name'])
+            db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
             
             if db_pic is not None:
                 import base64
@@ -805,10 +797,7 @@ def employee_dashboard():
     
     # Load profile picture for greeting
     greeting_pic_html = f'<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;min-width:60px;overflow:hidden;">{initials}</div>'
-    try:
-        db_pic = db.get_profile_picture(int(user.get('id', 0) or 0)) if user.get('id') else None
-    except:
-        db_pic = None
+    db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
     if db_pic is not None:
         import base64
         greeting_pic_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
@@ -5382,149 +5371,6 @@ def ai_recruitment_agent():
                         candidates = candidates[candidates['job_id'] == selected_job_id]
                 
                 st.markdown(f"### 📊 {len(candidates)} Applications")
-                
-                # ===== BULK SCREENING PIPELINE =====
-                if len(candidates) > 0:
-                    st.markdown("---")
-                    st.markdown("### 🚀 Bulk Screening Pipeline")
-                    
-                    col_p1, col_p2, col_p3, col_p4 = st.columns(4)
-                    with col_p1:
-                        if st.button("🤖 Step 1: Screen All", use_container_width=True, type="primary"):
-                            with st.spinner(f"🤖 Deep-analyzing {len(candidates)} candidates..."):
-                                screened = 0
-                                for idx, row in candidates.iterrows():
-                                    try:
-                                        cv_text = str(row.get('resume_text', ''))
-                                        if cv_text and cv_text != 'None' and len(cv_text) > 50:
-                                            job_id = str(row.get('job_id', ''))
-                                            jd_text = ""
-                                            if job_id and job_id != 'None':
-                                                for r in all_reqs:
-                                                    if r.get('req_id') == job_id:
-                                                        jd_text = r.get('jd', '')
-                                                        break
-                                            result = ai_agent.deep_analyze_candidate(cv_text, jd_text) if jd_text else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
-                                            if isinstance(result, dict):
-                                                db._patch("candidates", {
-                                                    "ai_score": int(result.get('overall_score', 0)),
-                                                    "ai_tier": result.get('tier', 'Pending')
-                                                }, {"candidate_ref": row.get('candidate_ref', '')})
-                                                screened += 1
-                                    except:
-                                        pass
-                                st.success(f"✅ {screened} candidates screened!")
-                                st.rerun()
-                    
-                    with col_p2:
-                        if st.button("📊 Step 2: Tiering Report", use_container_width=True):
-                            # Generate tiering table
-                            screened_cands = candidates[candidates['ai_score'] > 0].sort_values('ai_score', ascending=False)
-                            if len(screened_cands) > 0:
-                                st.session_state['tiering_report'] = screened_cands
-                                st.success(f"✅ Report ready! {len(screened_cands)} candidates ranked.")
-                                st.rerun()
-                            else:
-                                st.warning("Screen candidates first (Step 1).")
-                    
-                    with col_p3:
-                        if st.button("📧 Step 3: Send to Manager", use_container_width=True):
-                            if 'tiering_report' in st.session_state and len(st.session_state['tiering_report']) > 0:
-                                report_df = st.session_state['tiering_report']
-                                
-                                # Build email body
-                                email_body = f"<h2>AI Screening Report</h2><p>Job: {agent_job_filter}</p><table border='1' cellpadding='5'><tr><th>Rank</th><th>Candidate</th><th>Score</th><th>Tier</th><th>Email</th></tr>"
-                                for i, (_, row) in enumerate(report_df.iterrows()):
-                                    email_body += f"<tr><td>{i+1}</td><td>{row.get('first_name','')} {row.get('last_name','')}</td><td>{int(row.get('ai_score',0))}%</td><td>{row.get('ai_tier','')}</td><td>{row.get('email','')}</td></tr>"
-                                email_body += "</table><p>Please review and shortlist candidates for interview.</p>"
-                                
-                                # Send to hiring manager
-                                try:
-                                    from utils.email_service import EmailService
-                                    manager_email = lm_emails.get(selected_dept if 'selected_dept' in dir() else 'Technology Group', 'asakote@churchgate.com')
-                                    EmailService().send_email(manager_email, f"🔍 AI Screening Report — {agent_job_filter}", email_body)
-                                    st.success(f"✅ Report sent to hiring manager!")
-                                except:
-                                    st.success("✅ Report queued for delivery.")
-                            else:
-                                st.warning("Generate tiering report first (Step 2).")
-                    
-                    with col_p4:
-                        if st.button("📅 Step 4: Schedule Interviews", use_container_width=True):
-                            if 'tiering_report' in st.session_state:
-                                report_df = st.session_state['tiering_report']
-                                shortlisted = report_df[report_df['ai_score'] >= 70]
-                                if len(shortlisted) > 0:
-                                    st.session_state['shortlisted_for_interview'] = shortlisted
-                                    st.success(f"✅ {len(shortlisted)} candidates ready for interview scheduling!")
-                                    st.rerun()
-                                else:
-                                    st.warning("No candidates meet the 70% threshold.")
-                            else:
-                                st.warning("Generate tiering report first (Step 2).")
-                    
-                    # ===== TIERING REPORT DISPLAY =====
-                    if 'tiering_report' in st.session_state:
-                        st.markdown("---")
-                        st.markdown("### 📊 AI Tiering Report")
-                        report_df = st.session_state['tiering_report']
-                        
-                        # Summary stats
-                        t1 = len(report_df[report_df['ai_score'] >= 85])
-                        t2 = len(report_df[(report_df['ai_score'] >= 70) & (report_df['ai_score'] < 85)])
-                        t3 = len(report_df[(report_df['ai_score'] >= 55) & (report_df['ai_score'] < 70)])
-                        t4 = len(report_df[report_df['ai_score'] < 55])
-                        
-                        c1, c2, c3, c4 = st.columns(4)
-                        c1.metric("🌟 Tier 1", t1)
-                        c2.metric("👍 Tier 2", t2)
-                        c3.metric("🔶 Tier 3", t3)
-                        c4.metric("❌ Tier 4", t4)
-                        
-                        st.dataframe(
-                            report_df[['first_name', 'last_name', 'email', 'ai_score', 'ai_tier']].rename(
-                                columns={'first_name': 'First', 'last_name': 'Last', 'email': 'Email', 'ai_score': 'Score', 'ai_tier': 'Tier'}
-                            ),
-                            use_container_width=True, hide_index=True
-                        )
-                        
-                        # Export
-                        st.download_button("📥 Download Tiering Report (CSV)", 
-                                          report_df[['first_name', 'last_name', 'email', 'ai_score', 'ai_tier']].to_csv(index=False),
-                                          "ai_tiering_report.csv", "text/csv")
-                    
-                    # ===== BULK EMAIL TO SHORTLISTED =====
-                    if 'shortlisted_for_interview' in st.session_state:
-                        st.markdown("---")
-                        st.markdown("### 📧 Send Interview Invitations")
-                        shortlisted = st.session_state['shortlisted_for_interview']
-                        
-                        st.markdown(f"**{len(shortlisted)} shortlisted candidates**")
-                        
-                        interview_date = st.date_input("Interview Date")
-                        interview_type = st.selectbox("Interview Type", ["📞 Phone Screen", "💻 Technical", "👔 HR", "🏆 Final", "👥 Panel"])
-                        email_template = st.text_area("Email Message", 
-                            value=f"Dear [Candidate],\n\nThank you for applying. We're impressed with your profile and would like to invite you for an interview.\n\nDate: {interview_date}\nType: {interview_type}\n\nPlease confirm your availability.\n\nBest regards,\nChurchgate Group HR",
-                            height=120)
-                        
-                        if st.button("📧 Send to All Shortlisted", use_container_width=True, type="primary"):
-                            sent = 0
-                            for _, row in shortlisted.iterrows():
-                                try:
-                                    from utils.email_service import EmailService
-                                    email_body = email_template.replace('[Candidate]', f"{row.get('first_name','')} {row.get('last_name','')}")
-                                    EmailService().send_email(
-                                        row.get('email', ''),
-                                        f"📅 Interview Invitation: {agent_job_filter} — Churchgate Group",
-                                        email_body
-                                    )
-                                    db._patch("candidates", {"status": "Interview Invited"}, {"candidate_ref": row.get('candidate_ref', '')})
-                                    sent += 1
-                                except:
-                                    pass
-                            st.success(f"✅ Interview invitations sent to {sent} candidates!")
-                            st.balloons()
-                            st.rerun()
                 
                 for idx, row in candidates.iterrows():
                     first = str(row.get('first_name') or '')
