@@ -725,8 +725,8 @@ def sidebar_navigation():
                 pass
             
             initials = generate_initials(user.get('name', 'Staff'))
-            try:
-                db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
+           try:
+                db_pic = db.get_profile_picture(int(user.get('id', 0) or 0)) if user.get('id') else None
             except:
                 db_pic = None
             
@@ -805,7 +805,10 @@ def employee_dashboard():
     
     # Load profile picture for greeting
     greeting_pic_html = f'<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;min-width:60px;overflow:hidden;">{initials}</div>'
-    db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
+    try:
+                db_pic = db.get_profile_picture(int(user.get('id', 0) or 0)) if user.get('id') else None
+            except:
+                db_pic = None
     if db_pic is not None:
         import base64
         greeting_pic_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;min-width:60px;">'
