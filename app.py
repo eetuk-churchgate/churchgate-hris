@@ -725,7 +725,7 @@ def sidebar_navigation():
                 pass
             
             initials = generate_initials(user.get('name', 'Staff'))
-           try:
+            try:
                 db_pic = db.get_profile_picture(int(user.get('id', 0) or 0)) if user.get('id') else None
             except:
                 db_pic = None
