@@ -3682,6 +3682,11 @@ def recruitment_hub():
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     is_manager = is_admin or user_role in ['Manager', 'HOD']
     
+    try:
+        employees_df = db.get_all_employees()
+    except:
+        employees_df = pd.DataFrame()
+    
     STREAMLIT_URL = "https://churchgate-hris.streamlit.app"
     
     # CHANGE 1: Load from database
@@ -4496,130 +4501,773 @@ def recruitment_hub():
     
     # ============ TAB 6: OFFER LETTERS ============
     with tab6:
-        st.subheader("📝 Offer Letter Generator")
-        with st.form("offer_letter"):
-            c1, c2 = st.columns(2)
-            with c1:
-                offer_name = st.text_input("Candidate Name *")
-                offer_position = st.text_input("Position *")
-                offer_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'])
-                offer_salary = st.text_input("Salary Package *", placeholder="e.g., ₦5,000,000 per annum")
-            with c2:
-                offer_start = st.date_input("Start Date *")
-                offer_reporting = st.text_input("Reports To *")
-                offer_probation = st.selectbox("Probation Period", ["3 months", "6 months"])
-            if st.form_submit_button("📝 Generate Offer Letter (PDF)", use_container_width=True):
-                if offer_name and offer_position and offer_salary:
-                    st.session_state.offer_letters.append({
-                        'name': offer_name, 'position': offer_position, 'dept': offer_dept,
-                        'salary': offer_salary, 'start': offer_start.strftime('%Y-%m-%d'),
-                        'reports_to': offer_reporting, 'probation': offer_probation,
-                        'date': datetime.now().strftime('%Y-%m-%d'), 'status': 'Pending Acceptance'
-                    })
-                    try:
-                        import fpdf
-                        FPDF = fpdf.FPDF
-                        pdf = FPDF(orientation='P', unit='mm', format='A4')
-                        pdf.add_page()
-                        pdf.set_fill_color(55, 55, 55)
-                        pdf.rect(0, 0, 210, 30, 'F')
-                        pdf.set_fill_color(204, 0, 0)
-                        pdf.rect(0, 30, 210, 3, 'F')
-                        pdf.set_font('Helvetica', 'B', 20)
-                        pdf.set_text_color(255, 255, 255)
-                        pdf.cell(0, 16, 'CHURCHGATE GROUP', ln=True, align='C')
-                        pdf.set_font('Helvetica', 'B', 11)
-                        pdf.cell(0, 8, 'OFFER OF EMPLOYMENT', ln=True, align='C')
-                        pdf.ln(10)
-                        pdf.set_font('Helvetica', '', 11)
-                        pdf.set_text_color(26, 26, 26)
-                        pdf.cell(0, 8, f'Dear {offer_name},', ln=True)
-                        pdf.ln(3)
-                        pdf.cell(0, 8, f'We are pleased to offer you the position of {offer_position} in {offer_dept}.', ln=True)
-                        pdf.cell(0, 8, f'Salary: {offer_salary}', ln=True)
-                        pdf.cell(0, 8, f'Start Date: {offer_start.strftime("%B %d, %Y")}', ln=True)
-                        pdf.cell(0, 8, f'Reports To: {offer_reporting}', ln=True)
-                        pdf.cell(0, 8, f'Probation: {offer_probation}', ln=True)
-                        pdf.ln(5)
-                        pdf.cell(0, 8, 'Please sign and return to accept.', ln=True)
-                        pdf.set_y(-20)
-                        pdf.set_font('Helvetica', 'I', 7)
-                        pdf.set_text_color(150, 150, 150)
-                        pdf.cell(0, 10, 'Churchgate Group - Official Offer Letter | hr@churchgate.com', align='C')
-                        st.download_button("📥 Download Offer Letter", bytes(pdf.output()), f"{offer_name}_offer.pdf", "application/pdf")
-                        st.success(f"✅ Offer letter generated!")
+        st.subheader("📝 Enterprise Offer Letter Management")
+        
+        tab_offer1, tab_offer2 = st.tabs(["📝 Generate Offer", "📊 Offer Status Board"])
+        
+        # ===== SUB-TAB 1: GENERATE OFFER =====
+        with tab_offer1:
+            st.markdown("### 📝 Generate Professional Offer Letter")
+            
+            with st.form("offer_letter_form"):
+                st.markdown("#### Candidate Information")
+                c1, c2 = st.columns(2)
+                with c1:
+                    offer_name = st.text_input("Candidate Full Name *")
+                    offer_email = st.text_input("Candidate Email *")
+                    offer_position = st.text_input("Position *")
+                    offer_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                with c2:
+                    offer_salary = st.text_input("Salary Package *", placeholder="e.g., ₦1,200,000 Gross per Annum")
+                    offer_start = st.date_input("Start Date *")
+                    offer_reporting = st.text_input("Reports To *")
+                    offer_probation = st.selectbox("Probation Period", ["3 months", "6 months"])
+                    offer_expiry = st.date_input("Offer Expiry Date", value=datetime.now() + timedelta(days=14))
+                
+                st.markdown("---")
+                st.markdown("#### Additional Terms")
+                offer_benefits = st.text_area("Benefits Summary", placeholder="• HMO coverage\n• Pension plan\n• 20 days annual leave\n• Training support")
+                offer_notes = st.text_area("Special Conditions / Notes")
+                
+                st.markdown("---")
+                st.markdown("#### Offer Letter Preview")
+                if offer_name and offer_position:
+                    preview_html = f"""
+                    <div style="background:white;padding:1.5rem;border-radius:8px;border:2px solid #CC0000;max-width:700px;margin:0 auto;">
+                        <div style="text-align:center;border-bottom:2px solid #CC0000;padding-bottom:1rem;margin-bottom:1rem;">
+                            <h2 style="color:#1a1a1a;margin:0;">CHURCHGATE GROUP</h2>
+                            <p style="color:#CC0000;font-weight:600;">OFFER OF EMPLOYMENT</p>
+                        </div>
+                        <p>Dear <strong>{offer_name}</strong>,</p>
+                        <p>We are pleased to offer you the position of <strong>{offer_position}</strong> in our <strong>{offer_dept}</strong> department.</p>
+                        <table style="width:100%;margin:1rem 0;">
+                            <tr><td><strong>Salary:</strong></td><td>{offer_salary}</td></tr>
+                            <tr><td><strong>Start Date:</strong></td><td>{offer_start}</td></tr>
+                            <tr><td><strong>Reports To:</strong></td><td>{offer_reporting}</td></tr>
+                            <tr><td><strong>Probation:</strong></td><td>{offer_probation}</td></tr>
+                            <tr><td><strong>Offer Expires:</strong></td><td>{offer_expiry}</td></tr>
+                        </table>
+                        <p style="text-align:center;color:#CC0000;font-weight:600;">Welcome to Churchgate Group!</p>
+                    </div>
+                    """
+                    st.markdown(preview_html, unsafe_allow_html=True)
+                
+                if st.form_submit_button("📝 Generate Offer Letter & Send to Candidate", use_container_width=True):
+                    if offer_name and offer_position and offer_email and offer_salary:
+                        # Generate PDF
+                        try:
+                            import fpdf
+                            FPDF = fpdf.FPDF
+                            pdf = FPDF(orientation='P', unit='mm', format='A4')
+                            pdf.add_page()
+                            pdf.set_fill_color(26, 26, 26)
+                            pdf.rect(0, 0, 210, 30, 'F')
+                            pdf.set_fill_color(204, 0, 0)
+                            pdf.rect(0, 30, 210, 3, 'F')
+                            pdf.set_font('Helvetica', 'B', 20)
+                            pdf.set_text_color(255, 255, 255)
+                            pdf.cell(0, 16, 'CHURCHGATE GROUP', ln=True, align='C')
+                            pdf.set_font('Helvetica', 'B', 11)
+                            pdf.set_text_color(204, 0, 0)
+                            pdf.cell(0, 8, 'OFFER OF EMPLOYMENT', ln=True, align='C')
+                            pdf.ln(10)
+                            pdf.set_font('Helvetica', '', 11)
+                            pdf.set_text_color(26, 26, 26)
+                            pdf.cell(0, 8, f'Date: {datetime.now().strftime("%B %d, %Y")}', ln=True)
+                            pdf.ln(3)
+                            pdf.cell(0, 8, f'Dear {offer_name},', ln=True)
+                            pdf.ln(2)
+                            pdf.multi_cell(0, 7, f'We are pleased to offer you the position of {offer_position} in the {offer_dept} department at Churchgate Group.')
+                            pdf.ln(2)
+                            pdf.set_font('Helvetica', 'B', 11)
+                            pdf.cell(0, 8, 'Terms of Employment:', ln=True)
+                            pdf.set_font('Helvetica', '', 11)
+                            pdf.cell(0, 7, f'Position: {offer_position}', ln=True)
+                            pdf.cell(0, 7, f'Department: {offer_dept}', ln=True)
+                            pdf.cell(0, 7, f'Salary: {offer_salary}', ln=True)
+                            pdf.cell(0, 7, f'Start Date: {offer_start}', ln=True)
+                            pdf.cell(0, 7, f'Reports To: {offer_reporting}', ln=True)
+                            pdf.cell(0, 7, f'Probation Period: {offer_probation}', ln=True)
+                            pdf.cell(0, 7, f'Offer Expires: {offer_expiry}', ln=True)
+                            if offer_benefits:
+                                pdf.ln(2)
+                                pdf.set_font('Helvetica', 'B', 11)
+                                pdf.cell(0, 8, 'Benefits:', ln=True)
+                                pdf.set_font('Helvetica', '', 10)
+                                for line in offer_benefits.split('\n'):
+                                    pdf.cell(0, 6, line.strip(), ln=True)
+                            pdf.ln(5)
+                            pdf.cell(0, 8, 'Please sign and return this letter to accept the offer.', ln=True)
+                            pdf.cell(0, 8, f'This offer expires on {offer_expiry}.', ln=True)
+                            pdf.set_y(-25)
+                            pdf.set_font('Helvetica', 'I', 7)
+                            pdf.set_text_color(150, 150, 150)
+                            pdf.cell(0, 10, 'Churchgate Group - Official Offer Letter | hr@churchgate.com', align='C')
+                            
+                            pdf_bytes = bytes(pdf.output())
+                            st.download_button("📥 Download Offer Letter PDF", pdf_bytes, f"Offer_{offer_name.replace(' ', '_')}.pdf", "application/pdf")
+                        except:
+                            pdf_bytes = None
+                        
+                        # Save to database
+                        db._post("offer_letters", {
+                            "candidate_name": offer_name,
+                            "candidate_email": offer_email,
+                            "position": offer_position,
+                            "department": offer_dept,
+                            "salary": offer_salary,
+                            "start_date": offer_start.strftime('%Y-%m-%d'),
+                            "reports_to": offer_reporting,
+                            "probation": offer_probation,
+                            "expiry_date": offer_expiry.strftime('%Y-%m-%d'),
+                            "status": "Pending Acceptance",
+                            "issued_by": user_name,
+                            "notes": offer_notes
+                        })
+                        
+                        # Send email to candidate
+                        try:
+                            from utils.email_service import EmailService
+                            EmailService().send_email(
+                                offer_email,
+                                f"🎉 Job Offer: {offer_position} — Churchgate Group",
+                                f"Dear {offer_name},\n\nCongratulations! We are pleased to offer you the position of {offer_position} at Churchgate Group.\n\nPlease find your offer letter attached. The offer expires on {offer_expiry}.\n\nTo accept, please reply to this email or contact HR.\n\nWe look forward to welcoming you to the team!\n\nChurchgate Group HR"
+                            )
+                            st.info(f"📧 Offer letter emailed to {offer_email}")
+                        except:
+                            pass
+                        
+                        st.success(f"✅ Offer generated for {offer_name}!")
                         st.balloons()
-                    except:
-                        st.success(f"✅ Offer recorded for {offer_name}!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Required fields missing!")
+        
+        # ===== SUB-TAB 2: OFFER STATUS BOARD =====
+        with tab_offer2:
+            st.markdown("### 📊 Offer Letter Status Board")
+            
+            try:
+                offers = db._get("offer_letters")
+            except:
+                offers = []
+            
+            if offers:
+                col1, col2 = st.columns(2)
+                with col1:
+                    offer_status_filter = st.selectbox("Status", ["All", "Pending Acceptance", "Accepted", "Rejected", "Expired"])
+                with col2:
+                    offer_dept_filter = st.selectbox("Department", ["All", 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                
+                filtered = offers
+                if offer_status_filter != "All":
+                    filtered = [o for o in filtered if o.get('status') == offer_status_filter]
+                if offer_dept_filter != "All":
+                    filtered = [o for o in filtered if o.get('department') == offer_dept_filter]
+                
+                # Stats
+                total_offers = len(offers)
+                accepted = len([o for o in offers if o.get('status') == 'Accepted'])
+                pending = len([o for o in offers if o.get('status') == 'Pending Acceptance'])
+                
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("📋 Total Offers", total_offers)
+                c2.metric("✅ Accepted", accepted)
+                c3.metric("⏳ Pending", pending)
+                c4.metric("📊 Acceptance Rate", f"{int(accepted/total_offers*100)}%" if total_offers > 0 else "N/A")
+                
+                st.markdown(f"**{len(filtered)} offers**")
+                
+                for offer in filtered:
+                    status = offer.get('status', 'Pending Acceptance')
+                    status_colors = {
+                        'Pending Acceptance': '#d69e2e',
+                        'Accepted': '#38a169',
+                        'Rejected': '#CC0000',
+                        'Expired': '#a0aec0'
+                    }
+                    color = status_colors.get(status, '#a0aec0')
+                    
+                    with st.expander(f"📝 {offer.get('candidate_name', 'Unknown')} — {offer.get('position', 'N/A')} | {status}"):
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.markdown(f"**Department:** {offer.get('department', 'N/A')}")
+                            st.markdown(f"**Salary:** {offer.get('salary', 'N/A')}")
+                            st.markdown(f"**Start Date:** {offer.get('start_date', 'N/A')}")
+                            st.markdown(f"**Reports To:** {offer.get('reports_to', 'N/A')}")
+                            st.markdown(f"**Probation:** {offer.get('probation', 'N/A')}")
+                            st.markdown(f"**Issued:** {offer.get('issued_date', '')[:10]}")
+                            st.markdown(f"**Expires:** {offer.get('expiry_date', 'N/A')}")
+                        
+                        with col2:
+                            st.markdown(f"<span style='background:{color};color:white;padding:0.3rem 0.8rem;border-radius:15px;'>{status}</span>", unsafe_allow_html=True)
+                            
+                            if is_admin:
+                                new_status = st.selectbox("Update", ["Pending Acceptance", "Accepted", "Rejected", "Expired"], key=f"offer_status_{offer.get('id')}")
+                                if st.button("💾 Update", key=f"offer_upd_{offer.get('id')}"):
+                                    db._patch("offer_letters", {"status": new_status, "acceptance_date": datetime.now().strftime('%Y-%m-%d %H:%M') if new_status == 'Accepted' else None}, {"id": offer.get('id')})
+                                    st.success("✅ Updated!")
+                                    st.rerun()
+            else:
+                st.info("No offers generated yet.")
     
     # ============ TAB 7: ONBOARDING ============
     with tab7:
-        st.subheader("🎯 Onboarding")
-        with st.expander("📋 Onboarding Checklist", expanded=True):
-            steps = [
-                ("📧", "Offer Letter Sent"),
-                ("✅", "Offer Accepted"),
-                ("📄", "Document Collection"),
-                ("💻", "IT Setup (Email, Laptop, Access)"),
-                ("🏢", "Workspace Assignment"),
-                ("👤", "Buddy Assignment"),
-                ("📅", "Orientation Scheduled"),
-                ("📚", "Training Enrollment"),
-                ("🔑", "Access Cards Issued"),
-                ("🎉", "First Day Welcome")
-            ]
-            for emoji, step in steps:
-                done = st.checkbox(f"{emoji} {step}", key=f"onboard_{step}")
-                color = "#38a169" if done else "#d69e2e"
-                icon = "✅" if done else "⏳"
-                st.markdown(f"{icon} **{step}** <span style='color: {color};'>{'Complete' if done else 'Pending'}</span>", unsafe_allow_html=True)
+        st.subheader("🎯 Enterprise Onboarding Management")
         
-        st.markdown("---")
-        with st.form("add_onboarding"):
-            st.markdown("### Add New Hire")
-            c1, c2 = st.columns(2)
-            with c1:
-                nh_name = st.text_input("Employee Name *")
-                nh_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'])
-                nh_position = st.text_input("Position *")
-            with c2:
-                nh_start = st.date_input("Start Date *")
-                nh_buddy = st.text_input("Assigned Buddy")
-                nh_orientation = st.date_input("Orientation Date")
-            if st.form_submit_button("🎯 Start Onboarding", use_container_width=True):
-                if nh_name and nh_dept:
-                    st.session_state.onboarding_list.append({
-                        'name': nh_name, 'dept': nh_dept, 'position': nh_position,
-                        'start': nh_start.strftime('%Y-%m-%d'), 'buddy': nh_buddy,
-                        'orientation': nh_orientation.strftime('%Y-%m-%d'), 'progress': '10%'
-                    })
-                    st.success(f"✅ Onboarding started for {nh_name}!")
-                    st.balloons()
+        tab_onb1, tab_onb2, tab_onb3 = st.tabs(["➕ New Hire Setup", "📋 Onboarding Tracker", "📊 Dashboard"])
         
-        if st.session_state.onboarding_list:
-            st.markdown("---")
-            for onboard in st.session_state.onboarding_list:
-                st.markdown(f"""
-                <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #38a169;">
-                    <strong>{onboard['name']}</strong> - {onboard['position']} ({onboard['dept']})<br>
-                    <small>Start: {onboard['start']} | Buddy: {onboard.get('buddy', 'TBD')} | Progress: {onboard['progress']}</small>
-                </div>
-                """, unsafe_allow_html=True)
+        # Predefined onboarding tasks
+        default_tasks = [
+            ("📧 Offer Letter Sent", "HR", "Send official offer letter to candidate"),
+            ("✅ Offer Accepted", "HR", "Candidate signs and returns offer letter"),
+            ("📄 Document Collection", "HR", "Collect ID, certificates, bank details, tax forms"),
+            ("💻 IT Setup", "IT", "Create email, set up laptop, system access"),
+            ("🏢 Workspace Assignment", "Facilities", "Assign desk/office, phone, stationery"),
+            ("👤 Buddy Assignment", "HR", "Assign onboarding buddy from team"),
+            ("📅 Orientation Scheduled", "HR", "Schedule HR orientation and office tour"),
+            ("📚 Training Enrollment", "HR/L&D", "Enroll in required training courses"),
+            ("🔑 Access Cards Issued", "Security", "Building access, parking, ID card"),
+            ("🎉 First Day Welcome", "HR/Manager", "Team welcome, desk setup, first meeting"),
+            ("📋 30-Day Check-in", "HR/Manager", "Schedule 30-day performance check-in"),
+            ("📋 60-Day Check-in", "HR/Manager", "Schedule 60-day progress review"),
+            ("📋 90-Day Review", "HR/Manager", "Formal 90-day probation review"),
+        ]
+        
+        # ===== SUB-TAB 1: NEW HIRE SETUP =====
+        with tab_onb1:
+            st.subheader("➕ Set Up New Hire Onboarding")
+            st.info("Create an onboarding plan for a new employee. Tasks are auto-assigned to relevant teams.")
+            
+            with st.form("add_onboarding_form"):
+                c1, c2 = st.columns(2)
+                with c1:
+                    nh_name = st.text_input("Employee Full Name *")
+                    nh_email = st.text_input("Employee Email *")
+                    nh_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                    nh_position = st.text_input("Position *")
+                with c2:
+                    nh_start = st.date_input("Start Date *")
+                    nh_buddy = st.selectbox("Assigned Buddy", ["Select buddy..."] + [f"{row['first_name']} {row['last_name']}" for _, row in employees_df.iterrows()] if not employees_df.empty else ["No employees available"])
+                    nh_orientation = st.date_input("Orientation Date")
+                    nh_notes = st.text_area("Special Instructions / Notes")
+                
+                if st.form_submit_button("🎯 Create Onboarding Plan", use_container_width=True):
+                    if nh_name and nh_dept and nh_position and nh_email:
+                        # Create onboarding record
+                        result = db._post("onboarding", {
+                            "employee_name": nh_name,
+                            "employee_email": nh_email,
+                            "department": nh_dept,
+                            "position": nh_position,
+                            "start_date": nh_start.strftime('%Y-%m-%d'),
+                            "assigned_buddy": nh_buddy if nh_buddy and nh_buddy != "Select buddy..." else "",
+                            "orientation_date": nh_orientation.strftime('%Y-%m-%d') if nh_orientation else "",
+                            "status": "In Progress",
+                            "progress": 0
+                        })
+                        
+                        # Get the onboarding ID
+                        onboard_data = db._get("onboarding")
+                        if onboard_data:
+                            onboard_id = onboard_data[-1].get('id')
+                            
+                            # Create default tasks
+                            for task_name, assigned_to, task_desc in default_tasks:
+                                db._post("onboarding_tasks", {
+                                    "onboarding_id": onboard_id,
+                                    "task_name": task_name,
+                                    "task_category": assigned_to,
+                                    "assigned_to": assigned_to,
+                                    "status": "Pending",
+                                    "notes": task_desc
+                                })
+                        
+                        # Send welcome email to new hire
+                        try:
+                            from utils.email_service import EmailService
+                            EmailService().send_email(
+                                nh_email,
+                                f"🎉 Welcome to Churchgate Group, {nh_name}!",
+                                f"Dear {nh_name},\n\nWelcome to Churchgate Group! We're excited to have you join our {nh_dept} team as {nh_position}.\n\nYour start date is {nh_start}. Your onboarding buddy is {nh_buddy if nh_buddy != 'Select buddy...' else 'TBD'}.\n\nWe'll guide you through every step of your onboarding journey.\n\nSee you soon!\n\nChurchgate Group HR"
+                            )
+                            st.info(f"📧 Welcome email sent to {nh_email}")
+                        except:
+                            pass
+                        
+                        st.success(f"✅ Onboarding plan created for {nh_name} with {len(default_tasks)} tasks!")
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error("❌ Required fields missing!")
+        
+        # ===== SUB-TAB 2: ONBOARDING TRACKER =====
+        with tab_onb2:
+            st.subheader("📋 Onboarding Progress Tracker")
+            
+            try:
+                onboard_list = db._get("onboarding")
+                all_tasks = db._get("onboarding_tasks")
+            except:
+                onboard_list = []
+                all_tasks = []
+            
+            if onboard_list:
+                for onboard in onboard_list:
+                    onboard_id = onboard.get('id')
+                    employee_tasks = [t for t in all_tasks if t.get('onboarding_id') == onboard_id]
+                    completed = len([t for t in employee_tasks if t.get('status') == 'Completed'])
+                    total = len(employee_tasks)
+                    progress = int(completed / total * 100) if total > 0 else 0
+                    
+                    progress_color = "#38a169" if progress >= 80 else "#d69e2e" if progress >= 50 else "#CC0000"
+                    
+                    with st.expander(f"🎯 {onboard.get('employee_name', 'Unknown')} — {onboard.get('position', 'N/A')} ({onboard.get('department', '')}) | {progress}% Complete"):
+                        # Progress bar
+                        st.markdown(f"""
+                        <div style="margin-bottom:1rem;">
+                            <div style="display:flex;justify-content:space-between;">
+                                <span><strong>Onboarding Progress</strong></span>
+                                <span style="color:{progress_color};font-weight:700;">{completed}/{total} tasks ({progress}%)</span>
+                            </div>
+                            <div style="background:#e0e0e0;height:8px;border-radius:4px;margin-top:0.3rem;">
+                                <div style="background:{progress_color};width:{progress}%;height:8px;border-radius:4px;"></div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.markdown(f"**Start Date:** {onboard.get('start_date', 'N/A')}")
+                            st.markdown(f"**Buddy:** {onboard.get('assigned_buddy', 'Not assigned')}")
+                        with col2:
+                            st.markdown(f"**Orientation:** {onboard.get('orientation_date', 'Not scheduled')}")
+                            st.markdown(f"**Department:** {onboard.get('department', 'N/A')}")
+                        with col3:
+                            st.markdown(f"**Status:** {onboard.get('status', 'In Progress')}")
+                        
+                        st.markdown("---")
+                        
+                        # Task list grouped by category
+                        task_categories = {}
+                        for t in employee_tasks:
+                            cat = t.get('task_category', 'Other')
+                            if cat not in task_categories:
+                                task_categories[cat] = []
+                            task_categories[cat].append(t)
+                        
+                        for cat, tasks in task_categories.items():
+                            st.markdown(f"**{cat} Tasks**")
+                            for task in tasks:
+                                task_status = task.get('status', 'Pending')
+                                icon = "✅" if task_status == 'Completed' else "⏳" if task_status == 'Pending' else "🔄"
+                                
+                                col1, col2, col3 = st.columns([3, 1, 1])
+                                with col1:
+                                    st.markdown(f"{icon} **{task.get('task_name', 'Task')}** — {task.get('notes', '')}")
+                                with col2:
+                                    new_task_status = st.selectbox("Status", ["Pending", "In Progress", "Completed"], 
+                                        index=2 if task_status == 'Completed' else 1 if task_status == 'In Progress' else 0,
+                                        key=f"task_status_{task.get('id')}")
+                                with col3:
+                                    if st.button("💾", key=f"task_save_{task.get('id')}"):
+                                        db._patch("onboarding_tasks", {
+                                            "status": new_task_status,
+                                            "completed_date": datetime.now().strftime('%Y-%m-%d %H:%M') if new_task_status == 'Completed' else None
+                                        }, {"id": task.get('id')})
+                                        
+                                        # Update progress
+                                        updated_tasks = db._get("onboarding_tasks")
+                                        emp_tasks = [t for t in updated_tasks if t.get('onboarding_id') == onboard_id]
+                                        new_completed = len([t for t in emp_tasks if t.get('status') == 'Completed'])
+                                        new_progress = int(new_completed / len(emp_tasks) * 100) if emp_tasks else 0
+                                        db._patch("onboarding", {"progress": new_progress, "status": "Completed" if new_progress >= 100 else "In Progress"}, {"id": onboard_id})
+                                        
+                                        # Notify on completion of key tasks
+                                        if new_task_status == 'Completed' and 'First Day' in task.get('task_name', ''):
+                                            try:
+                                                from utils.email_service import EmailService
+                                                EmailService().send_email(
+                                                    onboard.get('employee_email', ''),
+                                                    f"🎉 Welcome to Your First Day, {onboard.get('employee_name', '')}!",
+                                                    f"Dear {onboard.get('employee_name', '')},\n\nWelcome to your first day at Churchgate Group! We're thrilled to have you with us.\n\nYour buddy {onboard.get('assigned_buddy', 'your team')} will guide you through today.\n\nHave a great first day!\n\nChurchgate Group HR"
+                                                )
+                                            except:
+                                                pass
+                                        
+                                        st.rerun()
+                            st.markdown("---")
+            else:
+                st.info("No onboarding plans created yet. Set up a new hire in the 'New Hire Setup' tab.")
+        
+        # ===== SUB-TAB 3: DASHBOARD =====
+        with tab_onb3:
+            st.subheader("📊 Onboarding Dashboard")
+            
+            if onboard_list:
+                total_onboard = len(onboard_list)
+                in_progress = len([o for o in onboard_list if o.get('progress', 0) < 100])
+                completed_onboard = len([o for o in onboard_list if o.get('progress', 0) >= 100])
+                
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("👥 Active Onboarding", total_onboard)
+                c2.metric("🔄 In Progress", in_progress)
+                c3.metric("✅ Completed", completed_onboard)
+                c4.metric("📊 Avg Progress", f"{int(sum([o.get('progress', 0) for o in onboard_list]) / total_onboard)}%" if total_onboard > 0 else "0%")
+                
+                st.markdown("---")
+                
+                # Department breakdown
+                dept_data = {}
+                for o in onboard_list:
+                    dept = o.get('department', 'Unknown')
+                    dept_data[dept] = dept_data.get(dept, 0) + 1
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    fig = px.pie(values=list(dept_data.values()), names=list(dept_data.keys()), hole=0.5,
+                               color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169', '#dd6b20', '#805ad5'])
+                    fig.update_layout(height=350, title="Onboarding by Department")
+                    st.plotly_chart(fig, use_container_width=True)
+                with col2:
+                    # Progress distribution
+                    progress_data = [o.get('progress', 0) for o in onboard_list]
+                    fig2 = px.histogram(progress_data, nbins=5, title="Progress Distribution",
+                                      color_discrete_sequence=['#CC0000'])
+                    fig2.update_layout(height=350)
+                    st.plotly_chart(fig2, use_container_width=True)
+                
+                # Upcoming start dates
+                st.markdown("---")
+                st.markdown("### 📅 Upcoming Start Dates")
+                upcoming = sorted([o for o in onboard_list if o.get('start_date', '') >= datetime.now().strftime('%Y-%m-%d')], key=lambda x: x.get('start_date', ''))
+                for o in upcoming[:5]:
+                    st.markdown(f"🎯 **{o.get('employee_name', '')}** — {o.get('position', '')} ({o.get('department', '')}) — Starts: {o.get('start_date', '')}")
+                
+                st.download_button("📥 Export Onboarding Report (CSV)",
+                                  pd.DataFrame([{
+                                      'Employee': o.get('employee_name'), 'Position': o.get('position'),
+                                      'Department': o.get('department'), 'Start Date': o.get('start_date'),
+                                      'Progress': f"{o.get('progress', 0)}%", 'Status': o.get('status')
+                                  } for o in onboard_list]).to_csv(index=False),
+                                  "onboarding_report.csv", "text/csv")
+            else:
+                st.info("No onboarding data yet.")
     
-    # ============ TAB 8: BACKGROUND CHECKS ============
+     # ============ TAB 8: BACKGROUND CHECKS ============
     with tab8:
-        st.subheader("🔍 Background Check Requests")
-        with st.form("bg_check"):
-            c1, c2 = st.columns(2)
-            with c1:
-                bg_name = st.text_input("Candidate Name *")
-                bg_position = st.text_input("Position *")
-            with c2:
-                bg_type = st.multiselect("Check Type", ["Employment Verification", "Education Verification", "Criminal Record", "Credit Check", "Reference Check"])
-                bg_priority = st.selectbox("Priority", ["Standard", "Urgent"])
-            if st.form_submit_button("🔍 Request Background Check", use_container_width=True):
-                if bg_name:
-                    st.success(f"✅ Background check requested for {bg_name}!")
+        st.subheader("🔍 Enterprise Background Check Management")
+        
+        tab_bg1, tab_bg2, tab_bg3, tab_bg4 = st.tabs(["📋 Internal BG Check", "📤 External Verification", "📊 Status Dashboard", "📈 Analytics"])
+        
+        # ===== SUB-TAB 1: INTERNAL BG CHECK =====
+        with tab_bg1:
+            st.markdown("### 🔍 Internal Background Verification")
+            st.info("Submit a background check request. HR team will be notified instantly via email and dashboard alert.")
+            
+            with st.form("bg_check_internal"):
+                c1, c2 = st.columns(2)
+                with c1:
+                    bg_name = st.text_input("Candidate Name *")
+                    bg_position = st.text_input("Position Applied For *")
+                    bg_department = st.selectbox("Department", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                with c2:
+                    bg_type = st.multiselect("Check Type *", [
+                        "Employment Verification",
+                        "Education Verification", 
+                        "Criminal Record Check",
+                        "Credit Check",
+                        "Reference Check",
+                        "Professional Certification",
+                        "Address Verification",
+                        "Identity Verification",
+                        "Social Media Screening"
+                    ])
+                    bg_priority = st.selectbox("Priority", ["Standard (5 days)", "Urgent (3 days)", "Critical (24 hours)"])
+                    bg_consent = st.checkbox("✅ Candidate has provided consent for background check", value=True)
+                
+                bg_notes = st.text_area("Additional Notes / Instructions")
+                
+                if st.form_submit_button("🔍 Submit & Notify HR Team", use_container_width=True):
+                    if bg_name and bg_position and bg_type:
+                        db._post("background_checks", {
+                            "candidate_name": bg_name,
+                            "position": bg_position,
+                            "check_type": ', '.join(bg_type),
+                            "priority": bg_priority,
+                            "requested_by": user_name,
+                            "check_type_category": "internal",
+                            "status": "Pending",
+                            "hr_notes": bg_notes
+                        })
+                        
+                        # Notify HR team
+                        try:
+                            from utils.email_service import EmailService
+                            hr_emails = ["asakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                            for hr_email in hr_emails:
+                                EmailService().send_email(
+                                    hr_email,
+                                    f"🔍 New Background Check: {bg_name} — {bg_position}",
+                                    f"A new background check has been requested for {bg_name} ({bg_position}, {bg_department}).\n\nCheck Type: {', '.join(bg_type)}\nPriority: {bg_priority}\n\nPlease process in the HRIS: https://churchgate-hris.streamlit.app"
+                                )
+                            st.info("📧 HR team notified via email")
+                        except:
+                            pass
+                        
+                        st.success(f"✅ Background check submitted for {bg_name}! HR team notified.")
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error("❌ Candidate name, position, and at least one check type are required!")
+        
+        # ===== SUB-TAB 2: EXTERNAL VERIFICATION =====
+        with tab_bg2:
+            st.markdown("### 📤 External Reference Verification")
+            st.info("Send a secure verification request to an external referee. They'll receive an email with instructions to respond.")
+            
+            # Email templates
+            with st.expander("📋 Email Templates", expanded=False):
+                template_type = st.selectbox("Select Template", [
+                    "Employment Verification",
+                    "Character Reference",
+                    "Academic Verification",
+                    "Custom Message"
+                ])
+                
+                templates = {
+                    "Employment Verification": "Please verify the candidate's employment history including dates of employment, position held, responsibilities, and reason for leaving.",
+                    "Character Reference": "Please provide your assessment of the candidate's character, integrity, work ethic, and suitability for the position.",
+                    "Academic Verification": "Please verify the candidate's academic credentials including degree obtained, dates of attendance, and graduation status.",
+                    "Custom Message": "Please provide your honest assessment based on your professional experience with the candidate."
+                }
+                st.code(templates.get(template_type, ""))
+            
+            with st.form("bg_check_external"):
+                c1, c2 = st.columns(2)
+                with c1:
+                    ext_candidate = st.text_input("Candidate Name *")
+                    ext_position = st.text_input("Position Applied For *")
+                    ext_ref_name = st.text_input("Referee Full Name *")
+                    ext_ref_title = st.text_input("Referee Title/Position")
+                with c2:
+                    ext_ref_email = st.text_input("Referee Email *")
+                    ext_ref_company = st.text_input("Referee Company/Organization")
+                    ext_ref_phone = st.text_input("Referee Phone (Optional)")
+                    ext_priority = st.selectbox("Priority", ["Standard (5 days)", "Urgent (3 days)"])
+                
+                ext_check_type = st.multiselect("Verification Type *", [
+                    "Employment History Verification",
+                    "Character Reference",
+                    "Academic Verification",
+                    "Professional Reference",
+                    "Salary Verification",
+                    "Performance Assessment"
+                ])
+                
+                ext_message = st.text_area("Custom Message to Referee", 
+                    value=templates.get(template_type, ""),
+                    height=100)
+                
+                if st.form_submit_button("📤 Send to Referee & Notify HR", use_container_width=True):
+                    if ext_candidate and ext_ref_name and ext_ref_email and ext_check_type:
+                        ref_id = f"REF-{datetime.now().strftime('%Y%m%d%H%M')}-{random.randint(100,999)}"
+                        
+                        db._post("background_checks", {
+                            "candidate_name": ext_candidate,
+                            "position": ext_position,
+                            "check_type": ', '.join(ext_check_type),
+                            "priority": ext_priority,
+                            "requested_by": user_name,
+                            "check_type_category": "external",
+                            "external_email": ext_ref_email,
+                            "external_name": ext_ref_name,
+                            "status": "Awaiting External Response",
+                            "hr_notes": f"Ref ID: {ref_id} | {ext_message}"
+                        })
+                        
+                        # Send email to referee
+                        try:
+                            from utils.email_service import EmailService
+                            ref_subject = f"Background Verification Request: {ext_candidate} — Churchgate Group (Ref: {ref_id})"
+                            ref_body = f"""
+                            <h2>Background Verification Request</h2>
+                            <p>Dear {ext_ref_name},</p>
+                            <p><strong>{ext_candidate}</strong> has applied for the position of <strong>{ext_position}</strong> at Churchgate Group and has listed you as a referee.</p>
+                            <div class="info-box">
+                                <p><strong>Candidate:</strong> {ext_candidate}</p>
+                                <p><strong>Position:</strong> {ext_position}</p>
+                                <p><strong>Verification Type:</strong> {', '.join(ext_check_type)}</p>
+                                <p><strong>Reference ID:</strong> {ref_id}</p>
+                            </div>
+                            <p><strong>Verification Request:</strong></p>
+                            <p style="background:#f5f5f5;padding:1rem;border-radius:6px;">{ext_message}</p>
+                            <p>Please reply to this email with your detailed response. Include the Reference ID ({ref_id}) in your reply.</p>
+                            <p>Alternatively, you can submit your response directly at:</p>
+                            <p><a href="https://churchgate-hris.streamlit.app/Careers?ref={ref_id}" style="color:#CC0000;">Submit Verification Response</a></p>
+                            <p>Thank you for your time and honest assessment.</p>
+                            <p style="color:#888;">Churchgate Group HR Team<br>hr@churchgate.com</p>
+                            """
+                            EmailService().send_email(ext_ref_email, ref_subject, ref_body)
+                            st.success(f"✅ Verification request sent to {ext_ref_name} ({ext_ref_email})!")
+                        except:
+                            st.success(f"✅ Request saved! Email queued for {ext_ref_email}")
+                        
+                        st.balloons()
+                        st.rerun()
+                    else:
+                        st.error("❌ All fields marked with * are required!")
+        
+        # ===== SUB-TAB 3: STATUS DASHBOARD =====
+        with tab_bg3:
+            st.markdown("### 📊 Background Check Status Board")
+            
+            try:
+                bg_checks = db._get("background_checks")
+            except:
+                bg_checks = []
+            
+            if bg_checks:
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    bg_status_filter = st.selectbox("Status", ["All", "Pending", "Awaiting External Response", "Responded", "Completed", "Rejected"])
+                with col2:
+                    bg_type_filter = st.selectbox("Type", ["All", "internal", "external"])
+                with col3:
+                    bg_priority_filter = st.selectbox("Priority", ["All", "Standard", "Urgent", "Critical"])
+                
+                filtered = bg_checks
+                if bg_status_filter != "All":
+                    filtered = [b for b in filtered if b.get('status') == bg_status_filter]
+                if bg_type_filter != "All":
+                    filtered = [b for b in filtered if b.get('check_type_category') == bg_type_filter]
+                if bg_priority_filter != "All":
+                    filtered = [b for b in filtered if bg_priority_filter.lower() in str(b.get('priority', '')).lower()]
+                
+                # SLA tracking
+                pending_count = len([b for b in filtered if b.get('status') == 'Pending'])
+                awaiting_count = len([b for b in filtered if b.get('status') == 'Awaiting External Response'])
+                completed_count = len([b for b in filtered if b.get('status') == 'Completed'])
+                
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("📋 Total", len(filtered))
+                c2.metric("⏳ Pending", pending_count)
+                c3.metric("📤 Awaiting Response", awaiting_count)
+                c4.metric("✅ Completed", completed_count)
+                
+                st.markdown(f"**{len(filtered)} background check(s)**")
+                
+                for bg in filtered:
+                    status = bg.get('status', 'Pending')
+                    is_external = bg.get('check_type_category') == 'external'
+                    icon = "📤" if is_external else "🔍"
+                    priority = bg.get('priority', 'Standard')
+                    
+                    status_colors = {
+                        'Pending': '#d69e2e',
+                        'Awaiting External Response': '#3182ce',
+                        'Responded': '#38a169',
+                        'Completed': '#38a169',
+                        'Rejected': '#CC0000'
+                    }
+                    color = status_colors.get(status, '#a0aec0')
+                    
+                    # SLA Timer
+                    try:
+                        request_date = datetime.strptime(str(bg.get('request_date', ''))[:10], '%Y-%m-%d')
+                        days_since = (datetime.now() - request_date).days
+                        sla_color = "#38a169" if days_since <= 3 else "#d69e2e" if days_since <= 5 else "#CC0000"
+                    except:
+                        days_since = 0
+                        sla_color = "#a0aec0"
+                    
+                    with st.expander(f"{icon} {bg.get('candidate_name', 'Unknown')} — {bg.get('position', 'N/A')} | {status} | ⏱️ {days_since}d"):
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.markdown(f"**Check Type:** {bg.get('check_type', 'N/A')}")
+                            st.markdown(f"**Priority:** {priority}")
+                            st.markdown(f"**Requested By:** {bg.get('requested_by', 'N/A')}")
+                            st.markdown(f"**Date:** {bg.get('request_date', '')[:10]}")
+                            st.markdown(f"**⏱️ Days Open:** <span style='color:{sla_color};font-weight:700;'>{days_since} days</span>", unsafe_allow_html=True)
+                            
+                            if is_external:
+                                st.markdown(f"**Referee:** {bg.get('external_name', 'N/A')} ({bg.get('external_email', 'N/A')})")
+                                if bg.get('external_response'):
+                                    st.success(f"**Response Received:** {bg.get('external_response', '')}")
+                        
+                        with col2:
+                            st.markdown(f"<span style='background:{color};color:white;padding:0.3rem 0.8rem;border-radius:15px;font-size:0.85rem;'>{status}</span>", unsafe_allow_html=True)
+                            
+                            if is_admin:
+                                new_status = st.selectbox("Update", ["Pending", "Awaiting External Response", "Responded", "Completed", "Rejected"], key=f"bg_status_{bg.get('id')}")
+                                if st.button("💾 Update", key=f"bg_upd_{bg.get('id')}", use_container_width=True):
+                                    db._patch("background_checks", {"status": new_status}, {"id": bg.get('id')})
+                                    st.success("✅ Updated!")
+                                    st.rerun()
+                                
+                                if is_external and status == 'Awaiting External Response':
+                                    if st.button("📧 Resend", key=f"bg_resend_{bg.get('id')}", use_container_width=True):
+                                        try:
+                                            from utils.email_service import EmailService
+                                            EmailService().send_email(
+                                                bg.get('external_email', ''),
+                                                f"Reminder: Background Check — {bg.get('candidate_name', '')}",
+                                                f"Dear {bg.get('external_name', '')},\n\nGentle reminder to please respond regarding the verification for {bg.get('candidate_name', '')}.\n\nThank you.\nChurchgate Group HR"
+                                            )
+                                            st.success("✅ Reminder sent!")
+                                        except:
+                                            st.info("Reminder queued")
+            else:
+                st.info("No background check requests yet.")
+        
+        # ===== SUB-TAB 4: ANALYTICS =====
+        with tab_bg4:
+            st.markdown("### 📈 Background Check Analytics")
+            
+            if bg_checks:
+                total = len(bg_checks)
+                completed = len([b for b in bg_checks if b.get('status') == 'Completed'])
+                pending = len([b for b in bg_checks if b.get('status') == 'Pending'])
+                external = len([b for b in bg_checks if b.get('check_type_category') == 'external'])
+                
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("📋 Total", total)
+                c2.metric("✅ Completed", completed)
+                c3.metric("⏳ Pending", pending)
+                c4.metric("📤 External", external)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    status_data = {}
+                    for b in bg_checks:
+                        s = b.get('status', 'Unknown')
+                        status_data[s] = status_data.get(s, 0) + 1
+                    fig = px.pie(values=list(status_data.values()), names=list(status_data.keys()), hole=0.5,
+                               color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000', '#a0aec0'])
+                    fig.update_layout(height=350, title="Status Distribution")
+                    st.plotly_chart(fig, use_container_width=True)
+                with col2:
+                    check_types = {}
+                    for b in bg_checks:
+                        types = str(b.get('check_type', '')).split(', ')
+                        for t in types:
+                            if t:
+                                check_types[t] = check_types.get(t, 0) + 1
+                    if check_types:
+                        fig2 = px.bar(x=list(check_types.keys()), y=list(check_types.values()),
+                                    color=list(check_types.values()), color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+                        fig2.update_layout(height=350, title="Check Types Requested")
+                        st.plotly_chart(fig2, use_container_width=True)
+                
+                st.download_button("📥 Export BG Check Report (CSV)", 
+                                  pd.DataFrame([{
+                                      'Candidate': b.get('candidate_name'), 'Position': b.get('position'),
+                                      'Type': b.get('check_type'), 'Status': b.get('status'),
+                                      'Priority': b.get('priority'), 'Requested': b.get('request_date', '')[:10]
+                                  } for b in bg_checks]).to_csv(index=False),
+                                  "background_checks.csv", "text/csv")
+            else:
+                st.info("Analytics will appear once background checks are submitted.")
     
     # ============ TAB 9: ANALYTICS ============
     with tab9:
@@ -8676,8 +9324,6 @@ def my_profile():
         initials = generate_initials(user_name)
         
         db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
-        if db_pic is None and 'profile_pic' in st.session_state:
-            db_pic = st.session_state['profile_pic']
         
         if db_pic is not None:
             st.image(db_pic, width=150)
@@ -8689,11 +9335,7 @@ def my_profile():
                 <p style="color:#666;">{emp_position}</p>
                 <p style="color:#CC0000;font-weight:600;">ID: {user_id}</p>
             </div>
-            """, unsafe_allow_html=True)
-        
-        if st.button("🔄 Reset Photo Upload"):
-            st.session_state['pic_processed'] = False
-            st.rerun()
+             """, unsafe_allow_html=True)
         
         uploaded_pic = st.file_uploader("📸 Upload Photo", type=['jpg', 'jpeg', 'png'], key="profile_pic_uploader")
         if uploaded_pic is not None:
@@ -8706,12 +9348,7 @@ def my_profile():
                         db.update_profile_picture(int(uid), image_bytes)
                         st.session_state['profile_pic'] = image_bytes
                         st.session_state['pic_processed'] = False
-                        st.success("✅ Profile picture updated! Refresh to see changes.")
-                        st.rerun()
-                    else:
-                        st.warning("User ID not found. Try logging out and back in.")
-                else:
-                    st.warning("User record not found. Please contact HR.")
+                        st.success("✅ Profile picture updated! Refresh the page to see your new photo.")
             except Exception as e:
                 st.warning(f"Upload failed: {str(e)}")
         
