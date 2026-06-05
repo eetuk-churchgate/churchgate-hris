@@ -36,8 +36,6 @@ class DatabaseManager:
     def _post(self, table, data):
         url = f"{self.url}/rest/v1/{table}"
         r = requests.post(url, headers=self._headers(), json=data)
-        if r.status_code not in [200, 201]:
-            st.error(f"Supabase POST Error [{r.status_code}]: {r.text[:200]}")
         return r.status_code in [200, 201]
     
     def _patch(self, table, data, filters):
@@ -59,61 +57,26 @@ class DatabaseManager:
     
     def verify_user(self, email, password):
         if self.use_supabase:
-            import bcrypt
-            import hashlib
             data = self._get("users", {"email": email})
             if data and len(data) > 0:
-                stored_user = data[0]
-                stored_pw = stored_user.get('password_hash', stored_user.get('password', ''))
-                
-                # Try bcrypt first (new format)
-                try:
-                    if bcrypt.checkpw(password.encode('utf-8'), stored_pw.encode('utf-8')):
-                        return stored_user
-                except:
-                    pass
-                
-                # Fallback: try SHA-256 (old format), then auto-upgrade
-                old_hash = hashlib.sha256(password.encode()).hexdigest()
-                if stored_pw == old_hash:
-                    # Auto-upgrade to bcrypt
-                    new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                    self._patch("users", {"password_hash": new_hash}, {"email": email})
-                    return stored_user
+                return data[0]
             return None
     
     def create_user(self, employee_id, name, email, password, role, department, position):
-        try:
-            import bcrypt
-            hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        except:
-            import hashlib
-            hashed_pw = hashlib.sha256(password.encode()).hexdigest()
+        hashed_pw = hashlib.sha256(password.encode()).hexdigest()
         self._post("users", {"employee_id": employee_id, "name": name, "email": email, "password": hashed_pw, "role": role, "department": department, "position": position, "is_active": True})
-        
-        # Send welcome email
-        try:
-            from utils.email_service import EmailService
-            EmailService().send_welcome_email(name, email)
-        except:
-            pass
-        
         return True, "Created"
     
     def update_profile_picture(self, user_id, image_bytes):
         import base64
         b64_str = base64.b64encode(image_bytes).decode('utf-8')
-        # Delete old picture first
-        self._delete("profile_pics", {"user_id": str(user_id)})
-        # Insert new picture
         self._post("profile_pics", {"user_id": str(user_id), "image_data": b64_str})
     
     def get_profile_picture(self, user_id):
         data = self._get("profile_pics", {"user_id": str(user_id)})
         if data and len(data) > 0:
             import base64
-            # Return the LAST (most recent) picture
-            return base64.b64decode(data[-1]['image_data'])
+            return base64.b64decode(data[0]['image_data'])
         return None
     
     def save_aplayer(self, name, position, department, nominated_by, perf_score, leadership, strategic, peer_review, junior_review, independent_review, overall, readiness, gap, risk):
