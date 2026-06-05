@@ -701,6 +701,11 @@ def login_section():
 
 def sidebar_navigation():
     with st.sidebar:
+        # Safety: ensure user has required fields
+        if st.session_state.user and not st.session_state.user.get('name'):
+            st.session_state.user['name'] = st.session_state.user.get('email', 'Staff')
+        if st.session_state.user and not st.session_state.user.get('role'):
+            st.session_state.user['role'] = 'Team Member'
         logo = get_logo()
         if logo:
             st.image(logo, width=220)
