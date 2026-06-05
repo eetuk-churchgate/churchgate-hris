@@ -64,7 +64,7 @@ class DatabaseManager:
             data = self._get("users", {"email": email})
             if data and len(data) > 0:
                 stored_user = data[0]
-                stored_pw = stored_user.get('password', '')
+                stored_pw = stored_user.get('password_hash', stored_user.get('password', ''))
                 
                 # Try bcrypt first (new format)
                 try:
@@ -78,7 +78,7 @@ class DatabaseManager:
                 if stored_pw == old_hash:
                     # Auto-upgrade to bcrypt
                     new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                    self._patch("users", {"password": new_hash}, {"email": email})
+                    self._patch("users", {"password_hash": new_hash}, {"email": email})
                     return stored_user
             return None
     
