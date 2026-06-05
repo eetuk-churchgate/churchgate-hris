@@ -9427,7 +9427,7 @@ def my_profile():
                                     if new_pw == confirm_pw:
                                         if len(new_pw) >= 6:
                                             new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
-                                            db._patch("users", {"password": new_hash}, {"email": user_email})
+                                            db._patch("users", {"password_hash": new_hash}, {"email": user_email})
                                             st.success("✅ Password changed!")
                                             st.balloons()
                                         else:
