@@ -5467,7 +5467,7 @@ def recruitment_hub():
 def ai_recruitment_agent():
     st.markdown("""<div class="churchgate-header"><h1>🤖 AI Recruitment Agent</h1><p>AI-Powered CV-JD Matching | Verbatim Detection | Inconsistency Flags | Skills Gap Matrix | Bias Detection | Interview Generator | Executive Reports</p></div>""", unsafe_allow_html=True)
     
-    options = ["📥 Load Applications", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results"]
+    options = ["📥 Load Applications", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results", "💬 AI Assistant"]
     
     if 'ai_section' not in st.session_state:
         st.session_state.ai_section = "📥 Load Applications"
@@ -5885,9 +5885,79 @@ def ai_recruitment_agent():
                                 del st.session_state[f"pipe_analysis_{idx}"]
                                 st.rerun()
             else:
-                st.info("No applications yet. Share the Careers Page URL to start receiving applications.")
-        except Exception as e:
-            st.warning(f"Loading: {str(e)}")
+                    st.info("No applications yet. Share the Careers Page URL to start receiving applications.")
+            except Exception as e:
+                st.warning(f"Loading: {str(e)}")
+    
+    # ============ AI ASSISTANT ============
+    elif ai_section == "💬 AI Assistant":
+        st.subheader("💬 AI Recruitment Assistant")
+        st.info("Ask me anything about your candidates, jobs, screening results, or hiring best practices.")
+        
+        if 'ai_chat_history' not in st.session_state:
+            st.session_state.ai_chat_history = [
+                {"role": "assistant", "content": "👋 Hello! I'm your AI Recruitment Assistant. I can help with analyzing candidates, comparing applications, generating interview questions, and more. What would you like help with?"}
+            ]
+        
+        for msg in st.session_state.ai_chat_history:
+            if msg['role'] == 'user':
+                st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-left:3rem;"><strong>You</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
+            else:
+                st.markdown(f"""<div style="background:#f0f0f0;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-right:3rem;"><strong>🤖 AI Assistant</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
+        
+        # Quick questions
+        qc1, qc2, qc3, qc4 = st.columns(4)
+        with qc1:
+            if st.button("🏆 Top Candidates", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Who are the top candidates and why?"})
+                st.rerun()
+        with qc2:
+            if st.button("📊 Compare All", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Compare all screened candidates and recommend who to interview first."})
+                st.rerun()
+        with qc3:
+            if st.button("❓ Questions", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Generate targeted interview questions for the top candidates."})
+                st.rerun()
+        with qc4:
+            if st.button("📝 Offer Draft", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Draft an offer letter for the top candidate."})
+                st.rerun()
+        
+        with st.form("ai_chat_form", clear_on_submit=True):
+            user_message = st.text_input("Ask me anything...", placeholder="e.g., Who should I interview first?", label_visibility="collapsed")
+            if st.form_submit_button("📤 Send", use_container_width=True):
+                if user_message:
+                    st.session_state.ai_chat_history.append({"role": "user", "content": user_message})
+                    try:
+                        candidates = db.get_all_candidates()
+                        screened = candidates[candidates['ai_score'] > 0] if not candidates.empty and 'ai_score' in candidates.columns else []
+                        
+                        if ai_agent.use_openai:
+                            context = f"You are an AI Recruitment Assistant. Pipeline: {len(candidates)} total, {len(screened)} screened.\n"
+                            if len(screened) > 0:
+                                for _, c in screened.sort_values('ai_score', ascending=False).head(5).iterrows():
+                                    context += f"- {c.get('first_name','')} {c.get('last_name','')}: {int(c.get('ai_score',0))}%, {c.get('ai_tier','')}\n"
+                            try:
+                                response = ai_agent.client.chat.completions.create(
+                                    model="gpt-3.5-turbo",
+                                    messages=[{"role": "system", "content": context}, *[{"role": m['role'], "content": m['content']} for m in st.session_state.ai_chat_history[-10:]]],
+                                    temperature=0.7, max_tokens=800
+                                )
+                                ai_response = response.choices[0].message.content
+                            except:
+                                ai_response = get_smart_response(user_message, screened, candidates)
+                        else:
+                            ai_response = get_smart_response(user_message, screened, candidates)
+                        
+                        st.session_state.ai_chat_history.append({"role": "assistant", "content": ai_response})
+                    except:
+                        st.session_state.ai_chat_history.append({"role": "assistant", "content": "I'm having trouble accessing data. Please try again."})
+                    st.rerun()
+        
+        if st.button("🗑️ Clear Chat History"):
+            st.session_state.ai_chat_history = [{"role": "assistant", "content": "👋 Hello! How can I help you today?"}]
+            st.rerun()
     
     # ============ JD ANALYSIS ============
     elif ai_section == "📋 JD Analysis":
@@ -9999,6 +10069,29 @@ def get_pipeline_stats(job_id=None):
         return stats, data
     except:
         return {}, []
+
+def get_smart_response(question, screened_cands, all_candidates):
+    q = question.lower()
+    if 'top' in q or 'best' in q:
+        if len(screened_cands) > 0:
+            top = screened_cands.sort_values('ai_score', ascending=False).head(3)
+            resp = "🏆 **Top Candidates:**\n\n"
+            for i, (_, c) in enumerate(top.iterrows()):
+                resp += f"{i+1}. **{c.get('first_name','')} {c.get('last_name','')}** — {int(c.get('ai_score',0))}% ({c.get('ai_tier','')})\n"
+            return resp
+        return "No candidates screened yet."
+    if 'compare' in q:
+        if len(screened_cands) >= 2:
+            resp = "📊 **Comparison:**\n\n"
+            for _, c in screened_cands.sort_values('ai_score', ascending=False).head(5).iterrows():
+                resp += f"**{c.get('first_name','')} {c.get('last_name','')}**: {int(c.get('ai_score',0))}% | {c.get('ai_tier','')}\n"
+            return resp + "\n💡 Interview Tier 1 candidates first."
+        return "Need at least 2 screened candidates."
+    if 'interview' in q or 'question' in q:
+        return "📋 **Sample Questions:**\n\n1. Describe a challenging project you led.\n2. How do you handle disagreements?\n3. What's your most innovative solution?\n4. How do you stay current?\n5. Why Churchgate Group?"
+    if 'offer' in q or 'draft' in q:
+        return "📝 Use the Offer Letters tab in Recruitment Hub to generate official PDFs with Churchgate branding."
+    return "I can help with top candidates, comparisons, interview questions, and offer drafts."
 
 def main():
     if 'user' not in st.session_state:
