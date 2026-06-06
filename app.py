@@ -2554,7 +2554,7 @@ def performance_okrs():
                             st.rerun()
                     
                     if pillar_data['kpis']:
-                        for kpi in pillar_data['kpis']:
+                        for kpi_index, kpi in enumerate(pillar_data['kpis']):
                             try:
                                 kpi_progress = int(float(str(kpi.get('current', '0')).replace('%', '')))
                             except:
@@ -2564,7 +2564,6 @@ def performance_okrs():
                             with col_kpi1:
                                 st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid {kpi_color};"><div style="display: flex; justify-content: space-between;"><strong>{kpi['kpi'][:60]}</strong><span style="color: {kpi_color}; font-weight: 600;">{kpi_status}</span></div><small>Target: {kpi.get('target', 'N/A')} | Current: {kpi.get('current', '0')} | Deadline: {kpi.get('deadline', 'N/A')}</small></div>""", unsafe_allow_html=True)
                             with col_kpi2:
-                                kpi_index = pillar_data['kpis'].index(kpi)
                                 if st.button("🗑️", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Delete this KPI"):
                                     pillar_data['kpis'].pop(kpi_index)
                                     try:
