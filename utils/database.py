@@ -61,7 +61,6 @@ class DatabaseManager:
         import hashlib
         import bcrypt
         
-        # Try Supabase client
         if self.use_supabase and self.supabase:
             try:
                 result = self.supabase.table("users").select("*").eq("email", email).execute()
@@ -77,13 +76,12 @@ class DatabaseManager:
                         except:
                             pass
                     
-                    # Try SHA-256 (old format or default)
+                    # Try SHA-256 (old format), then auto-upgrade
                     input_hash = hashlib.sha256(password.encode()).hexdigest()
                     if stored_hash == input_hash:
-                        return stored_user
-                    
-                    # Fallback for churchgate2026 default
-                    if password == 'churchgate2026' and stored_hash == 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f':
+                        # Auto-upgrade to bcrypt
+                        new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                        self.supabase.table("users").update({"password_hash": new_hash}).eq("email", email).execute()
                         return stored_user
             except:
                 pass
@@ -104,9 +102,8 @@ class DatabaseManager:
                 
                 input_hash = hashlib.sha256(password.encode()).hexdigest()
                 if stored_hash == input_hash:
-                    return stored_user
-                
-                if password == 'churchgate2026' and stored_hash == 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f':
+                    new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    self._patch("users", {"password_hash": new_hash}, {"email": email})
                     return stored_user
         
         return None
