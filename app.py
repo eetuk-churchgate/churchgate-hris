@@ -2437,152 +2437,136 @@ def performance_okrs():
         "🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "🌟 Exceptional Achievements", "📊 Dashboard"
     ])
     
-    # ============ TAB 1: STRATEGIC PILLARS (unchanged) ============
+    # ============ TAB 1: STRATEGIC PILLARS ============
     with tab1:
-        st.subheader("🎯 Strategic Pillars Console — Corporate Strategy 2026-2027")
+        st.subheader("🎯 My Strategic Pillars")
         
+        # Load KPI data for THIS USER
+        if user_name not in performance_data:
+            performance_data[user_name] = {}
+            for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', 
+                           '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                performance_data[user_name][pillar] = {
+                    'weight': 25, 'progress': 0, 'status': 'Not Started',
+                    'deadline': '2026-12-31', 'kpis': []
+                }
+        
+        user_pillar_data = performance_data[user_name]
+        
+        # Admin can view all departments for comparison
         if is_admin:
-            st.markdown("""<div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #CC0000;"><strong>🔐 Admin Console</strong> — Full access to all departments</div>""", unsafe_allow_html=True)
-            selected_dept = st.selectbox("🏢 Select Department", all_depts)
+            st.markdown("""<div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #CC0000;"><strong>🔐 Admin Console</strong> — View any department's KPIs</div>""", unsafe_allow_html=True)
+            view_type = st.radio("View", ["My KPIs", "Department Overview"], horizontal=True)
+            if view_type == "Department Overview":
+                selected_dept = st.selectbox("🏢 Select Department", all_depts)
+                if selected_dept in performance_data:
+                    dept_data = performance_data[selected_dept]
+                    st.markdown(f"### 📊 {selected_dept} — Department Scorecard")
+                else:
+                    dept_data = {}
+                    st.info("No KPIs set for this department yet.")
+            else:
+                dept_data = user_pillar_data
+                selected_dept = user_dept
+                st.markdown(f"### 📊 My Strategic Pillars — {user_name}")
         else:
-            selected_dept = user_dept if user_dept in all_depts else all_depts[0]
+            dept_data = user_pillar_data
+            selected_dept = user_dept
+            st.markdown(f"### 📊 My Strategic Pillars")
         
-        if selected_dept in performance_data:
-            dept_data = performance_data[selected_dept]
-            st.markdown(f"### 📊 {selected_dept} — Strategic Pillar Scorecard")
+        # Calculate scores
+        total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values()) if dept_data else 0
+        on_track = sum(1 for p in dept_data.values() if p['status'] in ['On Track', 'Exceeding'])
+        at_risk = sum(1 for p in dept_data.values() if p['status'] == 'At Risk'])
+        completed = sum(1 for p in dept_data.values() if p['status'] == 'Completed')
+        
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Overall Score", f"{total_weighted:.1f}%")
+        c2.metric("On Track", on_track)
+        c3.metric("At Risk", at_risk)
+        c4.metric("Completed", completed)
+        
+        # Department comparison for admins
+        if is_admin:
+            st.markdown("---")
+            st.markdown("### 🏢 Department Comparison")
+            comp_data = []
+            for d in all_depts:
+                if d in performance_data:
+                    dd = performance_data[d]
+                    comp_data.append({
+                        'Department': d,
+                        'Occupancy & Revenue': dd.get('1. Occupancy & Revenue Growth', {}).get('progress', 0),
+                        'Process Simplification': dd.get('2. Process Simplification', {}).get('progress', 0),
+                        'Asset Reliability': dd.get('3. Asset Reliability & Digitalization', {}).get('progress', 0),
+                        'People & Culture': dd.get('4. People & Culture', {}).get('progress', 0)
+                    })
+            if comp_data:
+                df_comp = pd.DataFrame(comp_data)
+                fig = px.bar(df_comp.melt(id_vars=['Department'], var_name='Pillar', value_name='Progress'),
+                            x='Department', y='Progress', color='Pillar', barmode='group',
+                            color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#aaaaaa'])
+                fig.update_layout(height=350)
+                st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("---")
+        for pillar_name, pillar_data in dept_data.items():
+            status_text, color = get_kpi_status(pillar_data['progress'])
+            if pillar_data['status'] in ['Exceeding', 'Completed']:
+                color = "#38a169"
             
-            total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values()) if dept_data else 0
-            
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Overall Score", f"{total_weighted:.1f}%")
-            c2.metric("On Track", str(sum(1 for p in dept_data.values() if p['status'] in ['On Track', 'Exceeding'])))
-            c3.metric("At Risk", str(sum(1 for p in dept_data.values() if p['status'] == 'At Risk')))
-            c4.metric("Completed", str(sum(1 for p in dept_data.values() if p['status'] == 'Completed')))
-            
-            # Department comparison for admins
-            if is_admin:
-                st.markdown("---")
-                st.markdown("### 🏢 Department Comparison")
-                comp_data = []
-                for d in all_depts:
-                    if d in performance_data:
-                        dd = performance_data[d]
-                        comp_data.append({
-                            'Department': d,
-                            'Occupancy & Revenue': dd.get('1. Occupancy & Revenue Growth', {}).get('progress', 0),
-                            'Process Simplification': dd.get('2. Process Simplification', {}).get('progress', 0),
-                            'Asset Reliability': dd.get('3. Asset Reliability & Digitalization', {}).get('progress', 0),
-                            'People & Culture': dd.get('4. People & Culture', {}).get('progress', 0)
-                        })
-                if comp_data:
-                    df_comp = pd.DataFrame(comp_data)
-                    fig = px.bar(df_comp.melt(id_vars=['Department'], var_name='Pillar', value_name='Progress'),
-                                x='Department', y='Progress', color='Pillar', barmode='group',
-                                color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#aaaaaa'])
-                    fig.update_layout(height=350)
-                    st.plotly_chart(fig, use_container_width=True)
-            
-            # Goal cascading for admin
-            if is_admin:
-                st.markdown("---")
-                st.markdown("### 🎯 Goal Cascading")
-                with st.form("cascade_form"):
-                    cascade_pillar = st.selectbox("Pillar", ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture'])
-                    cascade_kpi = st.text_input("Group KPI *")
-                    cascade_target = st.text_input("Target *")
-                    c1, c2 = st.columns(2)
+            with st.expander(f"{pillar_name} | {pillar_data['progress']}% | {pillar_data['status']}", expanded=False):
+                st.progress(pillar_data['progress'] / 100)
+                
+                if is_admin:
+                    c1, c2, c3 = st.columns(3)
                     with c1:
-                        if st.form_submit_button("📤 Cascade to All Departments"):
-                            if cascade_kpi and cascade_target:
-                                for d in all_depts:
-                                    performance_data[d][cascade_pillar]['kpis'].append({
-                                        'kpi': f"[GROUP] {cascade_kpi}", 'target': cascade_target,
-                                        'current': '0%', 'status': 'In Progress',
-                                        'deadline': '2026-12-31', 'owner': 'Group'
-                                    })
-                                    pd_data = performance_data[d][cascade_pillar]
-                                    try:
-                                        db.save_performance_data(d, cascade_pillar, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
-                                    except:
-                                        pass
-                                log_audit('Goal Cascaded', f'KPI cascaded to all depts: {cascade_kpi}')
-                                st.success(f"✅ Group KPI cascaded to all departments!")
-                                st.balloons()
-                                st.rerun()
+                        new_progress = st.slider("Progress %", 0, 100, int(pillar_data['progress']), key=f"prog_{selected_dept}_{pillar_name}")
                     with c2:
-                        if st.form_submit_button("📤 Cascade to Selected"):
-                            if cascade_kpi and cascade_target:
-                                performance_data[selected_dept][cascade_pillar]['kpis'].append({
-                                    'kpi': f"[GROUP] {cascade_kpi}", 'target': cascade_target,
-                                    'current': '0%', 'status': 'In Progress',
-                                    'deadline': '2026-12-31', 'owner': 'Group'
-                                })
+                        new_status = st.selectbox("Status", ['On Track', 'In Progress', 'At Risk', 'Exceeding', 'Completed'], index=0, key=f"stat_{selected_dept}_{pillar_name}")
+                    with c3:
+                        new_weight = st.slider("Weight %", 0, 100, int(pillar_data['weight']), key=f"wgt_{selected_dept}_{pillar_name}")
+                    
+                    if st.button(f"💾 Update", key=f"upd_{selected_dept}_{pillar_name}"):
+                        performance_data[selected_dept][pillar_name]['progress'] = new_progress
+                        performance_data[selected_dept][pillar_name]['status'] = new_status
+                        performance_data[selected_dept][pillar_name]['weight'] = new_weight
+                        try:
+                            db.save_performance_data(selected_dept, pillar_name, new_weight, new_progress, new_status, pillar_data['deadline'], pillar_data['kpis'])
+                        except:
+                            pass
+                        st.rerun()
+                
+                if pillar_data['kpis']:
+                    for kpi_index, kpi in enumerate(pillar_data['kpis']):
+                        try:
+                            kpi_progress = int(float(str(kpi.get('current', '0')).replace('%', '')))
+                        except:
+                            kpi_progress = 0
+                        kpi_status, kpi_color = get_kpi_status(kpi_progress)
+                        col_kpi1, col_kpi2, col_kpi3 = st.columns([9, 1, 1])
+                        with col_kpi1:
+                            st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid {kpi_color};"><div style="display: flex; justify-content: space-between;"><strong>{kpi['kpi'][:60]}</strong><span style="color: {kpi_color}; font-weight: 600;">{kpi_status}</span></div><small>Target: {kpi.get('target', 'N/A')} | Current: {kpi.get('current', '0')} | Deadline: {kpi.get('deadline', 'N/A')}</small></div>""", unsafe_allow_html=True)
+                        with col_kpi2:
+                            if st.button("✏️", key=f"edit_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Edit this KPI"):
+                                st.session_state['edit_kpi'] = {
+                                    'pillar': pillar_name,
+                                    'title': kpi['kpi'],
+                                    'target': kpi.get('target', ''),
+                                    'current': kpi.get('current', '0'),
+                                    'deadline': kpi.get('deadline', ''),
+                                    'index': kpi_index
+                                }
+                                st.success("✏️ KPI loaded! Go to '✏️ My KPIs' tab to edit.")
+                        with col_kpi3:
+                            if st.button("🗑️", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Delete this KPI"):
+                                pillar_data['kpis'].pop(kpi_index)
                                 try:
-                                    db.save_performance_data(selected_dept, cascade_pillar, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
+                                    db.save_performance_data(selected_dept, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
                                 except:
                                     pass
-                                log_audit('Goal Cascaded', f'KPI cascaded to {selected_dept}: {cascade_kpi}')
-                                st.success(f"✅ Group KPI cascaded to {selected_dept}!")
+                                st.success("✅ KPI deleted!")
                                 st.rerun()
-            
-            st.markdown("---")
-            for pillar_name, pillar_data in dept_data.items():
-                status_text, color = get_kpi_status(pillar_data['progress'])
-                if pillar_data['status'] in ['Exceeding', 'Completed']:
-                    color = "#38a169"
-                
-                with st.expander(f"{pillar_name} | {pillar_data['progress']}% | {pillar_data['status']}", expanded=False):
-                    st.progress(pillar_data['progress'] / 100)
-                    
-                    if is_admin:
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            new_progress = st.slider("Progress %", 0, 100, int(pillar_data['progress']), key=f"prog_{selected_dept}_{pillar_name}")
-                        with c2:
-                            new_status = st.selectbox("Status", ['On Track', 'In Progress', 'At Risk', 'Exceeding', 'Completed'], index=0, key=f"stat_{selected_dept}_{pillar_name}")
-                        with c3:
-                            new_weight = st.slider("Weight %", 0, 100, int(pillar_data['weight']), key=f"wgt_{selected_dept}_{pillar_name}")
-                        
-                        if st.button(f"💾 Update", key=f"upd_{selected_dept}_{pillar_name}"):
-                            performance_data[selected_dept][pillar_name]['progress'] = new_progress
-                            performance_data[selected_dept][pillar_name]['status'] = new_status
-                            performance_data[selected_dept][pillar_name]['weight'] = new_weight
-                            try:
-                                db.save_performance_data(selected_dept, pillar_name, new_weight, new_progress, new_status, pillar_data['deadline'], pillar_data['kpis'])
-                            except:
-                                pass
-                            st.rerun()
-                    
-                    if pillar_data['kpis']:
-                        for kpi_index, kpi in enumerate(pillar_data['kpis']):
-                            try:
-                                kpi_progress = int(float(str(kpi.get('current', '0')).replace('%', '')))
-                            except:
-                                kpi_progress = 0
-                            kpi_status, kpi_color = get_kpi_status(kpi_progress)
-                            col_kpi1, col_kpi2, col_kpi3 = st.columns([9, 1, 1])
-                            with col_kpi1:
-                                st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid {kpi_color};"><div style="display: flex; justify-content: space-between;"><strong>{kpi['kpi'][:60]}</strong><span style="color: {kpi_color}; font-weight: 600;">{kpi_status}</span></div><small>Target: {kpi.get('target', 'N/A')} | Current: {kpi.get('current', '0')} | Deadline: {kpi.get('deadline', 'N/A')}</small></div>""", unsafe_allow_html=True)
-                            with col_kpi2:
-                                if st.button("✏️", key=f"edit_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Edit this KPI"):
-                                    st.session_state['edit_kpi'] = {
-                                        'pillar': pillar_name,
-                                        'title': kpi['kpi'],
-                                        'target': kpi.get('target', ''),
-                                        'current': kpi.get('current', '0'),
-                                        'deadline': kpi.get('deadline', ''),
-                                        'index': kpi_index
-                                    }
-                                    st.success("✏️ KPI loaded! Go to '✏️ My KPIs' tab to edit.")
-                            with col_kpi3:
-                                if st.button("🗑️", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Delete this KPI"):
-                                    pillar_data['kpis'].pop(kpi_index)
-                                    try:
-                                        db.save_performance_data(selected_dept, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
-                                    except:
-                                        pass
-                                    st.success("✅ KPI deleted!")
-                                    st.rerun()
     
     # ============ TAB 2: MY KPIs ============
     with tab2:
@@ -2643,7 +2627,12 @@ def performance_okrs():
                         del st.session_state['edit_kpi']
                         st.success("✅ KPI updated!")
                     else:
-                        performance_data[user_dept][pillar_choice]['kpis'].append(new_kpi)
+                    # Save under user's own name
+                    if user_name not in performance_data:
+                        performance_data[user_name] = {}
+                    if pillar_choice not in performance_data[user_name]:
+                        performance_data[user_name][pillar_choice] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
+                    performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
                         st.success("✅ KPI saved!")
                     st.success("✅ KPI saved!")
                     st.rerun()
@@ -2662,7 +2651,7 @@ def performance_okrs():
                         pass
                     pd_data = performance_data[user_dept][pillar_choice]
                     try:
-                        db.save_performance_data(user_dept, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
+                        db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
                     except:
                         pass
                     
