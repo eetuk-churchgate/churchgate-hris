@@ -9427,8 +9427,8 @@ def my_profile():
             pass
     
     # Profile completeness
-    emergency_name_val = st.session_state.get('emergency_name', '')
-    emergency_phone_val = st.session_state.get('emergency_phone', '')
+    emergency_name_val = emp_data.get('emergency_name', '') if emp_data else ''
+    emergency_phone_val = emp_data.get('emergency_phone', '') if emp_data else ''
     profile_fields = [first_name, last_name, emp_phone, emp_grade, emp_join, emp_gender, 
                       str(emp_data.get('date_of_birth', '')) if emp_data else '',
                       emergency_name_val, emergency_phone_val]
