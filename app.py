@@ -1243,32 +1243,37 @@ def employee_dashboard():
     
     # ============ UPCOMING TRAINING ============
     st.markdown("---")
-    st.subheader("🎓 Recommended Training & Webinars")
-    tc1, tc2, tc3 = st.columns(3)
-    with tc1:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>🔧 BMS Advanced</h4>
-            <p style="font-size:0.8rem;">Building Management Systems</p>
-            <small style="color:#CC0000;">📅 June 15, 2026</small>
-        </div>
-        """, unsafe_allow_html=True)
-    with tc2:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>🤖 AI in Facilities</h4>
-            <p style="font-size:0.8rem;">Practical AI Applications</p>
-            <small style="color:#CC0000;">📅 June 20, 2026</small>
-        </div>
-        """, unsafe_allow_html=True)
-    with tc3:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>📊 Data Analytics</h4>
-            <p style="font-size:0.8rem;">Operational Analytics</p>
-            <small style="color:#CC0000;">📅 July 5, 2026</small>
-        </div>
-        """, unsafe_allow_html=True)
+    st.subheader("🎓 Upcoming Training & Webinars")
+    
+    try:
+        training_data = db._get("training_courses")
+        if training_data:
+            upcoming = sorted([t for t in training_data if t.get('start_date', '') >= datetime.now().strftime('%Y-%m-%d')], 
+                            key=lambda x: x.get('start_date', ''))[:3]
+            
+            if upcoming:
+                tc1, tc2, tc3 = st.columns(3)
+                for i, course in enumerate(upcoming):
+                    col = [tc1, tc2, tc3][i]
+                    with col:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <h4>{course.get('title', 'Training')[:40]}</h4>
+                            <p style="font-size:0.8rem;">{course.get('description', '')[:80]}</p>
+                            <small style="color:#CC0000;">📅 {course.get('start_date', '')}</small>
+                            <br><small style="color:#888;">{course.get('provider', '')} • {course.get('format', '')}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.info("No upcoming training sessions. Check the Training & Development tab.")
+        else:
+            st.info("Training catalog loading...")
+    except:
+        st.info("Training data will appear here.")
+    
+    if st.button("📚 View All Training Courses", use_container_width=True):
+        st.session_state['navigate_to'] = "🎓 Training & Development"
+        st.rerun()
 
 def executive_dashboard():
     show_churchgate_mission()
