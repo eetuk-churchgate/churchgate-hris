@@ -59,6 +59,8 @@ class DatabaseManager:
     
     def verify_user(self, email, password):
         import hashlib
+        import bcrypt
+        
         # Try Supabase client
         if self.use_supabase and self.supabase:
             try:
@@ -66,9 +68,21 @@ class DatabaseManager:
                 if result.data and len(result.data) > 0:
                     stored_user = result.data[0]
                     stored_hash = stored_user.get('password_hash', '')
+                    
+                    # Try bcrypt first (new format)
+                    if stored_hash.startswith('$2b$'):
+                        try:
+                            if bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+                                return stored_user
+                        except:
+                            pass
+                    
+                    # Try SHA-256 (old format or default)
                     input_hash = hashlib.sha256(password.encode()).hexdigest()
                     if stored_hash == input_hash:
                         return stored_user
+                    
+                    # Fallback for churchgate2026 default
                     if password == 'churchgate2026' and stored_hash == 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f':
                         return stored_user
             except:
@@ -80,9 +94,18 @@ class DatabaseManager:
             if data and len(data) > 0:
                 stored_user = data[0]
                 stored_hash = stored_user.get('password_hash', '')
+                
+                if stored_hash.startswith('$2b$'):
+                    try:
+                        if bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+                            return stored_user
+                    except:
+                        pass
+                
                 input_hash = hashlib.sha256(password.encode()).hexdigest()
                 if stored_hash == input_hash:
                     return stored_user
+                
                 if password == 'churchgate2026' and stored_hash == 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f':
                     return stored_user
         
