@@ -982,25 +982,49 @@ def employee_dashboard():
         # Birthdays This Month
         st.markdown("---")
         st.subheader("🎂 Birthdays This Month")
-        birthdays = [
-            {"name": "Chika Ikwuegbu", "date": "May 13"},
-            {"name": "Francis Asuquo", "date": "May 19"},
-            {"name": "Rhoda Ajibola", "date": "May 25"},
-            {"name": "Alice Agbo", "date": "May 28"},
-        ]
-        for b in birthdays:
-            st.markdown(f"🎂 **{b['name']}** — {b['date']}")
+        try:
+            emp_df = db.get_all_employees()
+            if not emp_df.empty:
+                today = datetime.now()
+                found_birthday = False
+                for _, emp in emp_df.iterrows():
+                    dob = emp.get('date_of_birth')
+                    if dob and str(dob) != 'None' and str(dob) != 'nan':
+                        try:
+                            dob_date = pd.to_datetime(dob)
+                            if dob_date.month == today.month:
+                                found_birthday = True
+                                st.markdown(f"🎂 **{emp['first_name']} {emp['last_name']}** — {dob_date.strftime('%B %d')} ({emp.get('department', '')})")
+                        except:
+                            pass
+                if not found_birthday:
+                    st.info("No birthdays this month.")
+        except:
+            pass
         
         # Work Anniversaries
         st.markdown("---")
-        st.subheader("⭐ Work Anniversaries")
-        anniversaries = [
-            {"name": "Augustine Oleh", "years": 4},
-            {"name": "Shem Waziri", "years": 3},
-            {"name": "Charles Okere", "years": 7},
-        ]
-        for a in anniversaries:
-            st.markdown(f"⭐ **{a['name']}** — {a['years']} years")
+        st.subheader("⭐ Work Anniversaries This Month")
+        try:
+            if not emp_df.empty:
+                today = datetime.now()
+                found_anniversary = False
+                for _, emp in emp_df.iterrows():
+                    join_date = emp.get('join_date')
+                    if join_date and str(join_date) != 'None' and str(join_date) != 'nan':
+                        try:
+                            jd = pd.to_datetime(join_date)
+                            if jd.month == today.month:
+                                years = today.year - jd.year
+                                if years > 0:
+                                    found_anniversary = True
+                                    st.markdown(f"⭐ **{emp['first_name']} {emp['last_name']}** — {years} year{'s' if years > 1 else ''} ({emp.get('department', '')})")
+                        except:
+                            pass
+                if not found_anniversary:
+                    st.info("No work anniversaries this month.")
+        except:
+            pass
         
         # Upcoming Holidays
         st.markdown("---")
