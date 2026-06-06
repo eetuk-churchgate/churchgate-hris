@@ -5625,13 +5625,71 @@ def ai_recruitment_agent():
                     c3.metric("📊 Avg Score", f"{int(screened_cands['ai_score'].mean())}%")
                     c4.metric("👥 Total Screened", len(screened_cands))
                     
-                    # Tiering table
-                    st.dataframe(
-                        screened_cands[['first_name', 'last_name', 'email', 'ai_score', 'ai_tier']].rename(
-                            columns={'first_name': 'First', 'last_name': 'Last', 'email': 'Email', 'ai_score': 'Score', 'ai_tier': 'Tier'}
-                        ),
-                        use_container_width=True, hide_index=True
-                    )
+                    # Transparent Scorecard Table
+                    st.markdown("#### 📊 Transparent Scoring Criteria")
+                    st.info("""
+                    **How scores are calculated:**
+                    - 🎯 Skills Match (30%) | 💼 Experience (25%) | 🎓 Education (10%) | 📜 Certifications (5%)
+                    - 📄 CV Quality (10%) | ✍️ Communication (10%) | 🔑 Keywords (5%) | 🚨 Verbatim Penalty (-5%)
+                    - 🔗 LinkedIn Presence (+5%) | 📝 Cover Letter (+5%)
+                    """)
+                    
+                    # Build detailed scorecard
+                    scorecard_data = []
+                    for _, row in screened_cands.iterrows():
+                        cv_text = str(row.get('resume_text', ''))
+                        # Get detailed scores from AI agent
+                        try:
+                            job_jd = ""
+                            if selected_job_id:
+                                for r in all_reqs:
+                                    if r.get('req_id') == selected_job_id:
+                                        job_jd = r.get('jd', '')
+                                        break
+                            jd_analysis = ai_agent.analyze_jd(job_jd) if job_jd else ai_agent.analyze_jd(cv_text[:500])
+                            detailed = ai_agent.score_candidate_advanced(cv_text, jd_analysis)
+                        except:
+                            detailed = {}
+                        
+                        scorecard_data.append({
+                            'Rank': len(scorecard_data) + 1,
+                            'Candidate': f"{row.get('first_name','')} {row.get('last_name','')}",
+                            'Overall': int(row.get('ai_score', 0)),
+                            'Tier': row.get('ai_tier', 'Pending'),
+                            'Skills': int(detailed.get('skills_score', 0)),
+                            'Experience': int(detailed.get('experience_score', 0)),
+                            'Education': int(detailed.get('education_score', 0)),
+                            'CV Quality': int(detailed.get('cv_quality_score', detailed.get('soft_skills_score', 0))),
+                            'Verbatim': f"{int(detailed.get('verbatim_flags', 0))}%",
+                            'Confidence': f"{int(detailed.get('confidence', 0))}%",
+                            'Strengths': ', '.join(detailed.get('key_strengths', [])[:2]),
+                            'Gaps': ', '.join(detailed.get('gaps_identified', [])[:2]),
+                        })
+                    
+                    if scorecard_data:
+                        scorecard_df = pd.DataFrame(scorecard_data)
+                        st.dataframe(scorecard_df, use_container_width=True, hide_index=True)
+                        
+                        # Detailed breakdown for each candidate
+                        st.markdown("---")
+                        st.markdown("### 🔍 Individual Score Breakdowns")
+                        for i, data in enumerate(scorecard_data):
+                            with st.expander(f"📊 {data['Candidate']} — {data['Overall']}% — {data['Tier']}"):
+                                col1, col2, col3, col4 = st.columns(4)
+                                col1.metric("🎯 Skills", f"{data['Skills']}%")
+                                col2.metric("💼 Experience", f"{data['Experience']}%")
+                                col3.metric("🎓 Education", f"{data['Education']}%")
+                                col4.metric("📄 CV Quality", f"{data['CV Quality']}%")
+                                
+                                st.markdown(f"**🚨 Verbatim Risk:** {data['Verbatim']}")
+                                st.markdown(f"**🤖 AI Confidence:** {data['Confidence']}")
+                                st.markdown(f"**✅ Strengths:** {data['Strengths']}")
+                                st.markdown(f"**⚠️ Gaps:** {data['Gaps']}")
+                                
+                                # Visual score bar
+                                st.progress(data['Overall']/100)
+                    else:
+                        st.info("Scorecard data will appear after screening.")
                     
                     # Send to Manager
                     col1, col2 = st.columns(2)
