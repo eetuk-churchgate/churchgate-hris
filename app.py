@@ -9556,9 +9556,9 @@ def my_profile():
                 st.markdown("**Emergency Contact**")
                 ec1, ec2 = st.columns(2)
                 with ec1:
-                    emergency_name = st.text_input("Contact Name", placeholder="Next of Kin")
+                    emergency_name = st.text_input("Contact Name", value=emp_data.get('emergency_name', '') if emp_data else '', placeholder="Next of Kin")
                 with ec2:
-                    emergency_phone = st.text_input("Contact Phone", placeholder="+234...")
+                    emergency_phone = st.text_input("Contact Phone", value=emp_data.get('emergency_phone', '') if emp_data else '', placeholder="+234...")
                 
                 if st.form_submit_button("💾 Update Profile", use_container_width=True):
                     try:
