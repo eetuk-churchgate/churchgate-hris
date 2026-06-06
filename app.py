@@ -9422,7 +9422,7 @@ def my_profile():
                         try:
                             result = db._get("users", {"email": user_email})
                             if result and len(result) > 0:
-                                stored_pw = result[0].get('password', '')
+                                stored_pw = result[0].get('password_hash', '')
                                 if stored_pw == current_hash:
                                     if new_pw == confirm_pw:
                                         if len(new_pw) >= 6:
