@@ -9427,8 +9427,12 @@ def my_profile():
             pass
     
     # Profile completeness
-    profile_fields = [first_name, last_name, emp_phone, emp_grade, emp_join, emp_gender]
-    complete_count = sum(1 for f in profile_fields if f and f != 'N/A' and f != '+234 800 000 0000')
+    emergency_name_val = st.session_state.get('emergency_name', '')
+    emergency_phone_val = st.session_state.get('emergency_phone', '')
+    profile_fields = [first_name, last_name, emp_phone, emp_grade, emp_join, emp_gender, 
+                      str(emp_data.get('date_of_birth', '')) if emp_data else '',
+                      emergency_name_val, emergency_phone_val]
+    complete_count = sum(1 for f in profile_fields if f and f != 'N/A' and f != '+234 800 000 0000' and f != '')
     profile_pct = int(complete_count / len(profile_fields) * 100)
     
     st.markdown(f"""<div class="churchgate-header"><h1>👤 My Profile</h1><p>{user_name} • {emp_position}</p></div>""", unsafe_allow_html=True)
@@ -9563,7 +9567,9 @@ def my_profile():
                             "email": new_email, "phone": new_phone,
                             "department": new_dept, "region": new_region,
                             "gender": new_gender,
-                            "date_of_birth": new_dob.strftime('%Y-%m-%d')
+                            "date_of_birth": new_dob.strftime('%Y-%m-%d'),
+                            "emergency_name": emergency_name,
+                            "emergency_phone": emergency_phone
                         }, {"employee_id": user_id})
                         st.session_state.user['name'] = f"{new_first} {new_last}"
                         st.session_state.user['email'] = new_email
