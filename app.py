@@ -5741,44 +5741,91 @@ def ai_recruitment_agent():
                         del st.session_state['shortlist_bulk']
                         st.rerun()
                 
-                # ===== CANDIDATE DETAILS =====
+                # ===== CANDIDATE DETAILS WITH CVs =====
                 st.markdown("---")
-                st.markdown("### 📋 All Applications")
+                st.markdown("### 📋 All Applications with CVs")
                 
                 for idx, row in filtered.iterrows():
                     first = str(row.get('first_name', ''))
                     last = str(row.get('last_name', ''))
+                    email_val = str(row.get('email', ''))
+                    job_id_val = str(row.get('job_id', 'N/A'))
                     score = int(row.get('ai_score', 0)) if row.get('ai_score') and float(row.get('ai_score', 0)) > 0 else 0
                     tier = str(row.get('ai_tier', 'Pending'))
+                    cv_text = str(row.get('resume_text', ''))
+                    phone_val = str(row.get('phone', ''))
+                    linkedin_val = str(row.get('linkedin_url', ''))
                     
-                    emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "⏳"
+                    emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "🔶" if score > 0 else "⏳"
                     
-                    with st.expander(f"{emoji} {first} {last} — {score}% — {tier}", expanded=(score >= 85)):
-                        col1, col2 = st.columns([3, 1])
+                    with st.expander(f"{emoji} {first} {last} — {job_id_val} — {score}% — {tier}", expanded=(score >= 85)):
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        
                         with col1:
-                            st.markdown(f"**Email:** {row.get('email', 'N/A')}")
-                            st.markdown(f"**Phone:** {row.get('phone', 'N/A')}")
-                            st.markdown(f"**Job:** {row.get('job_id', 'N/A')}")
+                            initials = (first[:1] + last[:1]).upper() if first and last else "??"
+                            st.markdown(f"""<div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
+                            if score > 0:
+                                st.metric("Score", f"{score}%")
+                        
+                        with col2:
+                            st.markdown(f"**📧** {email_val} | **📱** {phone_val}")
+                            if linkedin_val and linkedin_val != 'None':
+                                st.markdown(f"**🔗** [{linkedin_val[:30]}...]({linkedin_val})")
+                            st.markdown(f"**💼** {str(row.get('current_position', ''))} | **📅** {str(row.get('years_of_experience', ''))} yrs")
                             if score > 0:
                                 st.progress(score/100)
-                        with col2:
-                            if st.button("🔍 Deep Analysis", key=f"pipeline_deep_{idx}"):
-                                cv_text = str(row.get('resume_text', ''))
-                                if cv_text and len(cv_text) > 50:
-                                    result = ai_agent.deep_analyze_candidate(cv_text, jd_text if 'jd_text' in dir() else "")
-                                    if isinstance(result, dict):
-                                        st.session_state[f"analysis_{idx}"] = result
-                                        st.rerun()
                         
-                        # Show analysis results
-                        if f"analysis_{idx}" in st.session_state:
-                            res = st.session_state[f"analysis_{idx}"]
+                        with col3:
+                            if cv_text and cv_text != 'None' and len(cv_text) > 10:
+                                with st.expander("📄 View CV", expanded=False):
+                                    st.text_area("CV Content", cv_text, height=200, key=f"cv_pipeline_{idx}")
+                                    st.download_button("📥 Download CV Text", cv_text, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
+                                    # Original file download
+                                    cv_url = str(row.get('cv_url', ''))
+                                    resume_filename = str(row.get('resume_filename', ''))
+                                    if cv_url and cv_url != 'None' and cv_url != '':
+                                        st.markdown(f"📎 [Download Original File: {resume_filename}]({cv_url})")
+                            if st.button("🔍 Deep Analysis", key=f"deep_pipe_{idx}", use_container_width=True):
+                                if cv_text and len(cv_text) > 50:
+                                    with st.spinner("Analyzing..."):
+                                        job_jd = ""
+                                        if job_id_val and job_id_val != 'None':
+                                            for r in all_reqs:
+                                                if r.get('req_id') == job_id_val:
+                                                    job_jd = r.get('jd', '')
+                                                    break
+                                        res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                        if isinstance(res, dict):
+                                            st.session_state[f"pipe_analysis_{idx}"] = res
+                                            st.rerun()
+                        
+                        # Show analysis
+                        if f"pipe_analysis_{idx}" in st.session_state:
+                            res = st.session_state[f"pipe_analysis_{idx}"]
                             st.markdown("---")
+                            st.markdown("#### 🔬 Deep Analysis")
                             s1, s2, s3, s4 = st.columns(4)
                             s1.metric("Overall", f"{res.get('overall_score', 0)}%")
                             s2.metric("Skills", f"{res.get('skills_score', 0)}%")
                             s3.metric("Experience", f"{res.get('experience_score', 0)}%")
                             s4.metric("Confidence", f"{res.get('confidence', 0)}%")
+                            
+                            if res.get('verbatim_flags', 0) > 30:
+                                st.warning(f"🚨 Verbatim risk: {res.get('verbatim_flags', 0):.0f}%")
+                            
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.markdown("**✅ Strengths**")
+                                for s in res.get('key_strengths', [])[:3]:
+                                    st.markdown(f"- {s}")
+                            with c2:
+                                st.markdown("**⚠️ Gaps**")
+                                for g in res.get('gaps_identified', [])[:3]:
+                                    st.markdown(f"- {g}")
+                            
+                            if st.button("🗑️ Clear", key=f"clr_pipe_{idx}"):
+                                del st.session_state[f"pipe_analysis_{idx}"]
+                                st.rerun()
             else:
                 st.info("No applications yet. Share the Careers Page URL to start receiving applications.")
         except Exception as e:
