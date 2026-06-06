@@ -5884,10 +5884,10 @@ def ai_recruitment_agent():
                             if st.button("🗑️ Clear", key=f"clr_pipe_{idx}"):
                                 del st.session_state[f"pipe_analysis_{idx}"]
                                 st.rerun()
-                else:
-                    st.info("No applications yet. Share the Careers Page URL to start receiving applications.")
-            except Exception as e:
-                st.warning(f"Loading: {str(e)}")
+            else:
+                st.info("No applications yet. Share the Careers Page URL to start receiving applications.")
+        except Exception as e:
+            st.warning(f"Loading: {str(e)}")
     
     # ============ AI ASSISTANT ============
     elif ai_section == "💬 AI Assistant":
