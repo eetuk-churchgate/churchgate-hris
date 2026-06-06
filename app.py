@@ -2560,7 +2560,7 @@ def performance_okrs():
                             except:
                                 kpi_progress = 0
                             kpi_status, kpi_color = get_kpi_status(kpi_progress)
-                            ol_kpi1, col_kpi2 = st.columns([10, 1])
+                            col_kpi1, col_kpi2 = st.columns([10, 1])
                             with col_kpi1:
                                 st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid {kpi_color};"><div style="display: flex; justify-content: space-between;"><strong>{kpi['kpi'][:60]}</strong><span style="color: {kpi_color}; font-weight: 600;">{kpi_status}</span></div><small>Target: {kpi.get('target', 'N/A')} | Current: {kpi.get('current', '0')} | Deadline: {kpi.get('deadline', 'N/A')}</small></div>""", unsafe_allow_html=True)
                             with col_kpi2:
