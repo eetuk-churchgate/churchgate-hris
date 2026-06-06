@@ -869,7 +869,8 @@ def employee_dashboard():
     with c4:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">🎯 KPIs</div><div class="metric-value">4</div><small>Strategic pillars</small></div>""", unsafe_allow_html=True)
     with c5:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">4.5</div><small>Peer recognition</small></div>""", unsafe_allow_html=True)
+        peer_rating = st.session_state.get('peer_rating', 0)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">{peer_rating}</div><small>Peer recognition</small></div>""", unsafe_allow_html=True)
     
     # ============ QUICK ACTIONS ============
     st.markdown("---")
@@ -1165,6 +1166,81 @@ def employee_dashboard():
                     st.dataframe(pd.DataFrame(hod_data), use_container_width=True, hide_index=True)
         except:
             pass
+    # ============ PEER RATING ============
+    st.markdown("---")
+    st.subheader("⭐ Rate a Colleague")
+    
+    # Get colleagues list
+    try:
+        emp_df = db.get_all_employees()
+        if not emp_df.empty:
+            colleague_list = [f"{row['first_name']} {row['last_name']}" for _, row in emp_df.iterrows() if f"{row['first_name']} {row['last_name']}" != user_name]
+        else:
+            colleague_list = ["No colleagues available"]
+    except:
+        colleague_list = ["No colleagues available"]
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        rate_colleague = st.selectbox("👤 Colleague", ["Select..."] + colleague_list, key="rate_colleague")
+    with col2:
+        rating = st.selectbox("⭐ Rating", [5, 4, 3, 2, 1], format_func=lambda x: "⭐" * x, key="rating_value")
+    with col3:
+        is_anonymous = st.checkbox("Anonymous", value=False, key="rate_anonymous")
+    
+    rating_comment = st.text_area("💬 Comment (Optional)", placeholder="Why are you giving this rating?", key="rate_comment")
+    
+    if st.button("🌟 Submit Rating", use_container_width=True):
+        if rate_colleague != "Select...":
+            db._post("peer_ratings", {
+                "rated_by": "Anonymous" if is_anonymous else user_name,
+                "rated_user": rate_colleague,
+                "rating": rating,
+                "comment": rating_comment,
+                "is_anonymous": is_anonymous,
+                "created_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+            })
+            st.success(f"🌟 Rating submitted for {rate_colleague}!")
+            st.balloons()
+            st.rerun()
+        else:
+            st.warning("⚠️ Please select a colleague to rate.")
+    
+    # Show recent ratings received
+    st.markdown("---")
+    st.markdown("### 📊 My Recent Ratings")
+    try:
+        all_ratings = db._get("peer_ratings")
+        my_ratings = [r for r in all_ratings if r.get('rated_user') == user_name] if all_ratings else []
+        if my_ratings:
+            avg_rating = sum(r.get('rating', 0) for r in my_ratings) / len(my_ratings)
+            stars = "⭐" * round(avg_rating)
+            st.markdown(f"**Average Rating:** {stars} ({avg_rating:.1f}/5) from {len(my_ratings)} review{'s' if len(my_ratings) > 1 else ''}")
+            
+            # Show latest 3 ratings
+            for r in sorted(my_ratings, key=lambda x: x.get('created_at', ''), reverse=True)[:3]:
+                rater = r.get('rated_by', 'Unknown')
+                stars_display = "⭐" * r.get('rating', 0)
+                comment = r.get('comment', '')
+                st.markdown(f"{stars_display} — {'Anonymous' if r.get('is_anonymous') else rater}")
+                if comment:
+                    st.caption(f"\"{comment}\"")
+        else:
+            st.info("No ratings yet.")
+    except:
+        pass
+    
+    # Update the hardcoded peer rating metric
+    try:
+        all_ratings = db._get("peer_ratings")
+        my_ratings = [r for r in all_ratings if r.get('rated_user') == user_name] if all_ratings else []
+        if my_ratings:
+            st.session_state['peer_rating'] = round(sum(r.get('rating', 0) for r in my_ratings) / len(my_ratings), 1)
+        else:
+            st.session_state['peer_rating'] = 0
+    except:
+        st.session_state['peer_rating'] = 0
+    
     # ============ UPCOMING TRAINING ============
     st.markdown("---")
     st.subheader("🎓 Recommended Training & Webinars")
