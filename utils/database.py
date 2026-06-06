@@ -167,7 +167,13 @@ class DatabaseManager:
         self._post("performance_data", {"department": department, "pillar_name": pillar_name, "weight": weight, "progress": progress, "status": status, "deadline": deadline, "kpi_data": json.dumps(kpi_data)})
     
     def get_performance_data(self, department=None):
-        data = self._get("performance_data")
+        if department:
+            data = self._get("performance_data", {"department": department})
+            # Also try user_name column for individual KPIs
+            if not data:
+                data = self._get("performance_data", {"user_name": department})
+        else:
+            data = self._get("performance_data")
         return pd.DataFrame(data) if data else pd.DataFrame()
     
     def get_all_employees(self):
