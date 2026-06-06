@@ -9575,6 +9575,7 @@ def my_profile():
                         st.session_state.user['email'] = new_email
                         st.session_state.user['department'] = new_dept
                         st.success("✅ Profile updated!")
+                        st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
                         st.error(f"❌ Update failed: {str(e)}")
