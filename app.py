@@ -903,7 +903,7 @@ def employee_dashboard():
         # KPI Progress
         st.subheader("🎯 My KPI Progress")
         try:
-            perf_data = db.get_performance_data(user_dept)
+            perf_data = db.get_performance_data(user_name)
             if not perf_data.empty:
                 for _, row in perf_data.iterrows():
                     progress = row.get('progress', 0)
