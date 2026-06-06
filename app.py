@@ -2573,7 +2573,7 @@ def performance_okrs():
                                         'deadline': kpi.get('deadline', ''),
                                         'index': kpi_index
                                     }
-                                    st.rerun()
+                                    st.success("✏️ KPI loaded! Go to '✏️ My KPIs' tab to edit.")
                             with col_kpi3:
                                 if st.button("🗑️", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Delete this KPI"):
                                     pillar_data['kpis'].pop(kpi_index)
