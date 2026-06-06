@@ -5905,7 +5905,6 @@ def ai_recruitment_agent():
             else:
                 st.markdown(f"""<div style="background:#f0f0f0;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-right:3rem;"><strong>🤖 AI Assistant</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
         
-        # Quick questions
         qc1, qc2, qc3, qc4 = st.columns(4)
         with qc1:
             if st.button("🏆 Top Candidates", use_container_width=True):
