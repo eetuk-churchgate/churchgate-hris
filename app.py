@@ -9589,15 +9589,32 @@ def my_profile():
                 
                 if st.form_submit_button("🔒 Change Password", use_container_width=True):
                     if current_pw and new_pw and confirm_pw:
-                        current_hash = hashlib.sha256(current_pw.encode()).hexdigest()
+                        import bcrypt
+                        import hashlib
                         try:
                             result = db._get("users", {"email": user_email})
                             if result and len(result) > 0:
                                 stored_pw = result[0].get('password_hash', '')
-                                if stored_pw == current_hash:
+                                verified = False
+                                
+                                # Try bcrypt
+                                if stored_pw.startswith('$2b$'):
+                                    try:
+                                        if bcrypt.checkpw(current_pw.encode('utf-8'), stored_pw.encode('utf-8')):
+                                            verified = True
+                                    except:
+                                        pass
+                                
+                                # Try SHA-256
+                                if not verified:
+                                    current_hash = hashlib.sha256(current_pw.encode()).hexdigest()
+                                    if stored_pw == current_hash:
+                                        verified = True
+                                
+                                if verified:
                                     if new_pw == confirm_pw:
                                         if len(new_pw) >= 6:
-                                            new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
+                                            new_hash = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                                             db._patch("users", {"password_hash": new_hash}, {"email": user_email})
                                             st.success("✅ Password changed!")
                                             st.balloons()
