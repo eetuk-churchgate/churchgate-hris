@@ -1947,6 +1947,16 @@ def employee_management():
                                     key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_leave = st.number_input("Leave Days", value=int(emp.get('leave_balance', 20) or 20), min_value=0, max_value=365, key=f"leave_{emp['employee_id']}_{st.session_state.dir_page}")
+                                
+                                current_dob = emp.get('date_of_birth', '')
+                                if current_dob and str(current_dob) != 'None' and str(current_dob) != 'nan':
+                                    try:
+                                        current_dob_date = pd.to_datetime(current_dob).date()
+                                    except:
+                                        current_dob_date = datetime.now().date()
+                                else:
+                                    current_dob_date = datetime.now().date()
+                                new_dob = st.date_input("Date of Birth", value=current_dob_date, key=f"dob_{emp['employee_id']}_{st.session_state.dir_page}")
                             
                             if st.form_submit_button("💾 Save Changes", use_container_width=True):
                                 try:
@@ -1954,7 +1964,8 @@ def employee_management():
                                         "department": new_dept, "grade": new_grade,
                                         "position": new_position, "status": new_status,
                                         "email": new_email, "gender": new_gender,
-                                        "leave_balance": new_leave
+                                        "leave_balance": new_leave,
+                                        "date_of_birth": new_dob.strftime('%Y-%m-%d')
                                     }, {"employee_id": emp['employee_id']})
                                     # Also update users table role
                                     db._patch("users", {"role": new_role, "department": new_dept, "name": f"{emp['first_name']} {emp['last_name']}"}, {"email": new_email})
@@ -1983,7 +1994,7 @@ def employee_management():
         else:
             st.info("No employees match your search criteria.")
     
-    # ============ TAB 2: ADD EMPLOYEE ============
+   # ============ TAB 2: ADD EMPLOYEE ============
     with tab2:
         st.subheader("➕ Add New Employee")
         with st.form("add_employee_form"):
@@ -2003,6 +2014,7 @@ def employee_management():
             with c3:
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
                 join_date = st.date_input("Join Date")
+                date_of_birth = st.date_input("Date of Birth *")
                 system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'])
                 status = st.selectbox("Status", ['Active', 'Probation'])
             
@@ -2014,7 +2026,9 @@ def employee_management():
                             "email": email, "phone": phone, "department": department,
                             "region": region,
                             "position": position, "grade": grade, "employment_type": employment_type,
-                            "join_date": join_date.strftime('%Y-%m-%d'), "status": status
+                            "join_date": join_date.strftime('%Y-%m-%d'), 
+                            "date_of_birth": date_of_birth.strftime('%Y-%m-%d'),
+                            "status": status
                         })
                         if result:
                             st.success(f"✅ {first_name} {last_name} added!")
@@ -2026,6 +2040,8 @@ def employee_management():
                             st.error("❌ Insert failed - check Supabase RLS policies or employee_id uniqueness")
                     except Exception as e:
                         st.error(f"❌ Error adding employee: {str(e)}")
+                else:
+                    st.error("❌ Required fields missing!")
     
     # ============ TAB 3: BULK UPLOAD ============
     with tab3:
@@ -9521,6 +9537,17 @@ def my_profile():
                     new_dept = st.selectbox("Department", dept_list, index=dept_idx)
                     new_region = st.selectbox("Region", ['Abuja', 'Lagos'], index=0 if emp_region == 'Abuja' else 1)
                 
+                # Date of Birth
+                current_dob_val = emp_data.get('date_of_birth', '') if emp_data else ''
+                if current_dob_val and str(current_dob_val) != 'None' and str(current_dob_val) != 'nan':
+                    try:
+                        current_dob_date = pd.to_datetime(current_dob_val).date()
+                    except:
+                        current_dob_date = datetime.now().date()
+                else:
+                    current_dob_date = datetime.now().date()
+                new_dob = st.date_input("Date of Birth *", value=current_dob_date)
+                
                 st.markdown("---")
                 st.markdown("**Emergency Contact**")
                 ec1, ec2 = st.columns(2)
@@ -9535,7 +9562,8 @@ def my_profile():
                             "first_name": new_first, "last_name": new_last,
                             "email": new_email, "phone": new_phone,
                             "department": new_dept, "region": new_region,
-                            "gender": new_gender
+                            "gender": new_gender,
+                            "date_of_birth": new_dob.strftime('%Y-%m-%d')
                         }, {"employee_id": user_id})
                         st.session_state.user['name'] = f"{new_first} {new_last}"
                         st.session_state.user['email'] = new_email
