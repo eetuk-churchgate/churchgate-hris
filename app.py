@@ -2477,7 +2477,7 @@ def performance_okrs():
         # Calculate scores
         total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values()) if dept_data else 0
         on_track = sum(1 for p in dept_data.values() if p['status'] in ['On Track', 'Exceeding'])
-        at_risk = sum(1 for p in dept_data.values() if p['status'] == 'At Risk'])
+        at_risk = sum(1 for p in dept_data.values() if p['status'] == 'At Risk')
         completed = sum(1 for p in dept_data.values() if p['status'] == 'Completed')
         
         c1, c2, c3, c4 = st.columns(4)
