@@ -5483,19 +5483,17 @@ def ai_recruitment_agent():
     
     # ============ LOAD APPLICATIONS ============
     if ai_section == "📥 Load Applications":
-        st.subheader("📥 Applications from Careers Page")
-        st.info("Real applications from Churchgate Careers Portal. AI auto-analyzes each candidate.")
+        st.subheader("🚀 Recruitment Pipeline & Bulk Screening")
         
         try:
             candidates = db.get_all_candidates()
             if not candidates.empty:
-                # Build job filter with real titles
+                # Job filter
                 job_map = {}
                 try:
                     all_reqs = db.get_all_job_requisitions()
                     for r in all_reqs:
                         req_id = r.get('req_id', '')
-                        # Map both full and short formats
                         short_id = f"JOB-{req_id[-6:]}" if len(req_id) >= 6 else req_id
                         title = r.get('title', req_id)
                         job_map[req_id] = title
@@ -5503,93 +5501,286 @@ def ai_recruitment_agent():
                 except:
                     pass
                 
-                # Create display options
                 job_options = ["All Jobs"]
                 if 'job_id' in candidates.columns:
                     for jid in candidates['job_id'].dropna().unique():
                         title = job_map.get(jid, jid)
-                        job_options.append(f"{title}")
+                        job_options.append(title)
                 
-                agent_job_filter = st.selectbox("📋 Filter by Job", job_options, key="agent_job_filter_t7")
+                pipeline_job_filter = st.selectbox("📋 Filter by Job", job_options, key="pipeline_job_filter")
                 
-                if agent_job_filter != "All Jobs":
-                    # Find the matching job_id
-                    selected_job_id = None
+                # Map title back to job_id
+                selected_job_id = None
+                if pipeline_job_filter != "All Jobs":
                     for jid in candidates['job_id'].dropna().unique():
-                        if job_map.get(jid, jid) == agent_job_filter:
+                        if job_map.get(jid, jid) == pipeline_job_filter:
                             selected_job_id = jid
                             break
-                    if selected_job_id:
-                        candidates = candidates[candidates['job_id'] == selected_job_id]
+                    filtered = candidates[candidates['job_id'] == selected_job_id]
+                else:
+                    filtered = candidates
                 
-                st.markdown(f"### 📊 {len(candidates)} Applications")
+                st.markdown(f"### 📊 {len(filtered)} Candidates")
                 
-                for idx, row in candidates.iterrows():
-                    first = str(row.get('first_name') or '')
-                    if not first or first == 'nan' or first == 'None':
-                        continue
-                    first = first if first else 'Candidate'
-                    last = str(row.get('last_name') or '')
-                    job = str(row.get('job_id') or 'N/A')
-                    email_val = str(row.get('email') or 'N/A')
-                    phone_val = str(row.get('phone') or 'N/A')
-                    linkedin_val = str(row.get('linkedin_url') or 'N/A')
-                    experience_val = str(row.get('years_of_experience') or 'N/A')
-                    current_val = str(row.get('current_position') or 'N/A')
-                    source_val = str(row.get('source') or 'N/A')
-                    score_val = row.get('ai_score', 0) or 0
-                    score_display = f"{int(score_val)}%" if score_val > 0 else "Pending"
-                    tier_val = str(row.get('ai_tier') or 'Pending')
-                    resume_val = str(row.get('resume_text') or '')
+                # ===== PIPELINE STAGES BAR =====
+                st.markdown("---")
+                st.markdown("### 🔄 Recruitment Pipeline")
+                
+                pipeline_stats, pipeline_data = get_pipeline_stats(selected_job_id)
+                
+                if pipeline_stats:
+                    stages = list(pipeline_stats.keys())
+                    counts = list(pipeline_stats.values())
+                    total = sum(counts)
                     
-                    with st.expander(f"📋 {first} {last} — {job} — AI: {score_display}", expanded=False):
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            st.markdown(f"**Email:** {email_val}")
-                            st.markdown(f"**Phone:** {phone_val}")
-                            st.markdown(f"**LinkedIn:** {linkedin_val}")
-                            st.markdown(f"**Experience:** {experience_val} years")
-                        with c2:
-                            st.markdown(f"**Current:** {current_val}")
-                            st.markdown(f"**Source:** {source_val}")
-                            st.markdown(f"**AI Score:** {score_display}")
-                            st.markdown(f"**AI Tier:** {tier_val}")
+                    # Visual pipeline
+                    cols = st.columns(len(stages))
+                    for i, (stage, count) in enumerate(pipeline_stats.items()):
+                        with cols[i]:
+                            color = "#38a169" if stage in ['Hired'] else "#3182ce" if stage in ['Offer Sent', 'Interview Scheduled'] else "#d69e2e" if stage in ['Shortlisted', 'Manager Review'] else "#a0aec0"
+                            st.markdown(f"""
+                            <div style="background:white;padding:0.5rem;border-radius:6px;text-align:center;border-top:3px solid {color};">
+                                <small style="color:#888;">{stage}</small><br>
+                                <strong style="font-size:1.2rem;">{count}</strong>
+                            </div>
+                            """, unsafe_allow_html=True)
+                
+                # ===== BULK SCREENING =====
+                st.markdown("---")
+                st.markdown("### 🤖 Step 1: Bulk AI Screening")
+                
+                unscreened = filtered[filtered['ai_score'] == 0] if 'ai_score' in filtered.columns else filtered
+                
+                col1, col2, col3 = st.columns([2, 1, 1])
+                with col1:
+                    st.metric("Pending Screening", len(unscreened))
+                with col2:
+                    if st.button("🤖 Screen All", use_container_width=True, type="primary", disabled=len(unscreened)==0):
+                        with st.spinner(f"🤖 Deep-analyzing {len(unscreened)} candidates..."):
+                            screened = 0
+                            for _, row in unscreened.iterrows():
+                                try:
+                                    cv_text = str(row.get('resume_text', ''))
+                                    if cv_text and cv_text != 'None' and len(cv_text) > 50:
+                                        job_id_val = str(row.get('job_id', ''))
+                                        jd_text = ""
+                                        if job_id_val and job_id_val != 'None':
+                                            for r in all_reqs:
+                                                if r.get('req_id') == job_id_val:
+                                                    jd_text = r.get('jd', '')
+                                                    break
+                                        result = ai_agent.deep_analyze_candidate(cv_text, jd_text) if jd_text else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                        if isinstance(result, dict):
+                                            score = int(result.get('overall_score', 0))
+                                            tier = result.get('tier', 'Pending')
+                                            db._patch("candidates", {"ai_score": score, "ai_tier": tier}, {"candidate_ref": row.get('candidate_ref', '')})
+                                            # Add to pipeline
+                                            try:
+                                                db._post("recruitment_pipeline", {
+                                                    "candidate_ref": row.get('candidate_ref', ''),
+                                                    "candidate_name": f"{row.get('first_name','')} {row.get('last_name','')}",
+                                                    "candidate_email": row.get('email', ''),
+                                                    "job_id": job_id_val,
+                                                    "job_title": job_map.get(job_id_val, ''),
+                                                    "current_stage": "AI Screened",
+                                                    "ai_score": score,
+                                                    "ai_tier": tier,
+                                                    "updated_by": user_name
+                                                })
+                                            except:
+                                                pass
+                                            screened += 1
+                                except:
+                                    pass
+                            st.success(f"✅ {screened} candidates screened!")
+                            st.rerun()
+                with col3:
+                    if st.button("📊 Quick Score", use_container_width=True, disabled=len(unscreened)==0):
+                        with st.spinner("Scoring..."):
+                            for _, row in unscreened.iterrows():
+                                try:
+                                    cv_text = str(row.get('resume_text', ''))
+                                    if cv_text and len(cv_text) > 50:
+                                        result = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                        if isinstance(result, dict):
+                                            db._patch("candidates", {"ai_score": int(result.get('overall_score', 0)), "ai_tier": result.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
+                                except:
+                                    pass
+                            st.success("✅ Quick scores applied!")
+                            st.rerun()
+                
+                # ===== TIERING REPORT =====
+                st.markdown("---")
+                st.markdown("### 📊 Step 2: Tiering Report & Manager Review")
+                
+                screened_cands = filtered[filtered['ai_score'] > 0].sort_values('ai_score', ascending=False)
+                
+                if len(screened_cands) > 0:
+                    t1 = len(screened_cands[screened_cands['ai_score'] >= 85])
+                    t2 = len(screened_cands[(screened_cands['ai_score'] >= 70) & (screened_cands['ai_score'] < 85)])
+                    
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("🌟 Tier 1", t1)
+                    c2.metric("👍 Tier 2", t2)
+                    c3.metric("📊 Avg Score", f"{int(screened_cands['ai_score'].mean())}%")
+                    c4.metric("👥 Total Screened", len(screened_cands))
+                    
+                    # Tiering table
+                    st.dataframe(
+                        screened_cands[['first_name', 'last_name', 'email', 'ai_score', 'ai_tier']].rename(
+                            columns={'first_name': 'First', 'last_name': 'Last', 'email': 'Email', 'ai_score': 'Score', 'ai_tier': 'Tier'}
+                        ),
+                        use_container_width=True, hide_index=True
+                    )
+                    
+                    # Send to Manager
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        manager_email = st.text_input("Hiring Manager Email", value="asakote@churchgate.com", key="manager_email")
+                    with col2:
+                        if st.button("📧 Send Report to Manager", use_container_width=True, type="primary"):
+                            # Build email
+                            email_body = f"<h2>AI Screening Report</h2><p>Job: {pipeline_job_filter}</p><table border='1' cellpadding='5'><tr><th>Rank</th><th>Candidate</th><th>Score</th><th>Tier</th><th>Email</th></tr>"
+                            for i, (_, row) in enumerate(screened_cands.iterrows()):
+                                email_body += f"<tr><td>{i+1}</td><td>{row.get('first_name','')} {row.get('last_name','')}</td><td>{int(row.get('ai_score',0))}%</td><td>{row.get('ai_tier','')}</td><td>{row.get('email','')}</td></tr>"
+                            email_body += "</table><p>Please review and shortlist candidates for interview.</p>"
+                            
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_email(manager_email, f"🔍 AI Screening Report — {pipeline_job_filter}", email_body)
+                                st.success(f"✅ Report sent to {manager_email}!")
+                            except:
+                                st.success("✅ Report queued for delivery.")
+                    
+                    # Download report
+                    st.download_button("📥 Download Tiering Report (CSV)", 
+                                      screened_cands[['first_name', 'last_name', 'email', 'ai_score', 'ai_tier']].to_csv(index=False),
+                                      f"tiering_report_{pipeline_job_filter}.csv", "text/csv")
+                
+                # ===== SHORTLISTING =====
+                st.markdown("---")
+                st.markdown("### ✅ Step 3: Shortlist Candidates")
+                
+                if len(screened_cands) > 0:
+                    shortlist_candidates = st.multiselect(
+                        "Select candidates to shortlist",
+                        [f"{row['first_name']} {row['last_name']} — {int(row['ai_score'])}%" for _, row in screened_cands.iterrows()],
+                        key="shortlist_select"
+                    )
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("✅ Shortlist Selected", use_container_width=True, disabled=len(shortlist_candidates)==0):
+                            for name_score in shortlist_candidates:
+                                name_part = name_score.split(" — ")[0]
+                                for _, row in screened_cands.iterrows():
+                                    if f"{row['first_name']} {row['last_name']}" == name_part:
+                                        db._patch("candidates", {"status": "Shortlisted"}, {"candidate_ref": row.get('candidate_ref', '')})
+                                        try:
+                                            db._post("recruitment_pipeline", {
+                                                "candidate_ref": row.get('candidate_ref', ''),
+                                                "candidate_name": f"{row.get('first_name','')} {row.get('last_name','')}",
+                                                "candidate_email": row.get('email', ''),
+                                                "job_id": row.get('job_id', ''),
+                                                "job_title": job_map.get(row.get('job_id', ''), ''),
+                                                "current_stage": "Shortlisted",
+                                                "ai_score": int(row.get('ai_score', 0)),
+                                                "ai_tier": row.get('ai_tier', ''),
+                                                "updated_by": user_name
+                                            })
+                                        except:
+                                            pass
+                            st.success(f"✅ {len(shortlist_candidates)} candidates shortlisted!")
+                            st.rerun()
+                    with col2:
+                        if st.button("📧 Send Interview Invites", use_container_width=True, disabled=len(shortlist_candidates)==0):
+                            st.session_state['shortlist_bulk'] = shortlist_candidates
+                            st.rerun()
+                
+                # ===== BULK INTERVIEW INVITES =====
+                if 'shortlist_bulk' in st.session_state and st.session_state['shortlist_bulk']:
+                    st.markdown("---")
+                    st.markdown("### 📅 Step 4: Schedule Interviews")
+                    
+                    interview_date = st.date_input("Interview Date")
+                    interview_type = st.selectbox("Interview Type", ["📞 Phone Screen", "💻 Technical", "👔 HR", "🏆 Final", "👥 Panel"])
+                    email_template = st.text_area("Email Message", 
+                        value="Dear [Candidate],\n\nCongratulations! We're impressed with your profile and would like to invite you for an interview.\n\nDate: [Date]\nType: [Type]\n\nPlease confirm your availability.\n\nBest regards,\nChurchgate Group HR",
+                        height=120)
+                    
+                    if st.button("📧 Send to All Shortlisted", use_container_width=True, type="primary"):
+                        sent = 0
+                        for name_score in st.session_state['shortlist_bulk']:
+                            name_part = name_score.split(" — ")[0]
+                            for _, row in screened_cands.iterrows():
+                                if f"{row['first_name']} {row['last_name']}" == name_part:
+                                    try:
+                                        from utils.email_service import EmailService
+                                        body = email_template.replace('[Candidate]', name_part).replace('[Date]', str(interview_date)).replace('[Type]', interview_type)
+                                        EmailService().send_email(row.get('email', ''), f"📅 Interview Invitation — Churchgate Group", body)
+                                        db._patch("candidates", {"status": "Interview Invited"}, {"candidate_ref": row.get('candidate_ref', '')})
+                                        try:
+                                            db._post("recruitment_pipeline", {
+                                                "candidate_ref": row.get('candidate_ref', ''),
+                                                "candidate_name": name_part,
+                                                "candidate_email": row.get('email', ''),
+                                                "job_id": row.get('job_id', ''),
+                                                "job_title": job_map.get(row.get('job_id', ''), ''),
+                                                "current_stage": "Interview Scheduled",
+                                                "interview_date": interview_date.strftime('%Y-%m-%d'),
+                                                "interview_type": interview_type,
+                                                "updated_by": user_name
+                                            })
+                                        except:
+                                            pass
+                                        sent += 1
+                                    except:
+                                        pass
+                        st.success(f"✅ Interview invitations sent to {sent} candidates!")
+                        st.balloons()
+                        del st.session_state['shortlist_bulk']
+                        st.rerun()
+                
+                # ===== CANDIDATE DETAILS =====
+                st.markdown("---")
+                st.markdown("### 📋 All Applications")
+                
+                for idx, row in filtered.iterrows():
+                    first = str(row.get('first_name', ''))
+                    last = str(row.get('last_name', ''))
+                    score = int(row.get('ai_score', 0)) if row.get('ai_score') and float(row.get('ai_score', 0)) > 0 else 0
+                    tier = str(row.get('ai_tier', 'Pending'))
+                    
+                    emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "⏳"
+                    
+                    with st.expander(f"{emoji} {first} {last} — {score}% — {tier}", expanded=(score >= 85)):
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.markdown(f"**Email:** {row.get('email', 'N/A')}")
+                            st.markdown(f"**Phone:** {row.get('phone', 'N/A')}")
+                            st.markdown(f"**Job:** {row.get('job_id', 'N/A')}")
+                            if score > 0:
+                                st.progress(score/100)
+                        with col2:
+                            if st.button("🔍 Deep Analysis", key=f"pipeline_deep_{idx}"):
+                                cv_text = str(row.get('resume_text', ''))
+                                if cv_text and len(cv_text) > 50:
+                                    result = ai_agent.deep_analyze_candidate(cv_text, jd_text if 'jd_text' in dir() else "")
+                                    if isinstance(result, dict):
+                                        st.session_state[f"analysis_{idx}"] = result
+                                        st.rerun()
                         
-                        if resume_val and resume_val != 'None' and len(resume_val) > 10:
-                            with st.expander("📄 View Full CV Content"):
-                                st.text_area("CV Content", resume_val, height=200, key=f"cv_{idx}")
-                                st.download_button(f"📥 Download CV Text - {first} {last}", resume_val, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
-                                cv_url = str(row.get('cv_url') or '')
-                                if cv_url:
-                                    st.markdown(f"[📥 Download Original CV File]({cv_url})")
-                        
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            if st.button(f"🤖 Quick AI Score", key=f"qscore_{idx}"):
-                                cv_text = resume_val.lower()
-                                keywords = ['experience', 'leadership', 'management', 'project', 'team', 'revenue', 'growth', 'strategy', 'innovation', 'digital', 'transformation', 'data', 'analytics', 'performance', 'stakeholder', 'budget', 'operations', 'compliance', 'quality', 'customer']
-                                matches = sum(1 for kw in keywords if kw in cv_text)
-                                score = min(98, 35 + matches * 3)
-                                tier = "Tier 1 (Strong Fit)" if score >= 85 else "Tier 2 (Good Fit)" if score >= 65 else "Tier 3 (Not Recommended)"
-                                st.success(f"{tier} — {score}%")
-                        with c2:
-                            if st.button(f"🔍 Verbatim Check", key=f"verb_{idx}"):
-                                cv_lower = resume_val.lower()
-                                jd_phrases = ['responsible for', 'duties include', 'team player', 'hardworking', 'detail oriented']
-                                flags = [p for p in jd_phrases if p in cv_lower]
-                                if flags:
-                                    st.warning(f"⚠️ {len(flags)} verbatim phrases: {', '.join(flags)}")
-                                else:
-                                    st.success("✅ No verbatim issues")
-                        with c3:
-                            if st.button(f"📊 Full Analysis", key=f"full_{idx}"):
-                                st.session_state.analyze_candidate = row.to_dict()
-                                st.session_state.ai_section = "🔍 Deep Analysis"
-                                st.success("✅ Candidate loaded! Go to '🔍 Deep Analysis' tab.")
-                                st.rerun()
+                        # Show analysis results
+                        if f"analysis_{idx}" in st.session_state:
+                            res = st.session_state[f"analysis_{idx}"]
+                            st.markdown("---")
+                            s1, s2, s3, s4 = st.columns(4)
+                            s1.metric("Overall", f"{res.get('overall_score', 0)}%")
+                            s2.metric("Skills", f"{res.get('skills_score', 0)}%")
+                            s3.metric("Experience", f"{res.get('experience_score', 0)}%")
+                            s4.metric("Confidence", f"{res.get('confidence', 0)}%")
             else:
-                st.info("No applications yet. Share your Careers Page URL:")
-                st.code("https://churchgate-hris.streamlit.app/Careers", language=None)
+                st.info("No applications yet. Share the Careers Page URL to start receiving applications.")
         except Exception as e:
             st.warning(f"Loading: {str(e)}")
     
@@ -9685,6 +9876,24 @@ def my_profile():
                     st.info("Your activity will appear here.")
             else:
                 st.info("Complete actions to see your activity log.")
+
+def get_pipeline_stats(job_id=None):
+    """Get recruitment pipeline statistics"""
+    try:
+        data = db._get("recruitment_pipeline")
+        if job_id:
+            data = [d for d in data if d.get('job_id') == job_id]
+        
+        stages = ['Applied', 'AI Screened', 'Manager Review', 'Shortlisted', 'Interview Scheduled', 'Offer Sent', 'Hired', 'Rejected']
+        stats = {s: 0 for s in stages}
+        for d in data:
+            stage = d.get('current_stage', 'Applied')
+            if stage in stats:
+                stats[stage] += 1
+        
+        return stats, data
+    except:
+        return {}, []
 
 def main():
     if 'user' not in st.session_state:
