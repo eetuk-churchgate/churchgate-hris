@@ -2560,10 +2560,21 @@ def performance_okrs():
                             except:
                                 kpi_progress = 0
                             kpi_status, kpi_color = get_kpi_status(kpi_progress)
-                            col_kpi1, col_kpi2 = st.columns([10, 1])
+                            col_kpi1, col_kpi2, col_kpi3 = st.columns([9, 1, 1])
                             with col_kpi1:
                                 st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid {kpi_color};"><div style="display: flex; justify-content: space-between;"><strong>{kpi['kpi'][:60]}</strong><span style="color: {kpi_color}; font-weight: 600;">{kpi_status}</span></div><small>Target: {kpi.get('target', 'N/A')} | Current: {kpi.get('current', '0')} | Deadline: {kpi.get('deadline', 'N/A')}</small></div>""", unsafe_allow_html=True)
                             with col_kpi2:
+                                if st.button("✏️", key=f"edit_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Edit this KPI"):
+                                    st.session_state['edit_kpi'] = {
+                                        'pillar': pillar_name,
+                                        'title': kpi['kpi'],
+                                        'target': kpi.get('target', ''),
+                                        'current': kpi.get('current', '0'),
+                                        'deadline': kpi.get('deadline', ''),
+                                        'index': kpi_index
+                                    }
+                                    st.rerun()
+                            with col_kpi3:
                                 if st.button("🗑️", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Delete this KPI"):
                                     pillar_data['kpis'].pop(kpi_index)
                                     try:
@@ -2590,15 +2601,22 @@ def performance_okrs():
         
         with st.form("my_kpi_form"):
             st.markdown("### Add New KPI")
+            
+            edit_mode = st.session_state.get('edit_kpi', None)
+            if edit_mode:
+                st.info(f"✏️ Editing KPI: {edit_mode['title'][:50]}")
+            
             c1, c2 = st.columns(2)
             with c1:
-                pillar_choice = st.selectbox("Strategic Pillar *", ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture'])
-                kpi_title = st.text_input("KPI Title *", placeholder="What will you achieve?")
-                kpi_target = st.text_input("Target *", placeholder="e.g., 15% increase")
+                default_pillar = edit_mode['pillar'] if edit_mode else '1. Occupancy & Revenue Growth'
+                pillar_list = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                pillar_choice = st.selectbox("Strategic Pillar *", pillar_list, index=pillar_list.index(default_pillar))
+                kpi_title = st.text_input("KPI Title *", value=edit_mode['title'] if edit_mode else "", placeholder="What will you achieve?")
+                kpi_target = st.text_input("Target *", value=edit_mode['target'] if edit_mode else "", placeholder="e.g., 15% increase")
             with c2:
                 kpi_weight = st.slider("Weight (%) *", 0, 100, 25)
-                kpi_deadline = st.date_input("Target Deadline *")
-                kpi_current = st.text_input("Current Progress *", placeholder="e.g., 10%")
+                kpi_deadline = st.date_input("Target Deadline *", value=datetime.strptime(edit_mode['deadline'], '%Y-%m-%d') if edit_mode and edit_mode.get('deadline') else datetime.now())
+                kpi_current = st.text_input("Current Progress *", value=edit_mode['current'] if edit_mode else "", placeholder="e.g., 10%")
             
             kpi_description = st.text_area("Description / Key Results *", placeholder="How will you achieve this KPI?")
             
@@ -2615,10 +2633,18 @@ def performance_okrs():
                     performance_data[user_dept] = {}
                     for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
                         performance_data[user_dept][pillar] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
-                    performance_data[user_dept][pillar_choice]['kpis'].append({
+                    new_kpi = {
                         'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
                         'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
-                    })
+                    }
+                    
+                    if edit_mode:
+                        performance_data[user_dept][pillar_choice]['kpis'][edit_mode['index']] = new_kpi
+                        del st.session_state['edit_kpi']
+                        st.success("✅ KPI updated!")
+                    else:
+                        performance_data[user_dept][pillar_choice]['kpis'].append(new_kpi)
+                        st.success("✅ KPI saved!")
                     st.success("✅ KPI saved!")
                     st.rerun()
                 else:
