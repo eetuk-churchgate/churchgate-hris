@@ -2627,12 +2627,12 @@ def performance_okrs():
                         del st.session_state['edit_kpi']
                         st.success("✅ KPI updated!")
                     else:
-                    # Save under user's own name
-                    if user_name not in performance_data:
-                        performance_data[user_name] = {}
-                    if pillar_choice not in performance_data[user_name]:
-                        performance_data[user_name][pillar_choice] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
-                    performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
+                        # Save under user's own name
+                        if user_name not in performance_data:
+                            performance_data[user_name] = {}
+                        if pillar_choice not in performance_data[user_name]:
+                            performance_data[user_name][pillar_choice] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
+                        performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
                         st.success("✅ KPI saved!")
                     st.success("✅ KPI saved!")
                     st.rerun()
