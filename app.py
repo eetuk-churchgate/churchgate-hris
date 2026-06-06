@@ -1851,6 +1851,8 @@ def employee_management():
                                         "email": new_email, "gender": new_gender,
                                         "leave_balance": new_leave
                                     }, {"employee_id": emp['employee_id']})
+                                    # Also update users table role
+                                    db._patch("users", {"role": new_role, "department": new_dept, "name": f"{emp['first_name']} {emp['last_name']}"}, {"email": new_email})
                                     st.success(f"✅ {emp['first_name']} {emp['last_name']} updated successfully!")
                                     st.cache_data.clear()
                                     time.sleep(1)
