@@ -38,38 +38,42 @@ if logo_icon.exists():
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
 
-# PWA Manifest and Service Worker
+# PWA - Inline Manifest and Service Worker
 st.markdown("""
-<link rel="manifest" href="/static/manifest.json">
 <meta name="theme-color" content="#CC0000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Churchgate HRIS">
-<link rel="apple-touch-icon" href="/churchgate-logo-192.png">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Churchgate HRIS">
 <meta name="msapplication-TileColor" content="#CC0000">
-<meta name="msapplication-TileImage" content="/churchgate-logo-192.png">
+<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkNodXJjaGdhdGUgR3JvdXAgSFJJUyIsCiAgInNob3J0X25hbWUiOiAiQ2h1cmNoZ2F0ZSBIUklTIiwKICAic3RhcnRfdXJsIjogIi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxYTFhMWEiLAogICJ0aGVtZV9jb2xvciI6ICIjQ0MwMDAwIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2VldHVrLWNodXJjaGdhdGUvY2h1cmNoZ2F0ZS1ocmlzL21haW4vY2h1cmNoZ2F0ZS1sb2dvLTE5Mi5wbmciLAogICAgICAic2l6ZXMiOiAiMTkyeDE5MiIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2VldHVrLWNodXJjaGdhdGUvY2h1cmNoZ2F0ZS1ocmlzL21haW4vY2h1cmNoZ2F0ZS1sb2dvLTUxMi5wbmciLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIKICAgIH0KICBdCn0=">
+
 <script>
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/sw.js')
-            .then((registration) => { console.log('Service Worker registered'); })
-            .catch((error) => { console.log('SW registration failed:', error); });
-    });
+    const swCode = `
+        const CACHE_NAME = 'churchgate-hris-v1';
+        self.addEventListener('install', (e) => { self.skipWaiting(); });
+        self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+        self.addEventListener('fetch', (e) => {
+            if (e.request.url.includes('supabase.co') || e.request.url.includes('_stcore')) return;
+            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+        });
+    `;
+    const blob = new Blob([swCode], {type: 'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).then(r => console.log('SW registered')).catch(e => console.log('SW error:', e));
 }
+
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    setTimeout(() => {
-        const installBtn = document.createElement('div');
-        installBtn.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#1a1a1a,#2d2d2d);color:white;padding:12px 24px;border-radius:30px;box-shadow:0 4px 15px rgba(204,0,0,0.4);cursor:pointer;font-family:Arial;font-size:14px;text-align:center;border:2px solid #CC0000;">📱 Install Churchgate HRIS App</div>';
-        installBtn.onclick = async () => {
-            if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; installBtn.remove(); }
-        };
-        document.body.appendChild(installBtn);
-    }, 10000);
+    const btn = document.createElement('div');
+    btn.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#1a1a1a;color:white;padding:14px 28px;border-radius:30px;box-shadow:0 4px 20px rgba(204,0,0,0.5);cursor:pointer;font-family:Arial;font-size:15px;font-weight:600;text-align:center;border:2px solid #CC0000;">📱 Install Churchgate HRIS</div>';
+    btn.onclick = () => { deferredPrompt.prompt(); deferredPrompt = null; btn.remove(); };
+    document.body.appendChild(btn);
 });
 </script>
 """, unsafe_allow_html=True)
