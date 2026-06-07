@@ -38,6 +38,42 @@ if logo_icon.exists():
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
 
+# PWA Manifest and Service Worker
+st.markdown("""
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#CC0000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Churchgate HRIS">
+<link rel="apple-touch-icon" href="/churchgate-logo-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Churchgate HRIS">
+<meta name="msapplication-TileColor" content="#CC0000">
+<meta name="msapplication-TileImage" content="/churchgate-logo-192.png">
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js')
+            .then((registration) => { console.log('Service Worker registered'); })
+            .catch((error) => { console.log('SW registration failed:', error); });
+    });
+}
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    setTimeout(() => {
+        const installBtn = document.createElement('div');
+        installBtn.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(135deg,#1a1a1a,#2d2d2d);color:white;padding:12px 24px;border-radius:30px;box-shadow:0 4px 15px rgba(204,0,0,0.4);cursor:pointer;font-family:Arial;font-size:14px;text-align:center;border:2px solid #CC0000;">📱 Install Churchgate HRIS App</div>';
+        installBtn.onclick = async () => {
+            if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; installBtn.remove(); }
+        };
+        document.body.appendChild(installBtn);
+    }, 10000);
+});
+</script>
+""", unsafe_allow_html=True)
+
 CHURCHGATE_RED = "#CC0000"
 CHURCHGATE_DARK = "#1a1a1a"
 CHURCHGATE_GREY = "#4a4a4a"
