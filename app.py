@@ -730,11 +730,11 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
         elif user_role == 'Manager':
-            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
         else:
-            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "👤 My Profile"]
+             menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
         selected = option_menu(menu_title=None, options=menu_options, icons=["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "folder-fill", "lightbulb-fill", "calendar-fill", "bullseye", "inbox-fill", "person-lines-fill", "book-half", "heart-fill", "person-circle"][:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
@@ -10092,6 +10092,586 @@ def get_smart_response(question, screened_cands, all_candidates):
         return "📝 Use the Offer Letters tab in Recruitment Hub to generate official PDFs with Churchgate branding."
     return "I can help with top candidates, comparisons, interview questions, and offer drafts."
 
+
+def lms_dashboard():
+    st.markdown("""<div class="churchgate-header"><h1>🎓 Enterprise Learning Management System</h1><p>Global Courses | Certifications | Learning Paths | KPI Integration | 30+ Platforms</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_id = st.session_state.user.get('employee_id', '') if st.session_state.user else ''
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
+    
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14 = st.tabs([
+        "📚 Course Catalog", "📝 My Enrollments", "🎯 Learning Paths", 
+        "📊 Progress", "💰 Budget", "📈 Analytics",
+        "🏆 Leaderboard", "🎖️ Certifications", "👥 Study Groups",
+        "🤝 Mentors", "⭐ Badges", "📝 Reviews", "📅 Calendar", "📱 Quick Track"
+    ])
+    
+    # Load data
+    def load_courses():
+        try:
+            data = db._get("lms_courses")
+            return data if data else []
+        except:
+            return []
+    
+    def load_enrollments(employee_id=None):
+        try:
+            data = db._get("lms_enrollments")
+            if employee_id:
+                data = [e for e in data if e.get('employee_id') == employee_id]
+            return data if data else []
+        except:
+            return []
+    
+    def load_platforms():
+        try:
+            return db._get("learning_platforms")
+        except:
+            return []
+    
+    courses = load_courses()
+    platforms = load_platforms()
+    my_enrollments = load_enrollments(user_id)
+    
+    # ============ TAB 1: COURSE CATALOG ============
+    with tab1:
+        st.subheader("📚 Global Course Catalog")
+        st.info(f"🌍 Connected to {len(platforms)} international learning platforms including Coursera, edX, Harvard, Stanford, INSEAD, IBMI Berlin, and more.")
+        
+        # Filters
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            cat_filter = st.selectbox("Category", ["All"] + list(set([c.get('category', '') for c in courses])))
+        with col2:
+            level_filter = st.selectbox("Level", ["All", "Beginner", "Intermediate", "Advanced"])
+        with col3:
+            provider_filter = st.selectbox("Provider", ["All"] + list(set([c.get('provider', '') for c in courses])))
+        with col4:
+            search_course = st.text_input("🔍 Search", placeholder="Course name or skill...")
+        
+        filtered = courses
+        if cat_filter != "All":
+            filtered = [c for c in filtered if c.get('category') == cat_filter]
+        if level_filter != "All":
+            filtered = [c for c in filtered if c.get('level') == level_filter]
+        if provider_filter != "All":
+            filtered = [c for c in filtered if c.get('provider') == provider_filter]
+        if search_course:
+            s = search_course.lower()
+            filtered = [c for c in filtered if s in c.get('title', '').lower() or s in c.get('skills_gained', '').lower()]
+        
+        st.markdown(f"**{len(filtered)} courses found**")
+        
+        for course in filtered:
+            with st.expander(f"📖 {course.get('title', 'Untitled')} — {course.get('provider', 'Unknown')} | ⏱️ {course.get('duration_hours', 0)}h | {course.get('level', 'All Levels')}"):
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.markdown(f"**Description:** {course.get('description', 'No description')}")
+                    st.markdown(f"**Skills Gained:** {course.get('skills_gained', 'N/A')}")
+                    st.markdown(f"**Certification:** {course.get('certification_type', 'Certificate of Completion')}")
+                    if course.get('external_url'):
+                        st.markdown(f"🔗 [Visit Course Page]({course.get('external_url')})")
+                with col2:
+                    price = course.get('price', 0)
+                    st.metric("Price", f"${price:,.2f}" if price > 0 else "Free")
+                    st.metric("Duration", f"{course.get('duration_hours', 0)}h")
+                    st.metric("Credits", course.get('credits', 0))
+                    
+                    # Check if already enrolled
+                    already_enrolled = any(e.get('course_id') == course.get('id') for e in my_enrollments)
+                    if already_enrolled:
+                        st.success("✅ Enrolled")
+                    else:
+                        if st.button("📝 Enroll Now", key=f"enroll_{course.get('id')}", use_container_width=True):
+                            db._post("lms_enrollments", {
+                                "employee_id": user_id,
+                                "employee_name": user_name,
+                                "employee_email": user_email,
+                                "department": user_dept,
+                                "course_id": course.get('id'),
+                                "enrollment_date": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                                "status": "Enrolled",
+                                "progress_percent": 0
+                            })
+                            st.success("✅ Enrolled successfully!")
+                            st.balloons()
+                            st.rerun()
+        
+        # Admin: Add Course
+        if is_admin:
+            st.markdown("---")
+            with st.expander("➕ Add New Course (Admin)"):
+                with st.form("add_lms_course"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        new_title = st.text_input("Course Title")
+                        new_provider = st.text_input("Provider")
+                        new_category = st.selectbox("Category", ["Technology", "Leadership", "Finance", "HR", "Operations", "HSE", "Marketing", "Languages", "Facility Management", "Other"])
+                    with c2:
+                        new_level = st.selectbox("Level", ["Beginner", "Intermediate", "Advanced"])
+                        new_duration = st.number_input("Duration (hours)", 1, 500, 40)
+                        new_cert = st.text_input("Certification Type")
+                    
+                    new_desc = st.text_area("Description")
+                    new_skills = st.text_input("Skills Gained (comma separated)")
+                    new_url = st.text_input("External URL")
+                    
+                    if st.form_submit_button("➕ Add Course"):
+                        if new_title:
+                            db._post("lms_courses", {
+                                "course_code": f"LMS-{datetime.now().strftime('%Y%m%d%H%M')}",
+                                "title": new_title,
+                                "provider": new_provider,
+                                "category": new_category,
+                                "level": new_level,
+                                "duration_hours": new_duration,
+                                "certification_type": new_cert,
+                                "description": new_desc,
+                                "skills_gained": new_skills,
+                                "external_url": new_url
+                            })
+                            st.success("✅ Course added!")
+                            st.rerun()
+    
+    # ============ TAB 2: MY ENROLLMENTS ============
+    with tab2:
+        st.subheader("📝 My Learning Journey")
+        
+        if my_enrollments:
+            total_courses = len(my_enrollments)
+            completed = len([e for e in my_enrollments if e.get('status') == 'Completed'])
+            in_progress = len([e for e in my_enrollments if e.get('status') == 'In Progress'])
+            avg_progress = sum([e.get('progress_percent', 0) for e in my_enrollments]) / total_courses if total_courses > 0 else 0
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("📚 Enrolled", total_courses)
+            c2.metric("✅ Completed", completed)
+            c3.metric("🔄 In Progress", in_progress)
+            c4.metric("📊 Avg Progress", f"{avg_progress:.0f}%")
+            
+            st.markdown("---")
+            
+            for enrollment in my_enrollments:
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    progress = enrollment.get('progress_percent', 0)
+                    status = enrollment.get('status', 'Enrolled')
+                    
+                    status_color = "#38a169" if status == 'Completed' else "#d69e2e" if status == 'In Progress' else "#3182ce"
+                    
+                    with st.expander(f"{'✅' if status == 'Completed' else '📖'} {course.get('title', 'Course')} — {progress:.0f}% — {status}"):
+                        st.markdown(f"**Provider:** {course.get('provider', 'N/A')}")
+                        st.markdown(f"**Enrolled:** {enrollment.get('enrollment_date', '')[:10]}")
+                        st.progress(progress / 100)
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            new_progress = st.slider("Update Progress", 0, 100, int(progress), key=f"prog_{enrollment.get('id')}")
+                        with col2:
+                            new_status = st.selectbox("Status", ["Enrolled", "In Progress", "Completed"], 
+                                                     index=2 if status == 'Completed' else 1 if status == 'In Progress' else 0,
+                                                     key=f"stat_{enrollment.get('id')}")
+                        
+                        if st.button("💾 Update", key=f"upd_{enrollment.get('id')}"):
+                            update_data = {"progress_percent": new_progress, "status": new_status}
+                            if new_status == 'Completed':
+                                update_data["completion_date"] = datetime.now().strftime('%Y-%m-%d %H:%M')
+                            db._patch("lms_enrollments", update_data, {"id": enrollment.get('id')})
+                            st.success("✅ Updated!")
+                            st.rerun()
+        else:
+            st.info("You haven't enrolled in any courses yet. Browse the Course Catalog to get started!")
+    
+    # ============ TAB 3: LEARNING PATHS ============
+    with tab3:
+        st.subheader("🎯 Career Learning Paths")
+        st.info("Structured learning paths aligned to Churchgate roles and strategic pillars.")
+        
+        paths = [
+            {
+                "name": "💻 Technology Leadership",
+                "courses": ["AI-FM-001", "CLOUD-AWS-001", "CYBER-001", "IBM-DS-001"],
+                "duration": "6 months",
+                "cert": "Churchgate Technology Leader Certificate",
+                "role": "Technology Group"
+            },
+            {
+                "name": "🏗️ Facility Management Excellence",
+                "courses": ["BMS-ADV-001", "HSE-NEBOSH-001", "PM-PMP-001"],
+                "duration": "5 months",
+                "cert": "Certified FM Professional",
+                "role": "Facility Management"
+            },
+            {
+                "name": "👥 HR Business Partner",
+                "courses": ["HR-STRAT-001", "LEAD-EXEC-001", "MKT-DIG-001"],
+                "duration": "6 months",
+                "cert": "SHRM-CP + Leadership Certificate",
+                "role": "Human Resources"
+            },
+            {
+                "name": "💰 Finance & Strategy",
+                "courses": ["FIN-MOD-001", "FIN-ESG-001", "DATA-001"],
+                "duration": "5 months",
+                "cert": "CFA Certificate + Data Analytics",
+                "role": "Accounts & Finance"
+            }
+        ]
+        
+        for path in paths:
+            with st.expander(f"{path['name']} — {path['duration']} — 🏅 {path['cert']}"):
+                st.markdown(f"**Target Role:** {path['role']}")
+                st.markdown("**Required Courses:**")
+                for code in path['courses']:
+                    course = next((c for c in courses if c.get('course_code') == code), None)
+                    if course:
+                        enrolled = any(e.get('course_id') == course.get('id') for e in my_enrollments)
+                        icon = "✅" if enrolled else "⬜"
+                        st.markdown(f"{icon} {course.get('title', code)} — {course.get('duration_hours', 0)}h")
+                
+                if st.button(f"🎯 Start This Path", key=f"path_{path['name'][:10]}"):
+                    for code in path['courses']:
+                        course = next((c for c in courses if c.get('course_code') == code), None)
+                        if course:
+                            already = any(e.get('course_id') == course.get('id') for e in my_enrollments)
+                            if not already:
+                                db._post("lms_enrollments", {
+                                    "employee_id": user_id, "employee_name": user_name,
+                                    "employee_email": user_email, "department": user_dept,
+                                    "course_id": course.get('id'),
+                                    "enrollment_date": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                                    "status": "Enrolled", "progress_percent": 0
+                                })
+                    st.success(f"✅ Enrolled in {path['name']}!")
+                    st.balloons()
+                    st.rerun()
+    
+    # ============ TAB 4: PROGRESS ============
+    with tab4:
+        st.subheader("📊 My Learning Progress")
+        
+        if my_enrollments:
+            for enrollment in my_enrollments:
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    progress = enrollment.get('progress_percent', 0)
+                    color = "#38a169" if progress >= 80 else "#d69e2e" if progress >= 50 else "#CC0000"
+                    
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {color};">
+                        <strong>{course.get('title', 'Course')}</strong>
+                        <span style="float:right;font-weight:700;color:{color};">{progress:.0f}%</span>
+                        <br><small>{course.get('provider', '')} | {course.get('duration_hours', 0)}h | {enrollment.get('status', '')}</small>
+                        <div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.3rem;">
+                            <div style="background:{color};width:{progress}%;height:6px;border-radius:3px;"></div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info("Enroll in courses to track your progress here.")
+    
+    # ============ TAB 5: BUDGET ============
+    with tab5:
+        st.subheader("💰 Training Budget")
+        
+        if is_admin:
+            st.info(f"Department: {user_dept}")
+            try:
+                budgets = db._get("lms_budgets")
+                dept_budget = next((b for b in budgets if b.get('department') == user_dept), None)
+                
+                if dept_budget:
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Total Budget", f"₦{dept_budget.get('total_budget', 0):,.2f}")
+                    c2.metric("Spent", f"₦{dept_budget.get('spent_amount', 0):,.2f}")
+                    c3.metric("Remaining", f"₦{dept_budget.get('remaining_amount', 0):,.2f}")
+                    
+                    spent_pct = (dept_budget.get('spent_amount', 0) / dept_budget.get('total_budget', 1)) * 100
+                    st.progress(min(spent_pct / 100, 1.0))
+                else:
+                    st.info("No budget set for your department.")
+                    
+                    if st.button("Set Budget"):
+                        db._post("lms_budgets", {
+                            "department": user_dept,
+                            "fiscal_year": "2026/2027",
+                            "total_budget": 5000000,
+                            "spent_amount": 0
+                        })
+                        st.rerun()
+            except:
+                pass
+        else:
+            st.info("Budget view available for managers and admins.")
+    
+    # ============ TAB 6: ANALYTICS ============
+    with tab6:
+        st.subheader("📈 Learning Analytics")
+        
+        if is_admin:
+            all_enrollments = load_enrollments()
+            
+            if all_enrollments:
+                total = len(all_enrollments)
+                completed = len([e for e in all_enrollments if e.get('status') == 'Completed'])
+                
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Total Enrollments", total)
+                c2.metric("Completed", completed)
+                c3.metric("Completion Rate", f"{int(completed/total*100)}%" if total > 0 else "0%")
+                c4.metric("Active Learners", len(set(e.get('employee_id') for e in all_enrollments)))
+                
+                # Department breakdown
+                dept_data = {}
+                for e in all_enrollments:
+                    dept = e.get('department', 'Unknown')
+                    dept_data[dept] = dept_data.get(dept, 0) + 1
+                
+                fig = px.pie(values=list(dept_data.values()), names=list(dept_data.keys()), hole=0.5,
+                           title="Enrollments by Department")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No enrollment data yet.")
+        else:
+            st.info("Analytics available for admins and managers.")
+
+# ============ TAB 7: LEADERBOARD ============
+    tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14 = st.tabs([
+        "🏆 Leaderboard", "🎖️ Certifications", "👥 Study Groups", 
+        "🤝 Mentors", "⭐ Badges", "📝 Reviews", "📅 Calendar", "📱 Quick Track"
+    ])
+    
+    with tab7:
+        st.subheader("🏆 Learning Leaderboard")
+        st.info("Top learners ranked by courses completed, progress, and engagement.")
+        
+        all_enrollments = load_enrollments()
+        if all_enrollments:
+            # Calculate leaderboard
+            leaderboard = {}
+            for e in all_enrollments:
+                emp = e.get('employee_name', 'Unknown')
+                if emp not in leaderboard:
+                    leaderboard[emp] = {'completed': 0, 'in_progress': 0, 'total_progress': 0, 'courses': 0, 'dept': e.get('department', '')}
+                leaderboard[emp]['courses'] += 1
+                leaderboard[emp]['total_progress'] += e.get('progress_percent', 0)
+                if e.get('status') == 'Completed':
+                    leaderboard[emp]['completed'] += 1
+                elif e.get('status') == 'In Progress':
+                    leaderboard[emp]['in_progress'] += 1
+            
+            # Sort by completion then progress
+            ranked = sorted(leaderboard.items(), key=lambda x: (x[1]['completed'], x[1]['total_progress']), reverse=True)
+            
+            for rank, (name, data) in enumerate(ranked[:20]):
+                medal = "🥇" if rank == 0 else "🥈" if rank == 1 else "🥉" if rank == 2 else f"{rank+1}."
+                avg_prog = data['total_progress'] / data['courses'] if data['courses'] > 0 else 0
+                
+                st.markdown(f"""
+                <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;gap:1rem;border-left:4px solid {'#d69e2e' if rank < 3 else '#CC0000'};">
+                    <span style="font-size:1.5rem;">{medal}</span>
+                    <div style="flex:1;">
+                        <strong>{name}</strong> — {data['dept']}<br>
+                        <small>{data['completed']} completed | {data['in_progress']} in progress | Avg {avg_prog:.0f}%</small>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-size:1.2rem;font-weight:700;color:#CC0000;">{data['completed'] * 100 + int(avg_prog)} pts</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Leaderboard will populate as employees enroll in courses.")
+    
+    # ============ TAB 8: CERTIFICATIONS ============
+    with tab8:
+        st.subheader("🎖️ My Certification Wall")
+        
+        completed_enrollments = [e for e in my_enrollments if e.get('status') == 'Completed']
+        if completed_enrollments:
+            st.markdown(f"### 🏅 {len(completed_enrollments)} Certifications Earned")
+            
+            cols = st.columns(3)
+            for i, enrollment in enumerate(completed_enrollments):
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    with cols[i % 3]:
+                        st.markdown(f"""
+                        <div style="background:white;padding:1rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.08);border-top:3px solid #d69e2e;margin-bottom:1rem;">
+                            <h2 style="font-size:2.5rem;">🏅</h2>
+                            <strong>{course.get('title', 'Course')[:40]}</strong><br>
+                            <small style="color:#d69e2e;">{course.get('certification_type', 'Certificate')}</small><br>
+                            <small>Provider: {course.get('provider', 'N/A')}</small><br>
+                            <small>Completed: {enrollment.get('completion_date', '')[:10]}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+        else:
+            st.info("Complete courses to earn certifications that appear here.")
+            
+            # Sample certification preview
+            st.markdown("### 🎯 Target Certifications")
+            target_certs = [
+                ("PMP - Project Management", "PMI", "80 hours"),
+                ("SHRM-CP", "SHRM", "60 hours"),
+                ("AWS Solutions Architect", "AWS", "80 hours"),
+                ("NEBOSH Diploma", "NEBOSH", "120 hours"),
+            ]
+            for cert, provider, hours in target_certs:
+                st.markdown(f"🎯 **{cert}** — {provider} ({hours})")
+    
+    # ============ TAB 9: STUDY GROUPS ============
+    with tab9:
+        st.subheader("👥 Peer Study Groups")
+        st.info("Join study groups with colleagues taking the same courses.")
+        
+        # Group by course
+        all_enrollments_all = load_enrollments()
+        course_groups = {}
+        for e in all_enrollments_all:
+            cid = e.get('course_id')
+            if cid not in course_groups:
+                course_groups[cid] = []
+            course_groups[cid].append(e.get('employee_name', 'Unknown'))
+        
+        for cid, members in course_groups.items():
+            if len(members) >= 2:
+                course = next((c for c in courses if c.get('id') == cid), None)
+                if course:
+                    with st.expander(f"📚 {course.get('title', 'Course')[:50]} — {len(members)} learners"):
+                        st.markdown("**Study Group Members:**")
+                        for member in members:
+                            st.markdown(f"👤 {member}")
+                        
+                        if user_name not in members:
+                            if st.button(f"Join Group", key=f"join_group_{cid}"):
+                                st.success(f"✅ Joined study group for {course.get('title', '')}!")
+                        else:
+                            st.success("✅ You're in this group")
+    
+    # ============ TAB 10: MENTORS ============
+    with tab10:
+        st.subheader("🤝 Mentor Connection")
+        st.info("Connect with colleagues who have completed courses you're taking.")
+        
+        for enrollment in my_enrollments:
+            if enrollment.get('status') != 'Completed':
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    # Find mentors who completed this course
+                    mentors = [e for e in all_enrollments_all 
+                              if e.get('course_id') == enrollment.get('course_id') 
+                              and e.get('status') == 'Completed'
+                              and e.get('employee_name') != user_name]
+                    
+                    if mentors:
+                        with st.expander(f"🎓 Mentors for {course.get('title', '')[:40]}"):
+                            for mentor in mentors[:3]:
+                                st.markdown(f"👤 **{mentor.get('employee_name', 'Unknown')}** — Completed {mentor.get('completion_date', '')[:10]}")
+                                if st.button(f"📧 Request Mentorship", key=f"mentor_{mentor.get('id')}"):
+                                    st.success(f"✅ Mentorship request sent to {mentor.get('employee_name', '')}!")
+    
+    # ============ TAB 11: BADGES ============
+    with tab11:
+        st.subheader("⭐ Skills Badge System")
+        st.info("Earn badges as you learn. Badges appear on your profile.")
+        
+        badges = []
+        if len(my_enrollments) >= 1:
+            badges.append({"name": "🌱 Beginner Learner", "desc": "Enrolled in your first course", "earned": True})
+        if len(my_enrollments) >= 3:
+            badges.append({"name": "📚 Dedicated Learner", "desc": "Enrolled in 3+ courses", "earned": True})
+        if len([e for e in my_enrollments if e.get('status') == 'Completed']) >= 1:
+            badges.append({"name": "🎓 Course Completer", "desc": "Completed your first course", "earned": True})
+        if len([e for e in my_enrollments if e.get('status') == 'Completed']) >= 3:
+            badges.append({"name": "🏅 Advanced Scholar", "desc": "Completed 3+ courses", "earned": True})
+        if len([e for e in my_enrollments if e.get('progress_percent', 0) >= 90]) >= 1:
+            badges.append({"name": "🔥 Almost There", "desc": "90%+ progress on a course", "earned": True})
+        
+        # Future badges
+        all_badges = [
+            {"name": "🌱 Beginner Learner", "desc": "Enrolled in your first course", "earned": any(b['name'] == '🌱 Beginner Learner' for b in badges)},
+            {"name": "📚 Dedicated Learner", "desc": "Enrolled in 3+ courses", "earned": any(b['name'] == '📚 Dedicated Learner' for b in badges)},
+            {"name": "🎓 Course Completer", "desc": "Completed your first course", "earned": any(b['name'] == '🎓 Course Completer' for b in badges)},
+            {"name": "🏅 Advanced Scholar", "desc": "Completed 3+ courses", "earned": any(b['name'] == '🏅 Advanced Scholar' for b in badges)},
+            {"name": "🔥 Almost There", "desc": "90%+ progress on a course", "earned": any(b['name'] == '🔥 Almost There' for b in badges)},
+            {"name": "👥 Team Learner", "desc": "Joined a study group", "earned": False},
+            {"name": "🤝 Mentor", "desc": "Mentored a colleague", "earned": False},
+            {"name": "📊 100 Hours", "desc": "Completed 100+ hours of learning", "earned": False},
+            {"name": "🌍 Global Scholar", "desc": "Course from 3+ different platforms", "earned": False},
+        ]
+        
+        cols = st.columns(3)
+        for i, badge in enumerate(all_badges):
+            with cols[i % 3]:
+                opacity = "1" if badge['earned'] else "0.4"
+                st.markdown(f"""
+                <div style="background:white;padding:1rem;border-radius:8px;text-align:center;opacity:{opacity};margin-bottom:0.5rem;border:2px solid {'#d69e2e' if badge['earned'] else '#e0e0e0'};">
+                    <h3>{'✅' if badge['earned'] else '🔒'}</h3>
+                    <strong>{badge['name']}</strong><br>
+                    <small>{badge['desc']}</small>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    # ============ TAB 12: REVIEWS ============
+    with tab12:
+        st.subheader("📝 Course Reviews & Ratings")
+        st.info("Rate courses you've taken to help colleagues make informed decisions.")
+        
+        for enrollment in my_enrollments:
+            course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+            if course:
+                with st.expander(f"Rate: {course.get('title', 'Course')[:50]}"):
+                    rating = st.slider("⭐ Rating", 1, 5, 4, key=f"rate_{course.get('id')}")
+                    review = st.text_area("Your Review", key=f"review_{course.get('id')}")
+                    if st.button("📝 Submit Review", key=f"submit_review_{course.get('id')}"):
+                        st.success("✅ Review submitted! Thank you for helping your colleagues.")
+    
+    # ============ TAB 13: CALENDAR ============
+    with tab13:
+        st.subheader("📅 Learning Calendar")
+        
+        today = datetime.now()
+        upcoming = [e for e in my_enrollments if e.get('status') in ['Enrolled', 'In Progress']]
+        
+        if upcoming:
+            st.markdown(f"### 📆 {len(upcoming)} Active Courses")
+            for enrollment in upcoming:
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    progress = enrollment.get('progress_percent', 0)
+                    hours_left = int(course.get('duration_hours', 0) * (100 - progress) / 100)
+                    
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid #3182ce;">
+                        <strong>📖 {course.get('title', 'Course')[:50]}</strong><br>
+                        <small>⏱️ ~{hours_left} hours remaining | 📊 {progress:.0f}% complete</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info("No active courses. Enroll to see your learning schedule.")
+    
+    # ============ TAB 14: QUICK TRACK ============
+    with tab14:
+        st.subheader("📱 Quick Progress Tracker")
+        st.info("Quickly update your learning progress on the go.")
+        
+        for enrollment in my_enrollments:
+            if enrollment.get('status') != 'Completed':
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    col1, col2, col3 = st.columns([2, 1, 1])
+                    with col1:
+                        st.markdown(f"**{course.get('title', 'Course')[:40]}**")
+                    with col2:
+                        quick_progress = st.number_input("Progress %", 0, 100, int(enrollment.get('progress_percent', 0)), 5, key=f"quick_{enrollment.get('id')}")
+                    with col3:
+                        if st.button("📱 Update", key=f"quick_upd_{enrollment.get('id')}"):
+                            db._patch("lms_enrollments", {"progress_percent": quick_progress, "status": "Completed" if quick_progress >= 100 else "In Progress"}, {"id": enrollment.get('id')})
+                            st.success("✅ Updated!")
+                            st.rerun()
+
 def main():
     if 'user' not in st.session_state:
         st.session_state.user = None
@@ -10172,6 +10752,7 @@ def main():
             "🌐 Directory": employee_directory_readonly,
             "📚 Knowledge Base": knowledge_base,
             "🎉 Wellness & Perks": wellness_perks,
+            "🎓 LMS": lms_dashboard,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)
