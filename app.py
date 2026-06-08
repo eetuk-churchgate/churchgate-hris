@@ -2725,7 +2725,7 @@ def performance_okrs():
                                         'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'), 'owner': kpi.get('owner', user_name)
                                     }
                                     try:
-                                        db.save_performance_data(selected_dept, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
+                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
                                         st.success("✅ KPI saved!")
                                         st.rerun()
                                     except:
@@ -2734,7 +2734,7 @@ def performance_okrs():
                                 if st.button("🗑️ Delete", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
                                     del pillar_data['kpis'][kpi_index]
                                     try:
-                                        db.save_performance_data(selected_dept, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
+                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
                                         st.success("✅ KPI deleted!")
                                         st.rerun()
                                     except:
