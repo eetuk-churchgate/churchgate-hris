@@ -45,7 +45,9 @@ class DatabaseManager:
         for k, v in filters.items():
             url += f"{k}=eq.{v}&"
         r = requests.patch(url, headers=self._headers(), json=data)
-        return r.status_code in [200, 201]
+        if r.status_code not in [200, 201, 204]:
+            st.error(f"Supabase PATCH Error [{r.status_code}]: {r.text[:200]}")
+        return r.status_code in [200, 201, 204]
     
     def _delete(self, table, filters):
         url = f"{self.url}/rest/v1/{table}?"
