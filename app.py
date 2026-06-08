@@ -2800,51 +2800,36 @@ def performance_okrs():
                         performance_data[user_dept][pillar_choice]['kpis'][edit_mode['index']] = new_kpi
                         del st.session_state['edit_kpi']
                         st.success("✅ KPI updated!")
+                        log_audit_action("KPI Updated", f"KPI '{kpi_title}' updated in {pillar_choice}", "KPI")
                     else:
-                    # Save under user's own name
-                    if user_name not in performance_data:
-                        performance_data[user_name] = {}
-                    if pillar_choice not in performance_data[user_name]:
-                        # Load existing KPIs from database first
-                        existing_data = db.get_performance_data(user_name)
-                        if not existing_data.empty:
-                            for _, row in existing_data.iterrows():
-                                p_name = row.get('pillar_name', '')
-                                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                if p_name not in performance_data[user_name]:
-                                    performance_data[user_name][p_name] = {
-                                        'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
-                                        'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
-                                        'kpis': kpi_list
-                                    }
+                        # Save under user's own name - reload existing KPIs first
+                        if user_name not in performance_data:
+                            performance_data[user_name] = {}
+                            existing_data = db.get_performance_data(user_name)
+                            if not existing_data.empty:
+                                for _, row in existing_data.iterrows():
+                                    p_name = row.get('pillar_name', '')
+                                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                    if p_name not in performance_data[user_name]:
+                                        performance_data[user_name][p_name] = {
+                                            'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
+                                            'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
+                                            'kpis': kpi_list
+                                        }
                         if pillar_choice not in performance_data[user_name]:
                             performance_data[user_name][pillar_choice] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
-                    performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
+                        performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
                         st.success("✅ KPI saved!")
-                    st.success("✅ KPI saved!")
-                    st.rerun()
-                else:
-                    performance_data[user_dept][pillar_choice]['kpis'].append({
-                        'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
-                        'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
-                    })
-                    st.session_state.kpi_history.append({
-                        'action': 'Added', 'kpi': kpi_title, 'user': user_name,
-                        'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'), 'pillar': pillar_choice
-                    })
-                    try:
-                        db.save_kpi_history('Added', kpi_title, user_name, pillar_choice)
-                    except:
-                        pass
-                    pd_data = performance_data[user_dept][pillar_choice]
+                        log_audit_action("KPI Added", f"KPI '{kpi_title}' added to {pillar_choice}", "KPI")
+                    
+                    # Save to database
+                    pd_data = performance_data[user_name][pillar_choice]
                     try:
                         db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
                     except:
                         pass
                     
                     if submit_continue:
-                        st.success("✅ KPI saved! Add another below.")
-                        time.sleep(1.5)
                         st.rerun()
                     if submit_final:
                         st.session_state.confirm_submit = True
