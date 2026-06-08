@@ -2707,29 +2707,40 @@ def performance_okrs():
                         except:
                             kpi_progress = 0
                         kpi_status, kpi_color = get_kpi_status(kpi_progress)
-                        col_kpi1, col_kpi2, col_kpi3 = st.columns([9, 1, 1])
-                        with col_kpi1:
-                            st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid {kpi_color};"><div style="display: flex; justify-content: space-between;"><strong>{kpi['kpi'][:60]}</strong><span style="color: {kpi_color}; font-weight: 600;">{kpi_status}</span></div><small>Target: {kpi.get('target', 'N/A')} | Current: {kpi.get('current', '0')} | Deadline: {kpi.get('deadline', 'N/A')}</small></div>""", unsafe_allow_html=True)
-                        with col_kpi2:
-                            if st.button("✏️", key=f"edit_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Edit this KPI"):
-                                st.session_state['edit_kpi'] = {
-                                    'pillar': pillar_name,
-                                    'title': kpi['kpi'],
-                                    'target': kpi.get('target', ''),
-                                    'current': kpi.get('current', '0'),
-                                    'deadline': kpi.get('deadline', ''),
-                                    'index': kpi_index
-                                }
-                                st.success("✏️ KPI loaded! Go to '✏️ My KPIs' tab to edit.")
-                        with col_kpi3:
-                            if st.button("🗑️", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Delete this KPI"):
-                                pillar_data['kpis'].pop(kpi_index)
-                                try:
-                                    db.save_performance_data(selected_dept, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
-                                except:
-                                    pass
-                                st.success("✅ KPI deleted!")
-                                st.rerun()
+                        
+                        with st.expander(f"{kpi['kpi'][:60]} — {kpi_progress}% — {kpi_status}", expanded=False):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                edit_title = st.text_input("Title", value=kpi['kpi'], key=f"edit_title_{selected_dept}_{pillar_name}_{kpi_index}")
+                                edit_target = st.text_input("Target", value=kpi.get('target', ''), key=f"edit_target_{selected_dept}_{pillar_name}_{kpi_index}")
+                            with col2:
+                                edit_current = st.text_input("Current", value=kpi.get('current', '0'), key=f"edit_current_{selected_dept}_{pillar_name}_{kpi_index}")
+                                edit_deadline = st.date_input("Deadline", value=datetime.strptime(kpi.get('deadline', '2026-12-31'), '%Y-%m-%d') if kpi.get('deadline') else datetime.now(), key=f"edit_deadline_{selected_dept}_{pillar_name}_{kpi_index}")
+                            
+                            col_btn1, col_btn2, col_btn3 = st.columns(3)
+                            with col_btn1:
+                                if st.button("💾 Save", key=f"save_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
+                                    pillar_data['kpis'][kpi_index] = {
+                                        'kpi': edit_title, 'target': edit_target, 'current': edit_current,
+                                        'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'), 'owner': kpi.get('owner', user_name)
+                                    }
+                                    try:
+                                        db.save_performance_data(selected_dept, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
+                                        st.success("✅ KPI saved!")
+                                        st.rerun()
+                                    except:
+                                        st.error("Save failed")
+                            with col_btn2:
+                                if st.button("🗑️ Delete", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
+                                    del pillar_data['kpis'][kpi_index]
+                                    try:
+                                        db.save_performance_data(selected_dept, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
+                                        st.success("✅ KPI deleted!")
+                                        st.rerun()
+                                    except:
+                                        st.error("Delete failed")
+                            with col_btn3:
+                                st.markdown(f"<small style='color:{kpi_color};'>{kpi_status}</small>", unsafe_allow_html=True)
     
     # ============ TAB 2: MY KPIs ============
     with tab2:
