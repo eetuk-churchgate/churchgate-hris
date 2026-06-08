@@ -166,8 +166,6 @@ class DatabaseManager:
     def get_performance_data(self, department=None):
         if department:
             data = self._get("performance_data", {"user_name": department})
-            if not data:
-                data = self._get("performance_data", {"department": department})
         else:
             data = self._get("performance_data")
         return pd.DataFrame(data) if data else pd.DataFrame()
