@@ -3095,17 +3095,102 @@ def performance_okrs():
     
     # ============ TAB 4: HOD REVIEW ============
     with tab4:
-        st.subheader("👔 HOD Review & Approval")
+        st.subheader("👔 HOD KPI Review & Appraisal Approval")
         
         if is_hod:
-            st.markdown("### 📊 Cycle Status")
+            # ===== SECTION 1: KPI SUBMISSION REVIEW (NEW) =====
+            st.markdown("### 📊 Team KPI Submissions for Review")
+            
+            try:
+                all_perf = db._get("performance_data")
+                team_submissions = {}
+                
+                for row in all_perf:
+                    if row.get('user_name') and row.get('submission_status') == 'Submitted':
+                        uname = row['user_name']
+                        emp_data = db._get("employees", {"first_name": uname.split()[0] if ' ' in uname else uname})
+                        emp_dept = None
+                        if emp_data and len(emp_data) > 0:
+                            emp_dept = emp_data[0].get('department', '')
+                        
+                        if is_admin or emp_dept == user_dept:
+                            if uname not in team_submissions:
+                                team_submissions[uname] = []
+                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                            team_submissions[uname].append({
+                                'pillar': row['pillar_name'],
+                                'kpis': kpi_list,
+                                'row_id': row['id']
+                            })
+                
+                if team_submissions:
+                    submitted_count = len(team_submissions)
+                    total_kpis = sum(len(v) for v in team_submissions.values())
+                    
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Team Members Submitted", submitted_count)
+                    c2.metric("Total KPIs to Review", total_kpis)
+                    c3.metric("Department", user_dept)
+                    
+                    st.markdown("---")
+                    
+                    for emp_name, submissions in team_submissions.items():
+                        with st.expander(f"📋 {emp_name} — {len(submissions)} pillars submitted", expanded=False):
+                            for sub in submissions:
+                                st.markdown(f"**{sub['pillar']}** — {len(sub['kpis'])} KPI(s)")
+                                for kpi in sub['kpis']:
+                                    st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')}")
+                            
+                            st.markdown("---")
+                            hod_comment = st.text_area(f"HOD Comment for {emp_name}", key=f"hod_comment_{emp_name}", placeholder="Provide feedback, approval reason, or revision notes...")
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                if st.button(f"✅ Approve {emp_name}'s KPIs", key=f"approve_{emp_name}", use_container_width=True, type="primary"):
+                                    for sub in submissions:
+                                        db._patch("performance_data", {"submission_status": "Approved"}, {"id": sub['row_id']})
+                                    emp_email = None
+                                    emp_record = db._get("employees", {"first_name": emp_name.split()[0] if ' ' in emp_name else emp_name})
+                                    if emp_record and len(emp_record) > 0:
+                                        emp_email = emp_record[0].get('email', '')
+                                    if emp_email:
+                                        send_kpi_notification('approved', emp_name, emp_email)
+                                    log_audit_action("KPIs Approved", f"HOD {user_name} approved KPIs for {emp_name}", "KPI")
+                                    st.success(f"✅ {emp_name}'s KPIs approved!")
+                                    st.balloons()
+                                    st.rerun()
+                            with col2:
+                                if st.button(f"🔄 Request Revision from {emp_name}", key=f"revise_{emp_name}", use_container_width=True):
+                                    if hod_comment:
+                                        for sub in submissions:
+                                            db._patch("performance_data", {"submission_status": "Draft"}, {"id": sub['row_id']})
+                                        emp_email = None
+                                        emp_record = db._get("employees", {"first_name": emp_name.split()[0] if ' ' in emp_name else emp_name})
+                                        if emp_record and len(emp_record) > 0:
+                                            emp_email = emp_record[0].get('email', '')
+                                        if emp_email:
+                                            send_kpi_notification('revision_requested', emp_name, emp_email)
+                                        log_audit_action("KPI Revision Requested", f"HOD {user_name} requested revision for {emp_name}", "KPI")
+                                        st.warning(f"🔄 Revision requested. {emp_name} can now edit and resubmit.")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Please provide a comment explaining what needs revision.")
+                else:
+                    st.info("No team members have submitted KPIs yet.")
+            except Exception as e:
+                st.warning(f"Loading team KPIs: {str(e)}")
+            
+            st.markdown("---")
+            
+            # ===== SECTION 2: APPRAISAL REVIEW (EXISTING - KEEP ALL) =====
+            st.markdown("### 📊 Appraisal Review Status")
             submitted_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Submitted'])
             re_review_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Awaiting HOD Re-review'])
             approved_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Approved'])
             escalated_count = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected' and v.get('status') != 'Awaiting HOD Re-review'])
             
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Submitted", submitted_count)
+            c1.metric("Appraisals Submitted", submitted_count)
             c2.metric("Re-Review", re_review_count)
             c3.metric("Approved", approved_count)
             c4.metric("Escalated", escalated_count)
@@ -3124,7 +3209,6 @@ def performance_okrs():
                         
                         st.markdown(f"**Overall Comments:** {assessment.get('comments', 'N/A')}")
                         
-                        # Show evidence if uploaded
                         if assessment.get('evidence_urls'):
                             st.markdown("**📎 Evidence Provided:**")
                             for p, urls in assessment['evidence_urls'].items():
@@ -3196,18 +3280,6 @@ def performance_okrs():
                                     log_audit('HOD Stands Firm', f'{staff_name} escalated to Sr. Management')
                                     st.warning(f"✋ Standing firm. Escalated to Sr. Management.")
                                     st.rerun()
-                            with c3:
-                                if st.button(f"📧 Send Reminder", key=f"remind_{staff_name}"):
-                                    try:
-                                        from utils.email_service import EmailService
-                                        EmailService().send_email(
-                                            assessment.get('email', ''),
-                                            f"⏰ Appraisal Re-Review Ready: {st.session_state.appraisal_cycle_name}",
-                                            f"Dear {staff_name},\n\nYour HOD has revised your appraisal scores. Please log in to review and accept.\n\nhttps://churchgate-hris.streamlit.app"
-                                        )
-                                        st.success(f"✅ Reminder sent to {staff_name}")
-                                    except:
-                                        st.info("Reminder queued")
                         else:
                             c1, c2 = st.columns(2)
                             with c1:
@@ -3241,7 +3313,7 @@ def performance_okrs():
             else:
                 st.info("No pending assessments for your team.")
         
-        # Sr Management escalation (unchanged)
+        # Sr Management escalation (KEEP EXISTING)
         if is_sr_mgmt:
             st.markdown("---")
             st.markdown("### ⚖️ Escalated Appraisals (Final Committee)")
