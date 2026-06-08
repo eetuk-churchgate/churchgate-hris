@@ -11230,11 +11230,12 @@ def advanced_analytics():
                     cat = i.get('category', 'Other')
                     idea_categories[cat] = idea_categories.get(cat, 0) + 1
                 
-                fig10 = px.bar(x=list(idea_categories.keys()), y=list(idea_categories.values()),
-                             title="Ideas by Category", color=list(idea_categories.values()),
-                             color_continuous_sequence=['#CC0000', '#d69e2e', '#38a169'])
-                fig10.update_layout(height=350)
-                st.plotly_chart(fig10, use_container_width=True)
+                if idea_categories:
+                    fig10 = px.bar(x=list(idea_categories.keys()), y=list(idea_categories.values()),
+                                 title="Ideas by Category", color=list(idea_categories.values()),
+                                 color_continuous_sequence=['#CC0000', '#d69e2e', '#38a169'])
+                    fig10.update_layout(height=350)
+                    st.plotly_chart(fig10, use_container_width=True)
         
         # Employee participation
         if total_emp > 0 and total_ideas > 0:
