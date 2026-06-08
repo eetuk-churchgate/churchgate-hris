@@ -38,6 +38,46 @@ if logo_icon.exists():
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
 
+# PWA - Inline Manifest and Service Worker
+st.markdown("""
+<meta name="theme-color" content="#CC0000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Churchgate HRIS">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Churchgate HRIS">
+<meta name="msapplication-TileColor" content="#CC0000">
+<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkNodXJjaGdhdGUgR3JvdXAgSFJJUyIsCiAgInNob3J0X25hbWUiOiAiQ2h1cmNoZ2F0ZSBIUklTIiwKICAic3RhcnRfdXJsIjogIi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxYTFhMWEiLAogICJ0aGVtZV9jb2xvciI6ICIjQ0MwMDAwIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2VldHVrLWNodXJjaGdhdGUvY2h1cmNoZ2F0ZS1ocmlzL21haW4vY2h1cmNoZ2F0ZS1sb2dvLTE5Mi5wbmciLAogICAgICAic2l6ZXMiOiAiMTkyeDE5MiIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2VldHVrLWNodXJjaGdhdGUvY2h1cmNoZ2F0ZS1ocmlzL21haW4vY2h1cmNoZ2F0ZS1sb2dvLTUxMi5wbmciLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIKICAgIH0KICBdCn0=">
+
+<script>
+if ('serviceWorker' in navigator) {
+    const swCode = `
+        const CACHE_NAME = 'churchgate-hris-v1';
+        self.addEventListener('install', (e) => { self.skipWaiting(); });
+        self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+        self.addEventListener('fetch', (e) => {
+            if (e.request.url.includes('supabase.co') || e.request.url.includes('_stcore')) return;
+            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+        });
+    `;
+    const blob = new Blob([swCode], {type: 'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).then(r => console.log('SW registered')).catch(e => console.log('SW error:', e));
+}
+
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const btn = document.createElement('div');
+    btn.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#1a1a1a;color:white;padding:14px 28px;border-radius:30px;box-shadow:0 4px 20px rgba(204,0,0,0.5);cursor:pointer;font-family:Arial;font-size:15px;font-weight:600;text-align:center;border:2px solid #CC0000;">📱 Install Churchgate HRIS</div>';
+    btn.onclick = () => { deferredPrompt.prompt(); deferredPrompt = null; btn.remove(); };
+    document.body.appendChild(btn);
+});
+</script>
+""", unsafe_allow_html=True)
+
 CHURCHGATE_RED = "#CC0000"
 CHURCHGATE_DARK = "#1a1a1a"
 CHURCHGATE_GREY = "#4a4a4a"
@@ -682,7 +722,7 @@ def login_section():
                             if len(new_pw) >= 6:
                                 import bcrypt
                                 hashed_pw = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                                db.supabase.table("users").update({"password": hashed_pw}).eq("email", st.session_state.reset_email).execute()
+                                db._patch("users", {"password_hash": hashed_pw}, {"email": st.session_state.reset_email})
                                 st.success("✅ Password reset successfully! Please login with your new password.")
                                 st.balloons()
                                 st.session_state.show_forgot_password = False
@@ -730,11 +770,11 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
         elif user_role == 'Manager':
-            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
         else:
-            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "👤 My Profile"]
+             menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
         selected = option_menu(menu_title=None, options=menu_options, icons=["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "folder-fill", "lightbulb-fill", "calendar-fill", "bullseye", "inbox-fill", "person-lines-fill", "book-half", "heart-fill", "person-circle"][:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
@@ -869,7 +909,8 @@ def employee_dashboard():
     with c4:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">🎯 KPIs</div><div class="metric-value">4</div><small>Strategic pillars</small></div>""", unsafe_allow_html=True)
     with c5:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">4.5</div><small>Peer recognition</small></div>""", unsafe_allow_html=True)
+        peer_rating = st.session_state.get('peer_rating', 0)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">{peer_rating}</div><small>Peer recognition</small></div>""", unsafe_allow_html=True)
     
     # ============ QUICK ACTIONS ============
     st.markdown("---")
@@ -903,7 +944,7 @@ def employee_dashboard():
         # KPI Progress
         st.subheader("🎯 My KPI Progress")
         try:
-            perf_data = db.get_performance_data(user_dept)
+            perf_data = db.get_performance_data(user_name)
             if not perf_data.empty:
                 for _, row in perf_data.iterrows():
                     progress = row.get('progress', 0)
@@ -982,25 +1023,49 @@ def employee_dashboard():
         # Birthdays This Month
         st.markdown("---")
         st.subheader("🎂 Birthdays This Month")
-        birthdays = [
-            {"name": "Chika Ikwuegbu", "date": "May 13"},
-            {"name": "Francis Asuquo", "date": "May 19"},
-            {"name": "Rhoda Ajibola", "date": "May 25"},
-            {"name": "Alice Agbo", "date": "May 28"},
-        ]
-        for b in birthdays:
-            st.markdown(f"🎂 **{b['name']}** — {b['date']}")
+        try:
+            emp_df = db.get_all_employees()
+            if not emp_df.empty:
+                today = datetime.now()
+                found_birthday = False
+                for _, emp in emp_df.iterrows():
+                    dob = emp.get('date_of_birth')
+                    if dob and str(dob) != 'None' and str(dob) != 'nan':
+                        try:
+                            dob_date = pd.to_datetime(dob)
+                            if dob_date.month == today.month:
+                                found_birthday = True
+                                st.markdown(f"🎂 **{emp['first_name']} {emp['last_name']}** — {dob_date.strftime('%B %d')} ({emp.get('department', '')})")
+                        except:
+                            pass
+                if not found_birthday:
+                    st.info("No birthdays this month.")
+        except:
+            pass
         
         # Work Anniversaries
         st.markdown("---")
-        st.subheader("⭐ Work Anniversaries")
-        anniversaries = [
-            {"name": "Augustine Oleh", "years": 4},
-            {"name": "Shem Waziri", "years": 3},
-            {"name": "Charles Okere", "years": 7},
-        ]
-        for a in anniversaries:
-            st.markdown(f"⭐ **{a['name']}** — {a['years']} years")
+        st.subheader("⭐ Work Anniversaries This Month")
+        try:
+            if not emp_df.empty:
+                today = datetime.now()
+                found_anniversary = False
+                for _, emp in emp_df.iterrows():
+                    join_date = emp.get('join_date')
+                    if join_date and str(join_date) != 'None' and str(join_date) != 'nan':
+                        try:
+                            jd = pd.to_datetime(join_date)
+                            if jd.month == today.month:
+                                years = today.year - jd.year
+                                if years > 0:
+                                    found_anniversary = True
+                                    st.markdown(f"⭐ **{emp['first_name']} {emp['last_name']}** — {years} year{'s' if years > 1 else ''} ({emp.get('department', '')})")
+                        except:
+                            pass
+                if not found_anniversary:
+                    st.info("No work anniversaries this month.")
+        except:
+            pass
         
         # Upcoming Holidays
         st.markdown("---")
@@ -1141,34 +1206,114 @@ def employee_dashboard():
                     st.dataframe(pd.DataFrame(hod_data), use_container_width=True, hide_index=True)
         except:
             pass
+    # ============ PEER RATING ============
+    st.markdown("---")
+    st.subheader("⭐ Rate a Colleague")
+    
+    # Get colleagues list
+    try:
+        emp_df = db.get_all_employees()
+        if not emp_df.empty:
+            colleague_list = [f"{row['first_name']} {row['last_name']}" for _, row in emp_df.iterrows() if f"{row['first_name']} {row['last_name']}" != user_name]
+        else:
+            colleague_list = ["No colleagues available"]
+    except:
+        colleague_list = ["No colleagues available"]
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        rate_colleague = st.selectbox("👤 Colleague", ["Select..."] + colleague_list, key="rate_colleague")
+    with col2:
+        rating = st.selectbox("⭐ Rating", [5, 4, 3, 2, 1], format_func=lambda x: "⭐" * x, key="rating_value")
+    with col3:
+        is_anonymous = st.checkbox("Anonymous", value=False, key="rate_anonymous")
+    
+    rating_comment = st.text_area("💬 Comment (Optional)", placeholder="Why are you giving this rating?", key="rate_comment")
+    
+    if st.button("🌟 Submit Rating", use_container_width=True):
+        if rate_colleague != "Select...":
+            db._post("peer_ratings", {
+                "rated_by": "Anonymous" if is_anonymous else user_name,
+                "rated_user": rate_colleague,
+                "rating": rating,
+                "comment": rating_comment,
+                "is_anonymous": is_anonymous,
+                "created_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+            })
+            st.success(f"🌟 Rating submitted for {rate_colleague}!")
+            st.balloons()
+            st.rerun()
+        else:
+            st.warning("⚠️ Please select a colleague to rate.")
+    
+    # Show recent ratings received
+    st.markdown("---")
+    st.markdown("### 📊 My Recent Ratings")
+    try:
+        all_ratings = db._get("peer_ratings")
+        my_ratings = [r for r in all_ratings if r.get('rated_user') == user_name] if all_ratings else []
+        if my_ratings:
+            avg_rating = sum(r.get('rating', 0) for r in my_ratings) / len(my_ratings)
+            stars = "⭐" * round(avg_rating)
+            st.markdown(f"**Average Rating:** {stars} ({avg_rating:.1f}/5) from {len(my_ratings)} review{'s' if len(my_ratings) > 1 else ''}")
+            
+            # Show latest 3 ratings
+            for r in sorted(my_ratings, key=lambda x: x.get('created_at', ''), reverse=True)[:3]:
+                rater = r.get('rated_by', 'Unknown')
+                stars_display = "⭐" * r.get('rating', 0)
+                comment = r.get('comment', '')
+                st.markdown(f"{stars_display} — {'Anonymous' if r.get('is_anonymous') else rater}")
+                if comment:
+                    st.caption(f"\"{comment}\"")
+        else:
+            st.info("No ratings yet.")
+    except:
+        pass
+    
+    # Update the hardcoded peer rating metric
+    try:
+        all_ratings = db._get("peer_ratings")
+        my_ratings = [r for r in all_ratings if r.get('rated_user') == user_name] if all_ratings else []
+        if my_ratings:
+            st.session_state['peer_rating'] = round(sum(r.get('rating', 0) for r in my_ratings) / len(my_ratings), 1)
+        else:
+            st.session_state['peer_rating'] = 0
+    except:
+        st.session_state['peer_rating'] = 0
+    
     # ============ UPCOMING TRAINING ============
     st.markdown("---")
-    st.subheader("🎓 Recommended Training & Webinars")
-    tc1, tc2, tc3 = st.columns(3)
-    with tc1:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>🔧 BMS Advanced</h4>
-            <p style="font-size:0.8rem;">Building Management Systems</p>
-            <small style="color:#CC0000;">📅 June 15, 2026</small>
-        </div>
-        """, unsafe_allow_html=True)
-    with tc2:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>🤖 AI in Facilities</h4>
-            <p style="font-size:0.8rem;">Practical AI Applications</p>
-            <small style="color:#CC0000;">📅 June 20, 2026</small>
-        </div>
-        """, unsafe_allow_html=True)
-    with tc3:
-        st.markdown("""
-        <div class="metric-card">
-            <h4>📊 Data Analytics</h4>
-            <p style="font-size:0.8rem;">Operational Analytics</p>
-            <small style="color:#CC0000;">📅 July 5, 2026</small>
-        </div>
-        """, unsafe_allow_html=True)
+    st.subheader("🎓 Upcoming Training & Webinars")
+    
+    try:
+        training_data = db._get("training_courses")
+        if training_data:
+            upcoming = sorted([t for t in training_data if t.get('start_date', '') >= datetime.now().strftime('%Y-%m-%d')], 
+                            key=lambda x: x.get('start_date', ''))[:3]
+            
+            if upcoming:
+                tc1, tc2, tc3 = st.columns(3)
+                for i, course in enumerate(upcoming):
+                    col = [tc1, tc2, tc3][i]
+                    with col:
+                        st.markdown(f"""
+                        <div class="metric-card">
+                            <h4>{course.get('title', 'Training')[:40]}</h4>
+                            <p style="font-size:0.8rem;">{course.get('description', '')[:80]}</p>
+                            <small style="color:#CC0000;">📅 {course.get('start_date', '')}</small>
+                            <br><small style="color:#888;">{course.get('provider', '')} • {course.get('format', '')}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.info("No upcoming training sessions. Check the Training & Development tab.")
+        else:
+            st.info("Training catalog loading...")
+    except:
+        st.info("Training data will appear here.")
+    
+    if st.button("📚 View All Training Courses", use_container_width=True):
+        st.session_state['navigate_to'] = "🎓 Training & Development"
+        st.rerun()
 
 def executive_dashboard():
     show_churchgate_mission()
@@ -1842,6 +1987,16 @@ def employee_management():
                                     key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_leave = st.number_input("Leave Days", value=int(emp.get('leave_balance', 20) or 20), min_value=0, max_value=365, key=f"leave_{emp['employee_id']}_{st.session_state.dir_page}")
+                                
+                                current_dob = emp.get('date_of_birth', '')
+                                if current_dob and str(current_dob) != 'None' and str(current_dob) != 'nan':
+                                    try:
+                                        current_dob_date = pd.to_datetime(current_dob).date()
+                                    except:
+                                        current_dob_date = datetime.now().date()
+                                else:
+                                    current_dob_date = datetime.now().date()
+                                new_dob = st.date_input("Date of Birth", value=current_dob_date, key=f"dob_{emp['employee_id']}_{st.session_state.dir_page}")
                             
                             if st.form_submit_button("💾 Save Changes", use_container_width=True):
                                 try:
@@ -1849,8 +2004,11 @@ def employee_management():
                                         "department": new_dept, "grade": new_grade,
                                         "position": new_position, "status": new_status,
                                         "email": new_email, "gender": new_gender,
-                                        "leave_balance": new_leave
+                                        "leave_balance": new_leave,
+                                        "date_of_birth": new_dob.strftime('%Y-%m-%d')
                                     }, {"employee_id": emp['employee_id']})
+                                    # Also update users table role
+                                    db._patch("users", {"role": new_role, "department": new_dept, "name": f"{emp['first_name']} {emp['last_name']}"}, {"email": new_email})
                                     st.success(f"✅ {emp['first_name']} {emp['last_name']} updated successfully!")
                                     st.cache_data.clear()
                                     time.sleep(1)
@@ -1876,7 +2034,7 @@ def employee_management():
         else:
             st.info("No employees match your search criteria.")
     
-    # ============ TAB 2: ADD EMPLOYEE ============
+   # ============ TAB 2: ADD EMPLOYEE ============
     with tab2:
         st.subheader("➕ Add New Employee")
         with st.form("add_employee_form"):
@@ -1896,6 +2054,7 @@ def employee_management():
             with c3:
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
                 join_date = st.date_input("Join Date")
+                date_of_birth = st.date_input("Date of Birth *")
                 system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'])
                 status = st.selectbox("Status", ['Active', 'Probation'])
             
@@ -1907,7 +2066,9 @@ def employee_management():
                             "email": email, "phone": phone, "department": department,
                             "region": region,
                             "position": position, "grade": grade, "employment_type": employment_type,
-                            "join_date": join_date.strftime('%Y-%m-%d'), "status": status
+                            "join_date": join_date.strftime('%Y-%m-%d'), 
+                            "date_of_birth": date_of_birth.strftime('%Y-%m-%d'),
+                            "status": status
                         })
                         if result:
                             st.success(f"✅ {first_name} {last_name} added!")
@@ -1919,6 +2080,8 @@ def employee_management():
                             st.error("❌ Insert failed - check Supabase RLS policies or employee_id uniqueness")
                     except Exception as e:
                         st.error(f"❌ Error adding employee: {str(e)}")
+                else:
+                    st.error("❌ Required fields missing!")
     
     # ============ TAB 3: BULK UPLOAD ============
     with tab3:
@@ -2435,130 +2598,136 @@ def performance_okrs():
         "🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "🌟 Exceptional Achievements", "📊 Dashboard"
     ])
     
-    # ============ TAB 1: STRATEGIC PILLARS (unchanged) ============
+    # ============ TAB 1: STRATEGIC PILLARS ============
     with tab1:
-        st.subheader("🎯 Strategic Pillars Console — Corporate Strategy 2026-2027")
+        st.subheader("🎯 My Strategic Pillars")
         
+        # Load KPI data for THIS USER
+        if user_name not in performance_data:
+            performance_data[user_name] = {}
+            for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', 
+                           '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                performance_data[user_name][pillar] = {
+                    'weight': 25, 'progress': 0, 'status': 'Not Started',
+                    'deadline': '2026-12-31', 'kpis': []
+                }
+        
+        user_pillar_data = performance_data[user_name]
+        
+        # Admin can view all departments for comparison
         if is_admin:
-            st.markdown("""<div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #CC0000;"><strong>🔐 Admin Console</strong> — Full access to all departments</div>""", unsafe_allow_html=True)
-            selected_dept = st.selectbox("🏢 Select Department", all_depts)
+            st.markdown("""<div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #CC0000;"><strong>🔐 Admin Console</strong> — View any department's KPIs</div>""", unsafe_allow_html=True)
+            view_type = st.radio("View", ["My KPIs", "Department Overview"], horizontal=True)
+            if view_type == "Department Overview":
+                selected_dept = st.selectbox("🏢 Select Department", all_depts)
+                if selected_dept in performance_data:
+                    dept_data = performance_data[selected_dept]
+                    st.markdown(f"### 📊 {selected_dept} — Department Scorecard")
+                else:
+                    dept_data = {}
+                    st.info("No KPIs set for this department yet.")
+            else:
+                dept_data = user_pillar_data
+                selected_dept = user_dept
+                st.markdown(f"### 📊 My Strategic Pillars — {user_name}")
         else:
-            selected_dept = user_dept if user_dept in all_depts else all_depts[0]
+            dept_data = user_pillar_data
+            selected_dept = user_dept
+            st.markdown(f"### 📊 My Strategic Pillars")
         
-        if selected_dept in performance_data:
-            dept_data = performance_data[selected_dept]
-            st.markdown(f"### 📊 {selected_dept} — Strategic Pillar Scorecard")
+        # Calculate scores
+        total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values()) if dept_data else 0
+        on_track = sum(1 for p in dept_data.values() if p['status'] in ['On Track', 'Exceeding'])
+        at_risk = sum(1 for p in dept_data.values() if p['status'] == 'At Risk')
+        completed = sum(1 for p in dept_data.values() if p['status'] == 'Completed')
+        
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Overall Score", f"{total_weighted:.1f}%")
+        c2.metric("On Track", on_track)
+        c3.metric("At Risk", at_risk)
+        c4.metric("Completed", completed)
+        
+        # Department comparison for admins
+        if is_admin:
+            st.markdown("---")
+            st.markdown("### 🏢 Department Comparison")
+            comp_data = []
+            for d in all_depts:
+                if d in performance_data:
+                    dd = performance_data[d]
+                    comp_data.append({
+                        'Department': d,
+                        'Occupancy & Revenue': dd.get('1. Occupancy & Revenue Growth', {}).get('progress', 0),
+                        'Process Simplification': dd.get('2. Process Simplification', {}).get('progress', 0),
+                        'Asset Reliability': dd.get('3. Asset Reliability & Digitalization', {}).get('progress', 0),
+                        'People & Culture': dd.get('4. People & Culture', {}).get('progress', 0)
+                    })
+            if comp_data:
+                df_comp = pd.DataFrame(comp_data)
+                fig = px.bar(df_comp.melt(id_vars=['Department'], var_name='Pillar', value_name='Progress'),
+                            x='Department', y='Progress', color='Pillar', barmode='group',
+                            color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#aaaaaa'])
+                fig.update_layout(height=350)
+                st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("---")
+        for pillar_name, pillar_data in dept_data.items():
+            status_text, color = get_kpi_status(pillar_data['progress'])
+            if pillar_data['status'] in ['Exceeding', 'Completed']:
+                color = "#38a169"
             
-            total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values()) if dept_data else 0
-            
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Overall Score", f"{total_weighted:.1f}%")
-            c2.metric("On Track", str(sum(1 for p in dept_data.values() if p['status'] in ['On Track', 'Exceeding'])))
-            c3.metric("At Risk", str(sum(1 for p in dept_data.values() if p['status'] == 'At Risk')))
-            c4.metric("Completed", str(sum(1 for p in dept_data.values() if p['status'] == 'Completed')))
-            
-            # Department comparison for admins
-            if is_admin:
-                st.markdown("---")
-                st.markdown("### 🏢 Department Comparison")
-                comp_data = []
-                for d in all_depts:
-                    if d in performance_data:
-                        dd = performance_data[d]
-                        comp_data.append({
-                            'Department': d,
-                            'Occupancy & Revenue': dd.get('1. Occupancy & Revenue Growth', {}).get('progress', 0),
-                            'Process Simplification': dd.get('2. Process Simplification', {}).get('progress', 0),
-                            'Asset Reliability': dd.get('3. Asset Reliability & Digitalization', {}).get('progress', 0),
-                            'People & Culture': dd.get('4. People & Culture', {}).get('progress', 0)
-                        })
-                if comp_data:
-                    df_comp = pd.DataFrame(comp_data)
-                    fig = px.bar(df_comp.melt(id_vars=['Department'], var_name='Pillar', value_name='Progress'),
-                                x='Department', y='Progress', color='Pillar', barmode='group',
-                                color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#aaaaaa'])
-                    fig.update_layout(height=350)
-                    st.plotly_chart(fig, use_container_width=True)
-            
-            # Goal cascading for admin
-            if is_admin:
-                st.markdown("---")
-                st.markdown("### 🎯 Goal Cascading")
-                with st.form("cascade_form"):
-                    cascade_pillar = st.selectbox("Pillar", ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture'])
-                    cascade_kpi = st.text_input("Group KPI *")
-                    cascade_target = st.text_input("Target *")
-                    c1, c2 = st.columns(2)
+            with st.expander(f"{pillar_name} | {pillar_data['progress']}% | {pillar_data['status']}", expanded=False):
+                st.progress(pillar_data['progress'] / 100)
+                
+                if is_admin:
+                    c1, c2, c3 = st.columns(3)
                     with c1:
-                        if st.form_submit_button("📤 Cascade to All Departments"):
-                            if cascade_kpi and cascade_target:
-                                for d in all_depts:
-                                    performance_data[d][cascade_pillar]['kpis'].append({
-                                        'kpi': f"[GROUP] {cascade_kpi}", 'target': cascade_target,
-                                        'current': '0%', 'status': 'In Progress',
-                                        'deadline': '2026-12-31', 'owner': 'Group'
-                                    })
-                                    pd_data = performance_data[d][cascade_pillar]
-                                    try:
-                                        db.save_performance_data(d, cascade_pillar, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
-                                    except:
-                                        pass
-                                log_audit('Goal Cascaded', f'KPI cascaded to all depts: {cascade_kpi}')
-                                st.success(f"✅ Group KPI cascaded to all departments!")
-                                st.balloons()
-                                st.rerun()
+                        new_progress = st.slider("Progress %", 0, 100, int(pillar_data['progress']), key=f"prog_{selected_dept}_{pillar_name}")
                     with c2:
-                        if st.form_submit_button("📤 Cascade to Selected"):
-                            if cascade_kpi and cascade_target:
-                                performance_data[selected_dept][cascade_pillar]['kpis'].append({
-                                    'kpi': f"[GROUP] {cascade_kpi}", 'target': cascade_target,
-                                    'current': '0%', 'status': 'In Progress',
-                                    'deadline': '2026-12-31', 'owner': 'Group'
-                                })
+                        new_status = st.selectbox("Status", ['On Track', 'In Progress', 'At Risk', 'Exceeding', 'Completed'], index=0, key=f"stat_{selected_dept}_{pillar_name}")
+                    with c3:
+                        new_weight = st.slider("Weight %", 0, 100, int(pillar_data['weight']), key=f"wgt_{selected_dept}_{pillar_name}")
+                    
+                    if st.button(f"💾 Update", key=f"upd_{selected_dept}_{pillar_name}"):
+                        performance_data[selected_dept][pillar_name]['progress'] = new_progress
+                        performance_data[selected_dept][pillar_name]['status'] = new_status
+                        performance_data[selected_dept][pillar_name]['weight'] = new_weight
+                        try:
+                            db.save_performance_data(selected_dept, pillar_name, new_weight, new_progress, new_status, pillar_data['deadline'], pillar_data['kpis'])
+                        except:
+                            pass
+                        st.rerun()
+                
+                if pillar_data['kpis']:
+                    for kpi_index, kpi in enumerate(pillar_data['kpis']):
+                        try:
+                            kpi_progress = int(float(str(kpi.get('current', '0')).replace('%', '')))
+                        except:
+                            kpi_progress = 0
+                        kpi_status, kpi_color = get_kpi_status(kpi_progress)
+                        col_kpi1, col_kpi2, col_kpi3 = st.columns([9, 1, 1])
+                        with col_kpi1:
+                            st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid {kpi_color};"><div style="display: flex; justify-content: space-between;"><strong>{kpi['kpi'][:60]}</strong><span style="color: {kpi_color}; font-weight: 600;">{kpi_status}</span></div><small>Target: {kpi.get('target', 'N/A')} | Current: {kpi.get('current', '0')} | Deadline: {kpi.get('deadline', 'N/A')}</small></div>""", unsafe_allow_html=True)
+                        with col_kpi2:
+                            if st.button("✏️", key=f"edit_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Edit this KPI"):
+                                st.session_state['edit_kpi'] = {
+                                    'pillar': pillar_name,
+                                    'title': kpi['kpi'],
+                                    'target': kpi.get('target', ''),
+                                    'current': kpi.get('current', '0'),
+                                    'deadline': kpi.get('deadline', ''),
+                                    'index': kpi_index
+                                }
+                                st.success("✏️ KPI loaded! Go to '✏️ My KPIs' tab to edit.")
+                        with col_kpi3:
+                            if st.button("🗑️", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}", help="Delete this KPI"):
+                                pillar_data['kpis'].pop(kpi_index)
                                 try:
-                                    db.save_performance_data(selected_dept, cascade_pillar, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
+                                    db.save_performance_data(selected_dept, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
                                 except:
                                     pass
-                                log_audit('Goal Cascaded', f'KPI cascaded to {selected_dept}: {cascade_kpi}')
-                                st.success(f"✅ Group KPI cascaded to {selected_dept}!")
+                                st.success("✅ KPI deleted!")
                                 st.rerun()
-            
-            st.markdown("---")
-            for pillar_name, pillar_data in dept_data.items():
-                status_text, color = get_kpi_status(pillar_data['progress'])
-                if pillar_data['status'] in ['Exceeding', 'Completed']:
-                    color = "#38a169"
-                
-                with st.expander(f"{pillar_name} | {pillar_data['progress']}% | {pillar_data['status']}", expanded=False):
-                    st.progress(pillar_data['progress'] / 100)
-                    
-                    if is_admin:
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            new_progress = st.slider("Progress %", 0, 100, int(pillar_data['progress']), key=f"prog_{selected_dept}_{pillar_name}")
-                        with c2:
-                            new_status = st.selectbox("Status", ['On Track', 'In Progress', 'At Risk', 'Exceeding', 'Completed'], index=0, key=f"stat_{selected_dept}_{pillar_name}")
-                        with c3:
-                            new_weight = st.slider("Weight %", 0, 100, int(pillar_data['weight']), key=f"wgt_{selected_dept}_{pillar_name}")
-                        
-                        if st.button(f"💾 Update", key=f"upd_{selected_dept}_{pillar_name}"):
-                            performance_data[selected_dept][pillar_name]['progress'] = new_progress
-                            performance_data[selected_dept][pillar_name]['status'] = new_status
-                            performance_data[selected_dept][pillar_name]['weight'] = new_weight
-                            try:
-                                db.save_performance_data(selected_dept, pillar_name, new_weight, new_progress, new_status, pillar_data['deadline'], pillar_data['kpis'])
-                            except:
-                                pass
-                            st.rerun()
-                    
-                    if pillar_data['kpis']:
-                        for kpi in pillar_data['kpis']:
-                            try:
-                                kpi_progress = int(float(str(kpi.get('current', '0')).replace('%', '')))
-                            except:
-                                kpi_progress = 0
-                            kpi_status, kpi_color = get_kpi_status(kpi_progress)
-                            st.markdown(f"""<div style="background: white; padding: 0.6rem; border-radius: 6px; margin-bottom: 0.4rem; border-left: 3px solid {kpi_color};"><div style="display: flex; justify-content: space-between;"><strong>{kpi['kpi'][:60]}</strong><span style="color: {kpi_color}; font-weight: 600;">{kpi_status}</span></div><small>Target: {kpi.get('target', 'N/A')} | Current: {kpi.get('current', '0')} | Deadline: {kpi.get('deadline', 'N/A')}</small></div>""", unsafe_allow_html=True)
     
     # ============ TAB 2: MY KPIs ============
     with tab2:
@@ -2577,15 +2746,22 @@ def performance_okrs():
         
         with st.form("my_kpi_form"):
             st.markdown("### Add New KPI")
+            
+            edit_mode = st.session_state.get('edit_kpi', None)
+            if edit_mode:
+                st.info(f"✏️ Editing KPI: {edit_mode['title'][:50]}")
+            
             c1, c2 = st.columns(2)
             with c1:
-                pillar_choice = st.selectbox("Strategic Pillar *", ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture'])
-                kpi_title = st.text_input("KPI Title *", placeholder="What will you achieve?")
-                kpi_target = st.text_input("Target *", placeholder="e.g., 15% increase")
+                default_pillar = edit_mode['pillar'] if edit_mode else '1. Occupancy & Revenue Growth'
+                pillar_list = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                pillar_choice = st.selectbox("Strategic Pillar *", pillar_list, index=pillar_list.index(default_pillar))
+                kpi_title = st.text_input("KPI Title *", value=edit_mode['title'] if edit_mode else "", placeholder="What will you achieve?")
+                kpi_target = st.text_input("Target *", value=edit_mode['target'] if edit_mode else "", placeholder="e.g., 15% increase")
             with c2:
                 kpi_weight = st.slider("Weight (%) *", 0, 100, 25)
-                kpi_deadline = st.date_input("Target Deadline *")
-                kpi_current = st.text_input("Current Progress *", placeholder="e.g., 10%")
+                kpi_deadline = st.date_input("Target Deadline *", value=datetime.strptime(edit_mode['deadline'], '%Y-%m-%d') if edit_mode and edit_mode.get('deadline') else datetime.now())
+                kpi_current = st.text_input("Current Progress *", value=edit_mode['current'] if edit_mode else "", placeholder="e.g., 10%")
             
             kpi_description = st.text_area("Description / Key Results *", placeholder="How will you achieve this KPI?")
             
@@ -2602,10 +2778,23 @@ def performance_okrs():
                     performance_data[user_dept] = {}
                     for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
                         performance_data[user_dept][pillar] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
-                    performance_data[user_dept][pillar_choice]['kpis'].append({
+                    new_kpi = {
                         'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
                         'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
-                    })
+                    }
+                    
+                    if edit_mode:
+                        performance_data[user_dept][pillar_choice]['kpis'][edit_mode['index']] = new_kpi
+                        del st.session_state['edit_kpi']
+                        st.success("✅ KPI updated!")
+                    else:
+                        # Save under user's own name
+                        if user_name not in performance_data:
+                            performance_data[user_name] = {}
+                        if pillar_choice not in performance_data[user_name]:
+                            performance_data[user_name][pillar_choice] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
+                        performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
+                        st.success("✅ KPI saved!")
                     st.success("✅ KPI saved!")
                     st.rerun()
                 else:
@@ -2623,7 +2812,7 @@ def performance_okrs():
                         pass
                     pd_data = performance_data[user_dept][pillar_choice]
                     try:
-                        db.save_performance_data(user_dept, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
+                        db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
                     except:
                         pass
                     
@@ -2654,6 +2843,9 @@ def performance_okrs():
         
         try:
             history_data = db.get_kpi_history()
+            # Filter: only show own KPIs unless admin
+            if not is_admin:
+                history_data = [h for h in history_data if h.get('user_name') == user_name]
         except:
             history_data = []
         if history_data:
@@ -5315,7 +5507,7 @@ def recruitment_hub():
 def ai_recruitment_agent():
     st.markdown("""<div class="churchgate-header"><h1>🤖 AI Recruitment Agent</h1><p>AI-Powered CV-JD Matching | Verbatim Detection | Inconsistency Flags | Skills Gap Matrix | Bias Detection | Interview Generator | Executive Reports</p></div>""", unsafe_allow_html=True)
     
-    options = ["📥 Load Applications", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results"]
+    options = ["📥 Load Applications", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results", "💬 AI Assistant"]
     
     if 'ai_section' not in st.session_state:
         st.session_state.ai_section = "📥 Load Applications"
@@ -5331,19 +5523,17 @@ def ai_recruitment_agent():
     
     # ============ LOAD APPLICATIONS ============
     if ai_section == "📥 Load Applications":
-        st.subheader("📥 Applications from Careers Page")
-        st.info("Real applications from Churchgate Careers Portal. AI auto-analyzes each candidate.")
+        st.subheader("🚀 Recruitment Pipeline & Bulk Screening")
         
         try:
             candidates = db.get_all_candidates()
             if not candidates.empty:
-                # Build job filter with real titles
+                # Job filter
                 job_map = {}
                 try:
                     all_reqs = db.get_all_job_requisitions()
                     for r in all_reqs:
                         req_id = r.get('req_id', '')
-                        # Map both full and short formats
                         short_id = f"JOB-{req_id[-6:]}" if len(req_id) >= 6 else req_id
                         title = r.get('title', req_id)
                         job_map[req_id] = title
@@ -5351,95 +5541,462 @@ def ai_recruitment_agent():
                 except:
                     pass
                 
-                # Create display options
                 job_options = ["All Jobs"]
                 if 'job_id' in candidates.columns:
                     for jid in candidates['job_id'].dropna().unique():
                         title = job_map.get(jid, jid)
-                        job_options.append(f"{title}")
+                        job_options.append(title)
                 
-                agent_job_filter = st.selectbox("📋 Filter by Job", job_options, key="agent_job_filter_t7")
+                pipeline_job_filter = st.selectbox("📋 Filter by Job", job_options, key="pipeline_job_filter")
                 
-                if agent_job_filter != "All Jobs":
-                    # Find the matching job_id
-                    selected_job_id = None
+                # Map title back to job_id
+                selected_job_id = None
+                if pipeline_job_filter != "All Jobs":
                     for jid in candidates['job_id'].dropna().unique():
-                        if job_map.get(jid, jid) == agent_job_filter:
+                        if job_map.get(jid, jid) == pipeline_job_filter:
                             selected_job_id = jid
                             break
-                    if selected_job_id:
-                        candidates = candidates[candidates['job_id'] == selected_job_id]
+                    filtered = candidates[candidates['job_id'] == selected_job_id]
+                else:
+                    filtered = candidates
                 
-                st.markdown(f"### 📊 {len(candidates)} Applications")
+                st.markdown(f"### 📊 {len(filtered)} Candidates")
                 
-                for idx, row in candidates.iterrows():
-                    first = str(row.get('first_name') or '')
-                    if not first or first == 'nan' or first == 'None':
-                        continue
-                    first = first if first else 'Candidate'
-                    last = str(row.get('last_name') or '')
-                    job = str(row.get('job_id') or 'N/A')
-                    email_val = str(row.get('email') or 'N/A')
-                    phone_val = str(row.get('phone') or 'N/A')
-                    linkedin_val = str(row.get('linkedin_url') or 'N/A')
-                    experience_val = str(row.get('years_of_experience') or 'N/A')
-                    current_val = str(row.get('current_position') or 'N/A')
-                    source_val = str(row.get('source') or 'N/A')
-                    score_val = row.get('ai_score', 0) or 0
-                    score_display = f"{int(score_val)}%" if score_val > 0 else "Pending"
-                    tier_val = str(row.get('ai_tier') or 'Pending')
-                    resume_val = str(row.get('resume_text') or '')
+                # ===== PIPELINE STAGES BAR =====
+                st.markdown("---")
+                st.markdown("### 🔄 Recruitment Pipeline")
+                
+                pipeline_stats, pipeline_data = get_pipeline_stats(selected_job_id)
+                
+                if pipeline_stats:
+                    stages = list(pipeline_stats.keys())
+                    counts = list(pipeline_stats.values())
+                    total = sum(counts)
                     
-                    with st.expander(f"📋 {first} {last} — {job} — AI: {score_display}", expanded=False):
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            st.markdown(f"**Email:** {email_val}")
-                            st.markdown(f"**Phone:** {phone_val}")
-                            st.markdown(f"**LinkedIn:** {linkedin_val}")
-                            st.markdown(f"**Experience:** {experience_val} years")
-                        with c2:
-                            st.markdown(f"**Current:** {current_val}")
-                            st.markdown(f"**Source:** {source_val}")
-                            st.markdown(f"**AI Score:** {score_display}")
-                            st.markdown(f"**AI Tier:** {tier_val}")
+                    # Visual pipeline
+                    cols = st.columns(len(stages))
+                    for i, (stage, count) in enumerate(pipeline_stats.items()):
+                        with cols[i]:
+                            color = "#38a169" if stage in ['Hired'] else "#3182ce" if stage in ['Offer Sent', 'Interview Scheduled'] else "#d69e2e" if stage in ['Shortlisted', 'Manager Review'] else "#a0aec0"
+                            st.markdown(f"""
+                            <div style="background:white;padding:0.5rem;border-radius:6px;text-align:center;border-top:3px solid {color};">
+                                <small style="color:#888;">{stage}</small><br>
+                                <strong style="font-size:1.2rem;">{count}</strong>
+                            </div>
+                            """, unsafe_allow_html=True)
+                
+                # ===== BULK SCREENING =====
+                st.markdown("---")
+                st.markdown("### 🤖 Step 1: Bulk AI Screening")
+                
+                unscreened = filtered[filtered['ai_score'] == 0] if 'ai_score' in filtered.columns else filtered
+                
+                col1, col2, col3 = st.columns([2, 1, 1])
+                with col1:
+                    st.metric("Pending Screening", len(unscreened))
+                with col2:
+                    if st.button("🤖 Screen All", use_container_width=True, type="primary", disabled=len(unscreened)==0):
+                        with st.spinner(f"🤖 Deep-analyzing {len(unscreened)} candidates..."):
+                            screened = 0
+                            for _, row in unscreened.iterrows():
+                                try:
+                                    cv_text = str(row.get('resume_text', ''))
+                                    if cv_text and cv_text != 'None' and len(cv_text) > 50:
+                                        job_id_val = str(row.get('job_id', ''))
+                                        jd_text = ""
+                                        if job_id_val and job_id_val != 'None':
+                                            for r in all_reqs:
+                                                if r.get('req_id') == job_id_val:
+                                                    jd_text = r.get('jd', '')
+                                                    break
+                                        result = ai_agent.deep_analyze_candidate(cv_text, jd_text) if jd_text else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                        if isinstance(result, dict):
+                                            score = int(result.get('overall_score', 0))
+                                            tier = result.get('tier', 'Pending')
+                                            db._patch("candidates", {"ai_score": score, "ai_tier": tier}, {"candidate_ref": row.get('candidate_ref', '')})
+                                            # Add to pipeline
+                                            try:
+                                                db._post("recruitment_pipeline", {
+                                                    "candidate_ref": row.get('candidate_ref', ''),
+                                                    "candidate_name": f"{row.get('first_name','')} {row.get('last_name','')}",
+                                                    "candidate_email": row.get('email', ''),
+                                                    "job_id": job_id_val,
+                                                    "job_title": job_map.get(job_id_val, ''),
+                                                    "current_stage": "AI Screened",
+                                                    "ai_score": score,
+                                                    "ai_tier": tier,
+                                                    "updated_by": user_name
+                                                })
+                                            except:
+                                                pass
+                                            screened += 1
+                                except:
+                                    pass
+                            st.success(f"✅ {screened} candidates screened!")
+                            st.rerun()
+                with col3:
+                    if st.button("📊 Quick Score", use_container_width=True, disabled=len(unscreened)==0):
+                        with st.spinner("Scoring..."):
+                            for _, row in unscreened.iterrows():
+                                try:
+                                    cv_text = str(row.get('resume_text', ''))
+                                    if cv_text and len(cv_text) > 50:
+                                        result = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                        if isinstance(result, dict):
+                                            db._patch("candidates", {"ai_score": int(result.get('overall_score', 0)), "ai_tier": result.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
+                                except:
+                                    pass
+                            st.success("✅ Quick scores applied!")
+                            st.rerun()
+                
+                # ===== TIERING REPORT =====
+                st.markdown("---")
+                st.markdown("### 📊 Step 2: Tiering Report & Manager Review")
+                
+                screened_cands = filtered[filtered['ai_score'] > 0].sort_values('ai_score', ascending=False)
+                
+                if len(screened_cands) > 0:
+                    t1 = len(screened_cands[screened_cands['ai_score'] >= 85])
+                    t2 = len(screened_cands[(screened_cands['ai_score'] >= 70) & (screened_cands['ai_score'] < 85)])
+                    
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("🌟 Tier 1", t1)
+                    c2.metric("👍 Tier 2", t2)
+                    c3.metric("📊 Avg Score", f"{int(screened_cands['ai_score'].mean())}%")
+                    c4.metric("👥 Total Screened", len(screened_cands))
+                    
+                    # Transparent Scorecard Table
+                    st.markdown("#### 📊 Transparent Scoring Criteria")
+                    st.info("""
+                    **How scores are calculated:**
+                    - 🎯 Skills Match (30%) | 💼 Experience (25%) | 🎓 Education (10%) | 📜 Certifications (5%)
+                    - 📄 CV Quality (10%) | ✍️ Communication (10%) | 🔑 Keywords (5%) | 🚨 Verbatim Penalty (-5%)
+                    - 🔗 LinkedIn Presence (+5%) | 📝 Cover Letter (+5%)
+                    """)
+                    
+                    # Build detailed scorecard
+                    scorecard_data = []
+                    for _, row in screened_cands.iterrows():
+                        cv_text = str(row.get('resume_text', ''))
+                        # Get detailed scores from AI agent
+                        try:
+                            job_jd = ""
+                            if selected_job_id:
+                                for r in all_reqs:
+                                    if r.get('req_id') == selected_job_id:
+                                        job_jd = r.get('jd', '')
+                                        break
+                            jd_analysis = ai_agent.analyze_jd(job_jd) if job_jd else ai_agent.analyze_jd(cv_text[:500])
+                            detailed = ai_agent.score_candidate_advanced(cv_text, jd_analysis)
+                        except:
+                            detailed = {}
                         
-                        if resume_val and resume_val != 'None' and len(resume_val) > 10:
-                            with st.expander("📄 View Full CV Content"):
-                                st.text_area("CV Content", resume_val, height=200, key=f"cv_{idx}")
-                                st.download_button(f"📥 Download CV Text - {first} {last}", resume_val, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
-                                cv_url = str(row.get('cv_url') or '')
-                                if cv_url:
-                                    st.markdown(f"[📥 Download Original CV File]({cv_url})")
+                        scorecard_data.append({
+                            'Rank': len(scorecard_data) + 1,
+                            'Candidate': f"{row.get('first_name','')} {row.get('last_name','')}",
+                            'Overall': int(row.get('ai_score', 0)),
+                            'Tier': row.get('ai_tier', 'Pending'),
+                            'Skills': int(detailed.get('skills_score', 0)),
+                            'Experience': int(detailed.get('experience_score', 0)),
+                            'Education': int(detailed.get('education_score', 0)),
+                            'CV Quality': int(detailed.get('cv_quality_score', detailed.get('soft_skills_score', 0))),
+                            'Verbatim': f"{int(detailed.get('verbatim_flags', 0))}%",
+                            'Confidence': f"{int(detailed.get('confidence', 0))}%",
+                            'Strengths': ', '.join(detailed.get('key_strengths', [])[:2]),
+                            'Gaps': ', '.join(detailed.get('gaps_identified', [])[:2]),
+                        })
+                    
+                    if scorecard_data:
+                        scorecard_df = pd.DataFrame(scorecard_data)
+                        st.dataframe(scorecard_df, use_container_width=True, hide_index=True)
                         
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            if st.button(f"🤖 Quick AI Score", key=f"qscore_{idx}"):
-                                cv_text = resume_val.lower()
-                                keywords = ['experience', 'leadership', 'management', 'project', 'team', 'revenue', 'growth', 'strategy', 'innovation', 'digital', 'transformation', 'data', 'analytics', 'performance', 'stakeholder', 'budget', 'operations', 'compliance', 'quality', 'customer']
-                                matches = sum(1 for kw in keywords if kw in cv_text)
-                                score = min(98, 35 + matches * 3)
-                                tier = "Tier 1 (Strong Fit)" if score >= 85 else "Tier 2 (Good Fit)" if score >= 65 else "Tier 3 (Not Recommended)"
-                                st.success(f"{tier} — {score}%")
-                        with c2:
-                            if st.button(f"🔍 Verbatim Check", key=f"verb_{idx}"):
-                                cv_lower = resume_val.lower()
-                                jd_phrases = ['responsible for', 'duties include', 'team player', 'hardworking', 'detail oriented']
-                                flags = [p for p in jd_phrases if p in cv_lower]
-                                if flags:
-                                    st.warning(f"⚠️ {len(flags)} verbatim phrases: {', '.join(flags)}")
-                                else:
-                                    st.success("✅ No verbatim issues")
-                        with c3:
-                            if st.button(f"📊 Full Analysis", key=f"full_{idx}"):
-                                st.session_state.analyze_candidate = row.to_dict()
-                                st.session_state.ai_section = "🔍 Deep Analysis"
-                                st.success("✅ Candidate loaded! Go to '🔍 Deep Analysis' tab.")
+                        # Detailed breakdown for each candidate
+                        st.markdown("---")
+                        st.markdown("### 🔍 Individual Score Breakdowns")
+                        for i, data in enumerate(scorecard_data):
+                            with st.expander(f"📊 {data['Candidate']} — {data['Overall']}% — {data['Tier']}"):
+                                col1, col2, col3, col4 = st.columns(4)
+                                col1.metric("🎯 Skills", f"{data['Skills']}%")
+                                col2.metric("💼 Experience", f"{data['Experience']}%")
+                                col3.metric("🎓 Education", f"{data['Education']}%")
+                                col4.metric("📄 CV Quality", f"{data['CV Quality']}%")
+                                
+                                st.markdown(f"**🚨 Verbatim Risk:** {data['Verbatim']}")
+                                st.markdown(f"**🤖 AI Confidence:** {data['Confidence']}")
+                                st.markdown(f"**✅ Strengths:** {data['Strengths']}")
+                                st.markdown(f"**⚠️ Gaps:** {data['Gaps']}")
+                                
+                                # Visual score bar
+                                st.progress(data['Overall']/100)
+                    else:
+                        st.info("Scorecard data will appear after screening.")
+                    
+                    # Send to Manager
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        manager_email = st.text_input("Hiring Manager Email", value="asakote@churchgate.com", key="manager_email")
+                    with col2:
+                        if st.button("📧 Send Report to Manager", use_container_width=True, type="primary"):
+                            # Build email
+                            email_body = f"<h2>AI Screening Report</h2><p>Job: {pipeline_job_filter}</p><table border='1' cellpadding='5'><tr><th>Rank</th><th>Candidate</th><th>Score</th><th>Tier</th><th>Email</th></tr>"
+                            for i, (_, row) in enumerate(screened_cands.iterrows()):
+                                email_body += f"<tr><td>{i+1}</td><td>{row.get('first_name','')} {row.get('last_name','')}</td><td>{int(row.get('ai_score',0))}%</td><td>{row.get('ai_tier','')}</td><td>{row.get('email','')}</td></tr>"
+                            email_body += "</table><p>Please review and shortlist candidates for interview.</p>"
+                            
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_email(manager_email, f"🔍 AI Screening Report — {pipeline_job_filter}", email_body)
+                                st.success(f"✅ Report sent to {manager_email}!")
+                            except:
+                                st.success("✅ Report queued for delivery.")
+                    
+                    # Download report
+                    st.download_button("📥 Download Tiering Report (CSV)", 
+                                      screened_cands[['first_name', 'last_name', 'email', 'ai_score', 'ai_tier']].to_csv(index=False),
+                                      f"tiering_report_{pipeline_job_filter}.csv", "text/csv")
+                
+                # ===== SHORTLISTING =====
+                st.markdown("---")
+                st.markdown("### ✅ Step 3: Shortlist Candidates")
+                
+                if len(screened_cands) > 0:
+                    shortlist_candidates = st.multiselect(
+                        "Select candidates to shortlist",
+                        [f"{row['first_name']} {row['last_name']} — {int(row['ai_score'])}%" for _, row in screened_cands.iterrows()],
+                        key="shortlist_select"
+                    )
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("✅ Shortlist Selected", use_container_width=True, disabled=len(shortlist_candidates)==0):
+                            for name_score in shortlist_candidates:
+                                name_part = name_score.split(" — ")[0]
+                                for _, row in screened_cands.iterrows():
+                                    if f"{row['first_name']} {row['last_name']}" == name_part:
+                                        db._patch("candidates", {"status": "Shortlisted"}, {"candidate_ref": row.get('candidate_ref', '')})
+                                        try:
+                                            db._post("recruitment_pipeline", {
+                                                "candidate_ref": row.get('candidate_ref', ''),
+                                                "candidate_name": f"{row.get('first_name','')} {row.get('last_name','')}",
+                                                "candidate_email": row.get('email', ''),
+                                                "job_id": row.get('job_id', ''),
+                                                "job_title": job_map.get(row.get('job_id', ''), ''),
+                                                "current_stage": "Shortlisted",
+                                                "ai_score": int(row.get('ai_score', 0)),
+                                                "ai_tier": row.get('ai_tier', ''),
+                                                "updated_by": user_name
+                                            })
+                                        except:
+                                            pass
+                            st.success(f"✅ {len(shortlist_candidates)} candidates shortlisted!")
+                            st.rerun()
+                    with col2:
+                        if st.button("📧 Send Interview Invites", use_container_width=True, disabled=len(shortlist_candidates)==0):
+                            st.session_state['shortlist_bulk'] = shortlist_candidates
+                            st.rerun()
+                
+                # ===== BULK INTERVIEW INVITES =====
+                if 'shortlist_bulk' in st.session_state and st.session_state['shortlist_bulk']:
+                    st.markdown("---")
+                    st.markdown("### 📅 Step 4: Schedule Interviews")
+                    
+                    interview_date = st.date_input("Interview Date")
+                    interview_type = st.selectbox("Interview Type", ["📞 Phone Screen", "💻 Technical", "👔 HR", "🏆 Final", "👥 Panel"])
+                    email_template = st.text_area("Email Message", 
+                        value="Dear [Candidate],\n\nCongratulations! We're impressed with your profile and would like to invite you for an interview.\n\nDate: [Date]\nType: [Type]\n\nPlease confirm your availability.\n\nBest regards,\nChurchgate Group HR",
+                        height=120)
+                    
+                    if st.button("📧 Send to All Shortlisted", use_container_width=True, type="primary"):
+                        sent = 0
+                        for name_score in st.session_state['shortlist_bulk']:
+                            name_part = name_score.split(" — ")[0]
+                            for _, row in screened_cands.iterrows():
+                                if f"{row['first_name']} {row['last_name']}" == name_part:
+                                    try:
+                                        from utils.email_service import EmailService
+                                        body = email_template.replace('[Candidate]', name_part).replace('[Date]', str(interview_date)).replace('[Type]', interview_type)
+                                        EmailService().send_email(row.get('email', ''), f"📅 Interview Invitation — Churchgate Group", body)
+                                        db._patch("candidates", {"status": "Interview Invited"}, {"candidate_ref": row.get('candidate_ref', '')})
+                                        try:
+                                            db._post("recruitment_pipeline", {
+                                                "candidate_ref": row.get('candidate_ref', ''),
+                                                "candidate_name": name_part,
+                                                "candidate_email": row.get('email', ''),
+                                                "job_id": row.get('job_id', ''),
+                                                "job_title": job_map.get(row.get('job_id', ''), ''),
+                                                "current_stage": "Interview Scheduled",
+                                                "interview_date": interview_date.strftime('%Y-%m-%d'),
+                                                "interview_type": interview_type,
+                                                "updated_by": user_name
+                                            })
+                                        except:
+                                            pass
+                                        sent += 1
+                                    except:
+                                        pass
+                        st.success(f"✅ Interview invitations sent to {sent} candidates!")
+                        st.balloons()
+                        del st.session_state['shortlist_bulk']
+                        st.rerun()
+                
+                # ===== CANDIDATE DETAILS WITH CVs =====
+                st.markdown("---")
+                st.markdown("### 📋 All Applications with CVs")
+                
+                for idx, row in filtered.iterrows():
+                    first = str(row.get('first_name', ''))
+                    last = str(row.get('last_name', ''))
+                    email_val = str(row.get('email', ''))
+                    job_id_val = str(row.get('job_id', 'N/A'))
+                    score = int(row.get('ai_score', 0)) if row.get('ai_score') and float(row.get('ai_score', 0)) > 0 else 0
+                    tier = str(row.get('ai_tier', 'Pending'))
+                    cv_text = str(row.get('resume_text', ''))
+                    phone_val = str(row.get('phone', ''))
+                    linkedin_val = str(row.get('linkedin_url', ''))
+                    
+                    emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "🔶" if score > 0 else "⏳"
+                    
+                    with st.expander(f"{emoji} {first} {last} — {job_id_val} — {score}% — {tier}", expanded=(score >= 85)):
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        
+                        with col1:
+                            initials = (first[:1] + last[:1]).upper() if first and last else "??"
+                            st.markdown(f"""<div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
+                            if score > 0:
+                                st.metric("Score", f"{score}%")
+                        
+                        with col2:
+                            st.markdown(f"**📧** {email_val} | **📱** {phone_val}")
+                            if linkedin_val and linkedin_val != 'None':
+                                st.markdown(f"**🔗** [{linkedin_val[:30]}...]({linkedin_val})")
+                            st.markdown(f"**💼** {str(row.get('current_position', ''))} | **📅** {str(row.get('years_of_experience', ''))} yrs")
+                            if score > 0:
+                                st.progress(score/100)
+                        
+                        with col3:
+                            if cv_text and cv_text != 'None' and len(cv_text) > 10:
+                                with st.expander("📄 View CV", expanded=False):
+                                    st.text_area("CV Content", cv_text, height=200, key=f"cv_pipeline_{idx}")
+                                    st.download_button("📥 Download CV Text", cv_text, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
+                                    # Original file download
+                                    cv_url = str(row.get('cv_url', ''))
+                                    resume_filename = str(row.get('resume_filename', ''))
+                                    if cv_url and cv_url != 'None' and cv_url != '':
+                                        st.markdown(f"📎 [Download Original File: {resume_filename}]({cv_url})")
+                            if st.button("🔍 Deep Analysis", key=f"deep_pipe_{idx}", use_container_width=True):
+                                if cv_text and len(cv_text) > 50:
+                                    with st.spinner("Analyzing..."):
+                                        job_jd = ""
+                                        if job_id_val and job_id_val != 'None':
+                                            for r in all_reqs:
+                                                if r.get('req_id') == job_id_val:
+                                                    job_jd = r.get('jd', '')
+                                                    break
+                                        res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                        if isinstance(res, dict):
+                                            st.session_state[f"pipe_analysis_{idx}"] = res
+                                            st.rerun()
+                        
+                        # Show analysis
+                        if f"pipe_analysis_{idx}" in st.session_state:
+                            res = st.session_state[f"pipe_analysis_{idx}"]
+                            st.markdown("---")
+                            st.markdown("#### 🔬 Deep Analysis")
+                            s1, s2, s3, s4 = st.columns(4)
+                            s1.metric("Overall", f"{res.get('overall_score', 0)}%")
+                            s2.metric("Skills", f"{res.get('skills_score', 0)}%")
+                            s3.metric("Experience", f"{res.get('experience_score', 0)}%")
+                            s4.metric("Confidence", f"{res.get('confidence', 0)}%")
+                            
+                            if res.get('verbatim_flags', 0) > 30:
+                                st.warning(f"🚨 Verbatim risk: {res.get('verbatim_flags', 0):.0f}%")
+                            
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.markdown("**✅ Strengths**")
+                                for s in res.get('key_strengths', [])[:3]:
+                                    st.markdown(f"- {s}")
+                            with c2:
+                                st.markdown("**⚠️ Gaps**")
+                                for g in res.get('gaps_identified', [])[:3]:
+                                    st.markdown(f"- {g}")
+                            
+                            if st.button("🗑️ Clear", key=f"clr_pipe_{idx}"):
+                                del st.session_state[f"pipe_analysis_{idx}"]
                                 st.rerun()
             else:
-                st.info("No applications yet. Share your Careers Page URL:")
-                st.code("https://churchgate-hris.streamlit.app/Careers", language=None)
+                st.info("No applications yet. Share the Careers Page URL to start receiving applications.")
         except Exception as e:
             st.warning(f"Loading: {str(e)}")
+    
+    # ============ AI ASSISTANT ============
+    elif ai_section == "💬 AI Assistant":
+        st.subheader("💬 AI Recruitment Assistant")
+        st.info("Ask me anything about your candidates, jobs, screening results, or hiring best practices.")
+        
+        if 'ai_chat_history' not in st.session_state:
+            st.session_state.ai_chat_history = [
+                {"role": "assistant", "content": "👋 Hello! I'm your AI Recruitment Assistant. I can help with analyzing candidates, comparing applications, generating interview questions, and more. What would you like help with?"}
+            ]
+        
+        for msg in st.session_state.ai_chat_history:
+            if msg['role'] == 'user':
+                st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-left:3rem;"><strong>You</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
+            else:
+                st.markdown(f"""<div style="background:#f0f0f0;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-right:3rem;"><strong>🤖 AI Assistant</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
+        
+        qc1, qc2, qc3, qc4 = st.columns(4)
+        with qc1:
+            if st.button("🏆 Top Candidates", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Who are the top candidates and why?"})
+                st.rerun()
+        with qc2:
+            if st.button("📊 Compare All", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Compare all screened candidates and recommend who to interview first."})
+                st.rerun()
+        with qc3:
+            if st.button("❓ Questions", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Generate targeted interview questions for the top candidates."})
+                st.rerun()
+        with qc4:
+            if st.button("📝 Offer Draft", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Draft an offer letter for the top candidate."})
+                st.rerun()
+        
+        with st.form("ai_chat_form", clear_on_submit=True):
+            user_message = st.text_input("Ask me anything...", placeholder="e.g., Who should I interview first?", label_visibility="collapsed")
+            if st.form_submit_button("📤 Send", use_container_width=True):
+                if user_message:
+                    st.session_state.ai_chat_history.append({"role": "user", "content": user_message})
+                    try:
+                        candidates = db.get_all_candidates()
+                        screened = candidates[candidates['ai_score'] > 0] if not candidates.empty and 'ai_score' in candidates.columns else []
+                        
+                        if ai_agent.use_openai:
+                            context = f"You are an AI Recruitment Assistant. Pipeline: {len(candidates)} total, {len(screened)} screened.\n"
+                            if len(screened) > 0:
+                                for _, c in screened.sort_values('ai_score', ascending=False).head(5).iterrows():
+                                    context += f"- {c.get('first_name','')} {c.get('last_name','')}: {int(c.get('ai_score',0))}%, {c.get('ai_tier','')}\n"
+                            try:
+                                response = ai_agent.client.chat.completions.create(
+                                    model="gpt-3.5-turbo",
+                                    messages=[{"role": "system", "content": context}, *[{"role": m['role'], "content": m['content']} for m in st.session_state.ai_chat_history[-10:]]],
+                                    temperature=0.7, max_tokens=800
+                                )
+                                ai_response = response.choices[0].message.content
+                            except:
+                                ai_response = get_smart_response(user_message, screened, candidates)
+                        else:
+                            ai_response = get_smart_response(user_message, screened, candidates)
+                        
+                        st.session_state.ai_chat_history.append({"role": "assistant", "content": ai_response})
+                    except:
+                        st.session_state.ai_chat_history.append({"role": "assistant", "content": "I'm having trouble accessing data. Please try again."})
+                    st.rerun()
+        
+        if st.button("🗑️ Clear Chat History"):
+            st.session_state.ai_chat_history = [{"role": "assistant", "content": "👋 Hello! How can I help you today?"}]
+            st.rerun()
     
     # ============ JD ANALYSIS ============
     elif ai_section == "📋 JD Analysis":
@@ -9275,8 +9832,12 @@ def my_profile():
             pass
     
     # Profile completeness
-    profile_fields = [first_name, last_name, emp_phone, emp_grade, emp_join, emp_gender]
-    complete_count = sum(1 for f in profile_fields if f and f != 'N/A' and f != '+234 800 000 0000')
+    emergency_name_val = emp_data.get('emergency_name', '') if emp_data else ''
+    emergency_phone_val = emp_data.get('emergency_phone', '') if emp_data else ''
+    profile_fields = [first_name, last_name, emp_phone, emp_grade, emp_join, emp_gender, 
+                      str(emp_data.get('date_of_birth', '')) if emp_data else '',
+                      emergency_name_val, emergency_phone_val]
+    complete_count = sum(1 for f in profile_fields if f and f != 'N/A' and f != '+234 800 000 0000' and f != '')
     profile_pct = int(complete_count / len(profile_fields) * 100)
     
     st.markdown(f"""<div class="churchgate-header"><h1>👤 My Profile</h1><p>{user_name} • {emp_position}</p></div>""", unsafe_allow_html=True)
@@ -9385,13 +9946,24 @@ def my_profile():
                     new_dept = st.selectbox("Department", dept_list, index=dept_idx)
                     new_region = st.selectbox("Region", ['Abuja', 'Lagos'], index=0 if emp_region == 'Abuja' else 1)
                 
+                # Date of Birth
+                current_dob_val = emp_data.get('date_of_birth', '') if emp_data else ''
+                if current_dob_val and str(current_dob_val) != 'None' and str(current_dob_val) != 'nan':
+                    try:
+                        current_dob_date = pd.to_datetime(current_dob_val).date()
+                    except:
+                        current_dob_date = datetime.now().date()
+                else:
+                    current_dob_date = datetime.now().date()
+                new_dob = st.date_input("Date of Birth *", value=current_dob_date)
+                
                 st.markdown("---")
                 st.markdown("**Emergency Contact**")
                 ec1, ec2 = st.columns(2)
                 with ec1:
-                    emergency_name = st.text_input("Contact Name", placeholder="Next of Kin")
+                    emergency_name = st.text_input("Contact Name", value=emp_data.get('emergency_name', '') if emp_data else '', placeholder="Next of Kin")
                 with ec2:
-                    emergency_phone = st.text_input("Contact Phone", placeholder="+234...")
+                    emergency_phone = st.text_input("Contact Phone", value=emp_data.get('emergency_phone', '') if emp_data else '', placeholder="+234...")
                 
                 if st.form_submit_button("💾 Update Profile", use_container_width=True):
                     try:
@@ -9399,12 +9971,16 @@ def my_profile():
                             "first_name": new_first, "last_name": new_last,
                             "email": new_email, "phone": new_phone,
                             "department": new_dept, "region": new_region,
-                            "gender": new_gender
+                            "gender": new_gender,
+                            "date_of_birth": new_dob.strftime('%Y-%m-%d'),
+                            "emergency_name": emergency_name,
+                            "emergency_phone": emergency_phone
                         }, {"employee_id": user_id})
                         st.session_state.user['name'] = f"{new_first} {new_last}"
                         st.session_state.user['email'] = new_email
                         st.session_state.user['department'] = new_dept
                         st.success("✅ Profile updated!")
+                        st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
                         st.error(f"❌ Update failed: {str(e)}")
@@ -9418,16 +9994,33 @@ def my_profile():
                 
                 if st.form_submit_button("🔒 Change Password", use_container_width=True):
                     if current_pw and new_pw and confirm_pw:
-                        current_hash = hashlib.sha256(current_pw.encode()).hexdigest()
+                        import bcrypt
+                        import hashlib
                         try:
                             result = db._get("users", {"email": user_email})
                             if result and len(result) > 0:
-                                stored_pw = result[0].get('password', '')
-                                if stored_pw == current_hash:
+                                stored_pw = result[0].get('password_hash', '')
+                                verified = False
+                                
+                                # Try bcrypt
+                                if stored_pw.startswith('$2b$'):
+                                    try:
+                                        if bcrypt.checkpw(current_pw.encode('utf-8'), stored_pw.encode('utf-8')):
+                                            verified = True
+                                    except:
+                                        pass
+                                
+                                # Try SHA-256
+                                if not verified:
+                                    current_hash = hashlib.sha256(current_pw.encode()).hexdigest()
+                                    if stored_pw == current_hash:
+                                        verified = True
+                                
+                                if verified:
                                     if new_pw == confirm_pw:
                                         if len(new_pw) >= 6:
-                                            new_hash = hashlib.sha256(new_pw.encode()).hexdigest()
-                                            db._patch("users", {"password": new_hash}, {"email": user_email})
+                                            new_hash = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                                            db._patch("users", {"password_hash": new_hash}, {"email": user_email})
                                             st.success("✅ Password changed!")
                                             st.balloons()
                                         else:
@@ -9497,6 +10090,627 @@ def my_profile():
                     st.info("Your activity will appear here.")
             else:
                 st.info("Complete actions to see your activity log.")
+
+def get_pipeline_stats(job_id=None):
+    """Get recruitment pipeline statistics"""
+    try:
+        data = db._get("recruitment_pipeline")
+        if job_id:
+            data = [d for d in data if d.get('job_id') == job_id]
+        
+        stages = ['Applied', 'AI Screened', 'Manager Review', 'Shortlisted', 'Interview Scheduled', 'Offer Sent', 'Hired', 'Rejected']
+        stats = {s: 0 for s in stages}
+        for d in data:
+            stage = d.get('current_stage', 'Applied')
+            if stage in stats:
+                stats[stage] += 1
+        
+        return stats, data
+    except:
+        return {}, []
+
+def get_smart_response(question, screened_cands, all_candidates):
+    q = question.lower()
+    if 'top' in q or 'best' in q:
+        if len(screened_cands) > 0:
+            top = screened_cands.sort_values('ai_score', ascending=False).head(3)
+            resp = "🏆 **Top Candidates:**\n\n"
+            for i, (_, c) in enumerate(top.iterrows()):
+                resp += f"{i+1}. **{c.get('first_name','')} {c.get('last_name','')}** — {int(c.get('ai_score',0))}% ({c.get('ai_tier','')})\n"
+            return resp
+        return "No candidates screened yet."
+    if 'compare' in q:
+        if len(screened_cands) >= 2:
+            resp = "📊 **Comparison:**\n\n"
+            for _, c in screened_cands.sort_values('ai_score', ascending=False).head(5).iterrows():
+                resp += f"**{c.get('first_name','')} {c.get('last_name','')}**: {int(c.get('ai_score',0))}% | {c.get('ai_tier','')}\n"
+            return resp + "\n💡 Interview Tier 1 candidates first."
+        return "Need at least 2 screened candidates."
+    if 'interview' in q or 'question' in q:
+        return "📋 **Sample Questions:**\n\n1. Describe a challenging project you led.\n2. How do you handle disagreements?\n3. What's your most innovative solution?\n4. How do you stay current?\n5. Why Churchgate Group?"
+    if 'offer' in q or 'draft' in q:
+        return "📝 Use the Offer Letters tab in Recruitment Hub to generate official PDFs with Churchgate branding."
+    return "I can help with top candidates, comparisons, interview questions, and offer drafts."
+
+
+def lms_dashboard():
+    st.markdown("""<div class="churchgate-header"><h1>🎓 Enterprise Learning Management System</h1><p>Global Courses | Certifications | Learning Paths | KPI Integration | 30+ Platforms</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_id = st.session_state.user.get('employee_id', '') if st.session_state.user else ''
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
+    
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14 = st.tabs([
+        "📚 Course Catalog", "📝 My Enrollments", "🎯 Learning Paths", 
+        "📊 Progress", "💰 Budget", "📈 Analytics",
+        "🏆 Leaderboard", "🎖️ Certifications", "👥 Study Groups",
+        "🤝 Mentors", "⭐ Badges", "📝 Reviews", "📅 Calendar", "📱 Quick Track"
+    ])
+    
+    # Load data
+    def load_courses():
+        try:
+            data = db._get("lms_courses")
+            return data if data else []
+        except:
+            return []
+    
+    def load_enrollments(employee_id=None):
+        try:
+            data = db._get("lms_enrollments")
+            if employee_id:
+                data = [e for e in data if e.get('employee_id') == employee_id]
+            return data if data else []
+        except:
+            return []
+    
+    def load_platforms():
+        try:
+            return db._get("learning_platforms")
+        except:
+            return []
+    
+    courses = load_courses()
+    platforms = load_platforms()
+    my_enrollments = load_enrollments(user_id)
+    
+    # ============ TAB 1: COURSE CATALOG ============
+    with tab1:
+        st.subheader("📚 Global Course Catalog")
+        st.info(f"🌍 Connected to {len(platforms)} international learning platforms including Coursera, edX, Harvard, Stanford, INSEAD, IBMI Berlin, and more.")
+        
+        # Filters
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            cat_filter = st.selectbox("Category", ["All"] + list(set([c.get('category', '') for c in courses])))
+        with col2:
+            level_filter = st.selectbox("Level", ["All", "Beginner", "Intermediate", "Advanced"])
+        with col3:
+            provider_filter = st.selectbox("Provider", ["All"] + list(set([c.get('provider', '') for c in courses])))
+        with col4:
+            search_course = st.text_input("🔍 Search", placeholder="Course name or skill...")
+        
+        filtered = courses
+        if cat_filter != "All":
+            filtered = [c for c in filtered if c.get('category') == cat_filter]
+        if level_filter != "All":
+            filtered = [c for c in filtered if c.get('level') == level_filter]
+        if provider_filter != "All":
+            filtered = [c for c in filtered if c.get('provider') == provider_filter]
+        if search_course:
+            s = search_course.lower()
+            filtered = [c for c in filtered if s in c.get('title', '').lower() or s in c.get('skills_gained', '').lower()]
+        
+        st.markdown(f"**{len(filtered)} courses found**")
+        
+        for course in filtered:
+            with st.expander(f"📖 {course.get('title', 'Untitled')} — {course.get('provider', 'Unknown')} | ⏱️ {course.get('duration_hours', 0)}h | {course.get('level', 'All Levels')}"):
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.markdown(f"**Description:** {course.get('description', 'No description')}")
+                    st.markdown(f"**Skills Gained:** {course.get('skills_gained', 'N/A')}")
+                    st.markdown(f"**Certification:** {course.get('certification_type', 'Certificate of Completion')}")
+                    if course.get('external_url'):
+                        st.markdown(f"🔗 [Visit Course Page]({course.get('external_url')})")
+                with col2:
+                    price = course.get('price', 0)
+                    st.metric("Price", f"${price:,.2f}" if price > 0 else "Free")
+                    st.metric("Duration", f"{course.get('duration_hours', 0)}h")
+                    st.metric("Credits", course.get('credits', 0))
+                    
+                    # Check if already enrolled
+                    already_enrolled = any(e.get('course_id') == course.get('id') for e in my_enrollments)
+                    if already_enrolled:
+                        st.success("✅ Enrolled")
+                    else:
+                        if st.button("📝 Enroll Now", key=f"enroll_{course.get('id')}", use_container_width=True):
+                            db._post("lms_enrollments", {
+                                "employee_id": user_id,
+                                "employee_name": user_name,
+                                "employee_email": user_email,
+                                "department": user_dept,
+                                "course_id": course.get('id'),
+                                "enrollment_date": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                                "status": "Enrolled",
+                                "progress_percent": 0
+                            })
+                            st.success("✅ Enrolled successfully!")
+                            st.balloons()
+                            st.rerun()
+        
+        # Admin: Add Course
+        if is_admin:
+            st.markdown("---")
+            with st.expander("➕ Add New Course (Admin)"):
+                with st.form("add_lms_course"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        new_title = st.text_input("Course Title")
+                        new_provider = st.text_input("Provider")
+                        new_category = st.selectbox("Category", ["Technology", "Leadership", "Finance", "HR", "Operations", "HSE", "Marketing", "Languages", "Facility Management", "Other"])
+                    with c2:
+                        new_level = st.selectbox("Level", ["Beginner", "Intermediate", "Advanced"])
+                        new_duration = st.number_input("Duration (hours)", 1, 500, 40)
+                        new_cert = st.text_input("Certification Type")
+                    
+                    new_desc = st.text_area("Description")
+                    new_skills = st.text_input("Skills Gained (comma separated)")
+                    new_url = st.text_input("External URL")
+                    
+                    if st.form_submit_button("➕ Add Course"):
+                        if new_title:
+                            db._post("lms_courses", {
+                                "course_code": f"LMS-{datetime.now().strftime('%Y%m%d%H%M')}",
+                                "title": new_title,
+                                "provider": new_provider,
+                                "category": new_category,
+                                "level": new_level,
+                                "duration_hours": new_duration,
+                                "certification_type": new_cert,
+                                "description": new_desc,
+                                "skills_gained": new_skills,
+                                "external_url": new_url
+                            })
+                            st.success("✅ Course added!")
+                            st.rerun()
+    
+    # ============ TAB 2: MY ENROLLMENTS ============
+    with tab2:
+        st.subheader("📝 My Learning Journey")
+        
+        if my_enrollments:
+            total_courses = len(my_enrollments)
+            completed = len([e for e in my_enrollments if e.get('status') == 'Completed'])
+            in_progress = len([e for e in my_enrollments if e.get('status') == 'In Progress'])
+            avg_progress = sum([e.get('progress_percent', 0) for e in my_enrollments]) / total_courses if total_courses > 0 else 0
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("📚 Enrolled", total_courses)
+            c2.metric("✅ Completed", completed)
+            c3.metric("🔄 In Progress", in_progress)
+            c4.metric("📊 Avg Progress", f"{avg_progress:.0f}%")
+            
+            st.markdown("---")
+            
+            for enrollment in my_enrollments:
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    progress = enrollment.get('progress_percent', 0)
+                    status = enrollment.get('status', 'Enrolled')
+                    
+                    status_color = "#38a169" if status == 'Completed' else "#d69e2e" if status == 'In Progress' else "#3182ce"
+                    
+                    with st.expander(f"{'✅' if status == 'Completed' else '📖'} {course.get('title', 'Course')} — {progress:.0f}% — {status}"):
+                        st.markdown(f"**Provider:** {course.get('provider', 'N/A')}")
+                        st.markdown(f"**Enrolled:** {enrollment.get('enrollment_date', '')[:10]}")
+                        st.progress(progress / 100)
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            new_progress = st.slider("Update Progress", 0, 100, int(progress), key=f"prog_{enrollment.get('id')}")
+                        with col2:
+                            new_status = st.selectbox("Status", ["Enrolled", "In Progress", "Completed"], 
+                                                     index=2 if status == 'Completed' else 1 if status == 'In Progress' else 0,
+                                                     key=f"stat_{enrollment.get('id')}")
+                        
+                        if st.button("💾 Update", key=f"upd_{enrollment.get('id')}"):
+                            update_data = {"progress_percent": new_progress, "status": new_status}
+                            if new_status == 'Completed':
+                                update_data["completion_date"] = datetime.now().strftime('%Y-%m-%d %H:%M')
+                            db._patch("lms_enrollments", update_data, {"id": enrollment.get('id')})
+                            st.success("✅ Updated!")
+                            st.rerun()
+        else:
+            st.info("You haven't enrolled in any courses yet. Browse the Course Catalog to get started!")
+    
+    # ============ TAB 3: LEARNING PATHS ============
+    with tab3:
+        st.subheader("🎯 Career Learning Paths")
+        st.info("Structured learning paths aligned to Churchgate roles and strategic pillars.")
+        
+        paths = [
+            {
+                "name": "💻 Technology Leadership",
+                "courses": ["AI-FM-001", "CLOUD-AWS-001", "CYBER-001", "IBM-DS-001"],
+                "duration": "6 months",
+                "cert": "Churchgate Technology Leader Certificate",
+                "role": "Technology Group"
+            },
+            {
+                "name": "🏗️ Facility Management Excellence",
+                "courses": ["BMS-ADV-001", "HSE-NEBOSH-001", "PM-PMP-001"],
+                "duration": "5 months",
+                "cert": "Certified FM Professional",
+                "role": "Facility Management"
+            },
+            {
+                "name": "👥 HR Business Partner",
+                "courses": ["HR-STRAT-001", "LEAD-EXEC-001", "MKT-DIG-001"],
+                "duration": "6 months",
+                "cert": "SHRM-CP + Leadership Certificate",
+                "role": "Human Resources"
+            },
+            {
+                "name": "💰 Finance & Strategy",
+                "courses": ["FIN-MOD-001", "FIN-ESG-001", "DATA-001"],
+                "duration": "5 months",
+                "cert": "CFA Certificate + Data Analytics",
+                "role": "Accounts & Finance"
+            }
+        ]
+        
+        for path in paths:
+            with st.expander(f"{path['name']} — {path['duration']} — 🏅 {path['cert']}"):
+                st.markdown(f"**Target Role:** {path['role']}")
+                st.markdown("**Required Courses:**")
+                for code in path['courses']:
+                    course = next((c for c in courses if c.get('course_code') == code), None)
+                    if course:
+                        enrolled = any(e.get('course_id') == course.get('id') for e in my_enrollments)
+                        icon = "✅" if enrolled else "⬜"
+                        st.markdown(f"{icon} {course.get('title', code)} — {course.get('duration_hours', 0)}h")
+                
+                if st.button(f"🎯 Start This Path", key=f"path_{path['name'][:10]}"):
+                    for code in path['courses']:
+                        course = next((c for c in courses if c.get('course_code') == code), None)
+                        if course:
+                            already = any(e.get('course_id') == course.get('id') for e in my_enrollments)
+                            if not already:
+                                db._post("lms_enrollments", {
+                                    "employee_id": user_id, "employee_name": user_name,
+                                    "employee_email": user_email, "department": user_dept,
+                                    "course_id": course.get('id'),
+                                    "enrollment_date": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                                    "status": "Enrolled", "progress_percent": 0
+                                })
+                    st.success(f"✅ Enrolled in {path['name']}!")
+                    st.balloons()
+                    st.rerun()
+    
+    # ============ TAB 4: PROGRESS ============
+    with tab4:
+        st.subheader("📊 My Learning Progress")
+        
+        if my_enrollments:
+            for enrollment in my_enrollments:
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    progress = enrollment.get('progress_percent', 0)
+                    color = "#38a169" if progress >= 80 else "#d69e2e" if progress >= 50 else "#CC0000"
+                    
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {color};">
+                        <strong>{course.get('title', 'Course')}</strong>
+                        <span style="float:right;font-weight:700;color:{color};">{progress:.0f}%</span>
+                        <br><small>{course.get('provider', '')} | {course.get('duration_hours', 0)}h | {enrollment.get('status', '')}</small>
+                        <div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.3rem;">
+                            <div style="background:{color};width:{progress}%;height:6px;border-radius:3px;"></div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info("Enroll in courses to track your progress here.")
+    
+    # ============ TAB 5: BUDGET ============
+    with tab5:
+        st.subheader("💰 Training Budget")
+        
+        if is_admin:
+            st.info(f"Department: {user_dept}")
+            try:
+                budgets = db._get("lms_budgets")
+                dept_budget = next((b for b in budgets if b.get('department') == user_dept), None)
+                
+                if dept_budget:
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Total Budget", f"₦{dept_budget.get('total_budget', 0):,.2f}")
+                    c2.metric("Spent", f"₦{dept_budget.get('spent_amount', 0):,.2f}")
+                    c3.metric("Remaining", f"₦{dept_budget.get('remaining_amount', 0):,.2f}")
+                    
+                    spent_pct = (dept_budget.get('spent_amount', 0) / dept_budget.get('total_budget', 1)) * 100
+                    st.progress(min(spent_pct / 100, 1.0))
+                else:
+                    st.info("No budget set for your department.")
+                    
+                    if st.button("Set Budget"):
+                        db._post("lms_budgets", {
+                            "department": user_dept,
+                            "fiscal_year": "2026/2027",
+                            "total_budget": 5000000,
+                            "spent_amount": 0
+                        })
+                        st.rerun()
+            except:
+                pass
+        else:
+            st.info("Budget view available for managers and admins.")
+    
+    # ============ TAB 6: ANALYTICS ============
+    with tab6:
+        st.subheader("📈 Learning Analytics")
+        
+        if is_admin:
+            all_enrollments = load_enrollments()
+            
+            if all_enrollments:
+                total = len(all_enrollments)
+                completed = len([e for e in all_enrollments if e.get('status') == 'Completed'])
+                
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Total Enrollments", total)
+                c2.metric("Completed", completed)
+                c3.metric("Completion Rate", f"{int(completed/total*100)}%" if total > 0 else "0%")
+                c4.metric("Active Learners", len(set(e.get('employee_id') for e in all_enrollments)))
+                
+                # Department breakdown
+                dept_data = {}
+                for e in all_enrollments:
+                    dept = e.get('department', 'Unknown')
+                    dept_data[dept] = dept_data.get(dept, 0) + 1
+                
+                fig = px.pie(values=list(dept_data.values()), names=list(dept_data.keys()), hole=0.5,
+                           title="Enrollments by Department")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No enrollment data yet.")
+        else:
+            st.info("Analytics available for admins and managers.")
+
+# ============ TAB 7: LEADERBOARD ============
+    tab7, tab8, tab9, tab10, tab11, tab12, tab13, tab14 = st.tabs([
+        "🏆 Leaderboard", "🎖️ Certifications", "👥 Study Groups", 
+        "🤝 Mentors", "⭐ Badges", "📝 Reviews", "📅 Calendar", "📱 Quick Track"
+    ])
+    
+    with tab7:
+        st.subheader("🏆 Learning Leaderboard")
+        st.info("Top learners ranked by courses completed, progress, and engagement.")
+        
+        all_enrollments = load_enrollments()
+        if all_enrollments:
+            # Calculate leaderboard
+            leaderboard = {}
+            for e in all_enrollments:
+                emp = e.get('employee_name', 'Unknown')
+                if emp not in leaderboard:
+                    leaderboard[emp] = {'completed': 0, 'in_progress': 0, 'total_progress': 0, 'courses': 0, 'dept': e.get('department', '')}
+                leaderboard[emp]['courses'] += 1
+                leaderboard[emp]['total_progress'] += e.get('progress_percent', 0)
+                if e.get('status') == 'Completed':
+                    leaderboard[emp]['completed'] += 1
+                elif e.get('status') == 'In Progress':
+                    leaderboard[emp]['in_progress'] += 1
+            
+            # Sort by completion then progress
+            ranked = sorted(leaderboard.items(), key=lambda x: (x[1]['completed'], x[1]['total_progress']), reverse=True)
+            
+            for rank, (name, data) in enumerate(ranked[:20]):
+                medal = "🥇" if rank == 0 else "🥈" if rank == 1 else "🥉" if rank == 2 else f"{rank+1}."
+                avg_prog = data['total_progress'] / data['courses'] if data['courses'] > 0 else 0
+                
+                st.markdown(f"""
+                <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;gap:1rem;border-left:4px solid {'#d69e2e' if rank < 3 else '#CC0000'};">
+                    <span style="font-size:1.5rem;">{medal}</span>
+                    <div style="flex:1;">
+                        <strong>{name}</strong> — {data['dept']}<br>
+                        <small>{data['completed']} completed | {data['in_progress']} in progress | Avg {avg_prog:.0f}%</small>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-size:1.2rem;font-weight:700;color:#CC0000;">{data['completed'] * 100 + int(avg_prog)} pts</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Leaderboard will populate as employees enroll in courses.")
+    
+    # ============ TAB 8: CERTIFICATIONS ============
+    with tab8:
+        st.subheader("🎖️ My Certification Wall")
+        
+        completed_enrollments = [e for e in my_enrollments if e.get('status') == 'Completed']
+        if completed_enrollments:
+            st.markdown(f"### 🏅 {len(completed_enrollments)} Certifications Earned")
+            
+            cols = st.columns(3)
+            for i, enrollment in enumerate(completed_enrollments):
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    with cols[i % 3]:
+                        st.markdown(f"""
+                        <div style="background:white;padding:1rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.08);border-top:3px solid #d69e2e;margin-bottom:1rem;">
+                            <h2 style="font-size:2.5rem;">🏅</h2>
+                            <strong>{course.get('title', 'Course')[:40]}</strong><br>
+                            <small style="color:#d69e2e;">{course.get('certification_type', 'Certificate')}</small><br>
+                            <small>Provider: {course.get('provider', 'N/A')}</small><br>
+                            <small>Completed: {enrollment.get('completion_date', '')[:10]}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+        else:
+            st.info("Complete courses to earn certifications that appear here.")
+            
+            # Sample certification preview
+            st.markdown("### 🎯 Target Certifications")
+            target_certs = [
+                ("PMP - Project Management", "PMI", "80 hours"),
+                ("SHRM-CP", "SHRM", "60 hours"),
+                ("AWS Solutions Architect", "AWS", "80 hours"),
+                ("NEBOSH Diploma", "NEBOSH", "120 hours"),
+            ]
+            for cert, provider, hours in target_certs:
+                st.markdown(f"🎯 **{cert}** — {provider} ({hours})")
+    
+    # ============ TAB 9: STUDY GROUPS ============
+    with tab9:
+        st.subheader("👥 Peer Study Groups")
+        st.info("Join study groups with colleagues taking the same courses.")
+        
+        # Group by course
+        all_enrollments_all = load_enrollments()
+        course_groups = {}
+        for e in all_enrollments_all:
+            cid = e.get('course_id')
+            if cid not in course_groups:
+                course_groups[cid] = []
+            course_groups[cid].append(e.get('employee_name', 'Unknown'))
+        
+        for cid, members in course_groups.items():
+            if len(members) >= 2:
+                course = next((c for c in courses if c.get('id') == cid), None)
+                if course:
+                    with st.expander(f"📚 {course.get('title', 'Course')[:50]} — {len(members)} learners"):
+                        st.markdown("**Study Group Members:**")
+                        for member in members:
+                            st.markdown(f"👤 {member}")
+                        
+                        if user_name not in members:
+                            if st.button(f"Join Group", key=f"join_group_{cid}"):
+                                st.success(f"✅ Joined study group for {course.get('title', '')}!")
+                        else:
+                            st.success("✅ You're in this group")
+    
+    # ============ TAB 10: MENTORS ============
+    with tab10:
+        st.subheader("🤝 Mentor Connection")
+        st.info("Connect with colleagues who have completed courses you're taking.")
+        
+        for enrollment in my_enrollments:
+            if enrollment.get('status') != 'Completed':
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    # Find mentors who completed this course
+                    mentors = [e for e in all_enrollments_all 
+                              if e.get('course_id') == enrollment.get('course_id') 
+                              and e.get('status') == 'Completed'
+                              and e.get('employee_name') != user_name]
+                    
+                    if mentors:
+                        with st.expander(f"🎓 Mentors for {course.get('title', '')[:40]}"):
+                            for mentor in mentors[:3]:
+                                st.markdown(f"👤 **{mentor.get('employee_name', 'Unknown')}** — Completed {mentor.get('completion_date', '')[:10]}")
+                                if st.button(f"📧 Request Mentorship", key=f"mentor_{mentor.get('id')}"):
+                                    st.success(f"✅ Mentorship request sent to {mentor.get('employee_name', '')}!")
+    
+    # ============ TAB 11: BADGES ============
+    with tab11:
+        st.subheader("⭐ Skills Badge System")
+        st.info("Earn badges as you learn. Badges appear on your profile.")
+        
+        badges = []
+        if len(my_enrollments) >= 1:
+            badges.append({"name": "🌱 Beginner Learner", "desc": "Enrolled in your first course", "earned": True})
+        if len(my_enrollments) >= 3:
+            badges.append({"name": "📚 Dedicated Learner", "desc": "Enrolled in 3+ courses", "earned": True})
+        if len([e for e in my_enrollments if e.get('status') == 'Completed']) >= 1:
+            badges.append({"name": "🎓 Course Completer", "desc": "Completed your first course", "earned": True})
+        if len([e for e in my_enrollments if e.get('status') == 'Completed']) >= 3:
+            badges.append({"name": "🏅 Advanced Scholar", "desc": "Completed 3+ courses", "earned": True})
+        if len([e for e in my_enrollments if e.get('progress_percent', 0) >= 90]) >= 1:
+            badges.append({"name": "🔥 Almost There", "desc": "90%+ progress on a course", "earned": True})
+        
+        # Future badges
+        all_badges = [
+            {"name": "🌱 Beginner Learner", "desc": "Enrolled in your first course", "earned": any(b['name'] == '🌱 Beginner Learner' for b in badges)},
+            {"name": "📚 Dedicated Learner", "desc": "Enrolled in 3+ courses", "earned": any(b['name'] == '📚 Dedicated Learner' for b in badges)},
+            {"name": "🎓 Course Completer", "desc": "Completed your first course", "earned": any(b['name'] == '🎓 Course Completer' for b in badges)},
+            {"name": "🏅 Advanced Scholar", "desc": "Completed 3+ courses", "earned": any(b['name'] == '🏅 Advanced Scholar' for b in badges)},
+            {"name": "🔥 Almost There", "desc": "90%+ progress on a course", "earned": any(b['name'] == '🔥 Almost There' for b in badges)},
+            {"name": "👥 Team Learner", "desc": "Joined a study group", "earned": False},
+            {"name": "🤝 Mentor", "desc": "Mentored a colleague", "earned": False},
+            {"name": "📊 100 Hours", "desc": "Completed 100+ hours of learning", "earned": False},
+            {"name": "🌍 Global Scholar", "desc": "Course from 3+ different platforms", "earned": False},
+        ]
+        
+        cols = st.columns(3)
+        for i, badge in enumerate(all_badges):
+            with cols[i % 3]:
+                opacity = "1" if badge['earned'] else "0.4"
+                st.markdown(f"""
+                <div style="background:white;padding:1rem;border-radius:8px;text-align:center;opacity:{opacity};margin-bottom:0.5rem;border:2px solid {'#d69e2e' if badge['earned'] else '#e0e0e0'};">
+                    <h3>{'✅' if badge['earned'] else '🔒'}</h3>
+                    <strong>{badge['name']}</strong><br>
+                    <small>{badge['desc']}</small>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    # ============ TAB 12: REVIEWS ============
+    with tab12:
+        st.subheader("📝 Course Reviews & Ratings")
+        st.info("Rate courses you've taken to help colleagues make informed decisions.")
+        
+        for enrollment in my_enrollments:
+            course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+            if course:
+                with st.expander(f"Rate: {course.get('title', 'Course')[:50]}"):
+                    rating = st.slider("⭐ Rating", 1, 5, 4, key=f"rate_{course.get('id')}")
+                    review = st.text_area("Your Review", key=f"review_{course.get('id')}")
+                    if st.button("📝 Submit Review", key=f"submit_review_{course.get('id')}"):
+                        st.success("✅ Review submitted! Thank you for helping your colleagues.")
+    
+    # ============ TAB 13: CALENDAR ============
+    with tab13:
+        st.subheader("📅 Learning Calendar")
+        
+        today = datetime.now()
+        upcoming = [e for e in my_enrollments if e.get('status') in ['Enrolled', 'In Progress']]
+        
+        if upcoming:
+            st.markdown(f"### 📆 {len(upcoming)} Active Courses")
+            for enrollment in upcoming:
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    progress = enrollment.get('progress_percent', 0)
+                    hours_left = int(course.get('duration_hours', 0) * (100 - progress) / 100)
+                    
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid #3182ce;">
+                        <strong>📖 {course.get('title', 'Course')[:50]}</strong><br>
+                        <small>⏱️ ~{hours_left} hours remaining | 📊 {progress:.0f}% complete</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info("No active courses. Enroll to see your learning schedule.")
+    
+    # ============ TAB 14: QUICK TRACK ============
+    with tab14:
+        st.subheader("📱 Quick Progress Tracker")
+        st.info("Quickly update your learning progress on the go.")
+        
+        for enrollment in my_enrollments:
+            if enrollment.get('status') != 'Completed':
+                course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
+                if course:
+                    col1, col2, col3 = st.columns([2, 1, 1])
+                    with col1:
+                        st.markdown(f"**{course.get('title', 'Course')[:40]}**")
+                    with col2:
+                        quick_progress = st.number_input("Progress %", 0, 100, int(enrollment.get('progress_percent', 0)), 5, key=f"quick_{enrollment.get('id')}")
+                    with col3:
+                        if st.button("📱 Update", key=f"quick_upd_{enrollment.get('id')}"):
+                            db._patch("lms_enrollments", {"progress_percent": quick_progress, "status": "Completed" if quick_progress >= 100 else "In Progress"}, {"id": enrollment.get('id')})
+                            st.success("✅ Updated!")
+                            st.rerun()
 
 def main():
     if 'user' not in st.session_state:
@@ -9578,6 +10792,7 @@ def main():
             "🌐 Directory": employee_directory_readonly,
             "📚 Knowledge Base": knowledge_base,
             "🎉 Wellness & Perks": wellness_perks,
+            "🎓 LMS": lms_dashboard,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)

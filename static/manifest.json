@@ -1,0 +1,38 @@
+{
+  "name": "Churchgate Group HRIS",
+  "short_name": "Churchgate HRIS",
+  "description": "Enterprise Human Resource Information System - Churchgate Group",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#CC0000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/churchgate-logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/churchgate-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-dashboard.png",
+      "sizes": "1080x2340",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Employee Dashboard"
+    }
+  ],
+  "categories": ["business", "productivity", "human resources"],
+  "lang": "en-NG",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "related_applications": []
+}

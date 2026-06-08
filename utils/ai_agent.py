@@ -487,6 +487,17 @@ class AIRecruitmentAgent:
         return certs
     
     def score_candidate_advanced(self, candidate_cv, jd_analysis):
+        # Try OpenAI deep analysis first
+        if self.use_openai and self.openai_key:
+            try:
+                openai_result = self._openai_deep_score(candidate_cv, jd_analysis)
+                if openai_result:
+                    return openai_result
+            except:
+                pass
+        
+        # Fallback to enhanced keyword engine
+        cv_data = self.parse_cv(candidate_cv) if isinstance(candidate_cv, str) else candidate_cv
         """Enterprise-grade scoring with 85%+ confidence"""
         cv_data = self.parse_cv(candidate_cv) if isinstance(candidate_cv, str) else candidate_cv
         
@@ -941,6 +952,38 @@ class AIRecruitmentAgent:
             'linkedin_url': cv_data.get('linkedin', '')
         }
     
+    def _openai_deep_score(self, cv_text, jd_analysis):
+        """Use OpenAI for deep semantic scoring"""
+        try:
+            import json as json_module
+            jd_text = json_module.dumps(jd_analysis) if isinstance(jd_analysis, dict) else str(jd_analysis)
+            
+            prompt = f"""Score this candidate against the job description. Return ONLY valid JSON.
+
+CRITERIA (0-100 each):
+skills_match, experience_relevance, education_fit, certification_match, cv_quality, communication, keyword_density, verbatim_risk
+
+WEIGHTS: skills 30%, experience 25%, education 10%, certs 5%, cv 10%, communication 10%, keywords 5%, verbatim -5%
+
+JD: {jd_text[:2000]}
+CV: {cv_text[:3000]}
+
+Return: {{"overall_score": number, "tier": "Tier 1" if >=85 else "Tier 2" if >=70 else "Tier 3" if >=55 else "Tier 4", "skills_score": number, "experience_score": number, "education_score": number, "certification_score": number, "cv_quality_score": number, "communication_score": number, "keyword_density_score": number, "verbatim_flags": number, "confidence": 95, "key_strengths": [], "gaps_identified": [], "interview_questions": [], "executive_summary": {{"verdict": "HIRE" or "CONSIDER" or "NOT RECOMMENDED"}}}}"""
+            
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "system", "content": "Return only valid JSON."},
+                         {"role": "user", "content": prompt}],
+                temperature=0.3, max_tokens=1000
+            )
+            
+            result_text = response.choices[0].message.content
+            if "```" in result_text:
+                result_text = result_text.split("```")[1].split("```")[0]
+            return json_module.loads(result_text.strip())
+        except:
+            return None
+
     def _generate_executive_summary(self, score_result):
         """Generate executive-friendly summary"""
         overall = score_result.get('overall_score', 0)

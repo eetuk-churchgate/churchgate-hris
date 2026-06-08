@@ -58,29 +58,55 @@ class DatabaseManager:
         pass
     
     def verify_user(self, email, password):
+        import hashlib
+        import bcrypt
+        
+        if self.use_supabase and self.supabase:
+            try:
+                result = self.supabase.table("users").select("*").eq("email", email).execute()
+                if result.data and len(result.data) > 0:
+                    stored_user = result.data[0]
+                    stored_hash = stored_user.get('password_hash', '')
+                    
+                    # Try bcrypt first (new format)
+                    if stored_hash.startswith('$2b$'):
+                        try:
+                            if bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+                                return stored_user
+                        except:
+                            pass
+                    
+                    # Try SHA-256 (old format), then auto-upgrade
+                    input_hash = hashlib.sha256(password.encode()).hexdigest()
+                    if stored_hash == input_hash:
+                        # Auto-upgrade to bcrypt
+                        new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                        self.supabase.table("users").update({"password_hash": new_hash}).eq("email", email).execute()
+                        return stored_user
+            except:
+                pass
+        
+        # Fallback: REST API
         if self.use_supabase:
-            import bcrypt
-            import hashlib
             data = self._get("users", {"email": email})
             if data and len(data) > 0:
                 stored_user = data[0]
-                stored_pw = stored_user.get('password', '')
+                stored_hash = stored_user.get('password_hash', '')
                 
-                # Try bcrypt first (new format)
-                try:
-                    if bcrypt.checkpw(password.encode('utf-8'), stored_pw.encode('utf-8')):
-                        return stored_user
-                except:
-                    pass
+                if stored_hash.startswith('$2b$'):
+                    try:
+                        if bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8')):
+                            return stored_user
+                    except:
+                        pass
                 
-                # Fallback: try SHA-256 (old format), then auto-upgrade
-                old_hash = hashlib.sha256(password.encode()).hexdigest()
-                if stored_pw == old_hash:
-                    # Auto-upgrade to bcrypt
+                input_hash = hashlib.sha256(password.encode()).hexdigest()
+                if stored_hash == input_hash:
                     new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                    self._patch("users", {"password": new_hash}, {"email": email})
+                    self._patch("users", {"password_hash": new_hash}, {"email": email})
                     return stored_user
-            return None
+        
+        return None
     
     def create_user(self, employee_id, name, email, password, role, department, position):
         try:
@@ -138,7 +164,13 @@ class DatabaseManager:
         self._post("performance_data", {"department": department, "pillar_name": pillar_name, "weight": weight, "progress": progress, "status": status, "deadline": deadline, "kpi_data": json.dumps(kpi_data)})
     
     def get_performance_data(self, department=None):
-        data = self._get("performance_data")
+        if department:
+            data = self._get("performance_data", {"department": department})
+            # Also try user_name column for individual KPIs
+            if not data:
+                data = self._get("performance_data", {"user_name": department})
+        else:
+            data = self._get("performance_data")
         return pd.DataFrame(data) if data else pd.DataFrame()
     
     def get_all_employees(self):
