@@ -2690,27 +2690,21 @@ def performance_okrs():
         if user_kpi_status == 'Draft':
             has_kpis = any(len(p.get('kpis', [])) > 0 for p in performance_data.get(user_name, {}).values())
             if has_kpis:
-                if st.button("🚀 Final Submit All KPIs", use_container_width=True, type="primary"):
-                    st.warning("⚠️ Are you sure? After submission, you CANNOT edit or delete your KPIs. They will be locked for HOD review.")
-                    col_confirm, col_cancel = st.columns(2)
-                    with col_confirm:
-                        if st.button("✅ Yes, Submit All KPIs", use_container_width=True):
-                            # Update ALL rows for this user to Submitted
-                            all_rows = db._get("performance_data", {"user_name": user_name})
-                            if all_rows:
-                                for row in all_rows:
-                                    db._patch("performance_data", {"submission_status": "Submitted"}, {"id": row['id']})
-                            
-                            emp_email = st.session_state.user.get('email', '')
-                            send_kpi_notification('submitted_to_employee', user_name, emp_email)
-                            
-                            log_audit_action("KPIs Submitted", f"All KPIs submitted by {user_name}", "KPI")
-                            st.success("✅ All KPIs submitted! HOD has been notified.")
-                            st.balloons()
-                            st.rerun()
-                    with col_cancel:
-                        if st.button("❌ Cancel", use_container_width=True):
-                            st.rerun()
+                with st.form("final_submit_form"):
+                    st.warning("⚠️ Submit all KPIs? After submission, you CANNOT edit or delete them.")
+                    submitted = st.form_submit_button("🚀 Final Submit All KPIs", use_container_width=True, type="primary")
+                    if submitted:
+                        all_rows = db._get("performance_data", {"user_name": user_name})
+                        if all_rows:
+                            for row in all_rows:
+                                db._patch("performance_data", {"submission_status": "Submitted"}, {"id": row['id']})
+                        emp_email = st.session_state.user.get('email', '')
+                        send_kpi_notification('submitted_to_employee', user_name, emp_email)
+                        log_audit_action("KPIs Submitted", f"All KPIs submitted by {user_name}", "KPI")
+                        st.success("✅ All KPIs submitted! HOD will be notified.")
+                        st.balloons()
+                        time.sleep(2)
+                        st.rerun()
         
         # Department comparison for admins
         if is_admin:
