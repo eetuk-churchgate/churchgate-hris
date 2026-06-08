@@ -2663,6 +2663,56 @@ def performance_okrs():
         c3.metric("At Risk", at_risk)
         c4.metric("Completed", completed)
         
+        # KPI Submission Status
+        user_kpi_status = "Draft"
+        if user_name in performance_data:
+            for p in performance_data[user_name].values():
+                if p.get('submission_status') == 'Submitted':
+                    user_kpi_status = "Submitted"
+                    break
+                elif p.get('submission_status') == 'Approved':
+                    user_kpi_status = "Approved"
+        
+        status_colors = {'Draft': '#a0aec0', 'Submitted': '#d69e2e', 'Approved': '#38a169', 'Sealed': '#1a1a1a'}
+        status_badge = status_colors.get(user_kpi_status, '#a0aec0')
+        
+        st.markdown(f"""
+        <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {status_badge};display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <strong>KPI Status:</strong> <span style="color:{status_badge};font-weight:700;">{user_kpi_status.upper()}</span>
+                <br><small>{'Your KPIs are in draft mode. Edit and add as needed.' if user_kpi_status == 'Draft' else 'KPIs submitted and locked for review.' if user_kpi_status == 'Submitted' else 'KPIs approved and sealed for appraisal.'}</small>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Final Submit Button (only in Draft mode)
+        if user_kpi_status == 'Draft':
+            has_kpis = any(len(p.get('kpis', [])) > 0 for p in performance_data.get(user_name, {}).values())
+            if has_kpis:
+                if st.button("🚀 Final Submit All KPIs", use_container_width=True, type="primary"):
+                    st.warning("⚠️ Are you sure? After submission, you CANNOT edit or delete your KPIs. They will be locked for HOD review.")
+                    col_confirm, col_cancel = st.columns(2)
+                    with col_confirm:
+                        if st.button("✅ Yes, Submit All KPIs", use_container_width=True):
+                            for p_name, p_data in performance_data[user_name].items():
+                                if p_data['kpis']:
+                                    p_data['submission_status'] = 'Submitted'
+                                    db.save_performance_data(user_name, p_name, p_data['weight'], p_data['progress'], p_data['status'], p_data['deadline'], p_data['kpis'])
+                            
+                            emp_email = st.session_state.user.get('email', '')
+                            send_kpi_notification('submitted_to_employee', user_name, emp_email)
+                            
+                            log_audit_action("KPIs Submitted", f"All KPIs submitted by {user_name}", "KPI")
+                            st.success("✅ All KPIs submitted! HOD has been notified.")
+                            st.balloons()
+                            st.rerun()
+                    with col_cancel:
+                        if st.button("❌ Cancel", use_container_width=True):
+                            st.rerun()
+        
+        # Department comparison for admins
+        if is_admin:
+        
         # Department comparison for admins
         if is_admin:
             st.markdown("---")
@@ -2715,6 +2765,8 @@ def performance_okrs():
                         st.rerun()
                 
                 if pillar_data['kpis']:
+                    is_locked = pillar_data.get('submission_status', 'Draft') != 'Draft'
+                    
                     for kpi_index, kpi in enumerate(pillar_data['kpis']):
                         try:
                             kpi_progress = int(float(str(kpi.get('current', '0')).replace('%', '')))
@@ -2723,31 +2775,38 @@ def performance_okrs():
                         kpi_status, kpi_color = get_kpi_status(kpi_progress)
                         
                         with st.expander(f"{kpi['kpi'][:60]} — {kpi_progress}% — {kpi_status}", expanded=False):
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                edit_title = st.text_input("Title", value=kpi['kpi'], key=f"edit_title_{selected_dept}_{pillar_name}_{kpi_index}")
-                                edit_target = st.text_input("Target", value=kpi.get('target', ''), key=f"edit_target_{selected_dept}_{pillar_name}_{kpi_index}")
-                            with col2:
-                                edit_current = st.text_input("Current", value=kpi.get('current', '0'), key=f"edit_current_{selected_dept}_{pillar_name}_{kpi_index}")
-                                edit_deadline = st.date_input("Deadline", value=datetime.strptime(kpi.get('deadline', '2026-12-31'), '%Y-%m-%d') if kpi.get('deadline') else datetime.now(), key=f"edit_deadline_{selected_dept}_{pillar_name}_{kpi_index}")
-                            
-                            col_btn1, col_btn2, col_btn3 = st.columns(3)
-                            with col_btn1:
-                                 if st.button("💾 Save", key=f"save_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
-                                    pillar_data['kpis'][kpi_index] = {
-                                        'kpi': edit_title, 'target': edit_target, 'current': edit_current,
-                                        'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'), 'owner': kpi.get('owner', user_name)
-                                    }
-                                    db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
-                                    st.success("✅ KPI saved!")
-                                    st.rerun()
-                            with col_btn2:
-                                if st.button("🗑️ Delete", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
-                                    del pillar_data['kpis'][kpi_index]
-                                    db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
-                                    st.success("✅ KPI deleted!")
-                                    st.rerun()
-                            with col_btn3:
+                            if not is_locked:
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    edit_title = st.text_input("Title", value=kpi['kpi'], key=f"edit_title_{selected_dept}_{pillar_name}_{kpi_index}")
+                                    edit_target = st.text_input("Target", value=kpi.get('target', ''), key=f"edit_target_{selected_dept}_{pillar_name}_{kpi_index}")
+                                with col2:
+                                    edit_current = st.text_input("Current", value=kpi.get('current', '0'), key=f"edit_current_{selected_dept}_{pillar_name}_{kpi_index}")
+                                    edit_deadline = st.date_input("Deadline", value=datetime.strptime(kpi.get('deadline', '2026-12-31'), '%Y-%m-%d') if kpi.get('deadline') else datetime.now(), key=f"edit_deadline_{selected_dept}_{pillar_name}_{kpi_index}")
+                                
+                                col_btn1, col_btn2, col_btn3 = st.columns(3)
+                                with col_btn1:
+                                    if st.button("💾 Save", key=f"save_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
+                                        pillar_data['kpis'][kpi_index] = {
+                                            'kpi': edit_title, 'target': edit_target, 'current': edit_current,
+                                            'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'), 'owner': kpi.get('owner', user_name)
+                                        }
+                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
+                                        st.success("✅ KPI saved!")
+                                        st.rerun()
+                                with col_btn2:
+                                    if st.button("🗑️ Delete", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
+                                        del pillar_data['kpis'][kpi_index]
+                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
+                                        st.success("✅ KPI deleted!")
+                                        st.rerun()
+                                with col_btn3:
+                                    st.markdown(f"<small style='color:{kpi_color};'>{kpi_status}</small>", unsafe_allow_html=True)
+                            else:
+                                st.info("🔒 KPIs are locked after submission")
+                                st.markdown(f"**Target:** {kpi.get('target', 'N/A')}")
+                                st.markdown(f"**Current:** {kpi.get('current', '0')}")
+                                st.markdown(f"**Deadline:** {kpi.get('deadline', 'N/A')}")
                                 st.markdown(f"<small style='color:{kpi_color};'>{kpi_status}</small>", unsafe_allow_html=True)
     
     # ============ TAB 2: MY KPIs ============
@@ -11286,6 +11345,37 @@ def log_audit_action(action, details, module='General'):
         })
     except:
         pass
+
+
+def send_kpi_notification(action, employee_name, employee_email, hod_email=None):
+    """Send KPI workflow notifications"""
+    try:
+        from utils.email_service import EmailService
+        es = EmailService()
+        
+        if action == 'submitted_to_employee':
+            es.send_email(employee_email, 
+                "✅ Your KPIs Have Been Submitted", 
+                f"Dear {employee_name},\n\nYour KPIs have been successfully submitted and are now locked for review.\n\nYour HOD will review them shortly. You will be notified of their decision.\n\nThank you.\nChurchgate Group HR")
+        
+        if action == 'submitted_to_hod' and hod_email:
+            es.send_email(hod_email,
+                f"📊 KPIs Ready for Review — {employee_name}",
+                f"Dear HOD,\n\n{employee_name} has submitted their KPIs and they are ready for your review.\n\nPlease log in to the HRIS to review, approve, or request revisions.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
+        
+        if action == 'approved':
+            es.send_email(employee_email,
+                "🎉 Your KPIs Have Been Approved!",
+                f"Dear {employee_name},\n\nGreat news! Your HOD has approved your KPIs. They are now sealed and ready for the upcoming appraisal cycle.\n\nYou can view them in the Performance & OKRs module.\n\nChurchgate Group HR")
+        
+        if action == 'revision_requested':
+            es.send_email(employee_email,
+                "🔄 KPI Revision Requested",
+                f"Dear {employee_name},\n\nYour HOD has requested revisions to your KPIs. Your KPIs have been unlocked for editing.\n\nPlease log in, review the HOD comments, update your KPIs, and resubmit.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
+        
+        return True
+    except:
+        return False
 
 def main():
     if 'user' not in st.session_state:
