@@ -11278,6 +11278,21 @@ def advanced_analytics():
                       }]).to_csv(index=False),
                       "advanced_analytics.csv", "text/csv")
 
+
+def log_audit_action(action, details, module='General'):
+    """Log any action to the audit trail database"""
+    try:
+        user_name = st.session_state.user.get('name', 'System') if st.session_state.user else 'System'
+        db._post("audit_trail", {
+            "action": action,
+            "details": details,
+            "user_name": user_name,
+            "timestamp_text": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "module": module
+        })
+    except:
+        pass
+
 def main():
     if 'user' not in st.session_state:
         st.session_state.user = None
