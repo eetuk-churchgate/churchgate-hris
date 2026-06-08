@@ -11233,7 +11233,7 @@ def advanced_analytics():
                 if idea_categories:
                     fig10 = px.bar(x=list(idea_categories.keys()), y=list(idea_categories.values()),
                                  title="Ideas by Category", color=list(idea_categories.values()),
-                                 color_continuous_sequence=['#CC0000', '#d69e2e', '#38a169'])
+                                 color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
                     fig10.update_layout(height=350)
                     st.plotly_chart(fig10, use_container_width=True)
         
