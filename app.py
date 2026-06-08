@@ -2712,9 +2712,6 @@ def performance_okrs():
         
         # Department comparison for admins
         if is_admin:
-        
-        # Department comparison for admins
-        if is_admin:
             st.markdown("---")
             st.markdown("### 🏢 Department Comparison")
             comp_data = []
