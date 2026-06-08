@@ -2604,6 +2604,20 @@ def performance_okrs():
     with tab1:
         st.subheader("🎯 My Strategic Pillars")
         
+        # Reload KPIs from database for current user
+        existing_data = db.get_performance_data(user_name)
+        if not existing_data.empty:
+            for _, row in existing_data.iterrows():
+                p_name = row.get('pillar_name', '')
+                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                if user_name not in performance_data:
+                    performance_data[user_name] = {}
+                performance_data[user_name][p_name] = {
+                    'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
+                    'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
+                    'kpis': kpi_list
+                }
+        
         # Load KPI data for THIS USER
         if user_name not in performance_data:
             performance_data[user_name] = {}
