@@ -770,7 +770,7 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "📋 Audit Log", "👤 My Profile"]
         elif user_role == 'Manager':
             menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
         else:
@@ -10712,6 +10712,255 @@ def lms_dashboard():
                             st.success("✅ Updated!")
                             st.rerun()
 
+
+def audit_log_viewer():
+    st.markdown("""<div class="churchgate-header"><h1>📋 Enterprise Audit Log Viewer</h1><p>Real-Time Activity Monitoring | Security Events | Compliance Tracking | Full System Transparency</p></div>""", unsafe_allow_html=True)
+    
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
+    
+    if not is_admin:
+        st.error("Access restricted to Administrators and HR Directors only.")
+        return
+    
+    # Load audit data
+    def load_audit_logs():
+        try:
+            data = db._get("audit_trail")
+            return data if data else []
+        except:
+            return []
+    
+    all_logs = load_audit_logs()
+    
+    # Also collect real-time events from session state
+    session_events = []
+    if 'audit_trail' in st.session_state:
+        for entry in st.session_state.audit_trail:
+            session_events.append({
+                'action': entry.get('action', ''),
+                'details': entry.get('details', ''),
+                'user_name': entry.get('user', ''),
+                'timestamp_text': entry.get('timestamp', ''),
+                'module': 'Session'
+            })
+    
+    # Combine and deduplicate
+    all_events = all_logs + session_events
+    
+    # Top Stats
+    total_events = len(all_events)
+    today = datetime.now().strftime('%Y-%m-%d')
+    today_events = [e for e in all_events if today in str(e.get('timestamp_text', '')) or today in str(e.get('created_at', ''))]
+    unique_users = len(set(e.get('user_name', '') for e in all_events if e.get('user_name')))
+    
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("📊 Total Events", total_events)
+    c2.metric("📅 Today", len(today_events))
+    c3.metric("👥 Unique Users", unique_users)
+    c4.metric("🔴 Live Session", len(session_events))
+    
+    st.markdown("---")
+    
+    # Filters
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        search_log = st.text_input("🔍 Search", placeholder="Action, user, details...")
+    with col2:
+        date_filter = st.selectbox("📅 Date", ["All Time", "Today", "Last 7 Days", "Last 30 Days"])
+    with col3:
+        severity_filter = st.selectbox("⚠️ Severity", ["All", "Info", "Warning", "Critical"])
+    with col4:
+        module_filter = st.selectbox("📂 Module", ["All", "Login", "Employees", "Performance", "Recruitment", "Profile", "KPI", "Appraisal", "Security"])
+    
+    # Apply filters
+    filtered = all_events
+    
+    if search_log:
+        s = search_log.lower()
+        filtered = [e for e in filtered if s in str(e.get('action', '')).lower() or 
+                   s in str(e.get('details', '')).lower() or 
+                   s in str(e.get('user_name', '')).lower()]
+    
+    if date_filter == "Today":
+        filtered = [e for e in filtered if today in str(e.get('timestamp_text', '')) or today in str(e.get('created_at', ''))]
+    elif date_filter == "Last 7 Days":
+        cutoff = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+        filtered = [e for e in filtered if str(e.get('timestamp_text', ''))[:10] >= cutoff or str(e.get('created_at', ''))[:10] >= cutoff]
+    elif date_filter == "Last 30 Days":
+        cutoff = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        filtered = [e for e in filtered if str(e.get('timestamp_text', ''))[:10] >= cutoff or str(e.get('created_at', ''))[:10] >= cutoff]
+    
+    if severity_filter != "All":
+        filtered = [e for e in filtered if severity_filter.lower() in str(e.get('action', '')).lower() or 
+                   severity_filter.lower() in str(e.get('details', '')).lower()]
+    
+    if module_filter != "All":
+        module_keywords = {
+            'Login': ['login', 'password', 'sign in', 'locked'],
+            'Employees': ['employee', 'staff', 'hired', 'terminated'],
+            'Performance': ['kpi', 'performance', 'okr'],
+            'Recruitment': ['job', 'requisition', 'candidate', 'interview'],
+            'Profile': ['profile', 'photo', 'picture'],
+            'KPI': ['kpi'],
+            'Appraisal': ['appraisal', 'assessment', 'review'],
+            'Security': ['security', 'permission', 'access', 'failed']
+        }
+        keywords = module_keywords.get(module_filter, [])
+        filtered = [e for e in filtered if any(k in str(e.get('action', '')).lower() or k in str(e.get('details', '')).lower() for k in keywords)]
+    
+    st.markdown(f"**Showing {len(filtered)} of {total_events} events**")
+    
+    # Export
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("📥 Export CSV", use_container_width=True):
+            export_data = [{
+                'Timestamp': e.get('timestamp_text', e.get('created_at', '')),
+                'User': e.get('user_name', 'System'),
+                'Action': e.get('action', ''),
+                'Details': e.get('details', '')
+            } for e in filtered]
+            st.download_button("📥 Download Audit Log", pd.DataFrame(export_data).to_csv(index=False), 
+                             f"audit_log_{today}.csv", "text/csv")
+    
+    st.markdown("---")
+    
+    # Events list
+    if filtered:
+        # Group by date
+        from collections import defaultdict
+        grouped = defaultdict(list)
+        for e in filtered:
+            date_key = str(e.get('timestamp_text', e.get('created_at', '')))[:10]
+            if not date_key or date_key == 'None':
+                date_key = 'Unknown'
+            grouped[date_key].append(e)
+        
+        for date_key in sorted(grouped.keys(), reverse=True):
+            day_events = grouped[date_key]
+            
+            # Calculate day stats
+            day_total = len(day_events)
+            day_warnings = len([e for e in day_events if 'fail' in str(e.get('action', '')).lower() or 'error' in str(e.get('details', '')).lower()])
+            
+            st.markdown(f"### 📅 {date_key}")
+            st.caption(f"{day_total} events • {day_warnings} warnings")
+            
+            for event in day_events[:50]:  # Limit per day
+                action = event.get('action', 'Unknown')
+                details = event.get('details', '')
+                user = event.get('user_name', 'System')
+                timestamp = event.get('timestamp_text', event.get('created_at', ''))
+                
+                # Determine icon and color
+                if 'fail' in str(action).lower() or 'error' in str(details).lower() or 'locked' in str(details).lower():
+                    icon = "🚨"
+                    border = "#CC0000"
+                    severity = "Critical"
+                elif 'password' in str(action).lower() or 'security' in str(details).lower():
+                    icon = "⚠️"
+                    border = "#d69e2e"
+                    severity = "Warning"
+                elif 'success' in str(details).lower() or 'complete' in str(action).lower():
+                    icon = "✅"
+                    border = "#38a169"
+                    severity = "Info"
+                elif 'update' in str(action).lower() or 'edit' in str(action).lower() or 'change' in str(action).lower():
+                    icon = "📝"
+                    border = "#3182ce"
+                    severity = "Info"
+                else:
+                    icon = "ℹ️"
+                    border = "#a0aec0"
+                    severity = "Info"
+                
+                # Format timestamp
+                try:
+                    if timestamp and str(timestamp) != 'None':
+                        ts = str(timestamp)
+                        if len(ts) > 16:
+                            display_time = ts[11:16]
+                        else:
+                            display_time = ts
+                    else:
+                        display_time = 'N/A'
+                except:
+                    display_time = 'N/A'
+                
+                with st.expander(f"{icon} {display_time} — {action[:80]} — {user}", expanded=(severity == 'Critical')):
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"**Action:** {action}")
+                        if details:
+                            st.markdown(f"**Details:** {details}")
+                        st.markdown(f"**User:** {user}")
+                        st.markdown(f"**Timestamp:** {timestamp}")
+                    with col2:
+                        st.markdown(f"<span style='background:{border};color:white;padding:0.2rem 0.6rem;border-radius:10px;font-size:0.8rem;'>{severity}</span>", unsafe_allow_html=True)
+    else:
+        st.info("No audit events match your filters.")
+    
+    # Real-time activity feed
+    st.markdown("---")
+    st.markdown("### 🔴 Live Activity Feed (Current Session)")
+    
+    if session_events:
+        for event in reversed(session_events[-10:]):
+            action = event.get('action', '')
+            details = event.get('details', '')
+            user = event.get('user_name', '')
+            timestamp = event.get('timestamp_text', '')
+            
+            st.markdown(f"""
+            <div style="background:white;padding:0.6rem 1rem;border-radius:6px;margin-bottom:0.3rem;border-left:4px solid #CC0000;display:flex;align-items:center;gap:1rem;">
+                <span style="color:#CC0000;font-size:0.8rem;">● LIVE</span>
+                <div style="flex:1;">
+                    <strong>{action}</strong><br>
+                    <small>{details} — {user} • {timestamp}</small>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("Session activity will appear here as you use the system.")
+    
+    # Audit analytics
+    if all_events:
+        st.markdown("---")
+        st.markdown("### 📊 Audit Analytics")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            # Activity by hour
+            hour_data = {}
+            for e in all_events:
+                ts = str(e.get('timestamp_text', e.get('created_at', '')))
+                try:
+                    if len(ts) >= 13:
+                        hour = ts[11:13]
+                        hour_data[hour] = hour_data.get(hour, 0) + 1
+                except:
+                    pass
+            if hour_data:
+                hours = sorted(hour_data.keys())
+                counts = [hour_data[h] for h in hours]
+                fig = px.bar(x=hours, y=counts, labels={'x': 'Hour', 'y': 'Events'}, 
+                           title="Activity by Hour", color_discrete_sequence=['#CC0000'])
+                fig.update_layout(height=300)
+                st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            # Top users
+            user_data = {}
+            for e in all_events:
+                user = e.get('user_name', 'System')
+                user_data[user] = user_data.get(user, 0) + 1
+            top_users = sorted(user_data.items(), key=lambda x: x[1], reverse=True)[:10]
+            if top_users:
+                fig2 = px.bar(x=[u[0] for u in top_users], y=[u[1] for u in top_users],
+                            title="Top Users by Activity", color_discrete_sequence=['#3182ce'])
+                fig2.update_layout(height=300)
+                st.plotly_chart(fig2, use_container_width=True)
+
 def main():
     if 'user' not in st.session_state:
         st.session_state.user = None
@@ -10793,6 +11042,7 @@ def main():
             "📚 Knowledge Base": knowledge_base,
             "🎉 Wellness & Perks": wellness_perks,
             "🎓 LMS": lms_dashboard,
+            "📋 Audit Log": audit_log_viewer,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)
