@@ -2615,7 +2615,8 @@ def performance_okrs():
                 performance_data[user_name][p_name] = {
                     'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
                     'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
-                    'kpis': kpi_list
+                    'kpis': kpi_list,
+                    'submission_status': row.get('submission_status', 'Draft')
                 }
         
         # Load KPI data for THIS USER
