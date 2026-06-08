@@ -2801,12 +2801,25 @@ def performance_okrs():
                         del st.session_state['edit_kpi']
                         st.success("✅ KPI updated!")
                     else:
-                        # Save under user's own name
-                        if user_name not in performance_data:
-                            performance_data[user_name] = {}
+                    # Save under user's own name
+                    if user_name not in performance_data:
+                        performance_data[user_name] = {}
+                    if pillar_choice not in performance_data[user_name]:
+                        # Load existing KPIs from database first
+                        existing_data = db.get_performance_data(user_name)
+                        if not existing_data.empty:
+                            for _, row in existing_data.iterrows():
+                                p_name = row.get('pillar_name', '')
+                                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                if p_name not in performance_data[user_name]:
+                                    performance_data[user_name][p_name] = {
+                                        'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
+                                        'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
+                                        'kpis': kpi_list
+                                    }
                         if pillar_choice not in performance_data[user_name]:
                             performance_data[user_name][pillar_choice] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
-                        performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
+                    performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
                         st.success("✅ KPI saved!")
                     st.success("✅ KPI saved!")
                     st.rerun()
