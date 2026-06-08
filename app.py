@@ -2697,7 +2697,7 @@ def performance_okrs():
                             for p_name, p_data in performance_data[user_name].items():
                                 if p_data['kpis']:
                                     p_data['submission_status'] = 'Submitted'
-                                    db.save_performance_data(user_name, p_name, p_data['weight'], p_data['progress'], p_data['status'], p_data['deadline'], p_data['kpis'])
+                                    db.save_performance_data(user_name, p_name, p_data['weight'], p_data['progress'], p_data['status'], p_data['deadline'], p_data['kpis'], 'Submitted')
                             
                             emp_email = st.session_state.user.get('email', '')
                             send_kpi_notification('submitted_to_employee', user_name, emp_email)
@@ -2788,7 +2788,7 @@ def performance_okrs():
                                             'kpi': edit_title, 'target': edit_target, 'current': edit_current,
                                             'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'), 'owner': kpi.get('owner', user_name)
                                         }
-                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
+                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'], pillar_data.get('submission_status', 'Draft'))
                                         st.success("✅ KPI saved!")
                                         st.rerun()
                                 with col_btn2:
