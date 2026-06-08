@@ -160,15 +160,14 @@ class DatabaseManager:
         self._delete("aplayer_nominations", {"id": nomination_id})
     
     def save_performance_data(self, department, pillar_name, weight, progress, status, deadline, kpi_data):
-        self._delete("performance_data", {"department": department, "pillar_name": pillar_name})
-        self._post("performance_data", {"department": department, "pillar_name": pillar_name, "weight": weight, "progress": progress, "status": status, "deadline": deadline, "kpi_data": json.dumps(kpi_data)})
+        self._delete("performance_data", {"user_name": department, "pillar_name": pillar_name})
+        self._post("performance_data", {"user_name": department, "department": department, "pillar_name": pillar_name, "weight": weight, "progress": progress, "status": status, "deadline": deadline, "kpi_data": json.dumps(kpi_data)})
     
     def get_performance_data(self, department=None):
         if department:
-            data = self._get("performance_data", {"department": department})
-            # Also try user_name column for individual KPIs
+            data = self._get("performance_data", {"user_name": department})
             if not data:
-                data = self._get("performance_data", {"user_name": department})
+                data = self._get("performance_data", {"department": department})
         else:
             data = self._get("performance_data")
         return pd.DataFrame(data) if data else pd.DataFrame()
