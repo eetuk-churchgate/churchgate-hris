@@ -6253,96 +6253,10 @@ def ai_recruitment_agent():
 
     with _ai_tab2:
         st.subheader("💬 Ask the Recruitment Agent")
-        st.markdown(
-                        """
-            <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:1rem 1.4rem;border-radius:12px;margin-bottom:1rem;border-left:4px solid #e94560;">
-                <p style="color:#e2e8f0;margin:0;font-size:0.95rem;">
-                    🚀 Powered by the <strong style="color:#e94560;">Churchgate Recruitment Agent</strong> on Cloud Run.
-                    Ask about candidates, screen by job, compare applicants, or request shortlists.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        
-        if "cloud_agent_session" not in st.session_state:
-            import uuid
-            st.session_state.cloud_agent_session = str(uuid.uuid4())
-        if "cloud_agent_history" not in st.session_state:
-            st.session_state.cloud_agent_history = []
-        
-        if not st.session_state.cloud_agent_history:
-            st.markdown("**💡 Try asking:**")
-            suggestions = [
-                "Screen all candidates for job REQ-202605221244",
-                "Who are the top candidates for the open roles?",
-                "Screen candidate CAND-001 for job REQ-005",
-                "Compare shortlisted candidates for the Finance Manager role",
-                "Generate interview questions for the top-scoring candidate",
-                "List all active job requisitions",
-            ]
-            s_cols = st.columns(3)
-            for idx, suggestion in enumerate(suggestions):
-                with s_cols[idx % 3]:
-                    if st.button(suggestion, key=f"cloud_suggest_{idx}", use_container_width=True):
-                        st.session_state.cloud_agent_history.append({"role": "user", "content": suggestion})
-                        st.rerun()
-            st.markdown("---")
-        
-        for msg in st.session_state.cloud_agent_history:
-            if msg["role"] == "user":
-                st.markdown(
-                    f'''<div style="background:#CC0000;color:white;padding:0.8rem 1rem;border-radius:12px;margin:0.4rem 0;margin-left:3rem;box-shadow:0 2px 8px rgba(204,0,0,0.25);"><strong>You</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>''',
-                    unsafe_allow_html=True,
-                )
-            else:
-                st.markdown(
-                    f'''<div style="background:#f7fafc;border:1px solid #e2e8f0;padding:0.8rem 1rem;border-radius:12px;margin:0.4rem 0;margin-right:3rem;box-shadow:0 2px 8px rgba(0,0,0,0.04);"><strong>💬 Recruitment Agent</strong><p style="margin:0.3rem 0;white-space:pre-wrap;">{msg['content']}</p></div>''',
-                    unsafe_allow_html=True,
-                )
-        
-        history = st.session_state.cloud_agent_history
-        if history and history[-1]["role"] == "user":
-            pending_msg = history[-1]["content"]
-            with st.spinner("💬 Recruitment Agent is thinking..."):
-                try:
-                    from utils import recruitment_agent_client as _rac
-                    chunks = []
-                    placeholder = st.empty()
-                    for chunk in _rac.stream_chat(pending_msg, st.session_state.cloud_agent_session):
-                        chunks.append(chunk)
-                        placeholder.markdown(f'''<div style="background:#f7fafc;border:1px solid #e2e8f0;padding:0.8rem 1rem;border-radius:12px;margin:0.4rem 0;margin-right:3rem;"><strong>💬 Recruitment Agent</strong><p style="margin:0.3rem 0;white-space:pre-wrap;">{"".join(chunks)}▌</p></div>''', unsafe_allow_html=True)
-                    agent_reply = "".join(chunks)
-                    placeholder.empty()
-                except Exception as e:
-                    agent_reply = f"⚠️ Could not reach the Cloud Agent: {str(e)}"
-            st.session_state.cloud_agent_history.append({"role": "assistant", "content": agent_reply})
-            st.rerun()
-        
-        with st.form("cloud_agent_chat_form", clear_on_submit=True):
-            col_inp, col_btn = st.columns([5, 1])
-            with col_inp:
-                cloud_user_msg = st.text_input("Message", placeholder="e.g., Screen all candidates for job REQ-202605221244", label_visibility="collapsed")
-            with col_btn:
-                send_cloud = st.form_submit_button("📤 Send", use_container_width=True)
-            if send_cloud and cloud_user_msg.strip():
-                st.session_state.cloud_agent_history.append({"role": "user", "content": cloud_user_msg.strip()})
-                st.rerun()
-        
-        col_a, col_b = st.columns(2)
-        with col_a:
-            if st.button("🗑️ Clear Conversation", use_container_width=True, key="cloud_clear"):
-                st.session_state.cloud_agent_history = []
-                st.rerun()
-        with col_b:
-            if st.button("🔄 New Session", use_container_width=True, key="cloud_new_session"):
-                import uuid
-                st.session_state.cloud_agent_history = []
-                st.session_state.cloud_agent_session = str(uuid.uuid4())
-                st.rerun()
+        _render_recruitment_agent_chat()
 
 
-_HRIS_MD = MarkdownIt()
+_HRIS_MD = MarkdownIt().enable("table")
 
 _HRIS_BUBBLE_CSS = """
 <style>
@@ -6351,17 +6265,20 @@ _HRIS_BUBBLE_CSS = """
 .hris-bubble-text p:last-child { margin-bottom: 0; }
 .hris-bubble-text ul, .hris-bubble-text ol { margin: 0.3rem 0; padding-left: 1.2rem; }
 .hris-bubble-text strong { font-weight: 700; }
+.hris-bubble-text table { border-collapse: collapse; margin: 0.4rem 0; width: 100%; font-size: 0.85rem; }
+.hris-bubble-text th, .hris-bubble-text td { border: 1px solid rgba(0,0,0,0.15); padding: 0.3rem 0.55rem; text-align: left; }
+.hris-bubble-text th { font-weight: 700; background: rgba(0,0,0,0.06); }
 </style>
 """
 
 
-def _hris_bubble_html(role, content, time_str):
+def _hris_bubble_html(role, content, time_str, agent_label="🤖 HRIS Agent"):
     """Render a chat message as a left/right-aligned bubble sized to its content.
-    User messages sit on the left in white; agent replies sit on the right in
-    Churchgate red — markdown is converted to HTML first so it renders inside
-    the custom div instead of showing as literal asterisks."""
+    User messages sit on the right in white; agent replies sit on the left in a
+    light Churchgate-red shade — markdown is converted to HTML first so it
+    renders inside the custom div instead of showing as literal asterisks."""
     body_html = _HRIS_MD.render(content)
-    label = "🧑‍💼 You" if role == "user" else "🤖 HRIS Agent"
+    label = "🧑‍💼 You" if role == "user" else agent_label
     meta = f"{label} · {time_str}" if time_str else label
     if role == "user":
         return f"""
@@ -6384,6 +6301,110 @@ def _hris_bubble_html(role, content, time_str):
       </div>
     </div>
     """
+
+
+@st.fragment
+def _render_recruitment_agent_chat():
+    """Self-contained Recruitment Agent chat — same fragment + bubble styling
+    as the HRIS Agent chat (right-aligned white user bubbles, left-aligned
+    light-red agent bubbles, markdown-to-HTML rendering, auto-scroll)."""
+    import uuid
+
+    if "cloud_agent_session" not in st.session_state:
+        st.session_state.cloud_agent_session = str(uuid.uuid4())
+    if "cloud_agent_history" not in st.session_state:
+        st.session_state.cloud_agent_history = []
+
+    history = st.session_state.cloud_agent_history
+
+    st.markdown(
+        """
+        <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:1rem 1.4rem;border-radius:12px;margin-bottom:1rem;border-left:4px solid #e94560;">
+            <p style="color:#e2e8f0;margin:0;font-size:0.95rem;">
+                🚀 Powered by the <strong style="color:#e94560;">Churchgate Recruitment Agent</strong> on Cloud Run.
+                Ask about candidates, screen by job, compare applicants, or request shortlists.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    suggestions = [
+        "Screen all candidates for job REQ-202605221244",
+        "Who are the top candidates for the open roles?",
+        "Screen candidate CAND-001 for job REQ-005",
+        "Compare shortlisted candidates for the Finance Manager role",
+        "Generate interview questions for the top-scoring candidate",
+        "List all active job requisitions",
+        "What's the pipeline looking like right now?",
+        "Find Tier 1 candidates across all roles",
+    ]
+    with st.expander("💡 Try Asking", expanded=not history):
+        s_cols = st.columns(3)
+        for idx, suggestion in enumerate(suggestions):
+            with s_cols[idx % 3]:
+                if st.button(suggestion, key=f"cloud_suggest_{idx}", use_container_width=True):
+                    history.append({"role": "user", "content": suggestion, "time": datetime.now().strftime("%I:%M %p")})
+                    st.rerun(scope="fragment")
+
+    st.markdown("---")
+
+    # ── Chat history ─────────────────────────────────────────────────────────
+    st.markdown(_HRIS_BUBBLE_CSS, unsafe_allow_html=True)
+    for msg in history:
+        st.markdown(_hris_bubble_html(msg["role"], msg["content"], msg.get("time", ""), agent_label="💬 Recruitment Agent"), unsafe_allow_html=True)
+
+    # ── Stream the reply for a pending user message ─────────────────────────
+    if history and history[-1]["role"] == "user":
+        pending = history[-1]["content"]
+        placeholder = st.empty()
+        placeholder.markdown(_hris_bubble_html("assistant", "_Recruitment Agent is thinking…_", "", agent_label="💬 Recruitment Agent"), unsafe_allow_html=True)
+        try:
+            from utils import recruitment_agent_client as _rac
+            chunks = []
+            for chunk in _rac.stream_chat(pending, st.session_state.cloud_agent_session):
+                chunks.append(chunk)
+                placeholder.markdown(_hris_bubble_html("assistant", "".join(chunks) + " ▌", "", agent_label="💬 Recruitment Agent"), unsafe_allow_html=True)
+            agent_reply = "".join(chunks)
+        except Exception as e:
+            agent_reply = f"⚠️ Could not reach the Cloud Agent: {str(e)}"
+        reply_time = datetime.now().strftime("%I:%M %p")
+        placeholder.markdown(_hris_bubble_html("assistant", agent_reply, reply_time, agent_label="💬 Recruitment Agent"), unsafe_allow_html=True)
+        # Persist — already rendered above, so no rerun needed here.
+        history.append({"role": "assistant", "content": agent_reply, "time": reply_time})
+
+    # ── Auto-scroll to the latest message ────────────────────────────────────
+    st.markdown('<div id="cloud-chat-end"></div>', unsafe_allow_html=True)
+    components.html(
+        """<script>
+            const doc = window.parent.document;
+            const anchor = doc.getElementById('cloud-chat-end');
+            if (anchor) { anchor.scrollIntoView({behavior: 'smooth', block: 'end'}); }
+        </script>""",
+        height=0,
+    )
+
+    # ── Input form ───────────────────────────────────────────────────────────
+    with st.form("cloud_agent_chat_form", clear_on_submit=True):
+        col_inp, col_btn = st.columns([5, 1])
+        with col_inp:
+            cloud_user_msg = st.text_input("Message", placeholder="e.g., Screen all candidates for job REQ-202605221244", label_visibility="collapsed")
+        with col_btn:
+            send_cloud = st.form_submit_button("📤 Send", use_container_width=True)
+        if send_cloud and cloud_user_msg.strip():
+            history.append({"role": "user", "content": cloud_user_msg.strip(), "time": datetime.now().strftime("%I:%M %p")})
+            st.rerun(scope="fragment")
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        if st.button("🗑️ Clear Conversation", use_container_width=True, key="cloud_clear"):
+            st.session_state.cloud_agent_history = []
+            st.rerun(scope="fragment")
+    with col_b:
+        if st.button("🔄 New Session", use_container_width=True, key="cloud_new_session"):
+            st.session_state.cloud_agent_history = []
+            st.session_state.cloud_agent_session = str(uuid.uuid4())
+            st.rerun(scope="fragment")
 
 
 @st.fragment
