@@ -159,7 +159,7 @@ class DatabaseManager:
     def delete_nomination(self, nomination_id):
         self._delete("aplayer_nominations", {"id": nomination_id})
     
-    def save_performance_data(self, department, pillar_name, weight, progress, status, deadline, kpi_data):
+    def save_performance_data(self, department, pillar_name, weight, progress, status, deadline, kpi_data, submission_status='Draft'):
         # Delete ALL existing rows for this user and pillar
         existing = self._get("performance_data", {"user_name": department, "pillar_name": pillar_name})
         if existing:
@@ -169,7 +169,8 @@ class DatabaseManager:
         self._post("performance_data", {
             "user_name": department, "department": department, "pillar_name": pillar_name,
             "weight": weight, "progress": progress, "status": status, 
-            "deadline": deadline, "kpi_data": json.dumps(kpi_data)
+            "deadline": deadline, "kpi_data": json.dumps(kpi_data),
+            "submission_status": submission_status
         })
     
     def get_performance_data(self, department=None):
