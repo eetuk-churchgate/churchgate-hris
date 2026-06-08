@@ -770,7 +770,7 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "📋 Audit Log", "👤 My Profile"]
+            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "📋 Audit Log", "📊 Advanced Analytics", "👤 My Profile"]
         elif user_role == 'Manager':
             menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
         else:
@@ -10964,6 +10964,303 @@ def audit_log_viewer():
                 fig2.update_layout(height=300)
                 st.plotly_chart(fig2, use_container_width=True)
 
+def advanced_analytics():
+    st.markdown("""<div class="churchgate-header"><h1>📊 Advanced Analytics & Business Intelligence</h1><p>Cross-Module Insights | Predictive Analytics | Executive Command Center</p></div>""", unsafe_allow_html=True)
+    
+    is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
+    if not is_admin:
+        st.error("Access restricted to Administrators and HR Directors only.")
+        return
+    
+    # Load all data sources
+    try:
+        emp_df = db.get_all_employees()
+        total_emp = len(emp_df) if not emp_df.empty else 0
+        dept_count = len(emp_df['department'].unique()) if not emp_df.empty else 0
+        active_emp = len(emp_df[emp_df['status'] == 'Active']) if not emp_df.empty else 0
+    except:
+        emp_df = pd.DataFrame()
+        total_emp = 0
+    
+    try:
+        candidates = db.get_all_candidates()
+        total_candidates = len(candidates) if not candidates.empty else 0
+        screened = len(candidates[candidates['ai_score'] > 0]) if not candidates.empty and 'ai_score' in candidates.columns else 0
+        hired = len(candidates[candidates['status'] == 'Hired']) if not candidates.empty and 'status' in candidates.columns else 0
+    except:
+        total_candidates = 0
+    
+    try:
+        enrollments = db._get("lms_enrollments")
+        total_enrollments = len(enrollments) if enrollments else 0
+        completed_enrollments = len([e for e in enrollments if e.get('status') == 'Completed']) if enrollments else 0
+    except:
+        total_enrollments = 0
+        completed_enrollments = 0
+    
+    try:
+        all_requests = db._get("employee_requests")
+        total_requests = len(all_requests) if all_requests else 0
+        approved_requests = len([r for r in all_requests if r.get('status') == 'Approved']) if all_requests else 0
+    except:
+        total_requests = 0
+    
+    try:
+        all_appraisals = db.get_all_appraisals()
+        total_appraisals = len(all_appraisals) if all_appraisals else 0
+        completed_appraisals = len([a for a in all_appraisals if a.get('status') == 'Completed' or a.get('acceptance') == 'Accepted']) if all_appraisals else 0
+    except:
+        total_appraisals = 0
+    
+    try:
+        ideas = db._get("ideas_box")
+        total_ideas = len(ideas) if ideas else 0
+        implemented_ideas = len([i for i in ideas if i.get('status') == 'Implemented']) if ideas else 0
+    except:
+        total_ideas = 0
+    
+    # ===== TOP KPI ROW =====
+    st.markdown("### 📊 Organizational Health Scorecard")
+    
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1.metric("👥 Headcount", total_emp, f"{active_emp} active")
+    c2.metric("🏢 Departments", dept_count)
+    c3.metric("🎓 Learning", total_enrollments, f"{completed_enrollments} completed")
+    c4.metric("📋 Requests", total_requests, f"{approved_requests} approved")
+    c5.metric("📝 Appraisals", total_appraisals, f"{completed_appraisals} done")
+    c6.metric("💡 Ideas", total_ideas, f"{implemented_ideas} implemented")
+    
+    # ===== EMPLOYEE HEALTH SCORE =====
+    employee_health = 0
+    if total_emp > 0:
+        health_factors = 0
+        if active_emp > 0: health_factors += 1
+        if completed_appraisals > 0: health_factors += 1
+        if total_enrollments > 0: health_factors += 1
+        employee_health = int((health_factors / 3) * 100)
+    
+    st.progress(employee_health / 100)
+    st.caption(f"Organizational Health Index: {employee_health}%")
+    
+    st.markdown("---")
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["👥 Workforce", "📈 Performance", "🎓 Learning", "💡 Innovation"])
+    
+    # ===== TAB 1: WORKFORCE ANALYTICS =====
+    with tab1:
+        st.subheader("👥 Workforce Analytics")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if not emp_df.empty:
+                # Headcount by department
+                dept_counts = emp_df['department'].value_counts().head(10)
+                fig = px.bar(x=dept_counts.index, y=dept_counts.values, 
+                           title="Headcount by Department", color=dept_counts.values,
+                           color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+                fig.update_layout(height=350)
+                st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            if not emp_df.empty:
+                # Grade distribution
+                grade_counts = emp_df['grade'].value_counts()
+                fig2 = px.pie(values=grade_counts.values, names=grade_counts.index, 
+                            title="Grade Distribution", hole=0.5,
+                            color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169', '#805ad5'])
+                fig2.update_layout(height=350)
+                st.plotly_chart(fig2, use_container_width=True)
+        
+        # Gender diversity
+        if not emp_df.empty and 'gender' in emp_df.columns:
+            st.markdown("---")
+            st.markdown("### 🌍 Gender Diversity")
+            col1, col2, col3 = st.columns(3)
+            
+            male_count = len(emp_df[emp_df['gender'].str.lower() == 'male'])
+            female_count = len(emp_df[emp_df['gender'].str.lower() == 'female'])
+            
+            col1.metric("👨 Male", male_count, f"{int(male_count/total_emp*100)}%" if total_emp > 0 else "")
+            col2.metric("👩 Female", female_count, f"{int(female_count/total_emp*100)}%" if total_emp > 0 else "")
+            col3.metric("📊 Ratio", f"{male_count}:{female_count}")
+        
+        # Tenure distribution
+        if not emp_df.empty:
+            st.markdown("---")
+            st.markdown("### 📅 Employee Tenure")
+            tenure_data = []
+            for _, emp in emp_df.iterrows():
+                jd = emp.get('join_date')
+                if jd and str(jd) != 'None' and str(jd) != 'nan':
+                    try:
+                        years = (datetime.now() - pd.to_datetime(jd)).days / 365
+                        if years < 2: tenure_data.append('0-2 years')
+                        elif years < 5: tenure_data.append('3-5 years')
+                        elif years < 10: tenure_data.append('6-10 years')
+                        else: tenure_data.append('10+ years')
+                    except:
+                        pass
+            
+            if tenure_data:
+                tenure_df = pd.DataFrame(pd.Series(tenure_data).value_counts().reset_index())
+                tenure_df.columns = ['Tenure', 'Count']
+                fig3 = px.bar(tenure_df, x='Tenure', y='Count', color='Tenure',
+                            title="Employee Tenure Distribution",
+                            color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169'])
+                fig3.update_layout(height=350, showlegend=False)
+                st.plotly_chart(fig3, use_container_width=True)
+    
+    # ===== TAB 2: PERFORMANCE ANALYTICS =====
+    with tab2:
+        st.subheader("📈 Performance & Appraisal Analytics")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Appraisal completion
+            appraisal_labels = ['Completed', 'Pending', 'Not Started']
+            appraisal_values = [completed_appraisals, max(0, total_appraisals - completed_appraisals), max(0, total_emp - total_appraisals)]
+            fig4 = px.pie(values=appraisal_values, names=appraisal_labels, 
+                        title="Appraisal Completion Status", hole=0.5,
+                        color_discrete_sequence=['#38a169', '#d69e2e', '#a0aec0'])
+            fig4.update_layout(height=350)
+            st.plotly_chart(fig4, use_container_width=True)
+        
+        with col2:
+            # KPI progress across departments
+            try:
+                perf_data = db.get_performance_data()
+                if not perf_data.empty:
+                    dept_progress = perf_data.groupby('department')['progress'].mean().reset_index()
+                    fig5 = px.bar(dept_progress, x='department', y='progress', 
+                                title="Avg KPI Progress by Department", color='progress',
+                                color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+                    fig5.update_layout(height=350)
+                    st.plotly_chart(fig5, use_container_width=True)
+            except:
+                st.info("Performance data loading...")
+        
+        # Recruitment pipeline
+        st.markdown("---")
+        st.markdown("### 💼 Recruitment Pipeline")
+        
+        try:
+            pipeline_data = db._get("recruitment_pipeline")
+            if pipeline_data:
+                stages = ['Applied', 'AI Screened', 'Shortlisted', 'Interview Scheduled', 'Offer Sent', 'Hired']
+                stage_counts = {}
+                for s in stages:
+                    stage_counts[s] = len([p for p in pipeline_data if p.get('current_stage') == s])
+                
+                fig6 = px.funnel(x=list(stage_counts.values()), y=list(stage_counts.keys()),
+                               title="Recruitment Funnel",
+                               color_discrete_sequence=['#CC0000'])
+                fig6.update_layout(height=350)
+                st.plotly_chart(fig6, use_container_width=True)
+            else:
+                st.info("Pipeline data will appear as candidates progress.")
+        except:
+            pass
+    
+    # ===== TAB 3: LEARNING ANALYTICS =====
+    with tab3:
+        st.subheader("🎓 Learning & Development Analytics")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if total_enrollments > 0:
+                learning_status = {
+                    'Completed': completed_enrollments,
+                    'In Progress': total_enrollments - completed_enrollments
+                }
+                fig7 = px.pie(values=list(learning_status.values()), names=list(learning_status.keys()),
+                            title="Course Completion Rate", hole=0.5,
+                            color_discrete_sequence=['#38a169', '#d69e2e'])
+                fig7.update_layout(height=350)
+                st.plotly_chart(fig7, use_container_width=True)
+        
+        with col2:
+            # Department learning engagement
+            try:
+                dept_enrollments = {}
+                for e in enrollments:
+                    dept = e.get('department', 'Unknown')
+                    dept_enrollments[dept] = dept_enrollments.get(dept, 0) + 1
+                
+                if dept_enrollments:
+                    fig8 = px.bar(x=list(dept_enrollments.keys()), y=list(dept_enrollments.values()),
+                                title="Enrollments by Department", color=list(dept_enrollments.values()),
+                                color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+                    fig8.update_layout(height=350)
+                    st.plotly_chart(fig8, use_container_width=True)
+            except:
+                pass
+        
+        # Completion rate
+        if total_emp > 0:
+            st.markdown("---")
+            st.markdown("### 📊 Learning Engagement Rate")
+            engagement = int((total_enrollments / total_emp) * 100) if total_emp > 0 else 0
+            st.metric("Employees with at least 1 course", f"{engagement}%")
+            st.progress(engagement / 100)
+    
+    # ===== TAB 4: INNOVATION & IDEAS =====
+    with tab4:
+        st.subheader("💡 Innovation & Ideas Analytics")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if total_ideas > 0:
+                idea_status = {}
+                for i in ideas:
+                    status = i.get('status', 'Submitted')
+                    idea_status[status] = idea_status.get(status, 0) + 1
+                
+                fig9 = px.pie(values=list(idea_status.values()), names=list(idea_status.keys()),
+                            title="Ideas by Status", hole=0.5,
+                            color_discrete_sequence=['#a0aec0', '#d69e2e', '#3182ce', '#38a169'])
+                fig9.update_layout(height=350)
+                st.plotly_chart(fig9, use_container_width=True)
+        
+        with col2:
+            if total_ideas > 0:
+                idea_categories = {}
+                for i in ideas:
+                    cat = i.get('category', 'Other')
+                    idea_categories[cat] = idea_categories.get(cat, 0) + 1
+                
+                fig10 = px.bar(x=list(idea_categories.keys()), y=list(idea_categories.values()),
+                             title="Ideas by Category", color=list(idea_categories.values()),
+                             color_continuous_sequence=['#CC0000', '#d69e2e', '#38a169'])
+                fig10.update_layout(height=350)
+                st.plotly_chart(fig10, use_container_width=True)
+        
+        # Employee participation
+        if total_emp > 0 and total_ideas > 0:
+            st.markdown("---")
+            idea_participants = len(set(i.get('employee_id', '') for i in ideas))
+            participation = int((idea_participants / total_emp) * 100)
+            st.metric("Innovation Participation", f"{participation}%", f"{idea_participants} contributors")
+            st.progress(participation / 100)
+    
+    # ===== EXPORT =====
+    st.markdown("---")
+    st.download_button("📥 Download Analytics Report (CSV)", 
+                      pd.DataFrame([{
+                          'Metric': 'Total Employees', 'Value': total_emp,
+                          'Metric': 'Active Employees', 'Value': active_emp,
+                          'Metric': 'Departments', 'Value': dept_count,
+                          'Metric': 'Candidates', 'Value': total_candidates,
+                          'Metric': 'LMS Enrollments', 'Value': total_enrollments,
+                          'Metric': 'Requests', 'Value': total_requests,
+                          'Metric': 'Appraisals', 'Value': total_appraisals,
+                          'Metric': 'Ideas', 'Value': total_ideas
+                      }]).to_csv(index=False),
+                      "advanced_analytics.csv", "text/csv")
+
 def main():
     if 'user' not in st.session_state:
         st.session_state.user = None
@@ -11045,7 +11342,8 @@ def main():
             "📚 Knowledge Base": knowledge_base,
             "🎉 Wellness & Perks": wellness_perks,
             "🎓 LMS": lms_dashboard,
-            "📋 Audit Log": audit_log_viewer,
+           "📋 Audit Log": audit_log_viewer,
+            "📊 Advanced Analytics": advanced_analytics,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)
