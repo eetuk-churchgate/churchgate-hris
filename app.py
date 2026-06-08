@@ -2695,10 +2695,11 @@ def performance_okrs():
                     col_confirm, col_cancel = st.columns(2)
                     with col_confirm:
                         if st.button("✅ Yes, Submit All KPIs", use_container_width=True):
-                            for p_name, p_data in performance_data[user_name].items():
-                                if p_data['kpis']:
-                                    p_data['submission_status'] = 'Submitted'
-                                    db.save_performance_data(user_name, p_name, p_data['weight'], p_data['progress'], p_data['status'], p_data['deadline'], p_data['kpis'], 'Submitted')
+                            # Update ALL rows for this user to Submitted
+                            all_rows = db._get("performance_data", {"user_name": user_name})
+                            if all_rows:
+                                for row in all_rows:
+                                    db._patch("performance_data", {"submission_status": "Submitted"}, {"id": row['id']})
                             
                             emp_email = st.session_state.user.get('email', '')
                             send_kpi_notification('submitted_to_employee', user_name, emp_email)
