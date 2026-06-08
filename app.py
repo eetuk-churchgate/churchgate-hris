@@ -2801,10 +2801,7 @@ def performance_okrs():
             if submit_continue or submit_final:
                 if not kpi_title or not kpi_target or not kpi_current or not kpi_description:
                     st.error("❌ All fields are required!")
-                elif user_dept not in performance_data:
-                    performance_data[user_dept] = {}
-                    for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
-                        performance_data[user_dept][pillar] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
+                else:
                     new_kpi = {
                         'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
                         'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
@@ -2816,7 +2813,6 @@ def performance_okrs():
                         st.success("✅ KPI updated!")
                         log_audit_action("KPI Updated", f"KPI '{kpi_title}' updated in {pillar_choice}", "KPI")
                     else:
-                        # Save under user's own name - reload existing KPIs first
                         if user_name not in performance_data:
                             performance_data[user_name] = {}
                             existing_data = db.get_performance_data(user_name)
@@ -2836,7 +2832,6 @@ def performance_okrs():
                         st.success("✅ KPI saved!")
                         log_audit_action("KPI Added", f"KPI '{kpi_title}' added to {pillar_choice}", "KPI")
                     
-                    # Save to database
                     pd_data = performance_data[user_name][pillar_choice]
                     try:
                         db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
