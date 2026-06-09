@@ -2573,24 +2573,37 @@ def performance_okrs():
         parts = re.split(r'(\d+)', key)
         return [int(p) if p.isdigit() else p for p in parts]
     
-    # ============ APPRAISAL CYCLE STATUS BANNER ============
-    if st.session_state.appraisal_cycle_active:
+    # Appraisal Cycle Status
+    if st.session_state.get('appraisal_cycle_active'):
         try:
             end_date = datetime.strptime(st.session_state.appraisal_end, '%Y-%m-%d')
             days_left = (end_date - datetime.now()).days
-            if days_left > 0:
-                color = "#38a169" if days_left > 14 else "#d69e2e" if days_left > 7 else "#CC0000"
-                st.markdown(f"""
-                <div style="background:white;padding:1rem 1.5rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {color};">
-                    <strong>📊 Appraisal Cycle Active: {st.session_state.appraisal_cycle_name}</strong>
-                    <span style="float:right;color:{color};font-weight:700;">⏰ {days_left} day{'s' if days_left > 1 else ''} remaining</span>
-                    <br><small>Start: {st.session_state.appraisal_start} | Deadline: {st.session_state.appraisal_end}</small>
-                </div>
-                """, unsafe_allow_html=True)
-            elif days_left == 0:
-                st.warning(f"🚨 Appraisal deadline is TODAY! Submit immediately.")
+            
+            # Check if user has approved KPIs
+            user_kpis = db.get_performance_data(user_name)
+            has_approved_kpis = False
+            if not user_kpis.empty:
+                for _, row in user_kpis.iterrows():
+                    if row.get('submission_status') == 'Approved':
+                        has_approved_kpis = True
+                        break
+            
+            if has_approved_kpis:
+                if days_left > 0:
+                    color = "#38a169" if days_left > 14 else "#d69e2e" if days_left > 7 else "#CC0000"
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {color};">
+                        <strong>📊 Appraisal Active: {st.session_state.appraisal_cycle_name}</strong>
+                        <span style="float:right;color:{color};font-weight:700;">⏰ {days_left} day{'s' if days_left > 1 else ''} remaining</span>
+                        <br><small style="color:#38a169;">✅ Your KPIs are approved — you're ready for self-assessment!</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif days_left == 0:
+                    st.warning(f"🚨 Appraisal deadline is TODAY! Submit your self-assessment now.")
+                else:
+                    st.error(f"⚠️ Appraisal cycle ended on {st.session_state.appraisal_end}")
             else:
-                st.error(f"⚠️ Appraisal cycle ended on {st.session_state.appraisal_end}")
+                st.warning(f"⚠️ Appraisal cycle is active, but your KPIs have not been approved by your HOD yet. Please complete KPI submission and HOD approval first.")
         except:
             pass
     else:
@@ -2934,6 +2947,18 @@ def performance_okrs():
                     st.error("⚠️ Appraisal cycle has ended.")
             except:
                 pass
+            
+            # KPI Eligibility Check
+            user_kpis = db.get_performance_data(user_name)
+            has_approved_kpis = False
+            if not user_kpis.empty:
+                for _, row in user_kpis.iterrows():
+                    if row.get('submission_status') == 'Approved':
+                        has_approved_kpis = True
+                        break
+            
+            if not has_approved_kpis:
+                st.warning("⚠️ You cannot start self-assessment until your KPIs are approved by your HOD. Go to '✏️ My KPIs' to submit them for review.")
         
         if is_admin:
             with st.expander("⚙️ Appraisal Cycle Settings (Admin)", expanded=False):
@@ -2947,8 +2972,40 @@ def performance_okrs():
                 st.session_state.appraisal_locked = st.checkbox("Lock Scores", value=st.session_state.appraisal_locked)
                 if st.button("💾 Activate Appraisal Cycle", use_container_width=True):
                     log_audit('Cycle Activated', f'Appraisal cycle {st.session_state.appraisal_cycle_name} activated')
-                    sent = send_appraisal_cycle_email('activated', st.session_state.appraisal_cycle_name, st.session_state.appraisal_start, st.session_state.appraisal_end)
-                    st.success(f"✅ Cycle activated! Email sent to {sent} employees.")
+                    
+                    # Only send to employees with approved KPIs
+                    try:
+                        emp_df = db.get_all_employees()
+                        from utils.email_service import EmailService
+                        email_svc = EmailService()
+                        sent = 0
+                        
+                        for _, emp in emp_df.iterrows():
+                            emp_name = f"{emp['first_name']} {emp['last_name']}"
+                            emp_email = emp.get('email', '')
+                            if emp_email and '@' in str(emp_email):
+                                # Check if this employee has approved KPIs
+                                emp_kpis = db.get_performance_data(emp_name)
+                                has_approved = False
+                                if not emp_kpis.empty:
+                                    for _, row in emp_kpis.iterrows():
+                                        if row.get('submission_status') == 'Approved':
+                                            has_approved = True
+                                            break
+                                
+                                if has_approved:
+                                    try:
+                                        email_svc.send_email(emp_email,
+                                            f"📊 Appraisal Cycle Now Open: {st.session_state.appraisal_cycle_name}",
+                                            f"Dear {emp_name},\n\nThe appraisal cycle '{st.session_state.appraisal_cycle_name}' is now active.\n\nPeriod: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}\n\nYour KPIs are approved. Please log in to complete your self-assessment.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
+                                        sent += 1
+                                    except:
+                                        pass
+                        
+                        st.success(f"✅ Cycle activated! Email sent to {sent} employees with approved KPIs.")
+                    except:
+                        st.success(f"✅ Cycle activated!")
+                    
                     st.balloons()
                     st.rerun()
         
