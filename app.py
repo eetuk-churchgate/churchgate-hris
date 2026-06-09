@@ -2833,20 +2833,6 @@ def performance_okrs():
                     else:
                         st.warning("No KPIs in this pillar to copy.")
         
-        # Reload KPIs before showing form
-        if user_name not in performance_data:
-            performance_data[user_name] = {}
-        existing = db.get_performance_data(user_name)
-        if not existing.empty:
-            for _, row in existing.iterrows():
-                p_name = row.get('pillar_name', '')
-                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                performance_data[user_name][p_name] = {
-                    'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
-                    'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
-                    'kpis': kpi_list
-                }
-        
         with st.form("my_kpi_form"):
             st.markdown("### Add New KPI")
             
