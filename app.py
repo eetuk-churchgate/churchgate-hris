@@ -2744,12 +2744,12 @@ def performance_okrs():
         
         st.markdown("---")
         pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
-            for pillar_name in pillar_order:
-                if pillar_name in dept_data:
-                    pillar_data = dept_data[pillar_name]
-            status_text, color = get_kpi_status(pillar_data['progress'])
-            if pillar_data['status'] in ['Exceeding', 'Completed']:
-                color = "#38a169"
+        for pillar_name in pillar_order:
+            if pillar_name in dept_data:
+                pillar_data = dept_data[pillar_name]
+                status_text, color = get_kpi_status(pillar_data['progress'])
+                if pillar_data['status'] in ['Exceeding', 'Completed']:
+                    color = "#38a169"
             
             with st.expander(f"{pillar_name} | {pillar_data['progress']}% | {pillar_data['status']}", expanded=False):
                 st.progress(pillar_data['progress'] / 100)
