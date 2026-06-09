@@ -6905,6 +6905,17 @@ def chat_communications():
                 st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;"><strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
             else:
                 st.markdown(f"""<div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>🤖 HRIS Bot</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+        policy_kb = {
+            'leave': "🏖️ **Leave Policy:** Annual leave varies by grade level. Level 1: 14 days, Level 2-3: 28 days, Level 4-5: 30 days. Apply via HRIS. Maternity: 90 days. Sick leave requires medical certificate.",
+            'payroll': "💰 **Payroll:** Processed on 25th monthly. Pay stubs available in My Documents. Salary includes basic, housing, transport, meal, utility, and education allowances.",
+            'training': "🎓 **Training:** Available through the LMS with 100+ courses. Check Training & Development tab for enrollment.",
+            'kpi': "📊 **KPIs:** Set in Performance & OKRs. Align to 4 strategic pillars. Submit for HOD approval before appraisal.",
+            'benefits': "🎁 **Benefits:** HMO coverage, pension (8% employee + 10% employer), annual leave, training support, performance bonuses.",
+            'safety': "🦺 **HSE Policy:** Churchgate is committed to workplace safety. Full HSE manual in Knowledge Base. Report incidents immediately.",
+            'working hours': "🕐 **Working Hours:** 8:00 AM - 5:30 PM (Abuja), 8:30 AM - 6:00 PM (Lagos). Monday to Friday. Overtime pre-approved only.",
+            'disciplinary': "⚖️ **Disciplinary:** Verbal caution → Warning letter → Suspension → Summary dismissal. HR must be copied on all queries.",
+        }
+        
         st.markdown("**Quick Questions:**")
         quick_questions = [
             ("Leave", "How do I apply for leave?"), 
