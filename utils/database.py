@@ -161,7 +161,7 @@ class DatabaseManager:
     def delete_nomination(self, nomination_id):
         self._delete("aplayer_nominations", {"id": nomination_id})
     
-     def save_performance_data(self, department, pillar_name, weight, progress, status, deadline, kpi_data, submission_status='Draft'):
+    def save_performance_data(self, department, pillar_name, weight, progress, status, deadline, kpi_data, submission_status='Draft'):
         # Delete ALL existing rows for this user and pillar using direct SQL
         try:
             existing = self._get("performance_data", {"user_name": department, "pillar_name": pillar_name})
