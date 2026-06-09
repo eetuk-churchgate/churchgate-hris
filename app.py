@@ -2743,7 +2743,10 @@ def performance_okrs():
                 st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---")
-        for pillar_name, pillar_data in dept_data.items():
+        pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+            for pillar_name in pillar_order:
+                if pillar_name in dept_data:
+                    pillar_data = dept_data[pillar_name]
             status_text, color = get_kpi_status(pillar_data['progress'])
             if pillar_data['status'] in ['Exceeding', 'Completed']:
                 color = "#38a169"
@@ -2829,6 +2832,20 @@ def performance_okrs():
                         st.success(f"✅ {count} KPIs ready to be assigned to team members!")
                     else:
                         st.warning("No KPIs in this pillar to copy.")
+        
+        # Reload KPIs before showing form
+        if user_name not in performance_data:
+            performance_data[user_name] = {}
+        existing = db.get_performance_data(user_name)
+        if not existing.empty:
+            for _, row in existing.iterrows():
+                p_name = row.get('pillar_name', '')
+                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                performance_data[user_name][p_name] = {
+                    'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
+                    'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
+                    'kpis': kpi_list
+                }
         
         with st.form("my_kpi_form"):
             st.markdown("### Add New KPI")
