@@ -45,7 +45,9 @@ class DatabaseManager:
         for k, v in filters.items():
             url += f"{k}=eq.{v}&"
         r = requests.patch(url, headers=self._headers(), json=data)
-        return r.status_code in [200, 201]
+        if r.status_code not in [200, 201, 204]:
+            st.error(f"Supabase PATCH Error [{r.status_code}]: {r.text[:200]}")
+        return r.status_code in [200, 201, 204]
     
     def _delete(self, table, filters):
         url = f"{self.url}/rest/v1/{table}?"
@@ -159,16 +161,23 @@ class DatabaseManager:
     def delete_nomination(self, nomination_id):
         self._delete("aplayer_nominations", {"id": nomination_id})
     
-    def save_performance_data(self, department, pillar_name, weight, progress, status, deadline, kpi_data):
-        self._delete("performance_data", {"department": department, "pillar_name": pillar_name})
-        self._post("performance_data", {"department": department, "pillar_name": pillar_name, "weight": weight, "progress": progress, "status": status, "deadline": deadline, "kpi_data": json.dumps(kpi_data)})
+    def save_performance_data(self, department, pillar_name, weight, progress, status, deadline, kpi_data, submission_status='Draft'):
+        # Delete ALL existing rows for this user and pillar
+        existing = self._get("performance_data", {"user_name": department, "pillar_name": pillar_name})
+        if existing:
+            for row in existing:
+                self._delete("performance_data", {"id": row['id']})
+        # Insert one fresh row with all KPIs
+        self._post("performance_data", {
+            "user_name": department, "department": department, "pillar_name": pillar_name,
+            "weight": weight, "progress": progress, "status": status, 
+            "deadline": deadline, "kpi_data": json.dumps(kpi_data),
+            "submission_status": submission_status
+        })
     
     def get_performance_data(self, department=None):
         if department:
-            data = self._get("performance_data", {"department": department})
-            # Also try user_name column for individual KPIs
-            if not data:
-                data = self._get("performance_data", {"user_name": department})
+            data = self._get("performance_data", {"user_name": department})
         else:
             data = self._get("performance_data")
         return pd.DataFrame(data) if data else pd.DataFrame()

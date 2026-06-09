@@ -4,7 +4,6 @@ Enterprise-Grade AI-Powered Human Resource Information System
 """
 
 import streamlit as st
-import streamlit.components.v1 as components
 from streamlit_option_menu import option_menu
 import pandas as pd
 import numpy as np
@@ -22,7 +21,6 @@ import os
 import random
 from PIL import Image
 import calendar
-from markdown_it import MarkdownIt
 
 sys.path.append(str(Path(__file__).parent))
 
@@ -2575,37 +2573,24 @@ def performance_okrs():
         parts = re.split(r'(\d+)', key)
         return [int(p) if p.isdigit() else p for p in parts]
     
-    # Appraisal Cycle Status
-    if st.session_state.get('appraisal_cycle_active'):
+    # ============ APPRAISAL CYCLE STATUS BANNER ============
+    if st.session_state.appraisal_cycle_active:
         try:
             end_date = datetime.strptime(st.session_state.appraisal_end, '%Y-%m-%d')
             days_left = (end_date - datetime.now()).days
-            
-            # Check if user has approved KPIs
-            user_kpis = db.get_performance_data(user_name)
-            has_approved_kpis = False
-            if not user_kpis.empty:
-                for _, row in user_kpis.iterrows():
-                    if row.get('submission_status') == 'Approved':
-                        has_approved_kpis = True
-                        break
-            
-            if has_approved_kpis:
-                if days_left > 0:
-                    color = "#38a169" if days_left > 14 else "#d69e2e" if days_left > 7 else "#CC0000"
-                    st.markdown(f"""
-                    <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {color};">
-                        <strong>📊 Appraisal Active: {st.session_state.appraisal_cycle_name}</strong>
-                        <span style="float:right;color:{color};font-weight:700;">⏰ {days_left} day{'s' if days_left > 1 else ''} remaining</span>
-                        <br><small style="color:#38a169;">✅ Your KPIs are approved — you're ready for self-assessment!</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-                elif days_left == 0:
-                    st.warning(f"🚨 Appraisal deadline is TODAY! Submit your self-assessment now.")
-                else:
-                    st.error(f"⚠️ Appraisal cycle ended on {st.session_state.appraisal_end}")
+            if days_left > 0:
+                color = "#38a169" if days_left > 14 else "#d69e2e" if days_left > 7 else "#CC0000"
+                st.markdown(f"""
+                <div style="background:white;padding:1rem 1.5rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {color};">
+                    <strong>📊 Appraisal Cycle Active: {st.session_state.appraisal_cycle_name}</strong>
+                    <span style="float:right;color:{color};font-weight:700;">⏰ {days_left} day{'s' if days_left > 1 else ''} remaining</span>
+                    <br><small>Start: {st.session_state.appraisal_start} | Deadline: {st.session_state.appraisal_end}</small>
+                </div>
+                """, unsafe_allow_html=True)
+            elif days_left == 0:
+                st.warning(f"🚨 Appraisal deadline is TODAY! Submit immediately.")
             else:
-                st.warning(f"⚠️ Appraisal cycle is active, but your KPIs have not been approved by your HOD yet. Please complete KPI submission and HOD approval first.")
+                st.error(f"⚠️ Appraisal cycle ended on {st.session_state.appraisal_end}")
         except:
             pass
     else:
@@ -2618,21 +2603,6 @@ def performance_okrs():
     # ============ TAB 1: STRATEGIC PILLARS ============
     with tab1:
         st.subheader("🎯 My Strategic Pillars")
-        
-        # Reload KPIs from database for current user
-        existing_data = db.get_performance_data(user_name)
-        if not existing_data.empty:
-            for _, row in existing_data.iterrows():
-                p_name = row.get('pillar_name', '')
-                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                if user_name not in performance_data:
-                    performance_data[user_name] = {}
-                performance_data[user_name][p_name] = {
-                    'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
-                    'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
-                    'kpis': kpi_list,
-                    'submission_status': row.get('submission_status', 'Draft')
-                }
         
         # Load KPI data for THIS USER
         if user_name not in performance_data:
@@ -2679,48 +2649,6 @@ def performance_okrs():
         c3.metric("At Risk", at_risk)
         c4.metric("Completed", completed)
         
-        # KPI Submission Status
-        user_kpi_status = "Draft"
-        if user_name in performance_data:
-            for p in performance_data[user_name].values():
-                if p.get('submission_status') == 'Submitted':
-                    user_kpi_status = "Submitted"
-                    break
-                elif p.get('submission_status') == 'Approved':
-                    user_kpi_status = "Approved"
-        
-        status_colors = {'Draft': '#a0aec0', 'Submitted': '#d69e2e', 'Approved': '#38a169', 'Sealed': '#1a1a1a'}
-        status_badge = status_colors.get(user_kpi_status, '#a0aec0')
-        
-        st.markdown(f"""
-        <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {status_badge};display:flex;justify-content:space-between;align-items:center;">
-            <div>
-                <strong>KPI Status:</strong> <span style="color:{status_badge};font-weight:700;">{user_kpi_status.upper()}</span>
-                <br><small>{'Your KPIs are in draft mode. Edit and add as needed.' if user_kpi_status == 'Draft' else 'KPIs submitted and locked for review.' if user_kpi_status == 'Submitted' else 'KPIs approved and sealed for appraisal.'}</small>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Final Submit Button (only in Draft mode)
-        if user_kpi_status == 'Draft':
-            has_kpis = any(len(p.get('kpis', [])) > 0 for p in performance_data.get(user_name, {}).values())
-            if has_kpis:
-                with st.form("final_submit_form"):
-                    st.warning("⚠️ Submit all KPIs? After submission, you CANNOT edit or delete them.")
-                    submitted = st.form_submit_button("🚀 Final Submit All KPIs", use_container_width=True, type="primary")
-                    if submitted:
-                        all_rows = db._get("performance_data", {"user_name": user_name})
-                        if all_rows:
-                            for row in all_rows:
-                                db._patch("performance_data", {"submission_status": "Submitted"}, {"id": row['id']})
-                        emp_email = st.session_state.user.get('email', '')
-                        send_kpi_notification('submitted_to_employee', user_name, emp_email)
-                        log_audit_action("KPIs Submitted", f"All KPIs submitted by {user_name}", "KPI")
-                        st.success("✅ All KPIs submitted! HOD will be notified.")
-                        st.balloons()
-                        time.sleep(2)
-                        st.rerun()
-        
         # Department comparison for admins
         if is_admin:
             st.markdown("---")
@@ -2745,13 +2673,10 @@ def performance_okrs():
                 st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---")
-        pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
-        for pillar_name in pillar_order:
-            if pillar_name in dept_data:
-                pillar_data = dept_data[pillar_name]
-                status_text, color = get_kpi_status(pillar_data['progress'])
-                if pillar_data['status'] in ['Exceeding', 'Completed']:
-                    color = "#38a169"
+        for pillar_name, pillar_data in dept_data.items():
+            status_text, color = get_kpi_status(pillar_data['progress'])
+            if pillar_data['status'] in ['Exceeding', 'Completed']:
+                color = "#38a169"
             
             with st.expander(f"{pillar_name} | {pillar_data['progress']}% | {pillar_data['status']}", expanded=False):
                 st.progress(pillar_data['progress'] / 100)
@@ -2776,8 +2701,6 @@ def performance_okrs():
                         st.rerun()
                 
                 if pillar_data['kpis']:
-                    is_locked = pillar_data.get('submission_status', 'Draft') != 'Draft'
-                    
                     for kpi_index, kpi in enumerate(pillar_data['kpis']):
                         try:
                             kpi_progress = int(float(str(kpi.get('current', '0')).replace('%', '')))
@@ -2786,38 +2709,37 @@ def performance_okrs():
                         kpi_status, kpi_color = get_kpi_status(kpi_progress)
                         
                         with st.expander(f"{kpi['kpi'][:60]} — {kpi_progress}% — {kpi_status}", expanded=False):
-                            if not is_locked:
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    edit_title = st.text_input("Title", value=kpi['kpi'], key=f"edit_title_{selected_dept}_{pillar_name}_{kpi_index}")
-                                    edit_target = st.text_input("Target", value=kpi.get('target', ''), key=f"edit_target_{selected_dept}_{pillar_name}_{kpi_index}")
-                                with col2:
-                                    edit_current = st.text_input("Current", value=kpi.get('current', '0'), key=f"edit_current_{selected_dept}_{pillar_name}_{kpi_index}")
-                                    edit_deadline = st.date_input("Deadline", value=datetime.strptime(kpi.get('deadline', '2026-12-31'), '%Y-%m-%d') if kpi.get('deadline') else datetime.now(), key=f"edit_deadline_{selected_dept}_{pillar_name}_{kpi_index}")
-                                
-                                col_btn1, col_btn2, col_btn3 = st.columns(3)
-                                with col_btn1:
-                                    if st.button("💾 Save", key=f"save_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
-                                        pillar_data['kpis'][kpi_index] = {
-                                            'kpi': edit_title, 'target': edit_target, 'current': edit_current,
-                                            'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'), 'owner': kpi.get('owner', user_name)
-                                        }
-                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'], pillar_data.get('submission_status', 'Draft'))
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                edit_title = st.text_input("Title", value=kpi['kpi'], key=f"edit_title_{selected_dept}_{pillar_name}_{kpi_index}")
+                                edit_target = st.text_input("Target", value=kpi.get('target', ''), key=f"edit_target_{selected_dept}_{pillar_name}_{kpi_index}")
+                            with col2:
+                                edit_current = st.text_input("Current", value=kpi.get('current', '0'), key=f"edit_current_{selected_dept}_{pillar_name}_{kpi_index}")
+                                edit_deadline = st.date_input("Deadline", value=datetime.strptime(kpi.get('deadline', '2026-12-31'), '%Y-%m-%d') if kpi.get('deadline') else datetime.now(), key=f"edit_deadline_{selected_dept}_{pillar_name}_{kpi_index}")
+                            
+                            col_btn1, col_btn2, col_btn3 = st.columns(3)
+                            with col_btn1:
+                                if st.button("💾 Save", key=f"save_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
+                                    pillar_data['kpis'][kpi_index] = {
+                                        'kpi': edit_title, 'target': edit_target, 'current': edit_current,
+                                        'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'), 'owner': kpi.get('owner', user_name)
+                                    }
+                                    try:
+                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
                                         st.success("✅ KPI saved!")
                                         st.rerun()
-                                with col_btn2:
-                                    if st.button("🗑️ Delete", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
-                                        del pillar_data['kpis'][kpi_index]
+                                    except:
+                                        st.error("Save failed")
+                            with col_btn2:
+                                if st.button("🗑️ Delete", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
+                                    del pillar_data['kpis'][kpi_index]
+                                    try:
                                         db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
                                         st.success("✅ KPI deleted!")
                                         st.rerun()
-                                with col_btn3:
-                                    st.markdown(f"<small style='color:{kpi_color};'>{kpi_status}</small>", unsafe_allow_html=True)
-                            else:
-                                st.info("🔒 KPIs are locked after submission")
-                                st.markdown(f"**Target:** {kpi.get('target', 'N/A')}")
-                                st.markdown(f"**Current:** {kpi.get('current', '0')}")
-                                st.markdown(f"**Deadline:** {kpi.get('deadline', 'N/A')}")
+                                    except:
+                                        st.error("Delete failed")
+                            with col_btn3:
                                 st.markdown(f"<small style='color:{kpi_color};'>{kpi_status}</small>", unsafe_allow_html=True)
     
     # ============ TAB 2: MY KPIs ============
@@ -2834,20 +2756,6 @@ def performance_okrs():
                         st.success(f"✅ {count} KPIs ready to be assigned to team members!")
                     else:
                         st.warning("No KPIs in this pillar to copy.")
-        
-        # Reload KPIs before showing form
-        if user_name not in performance_data:
-            performance_data[user_name] = {}
-        existing = db.get_performance_data(user_name)
-        if not existing.empty:
-            for _, row in existing.iterrows():
-                p_name = row.get('pillar_name', '')
-                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                performance_data[user_name][p_name] = {
-                    'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
-                    'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
-                    'kpis': kpi_list
-                }
         
         with st.form("my_kpi_form"):
             st.markdown("### Add New KPI")
@@ -2879,7 +2787,10 @@ def performance_okrs():
             if submit_continue or submit_final:
                 if not kpi_title or not kpi_target or not kpi_current or not kpi_description:
                     st.error("❌ All fields are required!")
-                else:
+                elif user_dept not in performance_data:
+                    performance_data[user_dept] = {}
+                    for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                        performance_data[user_dept][pillar] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
                     new_kpi = {
                         'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
                         'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
@@ -2889,34 +2800,38 @@ def performance_okrs():
                         performance_data[user_dept][pillar_choice]['kpis'][edit_mode['index']] = new_kpi
                         del st.session_state['edit_kpi']
                         st.success("✅ KPI updated!")
-                        log_audit_action("KPI Updated", f"KPI '{kpi_title}' updated in {pillar_choice}", "KPI")
                     else:
+                        # Save under user's own name
                         if user_name not in performance_data:
                             performance_data[user_name] = {}
-                            existing_data = db.get_performance_data(user_name)
-                            if not existing_data.empty:
-                                for _, row in existing_data.iterrows():
-                                    p_name = row.get('pillar_name', '')
-                                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                    if p_name not in performance_data[user_name]:
-                                        performance_data[user_name][p_name] = {
-                                            'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
-                                            'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
-                                            'kpis': kpi_list
-                                        }
                         if pillar_choice not in performance_data[user_name]:
                             performance_data[user_name][pillar_choice] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
                         performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
                         st.success("✅ KPI saved!")
-                        log_audit_action("KPI Added", f"KPI '{kpi_title}' added to {pillar_choice}", "KPI")
-                    
-                    pd_data = performance_data[user_name][pillar_choice]
+                    st.success("✅ KPI saved!")
+                    st.rerun()
+                else:
+                    performance_data[user_dept][pillar_choice]['kpis'].append({
+                        'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
+                        'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
+                    })
+                    st.session_state.kpi_history.append({
+                        'action': 'Added', 'kpi': kpi_title, 'user': user_name,
+                        'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'), 'pillar': pillar_choice
+                    })
+                    try:
+                        db.save_kpi_history('Added', kpi_title, user_name, pillar_choice)
+                    except:
+                        pass
+                    pd_data = performance_data[user_dept][pillar_choice]
                     try:
                         db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
                     except:
                         pass
                     
                     if submit_continue:
+                        st.success("✅ KPI saved! Add another below.")
+                        time.sleep(1.5)
                         st.rerun()
                     if submit_final:
                         st.session_state.confirm_submit = True
@@ -2966,18 +2881,6 @@ def performance_okrs():
                     st.error("⚠️ Appraisal cycle has ended.")
             except:
                 pass
-            
-            # KPI Eligibility Check
-            user_kpis = db.get_performance_data(user_name)
-            has_approved_kpis = False
-            if not user_kpis.empty:
-                for _, row in user_kpis.iterrows():
-                    if row.get('submission_status') == 'Approved':
-                        has_approved_kpis = True
-                        break
-            
-            if not has_approved_kpis:
-                st.warning("⚠️ You cannot start self-assessment until your KPIs are approved by your HOD. Go to '✏️ My KPIs' to submit them for review.")
         
         if is_admin:
             with st.expander("⚙️ Appraisal Cycle Settings (Admin)", expanded=False):
@@ -2991,40 +2894,8 @@ def performance_okrs():
                 st.session_state.appraisal_locked = st.checkbox("Lock Scores", value=st.session_state.appraisal_locked)
                 if st.button("💾 Activate Appraisal Cycle", use_container_width=True):
                     log_audit('Cycle Activated', f'Appraisal cycle {st.session_state.appraisal_cycle_name} activated')
-                    
-                    # Only send to employees with approved KPIs
-                    try:
-                        emp_df = db.get_all_employees()
-                        from utils.email_service import EmailService
-                        email_svc = EmailService()
-                        sent = 0
-                        
-                        for _, emp in emp_df.iterrows():
-                            emp_name = f"{emp['first_name']} {emp['last_name']}"
-                            emp_email = emp.get('email', '')
-                            if emp_email and '@' in str(emp_email):
-                                # Check if this employee has approved KPIs
-                                emp_kpis = db.get_performance_data(emp_name)
-                                has_approved = False
-                                if not emp_kpis.empty:
-                                    for _, row in emp_kpis.iterrows():
-                                        if row.get('submission_status') == 'Approved':
-                                            has_approved = True
-                                            break
-                                
-                                if has_approved:
-                                    try:
-                                        email_svc.send_email(emp_email,
-                                            f"📊 Appraisal Cycle Now Open: {st.session_state.appraisal_cycle_name}",
-                                            f"Dear {emp_name},\n\nThe appraisal cycle '{st.session_state.appraisal_cycle_name}' is now active.\n\nPeriod: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}\n\nYour KPIs are approved. Please log in to complete your self-assessment.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
-                                        sent += 1
-                                    except:
-                                        pass
-                        
-                        st.success(f"✅ Cycle activated! Email sent to {sent} employees with approved KPIs.")
-                    except:
-                        st.success(f"✅ Cycle activated!")
-                    
+                    sent = send_appraisal_cycle_email('activated', st.session_state.appraisal_cycle_name, st.session_state.appraisal_start, st.session_state.appraisal_end)
+                    st.success(f"✅ Cycle activated! Email sent to {sent} employees.")
                     st.balloons()
                     st.rerun()
         
@@ -3171,102 +3042,17 @@ def performance_okrs():
     
     # ============ TAB 4: HOD REVIEW ============
     with tab4:
-        st.subheader("👔 HOD KPI Review & Appraisal Approval")
+        st.subheader("👔 HOD Review & Approval")
         
         if is_hod:
-            # ===== SECTION 1: KPI SUBMISSION REVIEW (NEW) =====
-            st.markdown("### 📊 Team KPI Submissions for Review")
-            
-            try:
-                all_perf = db._get("performance_data")
-                team_submissions = {}
-                
-                for row in all_perf:
-                    if row.get('user_name') and row.get('submission_status') == 'Submitted':
-                        uname = row['user_name']
-                        emp_data = db._get("employees", {"first_name": uname.split()[0] if ' ' in uname else uname})
-                        emp_dept = None
-                        if emp_data and len(emp_data) > 0:
-                            emp_dept = emp_data[0].get('department', '')
-                        
-                        if is_admin or emp_dept == user_dept:
-                            if uname not in team_submissions:
-                                team_submissions[uname] = []
-                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                            team_submissions[uname].append({
-                                'pillar': row['pillar_name'],
-                                'kpis': kpi_list,
-                                'row_id': row['id']
-                            })
-                
-                if team_submissions:
-                    submitted_count = len(team_submissions)
-                    total_kpis = sum(len(v) for v in team_submissions.values())
-                    
-                    c1, c2, c3 = st.columns(3)
-                    c1.metric("Team Members Submitted", submitted_count)
-                    c2.metric("Total KPIs to Review", total_kpis)
-                    c3.metric("Department", user_dept)
-                    
-                    st.markdown("---")
-                    
-                    for emp_name, submissions in team_submissions.items():
-                        with st.expander(f"📋 {emp_name} — {len(submissions)} pillars submitted", expanded=False):
-                            for sub in submissions:
-                                st.markdown(f"**{sub['pillar']}** — {len(sub['kpis'])} KPI(s)")
-                                for kpi in sub['kpis']:
-                                    st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')}")
-                            
-                            st.markdown("---")
-                            hod_comment = st.text_area(f"HOD Comment for {emp_name}", key=f"hod_comment_{emp_name}", placeholder="Provide feedback, approval reason, or revision notes...")
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                if st.button(f"✅ Approve {emp_name}'s KPIs", key=f"approve_{emp_name}", use_container_width=True, type="primary"):
-                                    for sub in submissions:
-                                        db._patch("performance_data", {"submission_status": "Approved"}, {"id": sub['row_id']})
-                                    emp_email = None
-                                    emp_record = db._get("employees", {"first_name": emp_name.split()[0] if ' ' in emp_name else emp_name})
-                                    if emp_record and len(emp_record) > 0:
-                                        emp_email = emp_record[0].get('email', '')
-                                    if emp_email:
-                                        send_kpi_notification('approved', emp_name, emp_email)
-                                    log_audit_action("KPIs Approved", f"HOD {user_name} approved KPIs for {emp_name}", "KPI")
-                                    st.success(f"✅ {emp_name}'s KPIs approved!")
-                                    st.balloons()
-                                    st.rerun()
-                            with col2:
-                                if st.button(f"🔄 Request Revision from {emp_name}", key=f"revise_{emp_name}", use_container_width=True):
-                                    if hod_comment:
-                                        for sub in submissions:
-                                            db._patch("performance_data", {"submission_status": "Draft"}, {"id": sub['row_id']})
-                                        emp_email = None
-                                        emp_record = db._get("employees", {"first_name": emp_name.split()[0] if ' ' in emp_name else emp_name})
-                                        if emp_record and len(emp_record) > 0:
-                                            emp_email = emp_record[0].get('email', '')
-                                        if emp_email:
-                                            send_kpi_notification('revision_requested', emp_name, emp_email)
-                                        log_audit_action("KPI Revision Requested", f"HOD {user_name} requested revision for {emp_name}", "KPI")
-                                        st.warning(f"🔄 Revision requested. {emp_name} can now edit and resubmit.")
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ Please provide a comment explaining what needs revision.")
-                else:
-                    st.info("No team members have submitted KPIs yet.")
-            except Exception as e:
-                st.warning(f"Loading team KPIs: {str(e)}")
-            
-            st.markdown("---")
-            
-            # ===== SECTION 2: APPRAISAL REVIEW (EXISTING - KEEP ALL) =====
-            st.markdown("### 📊 Appraisal Review Status")
+            st.markdown("### 📊 Cycle Status")
             submitted_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Submitted'])
             re_review_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Awaiting HOD Re-review'])
             approved_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Approved'])
             escalated_count = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected' and v.get('status') != 'Awaiting HOD Re-review'])
             
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Appraisals Submitted", submitted_count)
+            c1.metric("Submitted", submitted_count)
             c2.metric("Re-Review", re_review_count)
             c3.metric("Approved", approved_count)
             c4.metric("Escalated", escalated_count)
@@ -3285,6 +3071,7 @@ def performance_okrs():
                         
                         st.markdown(f"**Overall Comments:** {assessment.get('comments', 'N/A')}")
                         
+                        # Show evidence if uploaded
                         if assessment.get('evidence_urls'):
                             st.markdown("**📎 Evidence Provided:**")
                             for p, urls in assessment['evidence_urls'].items():
@@ -3356,6 +3143,18 @@ def performance_okrs():
                                     log_audit('HOD Stands Firm', f'{staff_name} escalated to Sr. Management')
                                     st.warning(f"✋ Standing firm. Escalated to Sr. Management.")
                                     st.rerun()
+                            with c3:
+                                if st.button(f"📧 Send Reminder", key=f"remind_{staff_name}"):
+                                    try:
+                                        from utils.email_service import EmailService
+                                        EmailService().send_email(
+                                            assessment.get('email', ''),
+                                            f"⏰ Appraisal Re-Review Ready: {st.session_state.appraisal_cycle_name}",
+                                            f"Dear {staff_name},\n\nYour HOD has revised your appraisal scores. Please log in to review and accept.\n\nhttps://churchgate-hris.streamlit.app"
+                                        )
+                                        st.success(f"✅ Reminder sent to {staff_name}")
+                                    except:
+                                        st.info("Reminder queued")
                         else:
                             c1, c2 = st.columns(2)
                             with c1:
@@ -3389,7 +3188,7 @@ def performance_okrs():
             else:
                 st.info("No pending assessments for your team.")
         
-        # Sr Management escalation (KEEP EXISTING)
+        # Sr Management escalation (unchanged)
         if is_sr_mgmt:
             st.markdown("---")
             st.markdown("### ⚖️ Escalated Appraisals (Final Committee)")
@@ -5723,1011 +5522,739 @@ def ai_recruitment_agent():
     
     options = ["📥 Load Applications", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results", "💬 AI Assistant"]
     
-    # ── Top-level tabs ─────────────────────────────────────────────────────
-    _ai_tab1, _ai_tab2 = st.tabs(["🤖 AI Screening Tools", "💬 Ask the Recruitment Agent"])
+    if 'ai_section' not in st.session_state:
+        st.session_state.ai_section = "📥 Load Applications"
     
-    with _ai_tab1:
-
-        if 'ai_section' not in st.session_state:
-            st.session_state.ai_section = "📥 Load Applications"
-
-        default_index = 0
+    default_index = 0
+    try:
+        default_index = options.index(st.session_state.ai_section)
+    except:
+        pass
+    
+    ai_section = st.radio("Select Function:", options, index=default_index, horizontal=True)
+    st.session_state.ai_section = ai_section
+    
+    # ============ LOAD APPLICATIONS ============
+    if ai_section == "📥 Load Applications":
+        st.subheader("🚀 Recruitment Pipeline & Bulk Screening")
+        
         try:
-            default_index = options.index(st.session_state.ai_section)
-        except:
-            pass
-
-        ai_section = st.radio("Select Function:", options, index=default_index, horizontal=True)
-        st.session_state.ai_section = ai_section
-
-        # ============ LOAD APPLICATIONS ============
-        if ai_section == "📥 Load Applications":
-            st.subheader("🚀 Recruitment Pipeline & Bulk Screening")
-
-            try:
-                candidates = db.get_all_candidates()
-                if not candidates.empty:
-                    # Job filter
-                    job_map = {}
-                    try:
-                        all_reqs = db.get_all_job_requisitions()
-                        for r in all_reqs:
-                            req_id = r.get('req_id', '')
-                            short_id = f"JOB-{req_id[-6:]}" if len(req_id) >= 6 else req_id
-                            title = r.get('title', req_id)
-                            job_map[req_id] = title
-                            job_map[short_id] = title
-                    except:
-                        pass
-
-                    job_options = ["All Jobs"]
-                    if 'job_id' in candidates.columns:
-                        for jid in candidates['job_id'].dropna().unique():
-                            title = job_map.get(jid, jid)
-                            job_options.append(title)
-
-                    pipeline_job_filter = st.selectbox("📋 Filter by Job", job_options, key="pipeline_job_filter")
-
-                    # Map title back to job_id
-                    selected_job_id = None
-                    if pipeline_job_filter != "All Jobs":
-                        for jid in candidates['job_id'].dropna().unique():
-                            if job_map.get(jid, jid) == pipeline_job_filter:
-                                selected_job_id = jid
-                                break
-                        filtered = candidates[candidates['job_id'] == selected_job_id]
-                    else:
-                        filtered = candidates
-
-                    st.markdown(f"### 📊 {len(filtered)} Candidates")
-
-                    # ===== PIPELINE STAGES BAR =====
-                    st.markdown("---")
-                    st.markdown("### 🔄 Recruitment Pipeline")
-
-                    pipeline_stats, pipeline_data = get_pipeline_stats(selected_job_id)
-
-                    if pipeline_stats:
-                        stages = list(pipeline_stats.keys())
-                        counts = list(pipeline_stats.values())
-                        total = sum(counts)
-
-                        # Visual pipeline
-                        cols = st.columns(len(stages))
-                        for i, (stage, count) in enumerate(pipeline_stats.items()):
-                            with cols[i]:
-                                color = "#38a169" if stage in ['Hired'] else "#3182ce" if stage in ['Offer Sent', 'Interview Scheduled'] else "#d69e2e" if stage in ['Shortlisted', 'Manager Review'] else "#a0aec0"
-                                st.markdown(f"""
-                                <div style="background:white;padding:0.5rem;border-radius:6px;text-align:center;border-top:3px solid {color};">
-                                    <small style="color:#888;">{stage}</small><br>
-                                    <strong style="font-size:1.2rem;">{count}</strong>
-                                </div>
-                                """, unsafe_allow_html=True)
-
-                    # ===== BULK SCREENING =====
-                    st.markdown("---")
-                    st.markdown("### 🤖 Step 1: Bulk AI Screening")
-
-                    unscreened = filtered[filtered['ai_score'] == 0] if 'ai_score' in filtered.columns else filtered
-
-                    col1, col2, col3 = st.columns([2, 1, 1])
-                    with col1:
-                        st.metric("Pending Screening", len(unscreened))
-                    with col2:
-                        if st.button("🤖 Screen All", use_container_width=True, type="primary", disabled=len(unscreened)==0):
-                            with st.spinner(f"🤖 Deep-analyzing {len(unscreened)} candidates..."):
-                                screened = 0
-                                for _, row in unscreened.iterrows():
-                                    try:
-                                        cv_text = str(row.get('resume_text', ''))
-                                        if cv_text and cv_text != 'None' and len(cv_text) > 50:
-                                            job_id_val = str(row.get('job_id', ''))
-                                            jd_text = ""
-                                            if job_id_val and job_id_val != 'None':
-                                                for r in all_reqs:
-                                                    if r.get('req_id') == job_id_val:
-                                                        jd_text = r.get('jd', '')
-                                                        break
-                                            result = ai_agent.deep_analyze_candidate(cv_text, jd_text) if jd_text else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
-                                            if isinstance(result, dict):
-                                                score = int(result.get('overall_score', 0))
-                                                tier = result.get('tier', 'Pending')
-                                                db._patch("candidates", {"ai_score": score, "ai_tier": tier}, {"candidate_ref": row.get('candidate_ref', '')})
-                                                # Add to pipeline
-                                                try:
-                                                    db._post("recruitment_pipeline", {
-                                                        "candidate_ref": row.get('candidate_ref', ''),
-                                                        "candidate_name": f"{row.get('first_name','')} {row.get('last_name','')}",
-                                                        "candidate_email": row.get('email', ''),
-                                                        "job_id": job_id_val,
-                                                        "job_title": job_map.get(job_id_val, ''),
-                                                        "current_stage": "AI Screened",
-                                                        "ai_score": score,
-                                                        "ai_tier": tier,
-                                                        "updated_by": user_name
-                                                    })
-                                                except:
-                                                    pass
-                                                screened += 1
-                                    except:
-                                        pass
-                                st.success(f"✅ {screened} candidates screened!")
-                                st.rerun()
-                    with col3:
-                        if st.button("📊 Quick Score", use_container_width=True, disabled=len(unscreened)==0):
-                            with st.spinner("Scoring..."):
-                                for _, row in unscreened.iterrows():
-                                    try:
-                                        cv_text = str(row.get('resume_text', ''))
-                                        if cv_text and len(cv_text) > 50:
-                                            result = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
-                                            if isinstance(result, dict):
-                                                db._patch("candidates", {"ai_score": int(result.get('overall_score', 0)), "ai_tier": result.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
-                                    except:
-                                        pass
-                                st.success("✅ Quick scores applied!")
-                                st.rerun()
-
-                    # ===== TIERING REPORT =====
-                    st.markdown("---")
-                    st.markdown("### 📊 Step 2: Tiering Report & Manager Review")
-
-                    screened_cands = filtered[filtered['ai_score'] > 0].sort_values('ai_score', ascending=False)
-
-                    if len(screened_cands) > 0:
-                        t1 = len(screened_cands[screened_cands['ai_score'] >= 85])
-                        t2 = len(screened_cands[(screened_cands['ai_score'] >= 70) & (screened_cands['ai_score'] < 85)])
-
-                        c1, c2, c3, c4 = st.columns(4)
-                        c1.metric("🌟 Tier 1", t1)
-                        c2.metric("👍 Tier 2", t2)
-                        c3.metric("📊 Avg Score", f"{int(screened_cands['ai_score'].mean())}%")
-                        c4.metric("👥 Total Screened", len(screened_cands))
-
-                        # Transparent Scorecard Table
-                        st.markdown("#### 📊 Transparent Scoring Criteria")
-                        st.info("""
-                        **How scores are calculated:**
-                        - 🎯 Skills Match (30%) | 💼 Experience (25%) | 🎓 Education (10%) | 📜 Certifications (5%)
-                        - 📄 CV Quality (10%) | ✍️ Communication (10%) | 🔑 Keywords (5%) | 🚨 Verbatim Penalty (-5%)
-                        - 🔗 LinkedIn Presence (+5%) | 📝 Cover Letter (+5%)
-                        """)
-
-                        # Build detailed scorecard
-                        scorecard_data = []
-                        for _, row in screened_cands.iterrows():
-                            cv_text = str(row.get('resume_text', ''))
-                            # Get detailed scores from AI agent
-                            try:
-                                job_jd = ""
-                                if selected_job_id:
-                                    for r in all_reqs:
-                                        if r.get('req_id') == selected_job_id:
-                                            job_jd = r.get('jd', '')
-                                            break
-                                jd_analysis = ai_agent.analyze_jd(job_jd) if job_jd else ai_agent.analyze_jd(cv_text[:500])
-                                detailed = ai_agent.score_candidate_advanced(cv_text, jd_analysis)
-                            except:
-                                detailed = {}
-
-                            scorecard_data.append({
-                                'Rank': len(scorecard_data) + 1,
-                                'Candidate': f"{row.get('first_name','')} {row.get('last_name','')}",
-                                'Overall': int(row.get('ai_score', 0)),
-                                'Tier': row.get('ai_tier', 'Pending'),
-                                'Skills': int(detailed.get('skills_score', 0)),
-                                'Experience': int(detailed.get('experience_score', 0)),
-                                'Education': int(detailed.get('education_score', 0)),
-                                'CV Quality': int(detailed.get('cv_quality_score', detailed.get('soft_skills_score', 0))),
-                                'Verbatim': f"{int(detailed.get('verbatim_flags', 0))}%",
-                                'Confidence': f"{int(detailed.get('confidence', 0))}%",
-                                'Strengths': ', '.join(detailed.get('key_strengths', [])[:2]),
-                                'Gaps': ', '.join(detailed.get('gaps_identified', [])[:2]),
-                            })
-
-                        if scorecard_data:
-                            scorecard_df = pd.DataFrame(scorecard_data)
-                            st.dataframe(scorecard_df, use_container_width=True, hide_index=True)
-
-                            # Detailed breakdown for each candidate
-                            st.markdown("---")
-                            st.markdown("### 🔍 Individual Score Breakdowns")
-                            for i, data in enumerate(scorecard_data):
-                                with st.expander(f"📊 {data['Candidate']} — {data['Overall']}% — {data['Tier']}"):
-                                    col1, col2, col3, col4 = st.columns(4)
-                                    col1.metric("🎯 Skills", f"{data['Skills']}%")
-                                    col2.metric("💼 Experience", f"{data['Experience']}%")
-                                    col3.metric("🎓 Education", f"{data['Education']}%")
-                                    col4.metric("📄 CV Quality", f"{data['CV Quality']}%")
-
-                                    st.markdown(f"**🚨 Verbatim Risk:** {data['Verbatim']}")
-                                    st.markdown(f"**🤖 AI Confidence:** {data['Confidence']}")
-                                    st.markdown(f"**✅ Strengths:** {data['Strengths']}")
-                                    st.markdown(f"**⚠️ Gaps:** {data['Gaps']}")
-
-                                    # Visual score bar
-                                    st.progress(data['Overall']/100)
-                        else:
-                            st.info("Scorecard data will appear after screening.")
-
-                        # Send to Manager
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            manager_email = st.text_input("Hiring Manager Email", value="asakote@churchgate.com", key="manager_email")
-                        with col2:
-                            if st.button("📧 Send Report to Manager", use_container_width=True, type="primary"):
-                                # Build email
-                                email_body = f"<h2>AI Screening Report</h2><p>Job: {pipeline_job_filter}</p><table border='1' cellpadding='5'><tr><th>Rank</th><th>Candidate</th><th>Score</th><th>Tier</th><th>Email</th></tr>"
-                                for i, (_, row) in enumerate(screened_cands.iterrows()):
-                                    email_body += f"<tr><td>{i+1}</td><td>{row.get('first_name','')} {row.get('last_name','')}</td><td>{int(row.get('ai_score',0))}%</td><td>{row.get('ai_tier','')}</td><td>{row.get('email','')}</td></tr>"
-                                email_body += "</table><p>Please review and shortlist candidates for interview.</p>"
-
+            candidates = db.get_all_candidates()
+            if not candidates.empty:
+                # Job filter
+                job_map = {}
+                try:
+                    all_reqs = db.get_all_job_requisitions()
+                    for r in all_reqs:
+                        req_id = r.get('req_id', '')
+                        short_id = f"JOB-{req_id[-6:]}" if len(req_id) >= 6 else req_id
+                        title = r.get('title', req_id)
+                        job_map[req_id] = title
+                        job_map[short_id] = title
+                except:
+                    pass
+                
+                job_options = ["All Jobs"]
+                if 'job_id' in candidates.columns:
+                    for jid in candidates['job_id'].dropna().unique():
+                        title = job_map.get(jid, jid)
+                        job_options.append(title)
+                
+                pipeline_job_filter = st.selectbox("📋 Filter by Job", job_options, key="pipeline_job_filter")
+                
+                # Map title back to job_id
+                selected_job_id = None
+                if pipeline_job_filter != "All Jobs":
+                    for jid in candidates['job_id'].dropna().unique():
+                        if job_map.get(jid, jid) == pipeline_job_filter:
+                            selected_job_id = jid
+                            break
+                    filtered = candidates[candidates['job_id'] == selected_job_id]
+                else:
+                    filtered = candidates
+                
+                st.markdown(f"### 📊 {len(filtered)} Candidates")
+                
+                # ===== PIPELINE STAGES BAR =====
+                st.markdown("---")
+                st.markdown("### 🔄 Recruitment Pipeline")
+                
+                pipeline_stats, pipeline_data = get_pipeline_stats(selected_job_id)
+                
+                if pipeline_stats:
+                    stages = list(pipeline_stats.keys())
+                    counts = list(pipeline_stats.values())
+                    total = sum(counts)
+                    
+                    # Visual pipeline
+                    cols = st.columns(len(stages))
+                    for i, (stage, count) in enumerate(pipeline_stats.items()):
+                        with cols[i]:
+                            color = "#38a169" if stage in ['Hired'] else "#3182ce" if stage in ['Offer Sent', 'Interview Scheduled'] else "#d69e2e" if stage in ['Shortlisted', 'Manager Review'] else "#a0aec0"
+                            st.markdown(f"""
+                            <div style="background:white;padding:0.5rem;border-radius:6px;text-align:center;border-top:3px solid {color};">
+                                <small style="color:#888;">{stage}</small><br>
+                                <strong style="font-size:1.2rem;">{count}</strong>
+                            </div>
+                            """, unsafe_allow_html=True)
+                
+                # ===== BULK SCREENING =====
+                st.markdown("---")
+                st.markdown("### 🤖 Step 1: Bulk AI Screening")
+                
+                unscreened = filtered[filtered['ai_score'] == 0] if 'ai_score' in filtered.columns else filtered
+                
+                col1, col2, col3 = st.columns([2, 1, 1])
+                with col1:
+                    st.metric("Pending Screening", len(unscreened))
+                with col2:
+                    if st.button("🤖 Screen All", use_container_width=True, type="primary", disabled=len(unscreened)==0):
+                        with st.spinner(f"🤖 Deep-analyzing {len(unscreened)} candidates..."):
+                            screened = 0
+                            for _, row in unscreened.iterrows():
                                 try:
-                                    from utils.email_service import EmailService
-                                    EmailService().send_email(manager_email, f"🔍 AI Screening Report — {pipeline_job_filter}", email_body)
-                                    st.success(f"✅ Report sent to {manager_email}!")
-                                except:
-                                    st.success("✅ Report queued for delivery.")
-
-                        # Download report
-                        st.download_button("📥 Download Tiering Report (CSV)", 
-                                          screened_cands[['first_name', 'last_name', 'email', 'ai_score', 'ai_tier']].to_csv(index=False),
-                                          f"tiering_report_{pipeline_job_filter}.csv", "text/csv")
-
-                    # ===== SHORTLISTING =====
-                    st.markdown("---")
-                    st.markdown("### ✅ Step 3: Shortlist Candidates")
-
-                    if len(screened_cands) > 0:
-                        shortlist_candidates = st.multiselect(
-                            "Select candidates to shortlist",
-                            [f"{row['first_name']} {row['last_name']} — {int(row['ai_score'])}%" for _, row in screened_cands.iterrows()],
-                            key="shortlist_select"
-                        )
-
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if st.button("✅ Shortlist Selected", use_container_width=True, disabled=len(shortlist_candidates)==0):
-                                for name_score in shortlist_candidates:
-                                    name_part = name_score.split(" — ")[0]
-                                    for _, row in screened_cands.iterrows():
-                                        if f"{row['first_name']} {row['last_name']}" == name_part:
-                                            db._patch("candidates", {"status": "Shortlisted"}, {"candidate_ref": row.get('candidate_ref', '')})
+                                    cv_text = str(row.get('resume_text', ''))
+                                    if cv_text and cv_text != 'None' and len(cv_text) > 50:
+                                        job_id_val = str(row.get('job_id', ''))
+                                        jd_text = ""
+                                        if job_id_val and job_id_val != 'None':
+                                            for r in all_reqs:
+                                                if r.get('req_id') == job_id_val:
+                                                    jd_text = r.get('jd', '')
+                                                    break
+                                        result = ai_agent.deep_analyze_candidate(cv_text, jd_text) if jd_text else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                        if isinstance(result, dict):
+                                            score = int(result.get('overall_score', 0))
+                                            tier = result.get('tier', 'Pending')
+                                            db._patch("candidates", {"ai_score": score, "ai_tier": tier}, {"candidate_ref": row.get('candidate_ref', '')})
+                                            # Add to pipeline
                                             try:
                                                 db._post("recruitment_pipeline", {
                                                     "candidate_ref": row.get('candidate_ref', ''),
                                                     "candidate_name": f"{row.get('first_name','')} {row.get('last_name','')}",
                                                     "candidate_email": row.get('email', ''),
-                                                    "job_id": row.get('job_id', ''),
-                                                    "job_title": job_map.get(row.get('job_id', ''), ''),
-                                                    "current_stage": "Shortlisted",
-                                                    "ai_score": int(row.get('ai_score', 0)),
-                                                    "ai_tier": row.get('ai_tier', ''),
+                                                    "job_id": job_id_val,
+                                                    "job_title": job_map.get(job_id_val, ''),
+                                                    "current_stage": "AI Screened",
+                                                    "ai_score": score,
+                                                    "ai_tier": tier,
                                                     "updated_by": user_name
                                                 })
                                             except:
                                                 pass
-                                st.success(f"✅ {len(shortlist_candidates)} candidates shortlisted!")
-                                st.rerun()
-                        with col2:
-                            if st.button("📧 Send Interview Invites", use_container_width=True, disabled=len(shortlist_candidates)==0):
-                                st.session_state['shortlist_bulk'] = shortlist_candidates
-                                st.rerun()
-
-                    # ===== BULK INTERVIEW INVITES =====
-                    if 'shortlist_bulk' in st.session_state and st.session_state['shortlist_bulk']:
+                                            screened += 1
+                                except:
+                                    pass
+                            st.success(f"✅ {screened} candidates screened!")
+                            st.rerun()
+                with col3:
+                    if st.button("📊 Quick Score", use_container_width=True, disabled=len(unscreened)==0):
+                        with st.spinner("Scoring..."):
+                            for _, row in unscreened.iterrows():
+                                try:
+                                    cv_text = str(row.get('resume_text', ''))
+                                    if cv_text and len(cv_text) > 50:
+                                        result = ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                        if isinstance(result, dict):
+                                            db._patch("candidates", {"ai_score": int(result.get('overall_score', 0)), "ai_tier": result.get('tier', 'Pending')}, {"candidate_ref": row.get('candidate_ref', '')})
+                                except:
+                                    pass
+                            st.success("✅ Quick scores applied!")
+                            st.rerun()
+                
+                # ===== TIERING REPORT =====
+                st.markdown("---")
+                st.markdown("### 📊 Step 2: Tiering Report & Manager Review")
+                
+                screened_cands = filtered[filtered['ai_score'] > 0].sort_values('ai_score', ascending=False)
+                
+                if len(screened_cands) > 0:
+                    t1 = len(screened_cands[screened_cands['ai_score'] >= 85])
+                    t2 = len(screened_cands[(screened_cands['ai_score'] >= 70) & (screened_cands['ai_score'] < 85)])
+                    
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("🌟 Tier 1", t1)
+                    c2.metric("👍 Tier 2", t2)
+                    c3.metric("📊 Avg Score", f"{int(screened_cands['ai_score'].mean())}%")
+                    c4.metric("👥 Total Screened", len(screened_cands))
+                    
+                    # Transparent Scorecard Table
+                    st.markdown("#### 📊 Transparent Scoring Criteria")
+                    st.info("""
+                    **How scores are calculated:**
+                    - 🎯 Skills Match (30%) | 💼 Experience (25%) | 🎓 Education (10%) | 📜 Certifications (5%)
+                    - 📄 CV Quality (10%) | ✍️ Communication (10%) | 🔑 Keywords (5%) | 🚨 Verbatim Penalty (-5%)
+                    - 🔗 LinkedIn Presence (+5%) | 📝 Cover Letter (+5%)
+                    """)
+                    
+                    # Build detailed scorecard
+                    scorecard_data = []
+                    for _, row in screened_cands.iterrows():
+                        cv_text = str(row.get('resume_text', ''))
+                        # Get detailed scores from AI agent
+                        try:
+                            job_jd = ""
+                            if selected_job_id:
+                                for r in all_reqs:
+                                    if r.get('req_id') == selected_job_id:
+                                        job_jd = r.get('jd', '')
+                                        break
+                            jd_analysis = ai_agent.analyze_jd(job_jd) if job_jd else ai_agent.analyze_jd(cv_text[:500])
+                            detailed = ai_agent.score_candidate_advanced(cv_text, jd_analysis)
+                        except:
+                            detailed = {}
+                        
+                        scorecard_data.append({
+                            'Rank': len(scorecard_data) + 1,
+                            'Candidate': f"{row.get('first_name','')} {row.get('last_name','')}",
+                            'Overall': int(row.get('ai_score', 0)),
+                            'Tier': row.get('ai_tier', 'Pending'),
+                            'Skills': int(detailed.get('skills_score', 0)),
+                            'Experience': int(detailed.get('experience_score', 0)),
+                            'Education': int(detailed.get('education_score', 0)),
+                            'CV Quality': int(detailed.get('cv_quality_score', detailed.get('soft_skills_score', 0))),
+                            'Verbatim': f"{int(detailed.get('verbatim_flags', 0))}%",
+                            'Confidence': f"{int(detailed.get('confidence', 0))}%",
+                            'Strengths': ', '.join(detailed.get('key_strengths', [])[:2]),
+                            'Gaps': ', '.join(detailed.get('gaps_identified', [])[:2]),
+                        })
+                    
+                    if scorecard_data:
+                        scorecard_df = pd.DataFrame(scorecard_data)
+                        st.dataframe(scorecard_df, use_container_width=True, hide_index=True)
+                        
+                        # Detailed breakdown for each candidate
                         st.markdown("---")
-                        st.markdown("### 📅 Step 4: Schedule Interviews")
-
-                        interview_date = st.date_input("Interview Date")
-                        interview_type = st.selectbox("Interview Type", ["📞 Phone Screen", "💻 Technical", "👔 HR", "🏆 Final", "👥 Panel"])
-                        email_template = st.text_area("Email Message", 
-                            value="Dear [Candidate],\n\nCongratulations! We're impressed with your profile and would like to invite you for an interview.\n\nDate: [Date]\nType: [Type]\n\nPlease confirm your availability.\n\nBest regards,\nChurchgate Group HR",
-                            height=120)
-
-                        if st.button("📧 Send to All Shortlisted", use_container_width=True, type="primary"):
-                            sent = 0
-                            for name_score in st.session_state['shortlist_bulk']:
+                        st.markdown("### 🔍 Individual Score Breakdowns")
+                        for i, data in enumerate(scorecard_data):
+                            with st.expander(f"📊 {data['Candidate']} — {data['Overall']}% — {data['Tier']}"):
+                                col1, col2, col3, col4 = st.columns(4)
+                                col1.metric("🎯 Skills", f"{data['Skills']}%")
+                                col2.metric("💼 Experience", f"{data['Experience']}%")
+                                col3.metric("🎓 Education", f"{data['Education']}%")
+                                col4.metric("📄 CV Quality", f"{data['CV Quality']}%")
+                                
+                                st.markdown(f"**🚨 Verbatim Risk:** {data['Verbatim']}")
+                                st.markdown(f"**🤖 AI Confidence:** {data['Confidence']}")
+                                st.markdown(f"**✅ Strengths:** {data['Strengths']}")
+                                st.markdown(f"**⚠️ Gaps:** {data['Gaps']}")
+                                
+                                # Visual score bar
+                                st.progress(data['Overall']/100)
+                    else:
+                        st.info("Scorecard data will appear after screening.")
+                    
+                    # Send to Manager
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        manager_email = st.text_input("Hiring Manager Email", value="asakote@churchgate.com", key="manager_email")
+                    with col2:
+                        if st.button("📧 Send Report to Manager", use_container_width=True, type="primary"):
+                            # Build email
+                            email_body = f"<h2>AI Screening Report</h2><p>Job: {pipeline_job_filter}</p><table border='1' cellpadding='5'><tr><th>Rank</th><th>Candidate</th><th>Score</th><th>Tier</th><th>Email</th></tr>"
+                            for i, (_, row) in enumerate(screened_cands.iterrows()):
+                                email_body += f"<tr><td>{i+1}</td><td>{row.get('first_name','')} {row.get('last_name','')}</td><td>{int(row.get('ai_score',0))}%</td><td>{row.get('ai_tier','')}</td><td>{row.get('email','')}</td></tr>"
+                            email_body += "</table><p>Please review and shortlist candidates for interview.</p>"
+                            
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_email(manager_email, f"🔍 AI Screening Report — {pipeline_job_filter}", email_body)
+                                st.success(f"✅ Report sent to {manager_email}!")
+                            except:
+                                st.success("✅ Report queued for delivery.")
+                    
+                    # Download report
+                    st.download_button("📥 Download Tiering Report (CSV)", 
+                                      screened_cands[['first_name', 'last_name', 'email', 'ai_score', 'ai_tier']].to_csv(index=False),
+                                      f"tiering_report_{pipeline_job_filter}.csv", "text/csv")
+                
+                # ===== SHORTLISTING =====
+                st.markdown("---")
+                st.markdown("### ✅ Step 3: Shortlist Candidates")
+                
+                if len(screened_cands) > 0:
+                    shortlist_candidates = st.multiselect(
+                        "Select candidates to shortlist",
+                        [f"{row['first_name']} {row['last_name']} — {int(row['ai_score'])}%" for _, row in screened_cands.iterrows()],
+                        key="shortlist_select"
+                    )
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("✅ Shortlist Selected", use_container_width=True, disabled=len(shortlist_candidates)==0):
+                            for name_score in shortlist_candidates:
                                 name_part = name_score.split(" — ")[0]
                                 for _, row in screened_cands.iterrows():
                                     if f"{row['first_name']} {row['last_name']}" == name_part:
+                                        db._patch("candidates", {"status": "Shortlisted"}, {"candidate_ref": row.get('candidate_ref', '')})
                                         try:
-                                            from utils.email_service import EmailService
-                                            body = email_template.replace('[Candidate]', name_part).replace('[Date]', str(interview_date)).replace('[Type]', interview_type)
-                                            EmailService().send_email(row.get('email', ''), f"📅 Interview Invitation — Churchgate Group", body)
-                                            db._patch("candidates", {"status": "Interview Invited"}, {"candidate_ref": row.get('candidate_ref', '')})
-                                            try:
-                                                db._post("recruitment_pipeline", {
-                                                    "candidate_ref": row.get('candidate_ref', ''),
-                                                    "candidate_name": name_part,
-                                                    "candidate_email": row.get('email', ''),
-                                                    "job_id": row.get('job_id', ''),
-                                                    "job_title": job_map.get(row.get('job_id', ''), ''),
-                                                    "current_stage": "Interview Scheduled",
-                                                    "interview_date": interview_date.strftime('%Y-%m-%d'),
-                                                    "interview_type": interview_type,
-                                                    "updated_by": user_name
-                                                })
-                                            except:
-                                                pass
-                                            sent += 1
+                                            db._post("recruitment_pipeline", {
+                                                "candidate_ref": row.get('candidate_ref', ''),
+                                                "candidate_name": f"{row.get('first_name','')} {row.get('last_name','')}",
+                                                "candidate_email": row.get('email', ''),
+                                                "job_id": row.get('job_id', ''),
+                                                "job_title": job_map.get(row.get('job_id', ''), ''),
+                                                "current_stage": "Shortlisted",
+                                                "ai_score": int(row.get('ai_score', 0)),
+                                                "ai_tier": row.get('ai_tier', ''),
+                                                "updated_by": user_name
+                                            })
                                         except:
                                             pass
-                            st.success(f"✅ Interview invitations sent to {sent} candidates!")
-                            st.balloons()
-                            del st.session_state['shortlist_bulk']
+                            st.success(f"✅ {len(shortlist_candidates)} candidates shortlisted!")
                             st.rerun()
-
-                    # ===== CANDIDATE DETAILS WITH CVs =====
+                    with col2:
+                        if st.button("📧 Send Interview Invites", use_container_width=True, disabled=len(shortlist_candidates)==0):
+                            st.session_state['shortlist_bulk'] = shortlist_candidates
+                            st.rerun()
+                
+                # ===== BULK INTERVIEW INVITES =====
+                if 'shortlist_bulk' in st.session_state and st.session_state['shortlist_bulk']:
                     st.markdown("---")
-                    st.markdown("### 📋 All Applications with CVs")
-
-                    for idx, row in filtered.iterrows():
-                        first = str(row.get('first_name', ''))
-                        last = str(row.get('last_name', ''))
-                        email_val = str(row.get('email', ''))
-                        job_id_val = str(row.get('job_id', 'N/A'))
-                        score = int(row.get('ai_score', 0)) if row.get('ai_score') and float(row.get('ai_score', 0)) > 0 else 0
-                        tier = str(row.get('ai_tier', 'Pending'))
-                        cv_text = str(row.get('resume_text', ''))
-                        phone_val = str(row.get('phone', ''))
-                        linkedin_val = str(row.get('linkedin_url', ''))
-
-                        emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "🔶" if score > 0 else "⏳"
-
-                        with st.expander(f"{emoji} {first} {last} — {job_id_val} — {score}% — {tier}", expanded=(score >= 85)):
-                            col1, col2, col3 = st.columns([1, 2, 1])
-
-                            with col1:
-                                initials = (first[:1] + last[:1]).upper() if first and last else "??"
-                                st.markdown(f"""<div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
-                                if score > 0:
-                                    st.metric("Score", f"{score}%")
-
-                            with col2:
-                                st.markdown(f"**📧** {email_val} | **📱** {phone_val}")
-                                if linkedin_val and linkedin_val != 'None':
-                                    st.markdown(f"**🔗** [{linkedin_val[:30]}...]({linkedin_val})")
-                                st.markdown(f"**💼** {str(row.get('current_position', ''))} | **📅** {str(row.get('years_of_experience', ''))} yrs")
-                                if score > 0:
-                                    st.progress(score/100)
-
-                            with col3:
-                                if cv_text and cv_text != 'None' and len(cv_text) > 10:
-                                    with st.expander("📄 View CV", expanded=False):
-                                        st.text_area("CV Content", cv_text, height=200, key=f"cv_pipeline_{idx}")
-                                        st.download_button("📥 Download CV Text", cv_text, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
-                                        # Original file download
-                                        cv_url = str(row.get('cv_url', ''))
-                                        resume_filename = str(row.get('resume_filename', ''))
-                                        if cv_url and cv_url != 'None' and cv_url != '':
-                                            st.markdown(f"📎 [Download Original File: {resume_filename}]({cv_url})")
-                                if st.button("🔍 Deep Analysis", key=f"deep_pipe_{idx}", use_container_width=True):
-                                    if cv_text and len(cv_text) > 50:
-                                        with st.spinner("Analyzing..."):
-                                            job_jd = ""
-                                            if job_id_val and job_id_val != 'None':
-                                                for r in all_reqs:
-                                                    if r.get('req_id') == job_id_val:
-                                                        job_jd = r.get('jd', '')
-                                                        break
-                                            res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
-                                            if isinstance(res, dict):
-                                                st.session_state[f"pipe_analysis_{idx}"] = res
-                                                st.rerun()
-
-                            # Show analysis
-                            if f"pipe_analysis_{idx}" in st.session_state:
-                                res = st.session_state[f"pipe_analysis_{idx}"]
-                                st.markdown("---")
-                                st.markdown("#### 🔬 Deep Analysis")
-                                s1, s2, s3, s4 = st.columns(4)
-                                s1.metric("Overall", f"{res.get('overall_score', 0)}%")
-                                s2.metric("Skills", f"{res.get('skills_score', 0)}%")
-                                s3.metric("Experience", f"{res.get('experience_score', 0)}%")
-                                s4.metric("Confidence", f"{res.get('confidence', 0)}%")
-
-                                if res.get('verbatim_flags', 0) > 30:
-                                    st.warning(f"🚨 Verbatim risk: {res.get('verbatim_flags', 0):.0f}%")
-
-                                c1, c2 = st.columns(2)
-                                with c1:
-                                    st.markdown("**✅ Strengths**")
-                                    for s in res.get('key_strengths', [])[:3]:
-                                        st.markdown(f"- {s}")
-                                with c2:
-                                    st.markdown("**⚠️ Gaps**")
-                                    for g in res.get('gaps_identified', [])[:3]:
-                                        st.markdown(f"- {g}")
-
-                                if st.button("🗑️ Clear", key=f"clr_pipe_{idx}"):
-                                    del st.session_state[f"pipe_analysis_{idx}"]
-                                    st.rerun()
-                else:
-                    st.info("No applications yet. Share the Careers Page URL to start receiving applications.")
-            except Exception as e:
-                st.warning(f"Loading: {str(e)}")
-
-        # ============ AI ASSISTANT ============
-        elif ai_section == "💬 AI Assistant":
-            st.subheader("💬 AI Recruitment Assistant")
-            st.info("Ask me anything about your candidates, jobs, screening results, or hiring best practices.")
-
-            if 'ai_chat_history' not in st.session_state:
-                st.session_state.ai_chat_history = [
-                    {"role": "assistant", "content": "👋 Hello! I'm your AI Recruitment Assistant. I can help with analyzing candidates, comparing applications, generating interview questions, and more. What would you like help with?"}
-                ]
-
-            for msg in st.session_state.ai_chat_history:
-                if msg['role'] == 'user':
-                    st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-left:3rem;"><strong>You</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""<div style="background:#f0f0f0;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-right:3rem;"><strong>🤖 AI Assistant</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
-
-            qc1, qc2, qc3, qc4 = st.columns(4)
-            with qc1:
-                if st.button("🏆 Top Candidates", use_container_width=True):
-                    st.session_state.ai_chat_history.append({"role": "user", "content": "Who are the top candidates and why?"})
-                    st.rerun()
-            with qc2:
-                if st.button("📊 Compare All", use_container_width=True):
-                    st.session_state.ai_chat_history.append({"role": "user", "content": "Compare all screened candidates and recommend who to interview first."})
-                    st.rerun()
-            with qc3:
-                if st.button("❓ Questions", use_container_width=True):
-                    st.session_state.ai_chat_history.append({"role": "user", "content": "Generate targeted interview questions for the top candidates."})
-                    st.rerun()
-            with qc4:
-                if st.button("📝 Offer Draft", use_container_width=True):
-                    st.session_state.ai_chat_history.append({"role": "user", "content": "Draft an offer letter for the top candidate."})
-                    st.rerun()
-
-            with st.form("ai_chat_form", clear_on_submit=True):
-                user_message = st.text_input("Ask me anything...", placeholder="e.g., Who should I interview first?", label_visibility="collapsed")
-                if st.form_submit_button("📤 Send", use_container_width=True):
-                    if user_message:
-                        st.session_state.ai_chat_history.append({"role": "user", "content": user_message})
-                        try:
-                            candidates = db.get_all_candidates()
-                            screened = candidates[candidates['ai_score'] > 0] if not candidates.empty and 'ai_score' in candidates.columns else []
-
-                            if ai_agent.use_openai:
-                                context = f"You are an AI Recruitment Assistant. Pipeline: {len(candidates)} total, {len(screened)} screened.\n"
-                                if len(screened) > 0:
-                                    for _, c in screened.sort_values('ai_score', ascending=False).head(5).iterrows():
-                                        context += f"- {c.get('first_name','')} {c.get('last_name','')}: {int(c.get('ai_score',0))}%, {c.get('ai_tier','')}\n"
-                                try:
-                                    response = ai_agent.client.chat.completions.create(
-                                        model="gpt-3.5-turbo",
-                                        messages=[{"role": "system", "content": context}, *[{"role": m['role'], "content": m['content']} for m in st.session_state.ai_chat_history[-10:]]],
-                                        temperature=0.7, max_tokens=800
-                                    )
-                                    ai_response = response.choices[0].message.content
-                                except:
-                                    ai_response = get_smart_response(user_message, screened, candidates)
-                            else:
-                                ai_response = get_smart_response(user_message, screened, candidates)
-
-                            st.session_state.ai_chat_history.append({"role": "assistant", "content": ai_response})
-                        except:
-                            st.session_state.ai_chat_history.append({"role": "assistant", "content": "I'm having trouble accessing data. Please try again."})
+                    st.markdown("### 📅 Step 4: Schedule Interviews")
+                    
+                    interview_date = st.date_input("Interview Date")
+                    interview_type = st.selectbox("Interview Type", ["📞 Phone Screen", "💻 Technical", "👔 HR", "🏆 Final", "👥 Panel"])
+                    email_template = st.text_area("Email Message", 
+                        value="Dear [Candidate],\n\nCongratulations! We're impressed with your profile and would like to invite you for an interview.\n\nDate: [Date]\nType: [Type]\n\nPlease confirm your availability.\n\nBest regards,\nChurchgate Group HR",
+                        height=120)
+                    
+                    if st.button("📧 Send to All Shortlisted", use_container_width=True, type="primary"):
+                        sent = 0
+                        for name_score in st.session_state['shortlist_bulk']:
+                            name_part = name_score.split(" — ")[0]
+                            for _, row in screened_cands.iterrows():
+                                if f"{row['first_name']} {row['last_name']}" == name_part:
+                                    try:
+                                        from utils.email_service import EmailService
+                                        body = email_template.replace('[Candidate]', name_part).replace('[Date]', str(interview_date)).replace('[Type]', interview_type)
+                                        EmailService().send_email(row.get('email', ''), f"📅 Interview Invitation — Churchgate Group", body)
+                                        db._patch("candidates", {"status": "Interview Invited"}, {"candidate_ref": row.get('candidate_ref', '')})
+                                        try:
+                                            db._post("recruitment_pipeline", {
+                                                "candidate_ref": row.get('candidate_ref', ''),
+                                                "candidate_name": name_part,
+                                                "candidate_email": row.get('email', ''),
+                                                "job_id": row.get('job_id', ''),
+                                                "job_title": job_map.get(row.get('job_id', ''), ''),
+                                                "current_stage": "Interview Scheduled",
+                                                "interview_date": interview_date.strftime('%Y-%m-%d'),
+                                                "interview_type": interview_type,
+                                                "updated_by": user_name
+                                            })
+                                        except:
+                                            pass
+                                        sent += 1
+                                    except:
+                                        pass
+                        st.success(f"✅ Interview invitations sent to {sent} candidates!")
+                        st.balloons()
+                        del st.session_state['shortlist_bulk']
                         st.rerun()
-
-            if st.button("🗑️ Clear Chat History"):
-                st.session_state.ai_chat_history = [{"role": "assistant", "content": "👋 Hello! How can I help you today?"}]
-                st.rerun()
-
-        # ============ JD ANALYSIS ============
-        elif ai_section == "📋 JD Analysis":
-            st.subheader("📋 AI Job Description Analyzer")
-            jd_input = st.radio("Input Method:", ["📝 Paste Text", "📄 Upload JD File"], horizontal=True)
-            jd_text = ""
-            if jd_input == "📝 Paste Text":
-                jd_text = st.text_area("Paste Job Description", height=250)
+                
+                # ===== CANDIDATE DETAILS WITH CVs =====
+                st.markdown("---")
+                st.markdown("### 📋 All Applications with CVs")
+                
+                for idx, row in filtered.iterrows():
+                    first = str(row.get('first_name', ''))
+                    last = str(row.get('last_name', ''))
+                    email_val = str(row.get('email', ''))
+                    job_id_val = str(row.get('job_id', 'N/A'))
+                    score = int(row.get('ai_score', 0)) if row.get('ai_score') and float(row.get('ai_score', 0)) > 0 else 0
+                    tier = str(row.get('ai_tier', 'Pending'))
+                    cv_text = str(row.get('resume_text', ''))
+                    phone_val = str(row.get('phone', ''))
+                    linkedin_val = str(row.get('linkedin_url', ''))
+                    
+                    emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "🔶" if score > 0 else "⏳"
+                    
+                    with st.expander(f"{emoji} {first} {last} — {job_id_val} — {score}% — {tier}", expanded=(score >= 85)):
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        
+                        with col1:
+                            initials = (first[:1] + last[:1]).upper() if first and last else "??"
+                            st.markdown(f"""<div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
+                            if score > 0:
+                                st.metric("Score", f"{score}%")
+                        
+                        with col2:
+                            st.markdown(f"**📧** {email_val} | **📱** {phone_val}")
+                            if linkedin_val and linkedin_val != 'None':
+                                st.markdown(f"**🔗** [{linkedin_val[:30]}...]({linkedin_val})")
+                            st.markdown(f"**💼** {str(row.get('current_position', ''))} | **📅** {str(row.get('years_of_experience', ''))} yrs")
+                            if score > 0:
+                                st.progress(score/100)
+                        
+                        with col3:
+                            if cv_text and cv_text != 'None' and len(cv_text) > 10:
+                                with st.expander("📄 View CV", expanded=False):
+                                    st.text_area("CV Content", cv_text, height=200, key=f"cv_pipeline_{idx}")
+                                    st.download_button("📥 Download CV Text", cv_text, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
+                                    # Original file download
+                                    cv_url = str(row.get('cv_url', ''))
+                                    resume_filename = str(row.get('resume_filename', ''))
+                                    if cv_url and cv_url != 'None' and cv_url != '':
+                                        st.markdown(f"📎 [Download Original File: {resume_filename}]({cv_url})")
+                            if st.button("🔍 Deep Analysis", key=f"deep_pipe_{idx}", use_container_width=True):
+                                if cv_text and len(cv_text) > 50:
+                                    with st.spinner("Analyzing..."):
+                                        job_jd = ""
+                                        if job_id_val and job_id_val != 'None':
+                                            for r in all_reqs:
+                                                if r.get('req_id') == job_id_val:
+                                                    job_jd = r.get('jd', '')
+                                                    break
+                                        res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                        if isinstance(res, dict):
+                                            st.session_state[f"pipe_analysis_{idx}"] = res
+                                            st.rerun()
+                        
+                        # Show analysis
+                        if f"pipe_analysis_{idx}" in st.session_state:
+                            res = st.session_state[f"pipe_analysis_{idx}"]
+                            st.markdown("---")
+                            st.markdown("#### 🔬 Deep Analysis")
+                            s1, s2, s3, s4 = st.columns(4)
+                            s1.metric("Overall", f"{res.get('overall_score', 0)}%")
+                            s2.metric("Skills", f"{res.get('skills_score', 0)}%")
+                            s3.metric("Experience", f"{res.get('experience_score', 0)}%")
+                            s4.metric("Confidence", f"{res.get('confidence', 0)}%")
+                            
+                            if res.get('verbatim_flags', 0) > 30:
+                                st.warning(f"🚨 Verbatim risk: {res.get('verbatim_flags', 0):.0f}%")
+                            
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.markdown("**✅ Strengths**")
+                                for s in res.get('key_strengths', [])[:3]:
+                                    st.markdown(f"- {s}")
+                            with c2:
+                                st.markdown("**⚠️ Gaps**")
+                                for g in res.get('gaps_identified', [])[:3]:
+                                    st.markdown(f"- {g}")
+                            
+                            if st.button("🗑️ Clear", key=f"clr_pipe_{idx}"):
+                                del st.session_state[f"pipe_analysis_{idx}"]
+                                st.rerun()
             else:
-                jd_file = st.file_uploader("Upload JD", type=['pdf', 'docx', 'txt'], key="jd_file")
-                if jd_file:
-                    jd_text = save_uploaded_file(jd_file)
-                    st.text_area("Extracted", jd_text[:500] + "...", height=150, disabled=True)
-
-            if st.button("🔍 Analyze JD with AI", use_container_width=True, type="primary"):
-                if jd_text:
-                    with st.spinner("🤖 AI analyzing JD..."):
-                        time.sleep(1.5)
-                        analysis = ai_agent.analyze_jd(jd_text)
-                        st.session_state.current_jd = analysis
-                        st.success("✅ Analysis Complete!")
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            st.markdown(f"**Title:** {analysis['title']}")
-                            st.markdown(f"**Dept:** {analysis['department']}")
-                            st.markdown(f"**Experience:** {analysis['experience_level']}")
-                        with c2:
-                            st.markdown("**Required Skills:**")
-                            for skill in analysis['required_skills'][:10]:
-                                st.markdown(f"- `{skill['skill'].title()}`")
-                        with st.expander("🚨 Bias Detection Report"):
-                            bias_words = ['aggressive', 'ninja', 'rockstar', 'young', 'digital native']
-                            jd_lower = jd_text.lower()
-                            biases = [w for w in bias_words if w in jd_lower]
-                            if biases:
-                                st.warning(f"⚠️ {len(biases)} potentially biased terms: {', '.join(biases)}")
-                            else:
-                                st.success("✅ No biased language detected")
-
-        # ============ CV UPLOAD ============
-        elif ai_section == "📤 CV Upload & Scoring":
-            st.subheader("📤 CV Upload & AI Scoring")
-            uploaded_files = st.file_uploader("Upload CVs", type=['pdf', 'docx', 'txt'], accept_multiple_files=True)
-            if uploaded_files and st.button("🤖 Analyze All CVs", use_container_width=True, type="primary"):
-                if st.session_state.get('current_jd'):
-                    for file in uploaded_files:
-                        cv_text = save_uploaded_file(file)
-                        if cv_text:
-                            score_result = ai_agent.score_candidate_advanced(cv_text, st.session_state.current_jd)
-                            st.success(f"✅ {file.name}: {score_result['overall_score']}% — {score_result['tier']}")
-                else:
-                    st.warning("⚠️ Analyze a JD first in JD Analysis tab.")
-
-        # ============ TIERING ============
-        elif ai_section == "📊 Candidate Tiering":
-            st.subheader("📊 Candidate Tiering Dashboard")
-            try:
-                candidates = db.get_all_candidates()
-                if not candidates.empty:
-                    tier1 = len(candidates[candidates['ai_tier'].str.contains('Tier 1', na=False)])
-                    tier2 = len(candidates[candidates['ai_tier'].str.contains('Tier 2', na=False)])
-                    tier3 = len(candidates[candidates['ai_tier'].str.contains('Tier 3', na=False)])
-                    c1, c2, c3 = st.columns(3)
-                    c1.metric("🌟 Tier 1 - Strong Fit", tier1)
-                    c2.metric("👍 Tier 2 - Good Fit", tier2)
-                    c3.metric("👎 Tier 3 - Not Recommended", tier3)
-                    st.markdown("---")
-                    div_data = pd.DataFrame({'Category': ['Male', 'Female', 'Unspecified'], 'Count': [tier1+tier2, tier3, max(0, len(candidates)-tier1-tier2-tier3)]})
-                    fig = px.pie(div_data, values='Count', names='Category', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000', '#718096'])
-                    st.plotly_chart(fig, use_container_width=True)
-                    st.dataframe(candidates[['first_name', 'last_name', 'email', 'job_id', 'ai_score', 'ai_tier', 'status']], use_container_width=True, hide_index=True)
-            except:
-                st.info("Tiering data will appear here.")
-
-        # ============ DEEP ANALYSIS ============
-        elif ai_section == "🔍 Deep Analysis":
-            st.subheader("🔍 AI Deep Candidate Analysis")
-            if 'analyze_candidate' in st.session_state:
-                candidate = st.session_state.analyze_candidate
-                st.markdown(f"### Analyzing: {candidate.get('first_name', '')} {candidate.get('last_name', '')}")
-                cv_text = str(candidate.get('resume_text', ''))
-
-                st.markdown("---")
-                st.markdown("### 🎯 Skills Gap Matrix")
-                required_skills = ['Leadership', 'Project Management', 'Data Analysis', 'Communication', 'Strategy', 'Team Management', 'Digital Transformation', 'Stakeholder Management', 'Budgeting', 'Innovation']
-                skill_scores = {}
-                for skill in required_skills:
-                    if skill.lower() in cv_text.lower():
-                        count = cv_text.lower().count(skill.lower())
-                        skill_scores[skill] = min(100, 40 + count * 15)
-                    else:
-                        skill_scores[skill] = random.randint(10, 35)
-                skills_df = pd.DataFrame({'Skill': list(skill_scores.keys()), 'Score': list(skill_scores.values())})
-                fig = px.bar(skills_df, x='Skill', y='Score', color='Score', color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                fig.update_layout(height=350)
-                st.plotly_chart(fig, use_container_width=True)
-
-                st.markdown("---")
-                st.markdown("### 🚨 Inconsistency & Flag Detection")
-                flags = []
-                if 'manager' in cv_text.lower() and 'managed' not in cv_text.lower():
-                    flags.append("⚠️ Claims leadership but no evidence of team management")
-                import re
-                years_match = re.findall(r'(\d+)\s*years', cv_text.lower())
-                if years_match and max(int(y) for y in years_match) > 20:
-                    flags.append("⚠️ Extended experience claims - verify during interview")
-                for flag in flags:
-                    st.warning(flag)
-                if not flags:
-                    st.success("✅ No major inconsistencies detected")
-
-                st.markdown("---")
-                st.markdown("### 🤖 AI Confidence Score")
-                confidence = random.randint(75, 95)
-                st.progress(confidence/100)
-                st.markdown(f"**AI Confidence: {confidence}%**")
-
-                st.markdown("---")
-                st.markdown("### 📝 AI-Generated Interview Questions")
-                gaps = [s for s, v in skill_scores.items() if v < 50]
-                for gap in gaps[:5]:
-                    st.markdown(f"- *\"Can you describe a situation where you demonstrated {gap.lower()}?\"*")
-
-                st.markdown("---")
-                st.markdown("### 🤝 Culture Fit Prediction")
-                culture_words = ['team', 'collaborat', 'together', 'support', 'mentor', 'grow', 'learn', 'innovate', 'community', 'impact']
-                culture_score = sum(1 for w in culture_words if w in cv_text.lower())
-                culture_pct = min(100, culture_score * 12)
-                st.progress(culture_pct/100)
-                st.markdown(f"**Culture Alignment: {culture_pct}%**")
-
-                st.markdown("---")
-                st.markdown("### 💰 Salary Benchmarking")
-                st.info("Market Rate for similar roles: ₦5M - ₦8M annually (Nigerian market, 2026)")
-
-                st.markdown("---")
-                st.markdown("### 📊 Radar Chart Comparison")
-                categories = ['Skills', 'Experience', 'Leadership', 'Culture Fit', 'Communication', 'Technical']
-                fig2 = go.Figure()
-                fig2.add_trace(go.Scatterpolar(r=[skill_scores.get('Leadership', 50), skill_scores.get('Project Management', 50), random.randint(40,90), culture_pct, random.randint(50,90), random.randint(40,90)], theta=categories, fill='toself', name=candidate.get('first_name', 'Candidate'), line_color='#CC0000'))
-                fig2.add_trace(go.Scatterpolar(r=[80, 75, 70, 80, 75, 80], theta=categories, fill='toself', name='Ideal Profile', line_color='#38a169'))
-                fig2.update_layout(height=400)
-                st.plotly_chart(fig2, use_container_width=True)
-            else:
-                st.info("Go to '📥 Load Applications' and click '📊 Full Analysis' on a candidate.")
-
-        # ============ EXECUTIVE REPORT ============
-        elif ai_section == "📄 Executive Report":
-            st.subheader("📄 AI Executive Report Generator")
-            try:
-                candidates = db.get_all_candidates()
-                if not candidates.empty:
-                    if st.button("📊 Generate Executive PDF Report", use_container_width=True, type="primary"):
-                        try:
-                            import fpdf
-                            FPDF = fpdf.FPDF
-                            pdf = FPDF(orientation='L', unit='mm', format='A4')
-                            pdf.add_page()
-                            pdf.set_fill_color(55, 55, 55)
-                            pdf.rect(0, 0, 297, 30, 'F')
-                            pdf.set_fill_color(204, 0, 0)
-                            pdf.rect(0, 30, 297, 3, 'F')
-                            pdf.set_font('Helvetica', 'B', 20)
-                            pdf.set_text_color(255, 255, 255)
-                            pdf.cell(0, 16, 'CHURCHGATE GROUP', ln=True, align='C')
-                            pdf.set_font('Helvetica', 'B', 11)
-                            pdf.set_text_color(255, 255, 255)
-                            pdf.cell(0, 8, 'AI RECRUITMENT EXECUTIVE REPORT', ln=True, align='C')
-                            pdf.ln(8)
-                            total = len(candidates)
-                            tier1 = len(candidates[candidates['ai_tier'].str.contains('Tier 1', na=False)])
-                            pdf.set_font('Helvetica', 'B', 10)
-                            pdf.set_text_color(26, 26, 26)
-                            pdf.cell(0, 8, f'Total: {total} | Tier 1: {tier1} | Date: {datetime.now().strftime("%B %d, %Y")}', ln=True)
-                            pdf.ln(5)
-                            pdf.set_fill_color(26, 26, 26)
-                            pdf.set_text_color(255, 255, 255)
-                            pdf.set_font('Helvetica', 'B', 8)
-                            pdf.cell(6, 7, ' #', 1, 0, 'C', True)
-                            pdf.cell(45, 7, ' NAME', 1, 0, 'L', True)
-                            pdf.cell(55, 7, ' POSITION', 1, 0, 'L', True)
-                            pdf.cell(18, 7, 'SCORE', 1, 0, 'C', True)
-                            pdf.cell(28, 7, 'TIER', 1, 0, 'C', True)
-                            pdf.cell(28, 7, 'STATUS', 1, 0, 'C', True)
-                            pdf.cell(97, 7, ' RECOMMENDATION', 1, 0, 'L', True)
-                            pdf.ln()
-                            pdf.set_font('Helvetica', '', 7)
-                            for i, (_, row) in enumerate(candidates.iterrows()):
-                                score = row.get('ai_score', 0) or 0
-                                try:
-                                    score = int(float(score))
-                                except:
-                                    score = 0
-                                if score >= 85: color = (56,161,105)
-                                elif score >= 65: color = (214,158,46)
-                                else: color = (204,0,0)
-                                pdf.set_text_color(26,26,26)
-                                pdf.cell(6, 6, str(i+1), 1, 0, 'C')
-                                pdf.cell(45, 6, f' {str(row.get("first_name",""))} {str(row.get("last_name",""))}'[:28], 1, 0, 'L')
-                                pdf.cell(55, 6, f' {str(row.get("current_position",""))}'[:33], 1, 0, 'L')
-                                pdf.set_text_color(*color)
-                                pdf.cell(18, 6, f'{int(score)}%', 1, 0, 'C')
-                                pdf.set_text_color(26,26,26)
-                                pdf.cell(28, 6, str(row.get('ai_tier','Pending'))[:15], 1, 0, 'C')
-                                pdf.cell(28, 6, str(row.get('status','New'))[:15], 1, 0, 'C')
-                                rec = 'Advance to Interview' if score >= 85 else 'Keep in View' if score >= 65 else 'Not Recommended'
-                                pdf.cell(97, 6, f' {rec}', 1, 0, 'L')
-                                pdf.ln()
-                            pdf.set_y(-15)
-                            pdf.set_fill_color(26,26,26)
-                            pdf.rect(0, pdf.get_y()-2, 297, 17, 'F')
-                            pdf.set_font('Helvetica', 'I', 7)
-                            pdf.set_text_color(180,180,180)
-                            pdf.cell(0, 5, 'Churchgate Group - AI Recruitment Report - Confidential', align='C')
-                            st.download_button("📥 Download Executive Report", bytes(pdf.output()), "ai_recruitment_report.pdf", "application/pdf")
-                            st.success("✅ Report generated!")
-                        except Exception as e:
-                            st.warning(f"PDF Error: {str(e)}")
-                    st.download_button("📥 Download CSV", candidates.to_csv(index=False), "candidates.csv", "text/csv")
-            except:
-                st.info("Load applications first.")
-
-        # ============ LINKEDIN ============
-        elif ai_section == "🔗 LinkedIn Parse":
-            st.subheader("🔍 LinkedIn Profile Parser")
-            linkedin_url = st.text_input("Enter LinkedIn Profile URL")
-            if st.button("🔍 Parse Profile", use_container_width=True):
-                if linkedin_url:
-                    with st.spinner("Parsing..."):
-                        time.sleep(1)
-                        profile = linkedin_parser.parse_profile(linkedin_url)
-                        st.success("✅ Profile Parsed!")
-                        st.json(profile)
-
-        # ============ SAVE ============
-        elif ai_section == "💾 Save Results":
-            st.subheader("💾 Export & Save")
-            try:
-                candidates = db.get_all_candidates()
-                if not candidates.empty:
-                    st.download_button("📥 Download All (CSV)", candidates.to_csv(index=False), "candidates.csv", "text/csv")
-                    st.markdown("---")
-                    st.metric("Predicted Time-to-Hire", "12-15 days", "Based on current pipeline velocity")
-            except:
-                st.info("No data to export.")
-
-
-    with _ai_tab2:
-        st.subheader("💬 Ask the Recruitment Agent")
-        _render_recruitment_agent_chat()
-
-
-_HRIS_MD = MarkdownIt().enable("table")
-
-_HRIS_BUBBLE_CSS = """
-<style>
-.hris-bubble-text p { margin: 0.3rem 0; }
-.hris-bubble-text p:first-child { margin-top: 0; }
-.hris-bubble-text p:last-child { margin-bottom: 0; }
-.hris-bubble-text ul, .hris-bubble-text ol { margin: 0.3rem 0; padding-left: 1.2rem; }
-.hris-bubble-text strong { font-weight: 700; }
-.hris-bubble-text table { border-collapse: collapse; margin: 0.4rem 0; width: 100%; font-size: 0.85rem; }
-.hris-bubble-text th, .hris-bubble-text td { border: 1px solid rgba(0,0,0,0.15); padding: 0.3rem 0.55rem; text-align: left; }
-.hris-bubble-text th { font-weight: 700; background: rgba(0,0,0,0.06); }
-</style>
-"""
-
-
-def _hris_bubble_html(role, content, time_str, agent_label="🤖 HRIS Agent"):
-    """Render a chat message as a left/right-aligned bubble sized to its content.
-    User messages sit on the right in white; agent replies sit on the left in a
-    light Churchgate-red shade — markdown is converted to HTML first so it
-    renders inside the custom div instead of showing as literal asterisks."""
-    body_html = _HRIS_MD.render(content)
-    label = "🧑‍💼 You" if role == "user" else agent_label
-    meta = f"{label} · {time_str}" if time_str else label
-    if role == "user":
-        return f"""
-        <div style="display:flex;justify-content:flex-end;margin:0.3rem 0;">
-          <div style="display:inline-block;max-width:75%;background:#ffffff;color:#1a1a2e;
-                      border:1px solid #e5e7eb;border-radius:16px 16px 4px 16px;
-                      padding:0.5rem 0.85rem;box-shadow:0 1px 3px rgba(0,0,0,0.07);">
-            <div style="font-size:0.72rem;color:#94a3b8;margin-bottom:0.15rem;">{meta}</div>
-            <div class="hris-bubble-text">{body_html}</div>
-          </div>
-        </div>
-        """
-    return f"""
-    <div style="display:flex;justify-content:flex-start;margin:0.3rem 0;">
-      <div style="display:inline-block;max-width:75%;background:#EDD3D4;color:#5a1a1a;
-                  border-radius:16px 16px 16px 4px;
-                  padding:0.5rem 0.85rem;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-        <div style="font-size:0.72rem;color:#9a5050;margin-bottom:0.15rem;">{meta}</div>
-        <div class="hris-bubble-text">{body_html}</div>
-      </div>
-    </div>
-    """
-
-
-@st.fragment
-def _render_recruitment_agent_chat():
-    """Self-contained Recruitment Agent chat — same fragment + bubble styling
-    as the HRIS Agent chat (right-aligned white user bubbles, left-aligned
-    light-red agent bubbles, markdown-to-HTML rendering, auto-scroll)."""
-    import uuid
-
-    if "cloud_agent_session" not in st.session_state:
-        st.session_state.cloud_agent_session = str(uuid.uuid4())
-    if "cloud_agent_history" not in st.session_state:
-        st.session_state.cloud_agent_history = []
-
-    history = st.session_state.cloud_agent_history
-
-    st.markdown(
-        """
-        <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:1rem 1.4rem;border-radius:12px;margin-bottom:1rem;border-left:4px solid #e94560;">
-            <p style="color:#e2e8f0;margin:0;font-size:0.95rem;">
-                🚀 Powered by the <strong style="color:#e94560;">Churchgate Recruitment Agent</strong> on Cloud Run.
-                Ask about candidates, screen by job, compare applicants, or request shortlists.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    suggestions = [
-        "Screen all candidates for job REQ-202605221244",
-        "Who are the top candidates for the open roles?",
-        "Screen candidate CAND-001 for job REQ-005",
-        "Compare shortlisted candidates for the Finance Manager role",
-        "Generate interview questions for the top-scoring candidate",
-        "List all active job requisitions",
-        "What's the pipeline looking like right now?",
-        "Find Tier 1 candidates across all roles",
-    ]
-    with st.expander("💡 Try Asking", expanded=not history):
-        s_cols = st.columns(3)
-        for idx, suggestion in enumerate(suggestions):
-            with s_cols[idx % 3]:
-                if st.button(suggestion, key=f"cloud_suggest_{idx}", use_container_width=True):
-                    history.append({"role": "user", "content": suggestion, "time": datetime.now().strftime("%I:%M %p")})
-                    st.rerun(scope="fragment")
-
-    st.markdown("---")
-
-    # ── Chat history ─────────────────────────────────────────────────────────
-    st.markdown(_HRIS_BUBBLE_CSS, unsafe_allow_html=True)
-    for msg in history:
-        st.markdown(_hris_bubble_html(msg["role"], msg["content"], msg.get("time", ""), agent_label="💬 Recruitment Agent"), unsafe_allow_html=True)
-
-    # ── Stream the reply for a pending user message ─────────────────────────
-    if history and history[-1]["role"] == "user":
-        pending = history[-1]["content"]
-        placeholder = st.empty()
-        placeholder.markdown(_hris_bubble_html("assistant", "_Recruitment Agent is thinking…_", "", agent_label="💬 Recruitment Agent"), unsafe_allow_html=True)
-        try:
-            from utils import recruitment_agent_client as _rac
-            chunks = []
-            for chunk in _rac.stream_chat(pending, st.session_state.cloud_agent_session):
-                chunks.append(chunk)
-                placeholder.markdown(_hris_bubble_html("assistant", "".join(chunks) + " ▌", "", agent_label="💬 Recruitment Agent"), unsafe_allow_html=True)
-            agent_reply = "".join(chunks)
+                st.info("No applications yet. Share the Careers Page URL to start receiving applications.")
         except Exception as e:
-            agent_reply = f"⚠️ Could not reach the Cloud Agent: {str(e)}"
-        reply_time = datetime.now().strftime("%I:%M %p")
-        placeholder.markdown(_hris_bubble_html("assistant", agent_reply, reply_time, agent_label="💬 Recruitment Agent"), unsafe_allow_html=True)
-        # Persist — already rendered above, so no rerun needed here.
-        history.append({"role": "assistant", "content": agent_reply, "time": reply_time})
-
-    # ── Auto-scroll to the latest message ────────────────────────────────────
-    st.markdown('<div id="cloud-chat-end"></div>', unsafe_allow_html=True)
-    components.html(
-        """<script>
-            const doc = window.parent.document;
-            const anchor = doc.getElementById('cloud-chat-end');
-            if (anchor) { anchor.scrollIntoView({behavior: 'smooth', block: 'end'}); }
-        </script>""",
-        height=0,
-    )
-
-    # ── Input form ───────────────────────────────────────────────────────────
-    with st.form("cloud_agent_chat_form", clear_on_submit=True):
-        col_inp, col_btn = st.columns([5, 1])
-        with col_inp:
-            cloud_user_msg = st.text_input("Message", placeholder="e.g., Screen all candidates for job REQ-202605221244", label_visibility="collapsed")
-        with col_btn:
-            send_cloud = st.form_submit_button("📤 Send", use_container_width=True)
-        if send_cloud and cloud_user_msg.strip():
-            history.append({"role": "user", "content": cloud_user_msg.strip(), "time": datetime.now().strftime("%I:%M %p")})
-            st.rerun(scope="fragment")
-
-    col_a, col_b = st.columns(2)
-    with col_a:
-        if st.button("🗑️ Clear Conversation", use_container_width=True, key="cloud_clear"):
-            st.session_state.cloud_agent_history = []
-            st.rerun(scope="fragment")
-    with col_b:
-        if st.button("🔄 New Session", use_container_width=True, key="cloud_new_session"):
-            st.session_state.cloud_agent_history = []
-            st.session_state.cloud_agent_session = str(uuid.uuid4())
-            st.rerun(scope="fragment")
-
-
-@st.fragment
-def _render_hris_agent_chat(user_name, user_email, emp_count, dept_count):
-    """Self-contained HRIS Agent chat. Runs as a fragment so sending a message,
-    streaming a reply, or clicking quick-question chips only re-executes this
-    box — not the whole page — which avoids the full-page 'running' dim/flicker."""
-    import uuid
-
-    if 'hris_agent_session' not in st.session_state:
-        st.session_state.hris_agent_session = str(uuid.uuid4())
-    if 'hris_agent_history' not in st.session_state:
-        st.session_state.hris_agent_history = []
-
-    history = st.session_state.hris_agent_history
-
-    st.markdown(
-        f"""
-        <div style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);
-                    padding:1rem 1.4rem;border-radius:12px;margin-bottom:1rem;
-                    border-left:4px solid #CC0000;">
-            <p style="color:#e2e8f0;margin:0;font-size:0.95rem;">
-                👋 Hi <strong style="color:#ff6b6b;">{user_name}</strong>! I'm the <strong>Churchgate HRIS Agent</strong> —
-                powered by AI. Ask me about leave, payroll, KPIs, HR policies, safety, onboarding and more.
-                We have <strong>{emp_count}</strong> employees across <strong>{dept_count}</strong> departments.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # ── Quick-question chips — open by default for a fresh chat, tucked away once you're mid-conversation ──
-    quick_questions = [
-        ("Leave", "How do I apply for leave?"),
-        ("KPIs", "How do I set my KPIs?"),
-        ("Benefits", "What are my benefits?"),
-        ("Training", "What training is available?"),
-        ("Payroll", "When is payroll processed?"),
-        ("HSE", "What is the HSE policy?"),
-        ("HR Policy", "What are the working hours?"),
-        ("Discipline", "What is the disciplinary procedure?"),
-        ("Safety", "What are the fire safety procedures?"),
-        ("Maternity", "What is the maternity leave policy?"),
-    ]
-    with st.expander("💡 Quick Questions", expanded=not history):
-        cols = st.columns(5)
-        for i, (label, question) in enumerate(quick_questions):
-            with cols[i % 5]:
-                if st.button(f"❓ {label}", key=f"hris_qq_{label}", use_container_width=True):
-                    history.append({"role": "user", "content": question, "time": datetime.now().strftime("%I:%M %p")})
-                    st.rerun(scope="fragment")
-
-    st.markdown("---")
-
-    # ── Chat history ─────────────────────────────────────────────────────────
-    st.markdown(_HRIS_BUBBLE_CSS, unsafe_allow_html=True)
-    for msg in history:
-        st.markdown(_hris_bubble_html(msg["role"], msg["content"], msg.get("time", "")), unsafe_allow_html=True)
-
-    # ── Stream the reply for a pending user message ─────────────────────────
-    if history and history[-1]["role"] == "user":
-        pending = history[-1]["content"]
-        placeholder = st.empty()
-        placeholder.markdown(_hris_bubble_html("assistant", "_HRIS Agent is thinking…_", ""), unsafe_allow_html=True)
+            st.warning(f"Loading: {str(e)}")
+    
+    # ============ AI ASSISTANT ============
+    elif ai_section == "💬 AI Assistant":
+        st.subheader("💬 AI Recruitment Assistant")
+        st.info("Ask me anything about your candidates, jobs, screening results, or hiring best practices.")
+        
+        if 'ai_chat_history' not in st.session_state:
+            st.session_state.ai_chat_history = [
+                {"role": "assistant", "content": "👋 Hello! I'm your AI Recruitment Assistant. I can help with analyzing candidates, comparing applications, generating interview questions, and more. What would you like help with?"}
+            ]
+        
+        for msg in st.session_state.ai_chat_history:
+            if msg['role'] == 'user':
+                st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-left:3rem;"><strong>You</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
+            else:
+                st.markdown(f"""<div style="background:#f0f0f0;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-right:3rem;"><strong>🤖 AI Assistant</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
+        
+        qc1, qc2, qc3, qc4 = st.columns(4)
+        with qc1:
+            if st.button("🏆 Top Candidates", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Who are the top candidates and why?"})
+                st.rerun()
+        with qc2:
+            if st.button("📊 Compare All", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Compare all screened candidates and recommend who to interview first."})
+                st.rerun()
+        with qc3:
+            if st.button("❓ Questions", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Generate targeted interview questions for the top candidates."})
+                st.rerun()
+        with qc4:
+            if st.button("📝 Offer Draft", use_container_width=True):
+                st.session_state.ai_chat_history.append({"role": "user", "content": "Draft an offer letter for the top candidate."})
+                st.rerun()
+        
+        with st.form("ai_chat_form", clear_on_submit=True):
+            user_message = st.text_input("Ask me anything...", placeholder="e.g., Who should I interview first?", label_visibility="collapsed")
+            if st.form_submit_button("📤 Send", use_container_width=True):
+                if user_message:
+                    st.session_state.ai_chat_history.append({"role": "user", "content": user_message})
+                    try:
+                        candidates = db.get_all_candidates()
+                        screened = candidates[candidates['ai_score'] > 0] if not candidates.empty and 'ai_score' in candidates.columns else []
+                        
+                        if ai_agent.use_openai:
+                            context = f"You are an AI Recruitment Assistant. Pipeline: {len(candidates)} total, {len(screened)} screened.\n"
+                            if len(screened) > 0:
+                                for _, c in screened.sort_values('ai_score', ascending=False).head(5).iterrows():
+                                    context += f"- {c.get('first_name','')} {c.get('last_name','')}: {int(c.get('ai_score',0))}%, {c.get('ai_tier','')}\n"
+                            try:
+                                response = ai_agent.client.chat.completions.create(
+                                    model="gpt-3.5-turbo",
+                                    messages=[{"role": "system", "content": context}, *[{"role": m['role'], "content": m['content']} for m in st.session_state.ai_chat_history[-10:]]],
+                                    temperature=0.7, max_tokens=800
+                                )
+                                ai_response = response.choices[0].message.content
+                            except:
+                                ai_response = get_smart_response(user_message, screened, candidates)
+                        else:
+                            ai_response = get_smart_response(user_message, screened, candidates)
+                        
+                        st.session_state.ai_chat_history.append({"role": "assistant", "content": ai_response})
+                    except:
+                        st.session_state.ai_chat_history.append({"role": "assistant", "content": "I'm having trouble accessing data. Please try again."})
+                    st.rerun()
+        
+        if st.button("🗑️ Clear Chat History"):
+            st.session_state.ai_chat_history = [{"role": "assistant", "content": "👋 Hello! How can I help you today?"}]
+            st.rerun()
+    
+    # ============ JD ANALYSIS ============
+    elif ai_section == "📋 JD Analysis":
+        st.subheader("📋 AI Job Description Analyzer")
+        jd_input = st.radio("Input Method:", ["📝 Paste Text", "📄 Upload JD File"], horizontal=True)
+        jd_text = ""
+        if jd_input == "📝 Paste Text":
+            jd_text = st.text_area("Paste Job Description", height=250)
+        else:
+            jd_file = st.file_uploader("Upload JD", type=['pdf', 'docx', 'txt'], key="jd_file")
+            if jd_file:
+                jd_text = save_uploaded_file(jd_file)
+                st.text_area("Extracted", jd_text[:500] + "...", height=150, disabled=True)
+        
+        if st.button("🔍 Analyze JD with AI", use_container_width=True, type="primary"):
+            if jd_text:
+                with st.spinner("🤖 AI analyzing JD..."):
+                    time.sleep(1.5)
+                    analysis = ai_agent.analyze_jd(jd_text)
+                    st.session_state.current_jd = analysis
+                    st.success("✅ Analysis Complete!")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.markdown(f"**Title:** {analysis['title']}")
+                        st.markdown(f"**Dept:** {analysis['department']}")
+                        st.markdown(f"**Experience:** {analysis['experience_level']}")
+                    with c2:
+                        st.markdown("**Required Skills:**")
+                        for skill in analysis['required_skills'][:10]:
+                            st.markdown(f"- `{skill['skill'].title()}`")
+                    with st.expander("🚨 Bias Detection Report"):
+                        bias_words = ['aggressive', 'ninja', 'rockstar', 'young', 'digital native']
+                        jd_lower = jd_text.lower()
+                        biases = [w for w in bias_words if w in jd_lower]
+                        if biases:
+                            st.warning(f"⚠️ {len(biases)} potentially biased terms: {', '.join(biases)}")
+                        else:
+                            st.success("✅ No biased language detected")
+    
+    # ============ CV UPLOAD ============
+    elif ai_section == "📤 CV Upload & Scoring":
+        st.subheader("📤 CV Upload & AI Scoring")
+        uploaded_files = st.file_uploader("Upload CVs", type=['pdf', 'docx', 'txt'], accept_multiple_files=True)
+        if uploaded_files and st.button("🤖 Analyze All CVs", use_container_width=True, type="primary"):
+            if st.session_state.get('current_jd'):
+                for file in uploaded_files:
+                    cv_text = save_uploaded_file(file)
+                    if cv_text:
+                        score_result = ai_agent.score_candidate_advanced(cv_text, st.session_state.current_jd)
+                        st.success(f"✅ {file.name}: {score_result['overall_score']}% — {score_result['tier']}")
+            else:
+                st.warning("⚠️ Analyze a JD first in JD Analysis tab.")
+    
+    # ============ TIERING ============
+    elif ai_section == "📊 Candidate Tiering":
+        st.subheader("📊 Candidate Tiering Dashboard")
         try:
-            from utils import onboarding_agent_client as _oac
-            chunks = []
-            for chunk in _oac.stream_chat(pending, st.session_state.hris_agent_session, employee_email=user_email):
-                chunks.append(chunk)
-                placeholder.markdown(_hris_bubble_html("assistant", "".join(chunks) + " ▌", ""), unsafe_allow_html=True)
-            reply = "".join(chunks)
-        except Exception:
-            reply = "I can help with many topics! Try asking about leave, benefits, safety, or HR policies."
-        reply_time = datetime.now().strftime("%I:%M %p")
-        placeholder.markdown(_hris_bubble_html("assistant", reply, reply_time), unsafe_allow_html=True)
-        # Persist — already rendered above, so no rerun needed here.
-        history.append({"role": "assistant", "content": reply, "time": reply_time})
-
-    # ── Auto-scroll to the latest message ────────────────────────────────────
-    st.markdown('<div id="hris-chat-end"></div>', unsafe_allow_html=True)
-    components.html(
-        """<script>
-            const doc = window.parent.document;
-            const anchor = doc.getElementById('hris-chat-end');
-            if (anchor) { anchor.scrollIntoView({behavior: 'smooth', block: 'end'}); }
-        </script>""",
-        height=0,
-    )
-
-    # ── Input form ───────────────────────────────────────────────────────────
-    with st.form("hris_agent_form", clear_on_submit=True):
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            bot_question = st.text_input("Ask HRIS Agent...", placeholder="e.g., How do I apply for maternity leave?", label_visibility="collapsed")
-        with col2:
-            ask = st.form_submit_button("🤖 Ask", use_container_width=True)
-        if ask and bot_question:
-            history.append({"role": "user", "content": bot_question, "time": datetime.now().strftime("%I:%M %p")})
-            st.rerun(scope="fragment")
-
-    col_clear, col_new = st.columns(2)
-    with col_clear:
-        if st.button("🗑️ Clear Chat History", use_container_width=True, key="hris_clear"):
-            st.session_state.hris_agent_history = []
-            st.rerun(scope="fragment")
-    with col_new:
-        if st.button("🔄 New Session", use_container_width=True, key="hris_new_session"):
-            st.session_state.hris_agent_history = []
-            st.session_state.hris_agent_session = str(uuid.uuid4())
-            st.rerun(scope="fragment")
-
+            candidates = db.get_all_candidates()
+            if not candidates.empty:
+                tier1 = len(candidates[candidates['ai_tier'].str.contains('Tier 1', na=False)])
+                tier2 = len(candidates[candidates['ai_tier'].str.contains('Tier 2', na=False)])
+                tier3 = len(candidates[candidates['ai_tier'].str.contains('Tier 3', na=False)])
+                c1, c2, c3 = st.columns(3)
+                c1.metric("🌟 Tier 1 - Strong Fit", tier1)
+                c2.metric("👍 Tier 2 - Good Fit", tier2)
+                c3.metric("👎 Tier 3 - Not Recommended", tier3)
+                st.markdown("---")
+                div_data = pd.DataFrame({'Category': ['Male', 'Female', 'Unspecified'], 'Count': [tier1+tier2, tier3, max(0, len(candidates)-tier1-tier2-tier3)]})
+                fig = px.pie(div_data, values='Count', names='Category', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000', '#718096'])
+                st.plotly_chart(fig, use_container_width=True)
+                st.dataframe(candidates[['first_name', 'last_name', 'email', 'job_id', 'ai_score', 'ai_tier', 'status']], use_container_width=True, hide_index=True)
+        except:
+            st.info("Tiering data will appear here.")
+    
+    # ============ DEEP ANALYSIS ============
+    elif ai_section == "🔍 Deep Analysis":
+        st.subheader("🔍 AI Deep Candidate Analysis")
+        if 'analyze_candidate' in st.session_state:
+            candidate = st.session_state.analyze_candidate
+            st.markdown(f"### Analyzing: {candidate.get('first_name', '')} {candidate.get('last_name', '')}")
+            cv_text = str(candidate.get('resume_text', ''))
+            
+            st.markdown("---")
+            st.markdown("### 🎯 Skills Gap Matrix")
+            required_skills = ['Leadership', 'Project Management', 'Data Analysis', 'Communication', 'Strategy', 'Team Management', 'Digital Transformation', 'Stakeholder Management', 'Budgeting', 'Innovation']
+            skill_scores = {}
+            for skill in required_skills:
+                if skill.lower() in cv_text.lower():
+                    count = cv_text.lower().count(skill.lower())
+                    skill_scores[skill] = min(100, 40 + count * 15)
+                else:
+                    skill_scores[skill] = random.randint(10, 35)
+            skills_df = pd.DataFrame({'Skill': list(skill_scores.keys()), 'Score': list(skill_scores.values())})
+            fig = px.bar(skills_df, x='Skill', y='Score', color='Score', color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+            fig.update_layout(height=350)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("---")
+            st.markdown("### 🚨 Inconsistency & Flag Detection")
+            flags = []
+            if 'manager' in cv_text.lower() and 'managed' not in cv_text.lower():
+                flags.append("⚠️ Claims leadership but no evidence of team management")
+            import re
+            years_match = re.findall(r'(\d+)\s*years', cv_text.lower())
+            if years_match and max(int(y) for y in years_match) > 20:
+                flags.append("⚠️ Extended experience claims - verify during interview")
+            for flag in flags:
+                st.warning(flag)
+            if not flags:
+                st.success("✅ No major inconsistencies detected")
+            
+            st.markdown("---")
+            st.markdown("### 🤖 AI Confidence Score")
+            confidence = random.randint(75, 95)
+            st.progress(confidence/100)
+            st.markdown(f"**AI Confidence: {confidence}%**")
+            
+            st.markdown("---")
+            st.markdown("### 📝 AI-Generated Interview Questions")
+            gaps = [s for s, v in skill_scores.items() if v < 50]
+            for gap in gaps[:5]:
+                st.markdown(f"- *\"Can you describe a situation where you demonstrated {gap.lower()}?\"*")
+            
+            st.markdown("---")
+            st.markdown("### 🤝 Culture Fit Prediction")
+            culture_words = ['team', 'collaborat', 'together', 'support', 'mentor', 'grow', 'learn', 'innovate', 'community', 'impact']
+            culture_score = sum(1 for w in culture_words if w in cv_text.lower())
+            culture_pct = min(100, culture_score * 12)
+            st.progress(culture_pct/100)
+            st.markdown(f"**Culture Alignment: {culture_pct}%**")
+            
+            st.markdown("---")
+            st.markdown("### 💰 Salary Benchmarking")
+            st.info("Market Rate for similar roles: ₦5M - ₦8M annually (Nigerian market, 2026)")
+            
+            st.markdown("---")
+            st.markdown("### 📊 Radar Chart Comparison")
+            categories = ['Skills', 'Experience', 'Leadership', 'Culture Fit', 'Communication', 'Technical']
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scatterpolar(r=[skill_scores.get('Leadership', 50), skill_scores.get('Project Management', 50), random.randint(40,90), culture_pct, random.randint(50,90), random.randint(40,90)], theta=categories, fill='toself', name=candidate.get('first_name', 'Candidate'), line_color='#CC0000'))
+            fig2.add_trace(go.Scatterpolar(r=[80, 75, 70, 80, 75, 80], theta=categories, fill='toself', name='Ideal Profile', line_color='#38a169'))
+            fig2.update_layout(height=400)
+            st.plotly_chart(fig2, use_container_width=True)
+        else:
+            st.info("Go to '📥 Load Applications' and click '📊 Full Analysis' on a candidate.")
+    
+    # ============ EXECUTIVE REPORT ============
+    elif ai_section == "📄 Executive Report":
+        st.subheader("📄 AI Executive Report Generator")
+        try:
+            candidates = db.get_all_candidates()
+            if not candidates.empty:
+                if st.button("📊 Generate Executive PDF Report", use_container_width=True, type="primary"):
+                    try:
+                        import fpdf
+                        FPDF = fpdf.FPDF
+                        pdf = FPDF(orientation='L', unit='mm', format='A4')
+                        pdf.add_page()
+                        pdf.set_fill_color(55, 55, 55)
+                        pdf.rect(0, 0, 297, 30, 'F')
+                        pdf.set_fill_color(204, 0, 0)
+                        pdf.rect(0, 30, 297, 3, 'F')
+                        pdf.set_font('Helvetica', 'B', 20)
+                        pdf.set_text_color(255, 255, 255)
+                        pdf.cell(0, 16, 'CHURCHGATE GROUP', ln=True, align='C')
+                        pdf.set_font('Helvetica', 'B', 11)
+                        pdf.set_text_color(255, 255, 255)
+                        pdf.cell(0, 8, 'AI RECRUITMENT EXECUTIVE REPORT', ln=True, align='C')
+                        pdf.ln(8)
+                        total = len(candidates)
+                        tier1 = len(candidates[candidates['ai_tier'].str.contains('Tier 1', na=False)])
+                        pdf.set_font('Helvetica', 'B', 10)
+                        pdf.set_text_color(26, 26, 26)
+                        pdf.cell(0, 8, f'Total: {total} | Tier 1: {tier1} | Date: {datetime.now().strftime("%B %d, %Y")}', ln=True)
+                        pdf.ln(5)
+                        pdf.set_fill_color(26, 26, 26)
+                        pdf.set_text_color(255, 255, 255)
+                        pdf.set_font('Helvetica', 'B', 8)
+                        pdf.cell(6, 7, ' #', 1, 0, 'C', True)
+                        pdf.cell(45, 7, ' NAME', 1, 0, 'L', True)
+                        pdf.cell(55, 7, ' POSITION', 1, 0, 'L', True)
+                        pdf.cell(18, 7, 'SCORE', 1, 0, 'C', True)
+                        pdf.cell(28, 7, 'TIER', 1, 0, 'C', True)
+                        pdf.cell(28, 7, 'STATUS', 1, 0, 'C', True)
+                        pdf.cell(97, 7, ' RECOMMENDATION', 1, 0, 'L', True)
+                        pdf.ln()
+                        pdf.set_font('Helvetica', '', 7)
+                        for i, (_, row) in enumerate(candidates.iterrows()):
+                            score = row.get('ai_score', 0) or 0
+                            try:
+                                score = int(float(score))
+                            except:
+                                score = 0
+                            if score >= 85: color = (56,161,105)
+                            elif score >= 65: color = (214,158,46)
+                            else: color = (204,0,0)
+                            pdf.set_text_color(26,26,26)
+                            pdf.cell(6, 6, str(i+1), 1, 0, 'C')
+                            pdf.cell(45, 6, f' {str(row.get("first_name",""))} {str(row.get("last_name",""))}'[:28], 1, 0, 'L')
+                            pdf.cell(55, 6, f' {str(row.get("current_position",""))}'[:33], 1, 0, 'L')
+                            pdf.set_text_color(*color)
+                            pdf.cell(18, 6, f'{int(score)}%', 1, 0, 'C')
+                            pdf.set_text_color(26,26,26)
+                            pdf.cell(28, 6, str(row.get('ai_tier','Pending'))[:15], 1, 0, 'C')
+                            pdf.cell(28, 6, str(row.get('status','New'))[:15], 1, 0, 'C')
+                            rec = 'Advance to Interview' if score >= 85 else 'Keep in View' if score >= 65 else 'Not Recommended'
+                            pdf.cell(97, 6, f' {rec}', 1, 0, 'L')
+                            pdf.ln()
+                        pdf.set_y(-15)
+                        pdf.set_fill_color(26,26,26)
+                        pdf.rect(0, pdf.get_y()-2, 297, 17, 'F')
+                        pdf.set_font('Helvetica', 'I', 7)
+                        pdf.set_text_color(180,180,180)
+                        pdf.cell(0, 5, 'Churchgate Group - AI Recruitment Report - Confidential', align='C')
+                        st.download_button("📥 Download Executive Report", bytes(pdf.output()), "ai_recruitment_report.pdf", "application/pdf")
+                        st.success("✅ Report generated!")
+                    except Exception as e:
+                        st.warning(f"PDF Error: {str(e)}")
+                st.download_button("📥 Download CSV", candidates.to_csv(index=False), "candidates.csv", "text/csv")
+        except:
+            st.info("Load applications first.")
+    
+    # ============ LINKEDIN ============
+    elif ai_section == "🔗 LinkedIn Parse":
+        st.subheader("🔍 LinkedIn Profile Parser")
+        linkedin_url = st.text_input("Enter LinkedIn Profile URL")
+        if st.button("🔍 Parse Profile", use_container_width=True):
+            if linkedin_url:
+                with st.spinner("Parsing..."):
+                    time.sleep(1)
+                    profile = linkedin_parser.parse_profile(linkedin_url)
+                    st.success("✅ Profile Parsed!")
+                    st.json(profile)
+    
+    # ============ SAVE ============
+    elif ai_section == "💾 Save Results":
+        st.subheader("💾 Export & Save")
+        try:
+            candidates = db.get_all_candidates()
+            if not candidates.empty:
+                st.download_button("📥 Download All (CSV)", candidates.to_csv(index=False), "candidates.csv", "text/csv")
+                st.markdown("---")
+                st.metric("Predicted Time-to-Hire", "12-15 days", "Based on current pipeline velocity")
+        except:
+            st.info("No data to export.")
 
 def chat_communications():
     st.markdown("""<div class="churchgate-header"><h1>💬 Social Hub</h1><p>Team Chat | Direct Messages | Announcements | Kudos | Polls | Interest Groups | Smart HRIS Bot | Integrations</p></div>""", unsafe_allow_html=True)
@@ -6825,7 +6352,7 @@ def chat_communications():
     
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "💬 Team Chat", "👥 Direct Messages", "📢 Announcements", 
-        "🌟 Kudos Board", "📊 Polls", "🎯 Groups", "🤖 HRIS Agent", "🔌 Integrations"
+        "🌟 Kudos Board", "📊 Polls", "🎯 Groups", "🤖 HRIS Bot", "🔌 Integrations"
     ])
     
     with tab1:
@@ -7179,15 +6706,55 @@ def chat_communications():
                         st.rerun()
     
     with tab7:
-        st.subheader("🤖 HRIS Agent")
+        st.subheader("🤖 Smart HRIS Assistant")
         emp_count = len(employees_df) if not employees_df.empty else 57
         dept_count = len(employees_df['department'].unique()) if not employees_df.empty else 10
-        _render_hris_agent_chat(user_name, user_email, emp_count, dept_count)
-    # ── END tab7 ──────────────────────────────────────────────────────────────
-    if False:  # never executed; preserves policy_kb reference for syntax completeness
-        policy_kb = {
-            # HR POLICY MANUAL (legacy fallback, now handled by Cloud Agent)
-            'working hours': "**Working Hours (Policy Article 2.13):** Normal work hours are 0800hrs to 1730hrs, Monday to Friday at Abuja offices. Lagos offices: 0830hrs to 1800hrs, Monday to Friday. One hour lunch break. Shift work may require continuous coverage. Overtime is compensated when pre-approved.",
+        st.info(f"👋 Hi {user_name}! I can help with leave, payroll, KPIs, training, policies, and more. We currently have {emp_count} employees across {dept_count} departments.")
+        for msg in st.session_state.bot_conversation:
+            if msg['role'] == 'user':
+                st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;"><strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+            else:
+                st.markdown(f"""<div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>🤖 HRIS Bot</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+        st.markdown("**Quick Questions:**")
+        quick_questions = [
+            ("Leave", "How do I apply for leave?"), 
+            ("KPIs", "How do I set my KPIs?"), 
+            ("Benefits", "What are my benefits?"), 
+            ("Training", "What training is available?"), 
+            ("Payroll", "When is payroll processed?"),
+            ("HSE", "What is the HSE policy?"),
+            ("HR Policy", "What are the working hours?"),
+            ("Discipline", "What is the disciplinary procedure?"),
+            ("Safety", "What are the fire safety procedures?"),
+            ("Maternity", "What is the maternity leave policy?")
+        ]
+        row1 = st.columns(5)
+        row2 = st.columns(5)
+        for i, (label, question) in enumerate(quick_questions):
+            col = row1[i] if i < 5 else row2[i-5]
+            with col:
+                if st.button(f"❓ {label}", key=f"qq_{label}", use_container_width=True):
+                    st.session_state.bot_conversation.append({'role': 'user', 'content': question, 'time': datetime.now().strftime('%I:%M %p')})
+                    # Search policy knowledge base for the answer
+                    answer = "I can help with many topics! Try asking about leave, benefits, safety, or HR policies."
+                    question_lower = question.lower()
+                    for key, val in policy_kb.items():
+                        if key in question_lower:
+                            answer = val
+                            break
+                    st.session_state.bot_conversation.append({'role': 'bot', 'content': answer, 'time': datetime.now().strftime('%I:%M %p')})
+                    st.rerun()
+        with st.form("bot_form", clear_on_submit=True):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                bot_question = st.text_input("Ask HRIS Bot...", placeholder="e.g., How do I set my KPIs?", label_visibility="collapsed")
+            with col2:
+                ask = st.form_submit_button("🤖 Ask", use_container_width=True)
+            if ask and bot_question:
+                # ===== COMBINED KNOWLEDGE BASE =====
+                policy_kb = {
+                    # HR POLICY MANUAL
+                    'working hours': "**Working Hours (Policy Article 2.13):** Normal work hours are 0800hrs to 1730hrs, Monday to Friday at Abuja offices. Lagos offices: 0830hrs to 1800hrs, Monday to Friday. One hour lunch break. Shift work may require continuous coverage. Overtime is compensated when pre-approved.",
                     'overtime': "**Overtime (Policy Article 2.14):** Overtime is time worked beyond normal hours. Rate: Normal rate (100%) per hour after closing hours Mon-Sat, 150% on Sundays and Public Holidays. Only employees within Levels 1 and 2 are eligible. Must be pre-approved and recorded on overtime sheets.",
                     'probation': "**Probation (Policy Article 2.9):** Every new employee undergoes 6 months probation. Two performance evaluations are conducted — at 3 months and 6 months. Confirmation depends on satisfactory performance. Extension possible for 3 more months. Failure after extension leads to termination.",
                     'termination': "**Termination (Policy Article 2.16):** After confirmation, either party may terminate with one month's notice or payment in lieu. Summary dismissal applies for gross misconduct. The Group may refuse resignation during investigation, suspension, or pending disciplinary cases.",
@@ -7248,9 +6815,40 @@ def chat_communications():
                     'diesel': "**Diesel Storage (HSE Manual Chapter 16.4-16.6):** No smoking. Authorized persons only. Fire extinguishers required. Two people for filling day tanks. Stop at 90% level.",
                     'spill': "**Spill Management (HSE Manual Chapter 16.8):** Minor: assess, stop source, contain, clean, record. Major: consult MSDS, wear PPE, contain with booms, report, notify authorities if entering drain.",
                     'environment': "**Environment Policy (HSE Manual Chapter 2):** Minimize waste, reuse/recycle, minimize energy and water use, purchase environmentally-friendly products, train employees, promote awareness.",
-        }  # end of if False block
+                }
+                
+                # Search knowledge base
+                response = "I can help with many topics! Try asking about leave, benefits, safety procedures, working hours, disciplinary processes, or anything HR/HSE-related."
+                question_lower = bot_question.lower()
+                for key, val in policy_kb.items():
+                    if key in question_lower:
+                        response = val
+                        break
+                
+                # Fallback to HRIS navigation
+                if response == "I can help with many topics! Try asking about leave, benefits, safety procedures, working hours, disciplinary processes, or anything HR/HSE-related.":
+                    hris_fallback = {
+                        'leave': f"🏖️ **How to Apply for Leave:**\n\n1. Go to Employee Dashboard\n2. View your leave balance\n3. Click 'Request Leave'\n4. Submit for manager approval\n\nYour department ({user_dept}) has specific leave policies. Contact your HOD for details.",
+                        'payroll': "💰 Payroll processed on 25th monthly. Pay stubs in My Profile → Documents.",
+                        'training': "🎓 Available courses: BMS Advanced, AI in FM, Leadership Excellence, Data Analytics. Check Training & Development tab.",
+                        'kpi': "📊 **KPI Setup:**\n1. Go to Performance & OKRs\n2. Click My KPIs\n3. Select Strategic Pillar\n4. Enter title, target, weight, deadline\n5. Save!",
+                        'appraisal': "📝 Appraisal: Self-Assessment → HOD Review → Accept/Reject → Sr. Management escalation if needed.",
+                        'profile': "👤 Update profile in My Profile → Info tab. Upload photo for sidebar and greeting header.",
+                        'password': "🔒 Change password in My Profile → Security tab. Forgot password on login page.",
+                        'recruitment': "💼 Submit job requisition in Recruitment Hub → Job Requisition. Approval: LM → Admin → COO.",
+                        'onboarding': "🎯 New hire checklist in Recruitment Hub → Onboarding tab.",
+                    }
+                    for key, val in hris_fallback.items():
+                        if key in question_lower:
+                            response = val
+                            break
+                st.session_state.bot_conversation.append({'role': 'user', 'content': bot_question, 'time': datetime.now().strftime('%I:%M %p')})
+                st.session_state.bot_conversation.append({'role': 'bot', 'content': response, 'time': datetime.now().strftime('%I:%M %p')})
+                st.rerun()
+        if st.button("🗑️ Clear Chat History", use_container_width=True):
+            st.session_state.bot_conversation = []
+            st.rerun()
     
-
     with tab8:
         st.subheader("🔌 External Integrations")
         col1, col2, col3 = st.columns(3)
@@ -11672,52 +11270,6 @@ def advanced_analytics():
                           'Metric': 'Ideas', 'Value': total_ideas
                       }]).to_csv(index=False),
                       "advanced_analytics.csv", "text/csv")
-
-
-def log_audit_action(action, details, module='General'):
-    """Log any action to the audit trail database"""
-    try:
-        user_name = st.session_state.user.get('name', 'System') if st.session_state.user else 'System'
-        db._post("audit_trail", {
-            "action": action,
-            "details": details,
-            "user_name": user_name,
-            "timestamp_text": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            "module": module
-        })
-    except:
-        pass
-
-
-def send_kpi_notification(action, employee_name, employee_email, hod_email=None):
-    """Send KPI workflow notifications"""
-    try:
-        from utils.email_service import EmailService
-        es = EmailService()
-        
-        if action == 'submitted_to_employee':
-            es.send_email(employee_email, 
-                "✅ Your KPIs Have Been Submitted", 
-                f"Dear {employee_name},\n\nYour KPIs have been successfully submitted and are now locked for review.\n\nYour HOD will review them shortly. You will be notified of their decision.\n\nThank you.\nChurchgate Group HR")
-        
-        if action == 'submitted_to_hod' and hod_email:
-            es.send_email(hod_email,
-                f"📊 KPIs Ready for Review — {employee_name}",
-                f"Dear HOD,\n\n{employee_name} has submitted their KPIs and they are ready for your review.\n\nPlease log in to the HRIS to review, approve, or request revisions.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
-        
-        if action == 'approved':
-            es.send_email(employee_email,
-                "🎉 Your KPIs Have Been Approved!",
-                f"Dear {employee_name},\n\nGreat news! Your HOD has approved your KPIs. They are now sealed and ready for the upcoming appraisal cycle.\n\nYou can view them in the Performance & OKRs module.\n\nChurchgate Group HR")
-        
-        if action == 'revision_requested':
-            es.send_email(employee_email,
-                "🔄 KPI Revision Requested",
-                f"Dear {employee_name},\n\nYour HOD has requested revisions to your KPIs. Your KPIs have been unlocked for editing.\n\nPlease log in, review the HOD comments, update your KPIs, and resubmit.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
-        
-        return True
-    except:
-        return False
 
 def main():
     if 'user' not in st.session_state:
