@@ -24,3 +24,4 @@ matplotlib
 psycopg2-binary
 supabase
 streamlit-quill
+markdown-it-py>=3.0.0
