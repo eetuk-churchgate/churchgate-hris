@@ -2961,8 +2961,22 @@ def performance_okrs():
         if history_data:
             st.markdown("---")
             with st.expander("📋 KPI History Log"):
-                for h in history_data[-10:]:
-                    st.markdown(f"- **{h.get('created_at', 'N/A')}**: {h.get('action', '')} — {h.get('kpi_name', '')[:50]} by {h.get('user_name', '')}")
+                # Group by department
+                from collections import defaultdict
+                dept_history = defaultdict(list)
+                for h in history_data:
+                    # Get department from user name
+                    user = h.get('user_name', 'Unknown')
+                    emp_data = db._get("employees", {"first_name": user.split()[0] if ' ' in user else user})
+                    dept = emp_data[0].get('department', 'General') if emp_data and len(emp_data) > 0 else 'General'
+                    dept_history[dept].append(h)
+                
+                for dept in sorted(dept_history.keys()):
+                    st.markdown(f"**🏢 {dept}**")
+                    for h in dept_history[dept][-10:]:
+                        st.markdown(f"- **{h.get('created_at', 'N/A')}**: {h.get('action', '')} — {h.get('kpi_name', '')[:50]} by {h.get('user_name', '')}")
+        else:
+            st.info("No KPI history yet.")
     
     # ============ TAB 3: SELF-ASSESSMENT (UPGRADED) ============
     with tab3:
