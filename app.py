@@ -3001,10 +3001,13 @@ def performance_okrs():
                 with c2:
                     st.session_state.appraisal_end = st.text_input("End Date", st.session_state.appraisal_end)
                 st.session_state.appraisal_locked = st.checkbox("Lock Scores", value=st.session_state.appraisal_locked)
+                # Check which employees have KPIs for this cycle
+                cycle_name = st.session_state.appraisal_cycle_name
+                
                 if st.button("💾 Activate Appraisal Cycle", use_container_width=True):
                     log_audit('Cycle Activated', f'Appraisal cycle {st.session_state.appraisal_cycle_name} activated')
                     
-                    # Only send to employees with approved KPIs
+                    # Only send to employees with approved KPIs for THIS cycle
                     try:
                         emp_df = db.get_all_employees()
                         from utils.email_service import EmailService
@@ -3015,25 +3018,38 @@ def performance_okrs():
                             emp_name = f"{emp['first_name']} {emp['last_name']}"
                             emp_email = emp.get('email', '')
                             if emp_email and '@' in str(emp_email):
-                                # Check if this employee has approved KPIs
                                 emp_kpis = db.get_performance_data(emp_name)
-                                has_approved = False
+                                has_approved_for_cycle = False
                                 if not emp_kpis.empty:
                                     for _, row in emp_kpis.iterrows():
                                         if row.get('submission_status') == 'Approved':
-                                            has_approved = True
+                                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                            for kpi in kpi_list:
+                                                if kpi.get('cycle') == cycle_name:
+                                                    has_approved_for_cycle = True
+                                                    break
+                                        if has_approved_for_cycle:
                                             break
                                 
-                                if has_approved:
+                                if has_approved_for_cycle:
+                                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                            for kpi in kpi_list:
+                                                if kpi.get('cycle') == cycle_name:
+                                                    has_approved_for_cycle = True
+                                                    break
+                                        if has_approved_for_cycle:
+                                            break
+                                
+                                if has_approved_for_cycle:
                                     try:
                                         email_svc.send_email(emp_email,
                                             f"📊 Appraisal Cycle Now Open: {st.session_state.appraisal_cycle_name}",
-                                            f"Dear {emp_name},\n\nThe appraisal cycle '{st.session_state.appraisal_cycle_name}' is now active.\n\nPeriod: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}\n\nYour KPIs are approved. Please log in to complete your self-assessment.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
+                                            f"Dear {emp_name},\n\nThe appraisal cycle '{st.session_state.appraisal_cycle_name}' is now active.\n\nPeriod: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}\n\nPlease log in to complete your self-assessment.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
                                         sent += 1
                                     except:
                                         pass
                         
-                        st.success(f"✅ Cycle activated! Email sent to {sent} employees with approved KPIs.")
+                        st.success(f"✅ Cycle activated! Email sent to {sent} employees with approved KPIs for this cycle.")
                     except:
                         st.success(f"✅ Cycle activated!")
                     
