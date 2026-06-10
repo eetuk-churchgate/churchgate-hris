@@ -3247,19 +3247,6 @@ def performance_okrs():
                             })
                 
                 if team_submissions:
-                    # Auto-clean duplicates for submitted users
-                    for emp_name in team_submissions:
-                        all_rows = db._get("performance_data", {"user_name": emp_name})
-                        if all_rows and len(all_rows) > 4:
-                            pillars_seen = {}
-                            for row in all_rows:
-                                p = row['pillar_name']
-                                if p in pillars_seen:
-                                    db._delete("performance_data", {"id": row['id']})
-                                else:
-                                    pillars_seen[p] = True
-                            st.rerun()
-                    
                     submitted_count = len(team_submissions)
                     total_kpis = sum(len(v) for v in team_submissions.values())
                     
