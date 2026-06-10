@@ -3032,15 +3032,6 @@ def performance_okrs():
                                             break
                                 
                                 if has_approved_for_cycle:
-                                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                            for kpi in kpi_list:
-                                                if kpi.get('cycle') == cycle_name:
-                                                    has_approved_for_cycle = True
-                                                    break
-                                        if has_approved_for_cycle:
-                                            break
-                                
-                                if has_approved_for_cycle:
                                     try:
                                         email_svc.send_email(emp_email,
                                             f"📊 Appraisal Cycle Now Open: {st.session_state.appraisal_cycle_name}",
