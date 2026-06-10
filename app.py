@@ -2953,7 +2953,6 @@ def performance_okrs():
         
         try:
             history_data = db.get_kpi_history()
-            # Filter: only show own KPIs unless admin
             if not is_admin:
                 history_data = [h for h in history_data if h.get('user_name') == user_name]
         except:
@@ -2961,18 +2960,22 @@ def performance_okrs():
         if history_data:
             st.markdown("---")
             with st.expander("📋 KPI History Log"):
-                # Group by department
+                # Load all employees once for department mapping
+                try:
+                    all_emps = db.get_all_employees()
+                    emp_dept_map = {}
+                    if not all_emps.empty:
+                        for _, e in all_emps.iterrows():
+                            full_name = f"{e['first_name']} {e['last_name']}"
+                            emp_dept_map[full_name] = e.get('department', 'General')
+                except:
+                    emp_dept_map = {}
+                
                 from collections import defaultdict
                 dept_history = defaultdict(list)
                 for h in history_data:
-                    # Get department from user name
                     user = h.get('user_name', 'Unknown')
-                     # Try to find by full name first
-                    emp_data = db._get("employees", {"first_name": user.split()[0] if ' ' in user else user, "last_name": ' '.join(user.split()[1:]) if ' ' in user else ''})
-                    if not emp_data or len(emp_data) == 0:
-                        # Fallback: try partial match
-                        emp_data = db._get("employees", {"first_name": user.split()[0] if ' ' in user else user})
-                    dept = emp_data[0].get('department', 'General') if emp_data and len(emp_data) > 0 else 'General'
+                    dept = emp_dept_map.get(user, 'General')
                     dept_history[dept].append(h)
                 
                 for dept in sorted(dept_history.keys()):
