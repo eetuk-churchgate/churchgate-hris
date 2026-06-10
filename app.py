@@ -1872,7 +1872,7 @@ def employee_management():
             all_grades = ['All'] + sorted(list(employees_df['grade'].dropna().unique())) if not employees_df.empty else ['All']
             grade_filter = st.selectbox("Grade", all_grades)
         with c4:
-            status_filter = st.selectbox("Status", ["All", "Active", "On Leave", "Probation", "Terminated"])
+            status_filter = st.selectbox("Status", ["All", "Active", "On Leave", "Probation", "Terminated", "Archived", "Inactive"])
         
         filtered_df = employees_df.copy()
         if not filtered_df.empty:
@@ -1980,7 +1980,7 @@ def employee_management():
                                 new_position = st.text_input("Position", value=str(emp.get('position', '')), key=f"pos_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
                                 current_status = str(emp.get('status', 'Active'))
-                                status_options = ['Active', 'On Leave', 'Probation', 'Terminated']
+                                status_options = ['Active', 'On Leave', 'Probation', 'Terminated', 'Archived', 'Inactive']
                                 status_idx = status_options.index(current_status) if current_status in status_options else 0
                                 new_status = st.selectbox("Status", status_options, index=status_idx, key=f"sts_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -2023,20 +2023,41 @@ def employee_management():
                                     st.error(f"Update failed: {str(e)}")
                         
                         st.markdown("---")
-                        st.markdown("#### 🗑️ Danger Zone")
-                        delete_col1, delete_col2 = st.columns([3, 1])
-                        with delete_col1:
-                            st.warning(f"⚠️ Delete {emp['first_name']} {emp['last_name']}? This cannot be undone.")
-                        with delete_col2:
-                            if st.button("🗑️ Delete", key=f"del_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
-                                try:
-                                    db._delete("employees", {"employee_id": emp['employee_id']})
-                                    st.success(f"🗑️ {emp['first_name']} {emp['last_name']} deleted!")
+                        st.markdown("#### 🗄️ Employee Actions")
+                        action_col1, action_col2, action_col3 = st.columns([2, 1, 1])
+                        with action_col1:
+                            current_status = str(emp.get('status', 'Active'))
+                            if current_status == 'Archived':
+                                st.info(f"📦 This employee is archived")
+                            else:
+                                st.caption(f"Status: {current_status}")
+                        with action_col2:
+                            if current_status == 'Archived':
+                                if st.button("🔄 Restore", key=f"restore_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
+                                    db._patch("employees", {"status": "Active"}, {"employee_id": emp['employee_id']})
+                                    st.success(f"✅ {emp['first_name']} {emp['last_name']} restored!")
                                     st.cache_data.clear()
                                     time.sleep(1)
                                     st.rerun()
-                                except Exception as e:
-                                    st.error(f"Delete failed: {str(e)}")
+                            else:
+                                if st.button("📦 Archive", key=f"archive_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
+                                    db._patch("employees", {"status": "Archived"}, {"employee_id": emp['employee_id']})
+                                    st.success(f"📦 {emp['first_name']} {emp['last_name']} archived!")
+                                    st.cache_data.clear()
+                                    time.sleep(1)
+                                    st.rerun()
+                        with action_col3:
+                            if st.button("🗑️ Delete", key=f"del_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
+                                st.error("This will permanently delete the employee. Are you sure?")
+                                if st.button("⚠️ Yes, Delete Permanently", key=f"confirm_del_{emp['employee_id']}_{st.session_state.dir_page}"):
+                                    try:
+                                        db._delete("employees", {"employee_id": emp['employee_id']})
+                                        st.success(f"🗑️ {emp['first_name']} {emp['last_name']} permanently deleted!")
+                                        st.cache_data.clear()
+                                        time.sleep(1)
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Delete failed: {str(e)}")
         else:
             st.info("No employees match your search criteria.")
     
