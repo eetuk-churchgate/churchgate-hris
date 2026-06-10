@@ -2966,8 +2966,9 @@ def performance_okrs():
                     emp_dept_map = {}
                     if not all_emps.empty:
                         for _, e in all_emps.iterrows():
-                            full_name = f"{str(e['first_name']).strip()} {str(e['last_name']).strip()}"
-                            emp_dept_map[full_name] = e.get('department', 'General')
+                            raw_name = f"{str(e['first_name']).strip()} {str(e['last_name']).strip()}"
+                            clean_name = ' '.join(raw_name.split())
+                            emp_dept_map[clean_name] = e.get('department', 'General')
                 except:
                     emp_dept_map = {}
                 
@@ -2975,7 +2976,8 @@ def performance_okrs():
                 dept_history = defaultdict(list)
                 for h in history_data:
                     user = h.get('user_name', 'Unknown')
-                    dept = emp_dept_map.get(user, 'General')
+                    clean_user = ' '.join(str(user).split())
+                    dept = emp_dept_map.get(clean_user, 'General')
                     dept_history[dept].append(h)
                 
                 for dept in sorted(dept_history.keys()):
