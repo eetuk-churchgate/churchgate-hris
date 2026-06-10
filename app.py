@@ -2966,7 +2966,7 @@ def performance_okrs():
                     emp_dept_map = {}
                     if not all_emps.empty:
                         for _, e in all_emps.iterrows():
-                            full_name = f"{e['first_name']} {e['last_name']}"
+                            full_name = f"{str(e['first_name']).strip()} {str(e['last_name']).strip()}"
                             emp_dept_map[full_name] = e.get('department', 'General')
                 except:
                     emp_dept_map = {}
