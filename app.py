@@ -38,43 +38,24 @@ if logo_icon.exists():
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
 
-# PWA - Inline Manifest and Service Worker
+# Browser Notification Setup
 st.markdown("""
-<meta name="theme-color" content="#CC0000">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Churchgate HRIS">
-<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="application-name" content="Churchgate HRIS">
-<meta name="msapplication-TileColor" content="#CC0000">
-<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkNodXJjaGdhdGUgR3JvdXAgSFJJUyIsCiAgInNob3J0X25hbWUiOiAiQ2h1cmNoZ2F0ZSBIUklTIiwKICAic3RhcnRfdXJsIjogIi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxYTFhMWEiLAogICJ0aGVtZV9jb2xvciI6ICIjQ0MwMDAwIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2VldHVrLWNodXJjaGdhdGUvY2h1cmNoZ2F0ZS1ocmlzL21haW4vY2h1cmNoZ2F0ZS1sb2dvLTE5Mi5wbmciLAogICAgICAic2l6ZXMiOiAiMTkyeDE5MiIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2VldHVrLWNodXJjaGdhdGUvY2h1cmNoZ2F0ZS1ocmlzL21haW4vY2h1cmNoZ2F0ZS1sb2dvLTUxMi5wbmciLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJ0eXBlIjogImltYWdlL3BuZyIKICAgIH0KICBdCn0=">
-
 <script>
-if ('serviceWorker' in navigator) {
-    const swCode = `
-        const CACHE_NAME = 'churchgate-hris-v1';
-        self.addEventListener('install', (e) => { self.skipWaiting(); });
-        self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
-        self.addEventListener('fetch', (e) => {
-            if (e.request.url.includes('supabase.co') || e.request.url.includes('_stcore')) return;
-            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-        });
-    `;
-    const blob = new Blob([swCode], {type: 'application/javascript'});
-    const swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl).then(r => console.log('SW registered')).catch(e => console.log('SW error:', e));
+if ('Notification' in window && Notification.permission === 'default') {
+    setTimeout(() => {
+        Notification.requestPermission();
+    }, 3000);
 }
-
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    const btn = document.createElement('div');
-    btn.innerHTML = '<div style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#1a1a1a;color:white;padding:14px 28px;border-radius:30px;box-shadow:0 4px 20px rgba(204,0,0,0.5);cursor:pointer;font-family:Arial;font-size:15px;font-weight:600;text-align:center;border:2px solid #CC0000;">📱 Install Churchgate HRIS</div>';
-    btn.onclick = () => { deferredPrompt.prompt(); deferredPrompt = null; btn.remove(); };
-    document.body.appendChild(btn);
-});
+function showNotification(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, {
+            body: body,
+            icon: 'https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png',
+            badge: 'https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png',
+            vibrate: [200, 100, 200]
+        });
+    }
+}
 </script>
 """, unsafe_allow_html=True)
 
@@ -3090,8 +3071,9 @@ def performance_okrs():
                     except:
                         st.success(f"✅ Cycle activated!")
                     
+                    send_browser_notification("📊 Appraisal Cycle Active!", f"{st.session_state.appraisal_cycle_name} is now open. Submit your self-assessment.")
                     st.balloons()
-                    st.rerun()
+                    st.rerun(
         
         if st.session_state.appraisal_cycle_active:
             st.success(f"🔓 Appraisal Active: {st.session_state.appraisal_cycle_name}")
@@ -3298,6 +3280,7 @@ def performance_okrs():
                                         send_kpi_notification('approved', emp_name, emp_email)
                                     log_audit_action("KPIs Approved", f"HOD {user_name} approved KPIs for {emp_name}", "KPI")
                                     st.success(f"✅ {emp_name}'s KPIs approved!")
+                                    send_browser_notification("✅ KPIs Approved!", f"Your KPIs have been approved by {user_name}.")
                                     st.balloons()
                                     st.rerun()
                             with col2:
@@ -6777,6 +6760,7 @@ def chat_communications():
                                 "is_read": False
                             })
                             st.success(f"✅ Sent to {dm_with}!")
+                            send_browser_notification("💬 New Message", f"New message from {user_name}")
                             st.rerun()
     
     with tab3:
@@ -11594,6 +11578,17 @@ def send_kpi_notification(action, employee_name, employee_email, hod_email=None)
     except:
         return False
 
+
+def send_browser_notification(title, body, user_email=None):
+    """Queue a browser push notification"""
+    if 'pending_notifications' not in st.session_state:
+        st.session_state.pending_notifications = []
+    st.session_state.pending_notifications.append({
+        'title': title,
+        'body': body,
+        'time': datetime.now().strftime('%H:%M')
+    })
+
 def main():
     if 'user' not in st.session_state:
         st.session_state.user = None
@@ -11681,6 +11676,16 @@ def main():
         }
         page_func = page_routes.get(page, employee_dashboard)
         page_func()
+
+# Show pending browser notifications
+    if st.session_state.get('pending_notifications'):
+        for notif in st.session_state.pending_notifications:
+            st.markdown(f"""
+            <script>
+                showNotification('{notif['title']}', '{notif['body']}');
+            </script>
+            """, unsafe_allow_html=True)
+        st.session_state.pending_notifications = []
 
 if __name__ == "__main__":
     main()
