@@ -2994,7 +2994,9 @@ def performance_okrs():
         if is_admin:
             with st.expander("⚙️ Appraisal Cycle Settings (Admin)", expanded=False):
                 st.session_state.appraisal_cycle_active = st.checkbox("Activate Appraisal Cycle", value=st.session_state.appraisal_cycle_active)
-                st.session_state.appraisal_cycle_name = st.text_input("Cycle Name", st.session_state.appraisal_cycle_name)
+                cycle_type_options = ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal']
+                st.session_state.appraisal_cycle_name = st.selectbox("Select Appraisal Cycle", cycle_type_options, 
+                    index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 0)
                 c1, c2 = st.columns(2)
                 with c1:
                     st.session_state.appraisal_start = st.text_input("Start Date", st.session_state.appraisal_start)
