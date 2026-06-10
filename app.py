@@ -2967,7 +2967,11 @@ def performance_okrs():
                 for h in history_data:
                     # Get department from user name
                     user = h.get('user_name', 'Unknown')
-                    emp_data = db._get("employees", {"first_name": user.split()[0] if ' ' in user else user})
+                     # Try to find by full name first
+                    emp_data = db._get("employees", {"first_name": user.split()[0] if ' ' in user else user, "last_name": ' '.join(user.split()[1:]) if ' ' in user else ''})
+                    if not emp_data or len(emp_data) == 0:
+                        # Fallback: try partial match
+                        emp_data = db._get("employees", {"first_name": user.split()[0] if ' ' in user else user})
                     dept = emp_data[0].get('department', 'General') if emp_data and len(emp_data) > 0 else 'General'
                     dept_history[dept].append(h)
                 
