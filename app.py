@@ -2644,6 +2644,15 @@ def performance_okrs():
                     'deadline': '2026-12-31', 'kpis': []
                 }
         
+        # Cycle filter
+        available_cycles = set()
+        for p_data in performance_data.get(user_name, {}).values():
+            for kpi in p_data.get('kpis', []):
+                if kpi.get('cycle'):
+                    available_cycles.add(kpi['cycle'])
+        cycle_list = sorted(list(available_cycles)) if available_cycles else ['Half-Year Appraisal']
+        filter_cycle = st.selectbox("📅 Filter by Cycle", ['All Cycles'] + cycle_list, key="filter_cycle_tab1")
+        
         user_pillar_data = performance_data[user_name]
         
         # Admin can view all departments for comparison
@@ -2778,14 +2787,20 @@ def performance_okrs():
                 if pillar_data['kpis']:
                     is_locked = pillar_data.get('submission_status', 'Draft') != 'Draft'
                     
-                    for kpi_index, kpi in enumerate(pillar_data['kpis']):
+                    filtered_kpis = pillar_data['kpis']
+                    if filter_cycle != 'All Cycles':
+                        filtered_kpis = [k for k in filtered_kpis if k.get('cycle') == filter_cycle]
+                    
+                    for kpi_index, kpi in enumerate(filtered_kpis):
                         try:
                             kpi_progress = int(float(str(kpi.get('current', '0')).replace('%', '')))
                         except:
                             kpi_progress = 0
                         kpi_status, kpi_color = get_kpi_status(kpi_progress)
                         
-                        with st.expander(f"{kpi['kpi'][:60]} — {kpi_progress}% — {kpi_status}", expanded=False):
+                        cycle_badge = kpi.get('cycle', '')
+                        cycle_label = f" [{cycle_badge}]" if cycle_badge else ""
+                        with st.expander(f"{kpi['kpi'][:60]}{cycle_label} — {kpi_progress}% — {kpi_status}", expanded=False):
                             if not is_locked:
                                 col1, col2, col3 = st.columns(3)
                                 with col1:
@@ -2841,6 +2856,13 @@ def performance_okrs():
         with st.form("my_kpi_form"):
             st.markdown("### Add New KPI")
             
+            # Appraisal Cycle Selector
+            cycle_options = ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal']
+            selected_cycle = st.selectbox("Select Appraisal Cycle *", cycle_options, 
+                index=0 if st.session_state.get('appraisal_cycle_active') and 'Half-Year' in st.session_state.get('appraisal_cycle_name', '') else 0)
+            
+            edit_mode = st.session_state.get('edit_kpi', None)
+            
             edit_mode = st.session_state.get('edit_kpi', None)
             if edit_mode:
                 st.info(f"✏️ Editing KPI: {edit_mode['title'][:50]}")
@@ -2871,7 +2893,8 @@ def performance_okrs():
                 else:
                     new_kpi = {
                         'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
-                        'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name
+                        'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name,
+                        'cycle': selected_cycle
                     }
                     
                     if edit_mode:
