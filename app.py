@@ -3073,7 +3073,7 @@ def performance_okrs():
                     
                     send_browser_notification("📊 Appraisal Cycle Active!", f"{st.session_state.appraisal_cycle_name} is now open. Submit your self-assessment.")
                     st.balloons()
-                    st.rerun(
+                    st.rerun()
         
         if st.session_state.appraisal_cycle_active:
             st.success(f"🔓 Appraisal Active: {st.session_state.appraisal_cycle_name}")
