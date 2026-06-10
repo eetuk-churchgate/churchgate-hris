@@ -3258,11 +3258,26 @@ def performance_okrs():
                     st.markdown("---")
                     
                     for emp_name, submissions in team_submissions.items():
-                        with st.expander(f"📋 {emp_name} — {len(submissions)} pillars submitted", expanded=False):
-                            for sub in submissions:
-                                st.markdown(f"**{sub['pillar']}** — {len(sub['kpis'])} KPI(s)")
-                                for kpi in sub['kpis']:
-                                    st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')}")
+                        # Group and deduplicate KPIs by pillar
+                        pillar_kpis = {}
+                        for sub in submissions:
+                            p_name = sub['pillar']
+                            if p_name not in pillar_kpis:
+                                pillar_kpis[p_name] = []
+                            for kpi in sub['kpis']:
+                                kpi_key = f"{kpi.get('kpi', '')}_{kpi.get('target', '')}"
+                                existing_keys = [f"{k.get('kpi', '')}_{k.get('target', '')}" for k in pillar_kpis[p_name]]
+                                if kpi_key not in existing_keys:
+                                    pillar_kpis[p_name].append(kpi)
+                        
+                        with st.expander(f"📋 {emp_name} — {len(pillar_kpis)} pillars submitted", expanded=False):
+                            pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                            for p_name in pillar_order:
+                                if p_name in pillar_kpis and pillar_kpis[p_name]:
+                                    st.markdown(f"**{p_name}** — {len(pillar_kpis[p_name])} KPI(s)")
+                                    for kpi in pillar_kpis[p_name]:
+                                        st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')}")
+                                    st.markdown("")
                             
                             st.markdown("---")
                             hod_comment = st.text_area(f"HOD Comment for {emp_name}", key=f"hod_comment_{emp_name}", placeholder="Provide feedback, approval reason, or revision notes...")
@@ -3286,6 +3301,18 @@ def performance_okrs():
                             with col2:
                                 if st.button(f"🔄 Request Revision from {emp_name}", key=f"revise_{emp_name}", use_container_width=True):
                                     if hod_comment:
+                                        # Clean duplicates first - keep only latest per pillar
+                                        all_rows = db._get("performance_data", {"user_name": emp_name})
+                                        if all_rows:
+                                            pillars_seen = {}
+                                            for row in all_rows:
+                                                p = row['pillar_name']
+                                                if p in pillars_seen:
+                                                    db._delete("performance_data", {"id": row['id']})
+                                                else:
+                                                    pillars_seen[p] = True
+                                        
+                                        # Unlock KPIs back to Draft
                                         for sub in submissions:
                                             db._patch("performance_data", {"submission_status": "Draft"}, {"id": sub['row_id']})
                                         emp_email = None
