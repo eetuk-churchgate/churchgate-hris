@@ -927,7 +927,7 @@ def employee_dashboard():
     st.markdown("---")
     col1, col2 = st.columns([2, 1])
     
-   with col1:
+    with col1:
         # KPI Progress
         st.subheader("🎯 My KPI Progress")
         try:
@@ -955,24 +955,6 @@ def employee_dashboard():
                 st.info("Set your KPIs in Performance & OKRs to track progress here.")
         except:
             st.info("KPI progress will appear here.")
-        
-        # Recent Activity
-        st.markdown("---")
-        st.subheader("🕐 My Recent Activity")
-        if 'audit_trail' in st.session_state and st.session_state.audit_trail:
-            my_activities = [a for a in st.session_state.audit_trail if a.get('user') == user_name][-3:]
-            if my_activities:
-                for activity in my_activities:
-                    st.markdown(f"""
-                    <div style="background:white;padding:0.6rem 1rem;border-radius:6px;margin-bottom:0.3rem;border-left:3px solid #CC0000;">
-                        <strong>{activity.get('action', '')}</strong><br>
-                        <small style="color:#888;">{activity.get('details', '')} • {activity.get('timestamp', '')}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("Your activity will appear here as you use the system.")
-        else:
-            st.info("Complete your profile and set KPIs to get started!")
         
         # Recognition Wall
         st.markdown("---")
