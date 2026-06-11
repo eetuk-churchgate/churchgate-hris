@@ -162,22 +162,24 @@ class DatabaseManager:
         self._delete("aplayer_nominations", {"id": nomination_id})
     
     def save_performance_data(self, department, pillar_name, weight, progress, status, deadline, kpi_data, submission_status='Draft'):
-        # Delete ALL existing rows for this user and pillar using direct SQL
-        try:
-            existing = self._get("performance_data", {"user_name": department, "pillar_name": pillar_name})
-            if existing:
-                for row in existing:
-                    self._delete("performance_data", {"id": str(row['id'])})
-        except:
-            pass
-        
-        # Insert one fresh row with all KPIs
-        self._post("performance_data", {
-            "user_name": department, "department": department, "pillar_name": pillar_name,
-            "weight": weight, "progress": progress, "status": status, 
-            "deadline": deadline, "kpi_data": json.dumps(kpi_data),
-            "submission_status": submission_status
-        })
+        # Check if row exists for this user and pillar
+        existing = self._get("performance_data", {"user_name": department, "pillar_name": pillar_name})
+        if existing and len(existing) > 0:
+            # Update ALL matching rows (in case duplicates exist)
+            for row in existing:
+                self._patch("performance_data", {
+                    "weight": weight, "progress": progress, "status": status,
+                    "deadline": deadline, "kpi_data": json.dumps(kpi_data),
+                    "submission_status": submission_status
+                }, {"id": row['id']})
+        else:
+            # Insert new row
+            self._post("performance_data", {
+                "user_name": department, "department": department, "pillar_name": pillar_name,
+                "weight": weight, "progress": progress, "status": status,
+                "deadline": deadline, "kpi_data": json.dumps(kpi_data),
+                "submission_status": submission_status
+            })
     
     def get_performance_data(self, department=None):
         if department:
