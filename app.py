@@ -927,12 +927,16 @@ def employee_dashboard():
     st.markdown("---")
     col1, col2 = st.columns([2, 1])
     
-    with col1:
+   with col1:
         # KPI Progress
         st.subheader("🎯 My KPI Progress")
         try:
             perf_data = db.get_performance_data(user_name)
             if not perf_data.empty:
+                # Sort by pillar order 1-2-3-4
+                pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                perf_data['sort_order'] = perf_data['pillar_name'].apply(lambda x: pillar_order.index(x) if x in pillar_order else 99)
+                perf_data = perf_data.sort_values('sort_order')
                 for _, row in perf_data.iterrows():
                     progress = row.get('progress', 0)
                     color = "#38a169" if progress >= 85 else "#d69e2e" if progress >= 65 else "#CC0000"
