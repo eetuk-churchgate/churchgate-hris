@@ -3265,8 +3265,8 @@ def performance_okrs():
                             if p_name not in pillar_kpis:
                                 pillar_kpis[p_name] = []
                             for kpi in sub['kpis']:
-                                kpi_key = f"{kpi.get('kpi', '')}_{kpi.get('target', '')}"
-                                existing_keys = [f"{k.get('kpi', '')}_{k.get('target', '')}" for k in pillar_kpis[p_name]]
+                                kpi_key = kpi.get('kpi', '').strip().lower()
+                                existing_keys = [k.get('kpi', '').strip().lower() for k in pillar_kpis[p_name]]
                                 if kpi_key not in existing_keys:
                                     pillar_kpis[p_name].append(kpi)
                         
