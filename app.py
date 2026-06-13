@@ -171,6 +171,24 @@ st.markdown("""
     .value-card h4 { color: #CC0000; font-size: 0.85rem; margin: 0 0 0.3rem 0; }
     .value-card p { font-size: 0.7rem; color: #666; margin: 0; line-height: 1.3; }
     
+    /* Custom Expander Headers */
+    .streamlit-expanderHeader {
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        background: white !important;
+        border-radius: 8px !important;
+        border-left: 4px solid #CC0000 !important;
+        padding: 0.5rem 1rem !important;
+        margin-bottom: 0.3rem !important;
+    }
+    .streamlit-expanderHeader:hover {
+        background: #f8f8f8 !important;
+    }
+    .streamlit-expanderHeader svg {
+        color: #CC0000 !important;
+    }
+</style>
+    
     #MainMenu {{ visibility: hidden; }}
     header {{ visibility: hidden; }}
     footer {{ visibility: hidden; }}
