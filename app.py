@@ -187,7 +187,6 @@ st.markdown("""
     .streamlit-expanderHeader svg {
         color: #CC0000 !important;
     }
-</style>
     
     #MainMenu {{ visibility: hidden; }}
     header {{ visibility: hidden; }}
