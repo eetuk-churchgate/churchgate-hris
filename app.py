@@ -2567,7 +2567,7 @@ def performance_okrs():
                        '3. Asset Reliability & Digitalization', '4. People & Culture']:
             if pillar not in performance_data[dept]:
                 performance_data[dept][pillar] = {
-                    'weight': 25, 'progress': 0, 'status': 'Not Started',
+                    'weight': 0, 'progress': 0, 'status': 'Not Started',
                     'deadline': '2026-12-31', 'kpis': []
                 }
     
@@ -2645,7 +2645,7 @@ def performance_okrs():
             for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', 
                            '3. Asset Reliability & Digitalization', '4. People & Culture']:
                 performance_data[user_name][pillar] = {
-                    'weight': 25, 'progress': 0, 'status': 'Not Started',
+                    'weight': 0, 'progress': 0, 'status': 'Not Started',
                     'deadline': '2026-12-31', 'kpis': []
                 }
         
@@ -2825,7 +2825,12 @@ def performance_okrs():
                                             'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'), 'owner': kpi.get('owner', user_name),
                                             'weight': edit_weight
                                         }
-                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'], pillar_data.get('submission_status', 'Draft'))
+                                        # Auto-calculate pillar weight
+                                        total_weight = sum(k.get('weight', 0) for k in pillar_data['kpis'])
+                                        if total_weight > 0:
+                                            pillar_data['weight'] = total_weight
+                                        
+                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis']) pillar_data.get('submission_status', 'Draft'))
                                         st.success("✅ KPI saved!")
                                         st.rerun()
                                 with col_btn2:
@@ -2922,10 +2927,15 @@ def performance_okrs():
                                             'kpis': kpi_list
                                         }
                         if pillar_choice not in performance_data[user_name]:
-                            performance_data[user_name][pillar_choice] = {'weight': 25, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
+                            performance_data[user_name][pillar_choice] = {'weight': 0, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
                         performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
                         st.success("✅ KPI saved!")
                         log_audit_action("KPI Added", f"KPI '{kpi_title}' added to {pillar_choice}", "KPI")
+                    
+                    # Auto-calculate pillar weight from KPI weights
+                    total_weight = sum(kpi.get('weight', 0) for kpi in performance_data[user_name][pillar_choice]['kpis'])
+                    if total_weight > 0:
+                        performance_data[user_name][pillar_choice]['weight'] = total_weight
                     
                     pd_data = performance_data[user_name][pillar_choice]
                     try:
