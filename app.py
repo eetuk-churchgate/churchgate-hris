@@ -3287,9 +3287,12 @@ def performance_okrs():
                             pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
                             for p_name in pillar_order:
                                 if p_name in pillar_kpis and pillar_kpis[p_name]:
-                                    st.markdown(f"**{p_name}** — {len(pillar_kpis[p_name])} KPI(s)")
+                                    # Calculate total weight for this pillar
+                                    total_pillar_weight = sum(k.get('weight', 0) for k in pillar_kpis[p_name])
+                                    st.markdown(f"**{p_name}** — {len(pillar_kpis[p_name])} KPI(s) — Total Weight: **{total_pillar_weight}%**")
                                     for kpi in pillar_kpis[p_name]:
-                                        st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')}")
+                                        kpi_weight = kpi.get('weight', 'N/A')
+                                        st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')} — Weight: **{kpi_weight}%**")
                                     st.markdown("")
                             
                             st.markdown("---")
