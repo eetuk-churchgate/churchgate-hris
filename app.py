@@ -2830,7 +2830,7 @@ def performance_okrs():
                                         if total_weight > 0:
                                             pillar_data['weight'] = total_weight
                                         
-                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis']) pillar_data.get('submission_status', 'Draft'))
+                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'], pillar_data.get('submission_status', 'Draft'))
                                         st.success("✅ KPI saved!")
                                         st.rerun()
                                 with col_btn2:
