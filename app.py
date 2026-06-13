@@ -172,7 +172,7 @@ st.markdown("""
     .value-card p { font-size: 0.7rem; color: #666; margin: 0; line-height: 1.3; }
     
     /* Custom Expander Headers */
-    .streamlit-expanderHeader {
+    [data-testid="stExpander"] details summary {
         font-weight: 600 !important;
         font-size: 0.95rem !important;
         background: white !important;
@@ -181,10 +181,10 @@ st.markdown("""
         padding: 0.5rem 1rem !important;
         margin-bottom: 0.3rem !important;
     }
-    .streamlit-expanderHeader:hover {
+    [data-testid="stExpander"] details summary:hover {
         background: #f8f8f8 !important;
     }
-    .streamlit-expanderHeader svg {
+    [data-testid="stExpander"] details summary svg {
         color: #CC0000 !important;
     }
     
