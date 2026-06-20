@@ -1986,7 +1986,7 @@ def employee_management():
                                         current_dob_date = datetime.now().date()
                                 else:
                                     current_dob_date = datetime.now().date()
-                                new_dob = st.date_input("Date of Birth", value=current_dob_date, key=f"dob_{emp['employee_id']}_{st.session_state.dir_page}")
+new_dob = st.date_input("Date of Birth", value=current_dob_date, min_value=date(1940, 1, 1), max_value=date(2010, 12, 31), key=f"dob_{emp['employee_id']}_{st.session_state.dir_page}")
                             
                             if st.form_submit_button("💾 Save Changes", use_container_width=True):
                                 try:
@@ -2065,7 +2065,7 @@ def employee_management():
             with c3:
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
                 join_date = st.date_input("Join Date")
-                date_of_birth = st.date_input("Date of Birth *")
+                date_of_birth = st.date_input("Date of Birth *", min_value=date(1940, 1, 1), max_value=date(2010, 12, 31), value=date(1990, 1, 1))
                 system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'])
                 status = st.selectbox("Status", ['Active', 'Probation'])
             
@@ -10273,7 +10273,7 @@ def my_profile():
                         current_dob_date = datetime.now().date()
                 else:
                     current_dob_date = datetime.now().date()
-                new_dob = st.date_input("Date of Birth *", value=current_dob_date)
+                new_dob = st.date_input("Date of Birth *", value=current_dob_date, min_value=date(1940, 1, 1), max_value=date(2010, 12, 31))
                 
                 st.markdown("---")
                 st.markdown("**Emergency Contact**")
