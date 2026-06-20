@@ -1986,7 +1986,7 @@ def employee_management():
                                         current_dob_date = datetime.now().date()
                                 else:
                                     current_dob_date = datetime.now().date()
-new_dob = st.date_input("Date of Birth", value=current_dob_date, min_value=date(1940, 1, 1), max_value=date(2010, 12, 31), key=f"dob_{emp['employee_id']}_{st.session_state.dir_page}")
+                                new_dob = st.date_input("Date of Birth", value=current_dob_date, min_value=date(1940, 1, 1), max_value=date(2010, 12, 31), key=f"dob_{emp['employee_id']}_{st.session_state.dir_page}")
                             
                             if st.form_submit_button("💾 Save Changes", use_container_width=True):
                                 try:
