@@ -196,11 +196,25 @@ st.markdown("""
 
 @st.cache_data(ttl=60)
 def get_cached_employees():
-    return get_cached_employees() if db else pd.DataFrame()
+    return db.get_all_employees() if db else pd.DataFrame()
 
 @st.cache_data(ttl=60)
 def get_cached_candidates():
-    return get_cached_candidates() if db else pd.DataFrame()
+    return db.get_all_candidates() if db else pd.DataFrame()
+
+@st.cache_data(ttl=60)
+def get_cached_performance_data(user_name=None):
+    if user_name:
+        return get_cached_performance_data(user_name)
+    return get_cached_performance_data()
+
+@st.cache_data(ttl=60)
+def get_cached_appraisals():
+    return db.get_all_appraisals()
+
+@st.cache_data(ttl=60)
+def get_cached_audit_trail():
+    return db.get_audit_trail()
 
 @st.cache_resource
 def init_resources():
@@ -956,7 +970,7 @@ def employee_dashboard():
         # KPI Progress
         st.subheader("🎯 My KPI Progress")
         try:
-            perf_data = db.get_performance_data(user_name)
+            perf_data = get_cached_performance_data(user_name)
             if not perf_data.empty:
                 # Sort by pillar order 1-2-3-4
                 pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
@@ -1572,7 +1586,7 @@ def executive_dashboard():
         }
         
         try:
-            perf_data = db.get_performance_data()
+            perf_data = get_cached_performance_data()
             if not perf_data.empty:
                 for _, row in perf_data.iterrows():
                     pillar = row.get('pillar_name', '')
@@ -2553,7 +2567,7 @@ def performance_okrs():
     
     performance_data = {}
     try:
-        db_perf = db.get_performance_data()
+        db_perf = get_cached_performance_data()
         if not db_perf.empty:
             for _, row in db_perf.iterrows():
                 dept = row['department']
@@ -2597,7 +2611,7 @@ def performance_okrs():
             days_left = (end_date - datetime.now()).days
             
             # Check if user has approved KPIs
-            user_kpis = db.get_performance_data(user_name)
+            user_kpis = get_cached_performance_data(user_name)
             has_approved_kpis = False
             if not user_kpis.empty:
                 for _, row in user_kpis.iterrows():
@@ -2635,7 +2649,7 @@ def performance_okrs():
         st.subheader("🎯 My Strategic Pillars")
         
         # Reload KPIs from database for current user
-        existing_data = db.get_performance_data(user_name)
+        existing_data = get_cached_performance_data(user_name)
         if not existing_data.empty:
             for _, row in existing_data.iterrows():
                 p_name = row.get('pillar_name', '')
@@ -2794,9 +2808,12 @@ def performance_okrs():
                         performance_data[selected_dept][pillar_name]['status'] = new_status
                         performance_data[selected_dept][pillar_name]['weight'] = new_weight
                         try:
-                            db.save_performance_data(selected_dept, pillar_name, new_weight, new_progress, new_status, pillar_data['deadline'], pillar_data['kpis'])
-                        except:
-                            pass
+                        db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'], pd_data.get('submission_status', 'Draft'))
+                        get_cached_performance_data.clear()
+                    except:
+                        pass
+
+
                         st.rerun()
                 
                 if pillar_data['kpis']:
@@ -2841,12 +2858,14 @@ def performance_okrs():
                                             pillar_data['weight'] = total_weight
                                         
                                         db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'], pillar_data.get('submission_status', 'Draft'))
+                                        get_cached_performance_data.clear()
                                         st.success("✅ KPI saved!")
                                         st.rerun()
                                 with col_btn2:
                                     if st.button("🗑️ Delete", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
                                         del pillar_data['kpis'][kpi_index]
                                         db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
+                                        get_cached_performance_data.clear()
                                         st.success("✅ KPI deleted!")
                                         st.rerun()
                                 with col_btn3:
@@ -2925,7 +2944,7 @@ def performance_okrs():
                     else:
                         if user_name not in performance_data:
                             performance_data[user_name] = {}
-                            existing_data = db.get_performance_data(user_name)
+                            existing_data = get_cached_performance_data(user_name)
                             if not existing_data.empty:
                                 for _, row in existing_data.iterrows():
                                     p_name = row.get('pillar_name', '')
@@ -2949,9 +2968,11 @@ def performance_okrs():
                     
                     pd_data = performance_data[user_name][pillar_choice]
                     try:
-                        db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
+                        db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'], pd_data.get('submission_status', 'Draft'))
+                        get_cached_performance_data.clear()
                     except:
                         pass
+
                     
                     if submit_continue:
                         st.rerun()
@@ -3028,7 +3049,7 @@ def performance_okrs():
                 pass
             
             # KPI Eligibility Check
-            user_kpis = db.get_performance_data(user_name)
+            user_kpis = get_cached_performance_data(user_name)
             has_approved_kpis = False
             if not user_kpis.empty:
                 for _, row in user_kpis.iterrows():
@@ -3068,7 +3089,7 @@ def performance_okrs():
                             emp_name = f"{emp['first_name']} {emp['last_name']}"
                             emp_email = emp.get('email', '')
                             if emp_email and '@' in str(emp_email):
-                                emp_kpis = db.get_performance_data(emp_name)
+                                emp_kpis = get_cached_performance_data(emp_name)
                                 has_approved_for_cycle = False
                                 if not emp_kpis.empty:
                                     for _, row in emp_kpis.iterrows():
@@ -7498,7 +7519,7 @@ def reports_analytics():
         with col1:
             st.subheader("Strategic Pillar Progress")
             try:
-                perf_data = db.get_performance_data()
+                perf_data = get_cached_performance_data()
                 if not perf_data.empty:
                     pillar_avg = perf_data.groupby('pillar_name')['progress'].mean().reset_index()
                     fig = px.bar(pillar_avg, x='pillar_name', y='progress', color='progress',
@@ -7594,7 +7615,7 @@ def reports_analytics():
         st.subheader("🎯 Performance Trends & Forecasting")
         
         try:
-            perf_data = db.get_performance_data()
+            perf_data = get_cached_performance_data()
             if not perf_data.empty:
                 col1, col2 = st.columns(2)
                 with col1:
@@ -7633,7 +7654,7 @@ def reports_analytics():
             for dept in dept_list:
                 dept_emp = len(emp_df[emp_df['department'] == dept])
                 try:
-                    perf = db.get_performance_data(dept)
+                    perf = get_cached_performance_data(dept)
                     avg_score = perf['progress'].mean() if not perf.empty else 0
                 except:
                     avg_score = 0
@@ -7893,7 +7914,7 @@ def notifications_page():
     
     # 3. KPI Deadline Reminders
     try:
-        perf_data = db.get_performance_data()
+        perf_data = get_cached_performance_data()
         if not perf_data.empty:
             for _, row in perf_data.iterrows():
                 deadline = row.get('deadline', '')
@@ -11453,7 +11474,7 @@ def advanced_analytics():
         with col2:
             # KPI progress across departments
             try:
-                perf_data = db.get_performance_data()
+                perf_data = get_cached_performance_data()
                 if not perf_data.empty:
                     dept_progress = perf_data.groupby('department')['progress'].mean().reset_index()
                     fig5 = px.bar(dept_progress, x='department', y='progress', 
