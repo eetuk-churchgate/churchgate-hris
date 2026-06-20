@@ -88,128 +88,42 @@ CHURCHGATE_PORTFOLIO = [
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Georgia&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-    
-    * { font-family: 'Inter', sans-serif; }
-    h1, h2, h3, h4, h5, h6 { font-family: 'Georgia', serif; }
-    
-    /* DARK CHARCOAL BACKGROUND */
-    .stApp { background: #1a1a1a; }
-    .main > div { background: #1a1a1a; }
-    
-    /* SIDEBAR - DARK BUT READABLE */
-    section[data-testid="stSidebar"] { 
-        background-color: #111111 !important; 
-        border-right: 1px solid #2d2d2d !important;
-    }
-    section[data-testid="stSidebar"] * { color: #f5f0e8 !important; }
-    section[data-testid="stSidebar"] .stButton > button { 
-        background-color: #2d2d2d !important; 
-        border: 1px solid #3d3d3d !important; 
-        color: #f5f0e8 !important; 
-    }
-    section[data-testid="stSidebar"] .nav-link { color: #f5f0e8 !important; }
-    section[data-testid="stSidebar"] .nav-link span { color: #f5f0e8 !important; font-size: 14px !important; }
+    .stApp { background: #f5f0e8; }
+    .main > div { background: #f5f0e8; }
+    section[data-testid="stSidebar"] { background-color: #d5d5d5 !important; }
+    section[data-testid="stSidebar"] * { color: #333333 !important; }
+    section[data-testid="stSidebar"] .stButton > button { background-color: #c0c0c0 !important; border: 1px solid #a0a0a0 !important; color: #333333 !important; }
+    section[data-testid="stSidebar"] .nav-link { color: #333333 !important; }
+    section[data-testid="stSidebar"] .nav-link span { color: #333333 !important; font-size: 14px !important; }
     section[data-testid="stSidebar"] .nav-link svg { color: #C8A951 !important; }
-    section[data-testid="stSidebar"] .nav-link-selected { 
-        background-color: #2d2d2d !important; 
-        border-left: 3px solid #C8A951 !important; 
-    }
+    section[data-testid="stSidebar"] .nav-link-selected { background-color: #c0c0c0 !important; border-left: 3px solid #C8A951 !important; }
     section[data-testid="stSidebar"] .nav-link-selected span { color: #C8A951 !important; font-weight: 700 !important; }
-    
-    /* HEADER CARDS */
-    .churchgate-header { 
-        background: #2d2d2d; 
-        padding: 1.5rem 2rem; 
-        border-radius: 8px; 
-        margin-bottom: 1.5rem; 
-        border-left: 4px solid #C8A951; 
-        box-shadow: 0 2px 12px rgba(0,0,0,0.3); 
-    }
-    .churchgate-header h1 { color: #f5f0e8; font-size: 1.8rem; font-weight: 700; margin: 0; font-family: 'Georgia', serif; }
-    .churchgate-header p { color: #a0a0a0; font-size: 0.9rem; margin-top: 0.3rem; }
-    
-    /* METRIC CARDS */
-    .metric-card { 
-        background: #2d2d2d; 
-        padding: 1.2rem; 
-        border-radius: 8px; 
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3); 
-        text-align: center; 
-        border: 1px solid #3d3d3d; 
-        transition: all 0.2s ease; 
-    }
-    .metric-card:hover { 
-        transform: translateY(-3px); 
-        box-shadow: 0 4px 16px rgba(200,169,81,0.15); 
-        border-color: #C8A951;
-    }
+    .churchgate-header { background: white; padding: 1.5rem 2rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #C8A951; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .churchgate-header h1 { color: #1a1a1a; font-size: 1.8rem; font-weight: 700; margin: 0; font-family: 'Georgia', serif; }
+    .churchgate-header p { color: #666; font-size: 0.9rem; margin-top: 0.3rem; }
+    .metric-card { background: white; padding: 1.2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center; border: 1px solid #cccccc; transition: all 0.2s ease; }
+    .metric-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
     .metric-value { font-size: 1.8rem; font-weight: 700; color: #C8A951; font-family: 'Georgia', serif; }
-    .metric-label { color: #a0a0a0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    
-    /* BUTTONS */
-    .stButton > button { 
-        background: #CC0000 !important; 
-        color: white !important; 
-        border: 1px solid #CC0000 !important; 
-        padding: 0.5rem 1rem !important; 
-        border-radius: 6px !important; 
-        font-weight: 600 !important; 
-    }
-    .stButton > button:hover { 
-        background: #aa0000 !important; 
-        border-color: #C8A951 !important;
-    }
-    
-    /* MISSION BANNER */
-    .mission-banner { 
-        background: #2d2d2d; 
-        padding: 1.5rem; 
-        border-radius: 8px; 
-        text-align: center; 
-        margin: 1.5rem 0; 
-        border: 1px solid #C8A951; 
-    }
-    .mission-banner h2 { color: #C8A951; font-size: 1.3rem; font-family: 'Georgia', serif; }
-    .mission-banner h3 { color: #f5f0e8; }
-    .mission-banner p { color: #a0a0a0; }
-    
-    /* VALUE CARDS */
-    .value-card { 
-        background: #2d2d2d; 
-        padding: 0.8rem; 
-        border-radius: 6px; 
-        text-align: center; 
-        border: 1px solid #3d3d3d; 
-    }
+    .metric-label { color: #666; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stButton > button { background: #CC0000 !important; color: white !important; border: none !important; padding: 0.5rem 1rem !important; border-radius: 6px !important; font-weight: 600 !important; }
+    .stButton > button:hover { background: #aa0000 !important; }
+    .mission-banner { background: #d5d5d5; padding: 1.5rem; border-radius: 8px; text-align: center; margin: 1.5rem 0; border: 2px solid #C8A951; }
+    .mission-banner h2 { color: #C8A951; font-size: 1.3rem; }
+    .mission-banner h3 { color: #1a1a1a; }
+    .mission-banner p { color: #333333; }
+    .value-card { background: white; padding: 0.8rem; border-radius: 6px; text-align: center; border: 1px solid #cccccc; }
     .value-card h4 { color: #C8A951; font-size: 0.85rem; margin: 0 0 0.3rem 0; }
-    .value-card p { font-size: 0.7rem; color: #a0a0a0; margin: 0; line-height: 1.3; }
-    
-    /* TIER BADGES */
+    .value-card p { font-size: 0.7rem; color: #666; margin: 0; line-height: 1.3; }
     .tier-1-badge { background: #38a169; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.8rem; }
     .tier-2-badge { background: #C8A951; color: #1a1a1a; padding: 0.3rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.8rem; }
     .tier-3-badge { background: #CC0000; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.8rem; }
-    
-    /* STATUS BADGES */
     .status-active { background: #38a169; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .status-pending { background: #C8A951; color: #1a1a1a; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
-    
     .stImage { display: flex; justify-content: center; }
-    
-    /* CHAT CONTAINER */
-    .chat-container { 
-        max-height: 400px; 
-        overflow-y: auto; 
-        padding: 1rem; 
-        background: #2d2d2d; 
-        border-radius: 8px; 
-        margin-bottom: 1rem; 
-    }
-    
-    /* GREETING HEADER */
-    .greeting-header {
-        background: #2d2d2d;
+    .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
+.greeting-header {
+        background: #d5d5d5;
         padding: 1rem 2rem;
         border-radius: 10px;
         margin-bottom: 1rem;
@@ -218,11 +132,20 @@ st.markdown("""
         align-items: center;
         justify-content: space-between;
     }
-    .greeting-header h1 { color: #f5f0e8; font-size: 1.5rem; font-weight: 700; margin: 0; font-family: 'Georgia', serif; }
-    .greeting-header p { color: #a0a0a0; font-size: 0.85rem; margin: 0.2rem 0 0 0; }
+    .greeting-header h1 { color: #1a1a1a; font-size: 1.5rem; font-weight: 700; margin: 0; font-family: 'Georgia', serif; }
+    .greeting-header p { color: #555; font-size: 0.85rem; margin: 0.2rem 0 0 0; }
     
+    .mission-banner {
+        background: #d5d5d5;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+        margin: 1rem 0;
+        border: 2px solid #C8A951;
+    }
+    .mission-banner h2 { color: #C8A951; font-size: 1.2rem; margin-bottom: 0.5rem; }
     .mission-item { 
-        background: #2d2d2d; 
+        background: white; 
         padding: 0.8rem; 
         border-radius: 6px; 
         text-align: center; 
@@ -232,62 +155,46 @@ st.markdown("""
         flex-direction: column;
         justify-content: center;
     }
-    .mission-item h3 { color: #C8A951; font-size: 0.9rem; margin: 0 0 0.3rem 0; font-family: 'Georgia', serif; }
-    .mission-item p { font-size: 0.75rem; color: #a0a0a0; margin: 0; line-height: 1.3; }
+    .mission-item h3 { color: #C8A951; font-size: 0.9rem; margin: 0 0 0.3rem 0; }
+    .mission-item p { font-size: 0.75rem; color: #666; margin: 0; line-height: 1.3; }
     
-    /* CUSTOM EXPANDER HEADERS */
+    .value-card {
+        background: white;
+        padding: 0.8rem;
+        border-radius: 6px;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        height: 100%;
+        min-height: 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .value-card h4 { color: #C8A951; font-size: 0.85rem; margin: 0 0 0.3rem 0; }
+    .value-card p { font-size: 0.7rem; color: #666; margin: 0; line-height: 1.3; }
+    
+    /* Custom Expander Headers */
     [data-testid="stExpander"] details summary {
         font-weight: 600 !important;
         font-size: 0.95rem !important;
-        background: #2d2d2d !important;
+        background: white !important;
         border-radius: 8px !important;
         border-left: 4px solid #C8A951 !important;
         padding: 0.5rem 1rem !important;
         margin-bottom: 0.3rem !important;
-        color: #f5f0e8 !important;
     }
     [data-testid="stExpander"] details summary:hover {
-        background: #3d3d3d !important;
+        background: #f8f8f8 !important;
     }
     [data-testid="stExpander"] details summary svg {
         color: #C8A951 !important;
     }
     
-    /* INPUT FIELDS */
-    input, textarea, select {
-        background: #2d2d2d !important;
-        color: #f5f0e8 !important;
-        border: 1px solid #3d3d3d !important;
-        border-radius: 6px !important;
-    }
-    input:focus, textarea:focus, select:focus {
-        border-color: #C8A951 !important;
-        box-shadow: 0 0 0 2px rgba(200,169,81,0.2) !important;
-    }
-    
-    /* HIGH CONTRAST TEXT */
-    p, span, label, div { color: #f5f0e8 !important; }
-    .stMarkdown p { color: #f5f0e8 !important; }
-    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 { color: #C8A951 !important; }
-    .stSelectbox label, .stTextInput label, .stTextArea label { color: #C8A951 !important; font-weight: 500 !important; }
-    
-    /* LINKS */
-    a { color: #C8A951 !important; }
-    a:hover { color: #d4b866 !important; }
-    
-    /* SCROLLBAR */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #1a1a1a; }
-    ::-webkit-scrollbar-thumb { background: #3d3d3d; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #C8A951; }
-    
-    /* HIDE STREAMLIT DEFAULTS */
-    #MainMenu { visibility: hidden; }
-    header[data-testid="stHeader"] { visibility: hidden; }
-    footer { visibility: hidden; }
+    #MainMenu {{ visibility: hidden; }}
+    header {{ visibility: hidden; }}
+    footer {{ visibility: hidden; }}
 </style>
 """, unsafe_allow_html=True)
-
 
 @st.cache_resource
 def init_resources():
