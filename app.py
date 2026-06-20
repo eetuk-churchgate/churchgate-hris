@@ -1984,10 +1984,12 @@ def employee_management():
                                 if current_dob and str(current_dob) != 'None' and str(current_dob) != 'nan':
                                     try:
                                         current_dob_date = pd.to_datetime(current_dob).date()
+                                        if current_dob_date < date(1920, 1, 1) or current_dob_date > date(2020, 12, 31):
+                                            current_dob_date = date(1990, 1, 1)
                                     except:
-                                        current_dob_date = datetime.now().date()
+                                        current_dob_date = date(1990, 1, 1)
                                 else:
-                                    current_dob_date = datetime.now().date()
+                                    current_dob_date = date(1990, 1, 1)
                                 new_dob = st.date_input("Date of Birth", value=current_dob_date, min_value=date(1920, 1, 1), max_value=date(2020, 12, 31), key=f"dob_{emp['employee_id']}_{st.session_state.dir_page}")
                             
                             if st.form_submit_button("💾 Save Changes", use_container_width=True):
