@@ -194,6 +194,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+@st.cache_data(ttl=60)
+def get_cached_employees():
+    return get_cached_employees() if db else pd.DataFrame()
+
+@st.cache_data(ttl=60)
+def get_cached_candidates():
+    return get_cached_candidates() if db else pd.DataFrame()
+
 @st.cache_resource
 def init_resources():
     db = DatabaseManager()
@@ -881,7 +889,7 @@ def employee_dashboard():
     # Real data calculations
     team_count = 0
     try:
-        emp_df = db.get_all_employees()
+        emp_df = get_cached_employees()
         if not emp_df.empty:
             team_count = len(emp_df[emp_df['department'] == user_dept])
     except:
@@ -1014,7 +1022,7 @@ def employee_dashboard():
         st.markdown("---")
         st.subheader("🎂 Birthdays This Month")
         try:
-            emp_df = db.get_all_employees()
+            emp_df = get_cached_employees()
             if not emp_df.empty:
                 today = datetime.now()
                 found_birthday = False
@@ -1119,7 +1127,7 @@ def employee_dashboard():
     st.markdown("---")
     st.markdown("**Department Heads**")
     try:
-        emp_df = db.get_all_employees()
+        emp_df = get_cached_employees()
         if not emp_df.empty:
             hod_df = emp_df[emp_df['grade'].isin(['Manager', 'HOD', 'C-Level'])]
             dept_list = hod_df['department'].unique()
@@ -1182,7 +1190,7 @@ def employee_dashboard():
         st.markdown("---")
         st.markdown("### 👥 Department Heads")
         try:
-            emp_df = db.get_all_employees()
+            emp_df = get_cached_employees()
             if not emp_df.empty:
                 hod_df = emp_df[emp_df['grade'].isin(['Manager', 'HOD', 'C-Level'])]
                 hod_data = []
@@ -1202,7 +1210,7 @@ def employee_dashboard():
     
     # Get colleagues list
     try:
-        emp_df = db.get_all_employees()
+        emp_df = get_cached_employees()
         if not emp_df.empty:
             colleague_list = [f"{row['first_name']} {row['last_name']}" for _, row in emp_df.iterrows() if f"{row['first_name']} {row['last_name']}" != user_name]
         else:
@@ -1319,7 +1327,7 @@ def executive_dashboard():
     emp_df = pd.DataFrame()
     
     try:
-        emp_df = db.get_all_employees()
+        emp_df = get_cached_employees()
         if not emp_df.empty:
             total_employees = len(emp_df)
             active_employees = len(emp_df[emp_df['status'] == 'Active'])
@@ -1334,7 +1342,7 @@ def executive_dashboard():
         all_reqs = db.get_all_job_requisitions()
         if all_reqs:
             open_positions = len([r for r in all_reqs if r.get('status') == 'Approved - Live'])
-        candidates_df = db.get_all_candidates()
+        candidates_df = get_cached_candidates()
         if not candidates_df.empty:
             open_positions += len(candidates_df[candidates_df['status'] == 'New'])
     except:
@@ -1421,7 +1429,7 @@ def executive_dashboard():
         today = datetime.now()
         has_celebration = False
         try:
-            emp_df = db.get_all_employees()
+            emp_df = get_cached_employees()
             if not emp_df.empty:
                 for _, emp in emp_df.iterrows():
                     dob = emp.get('date_of_birth')
@@ -1786,7 +1794,7 @@ def employee_management():
     
     def load_employees():
         try:
-            df = db.get_all_employees()
+            df = get_cached_employees()
             if df is None or df.empty:
                 df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'status'])
             return df
@@ -2979,7 +2987,7 @@ def performance_okrs():
             with st.expander("📋 KPI History Log"):
                 # Load all employees once for department mapping
                 try:
-                    all_emps = db.get_all_employees()
+                    all_emps = get_cached_employees()
                     emp_dept_map = {}
                     if not all_emps.empty:
                         for _, e in all_emps.iterrows():
@@ -3051,7 +3059,7 @@ def performance_okrs():
                     
                     # Only send to employees with approved KPIs for THIS cycle
                     try:
-                        emp_df = db.get_all_employees()
+                        emp_df = get_cached_employees()
                         from utils.email_service import EmailService
                         email_svc = EmailService()
                         sent = 0
@@ -4182,7 +4190,7 @@ def recruitment_hub():
     is_manager = is_admin or user_role in ['Manager', 'HOD']
     
     try:
-        employees_df = db.get_all_employees()
+        employees_df = get_cached_employees()
     except:
         employees_df = pd.DataFrame()
     
@@ -4678,7 +4686,7 @@ def recruitment_hub():
         st.caption(f"🧠 AI Engine: {'OpenAI (95%+ confidence)' if ai_agent.use_openai else 'Enhanced Keyword (85%+ confidence)'}")
         
         try:
-            candidates = db.get_all_candidates()
+            candidates = get_cached_candidates()
         except:
             candidates = pd.DataFrame()
         
@@ -5778,7 +5786,7 @@ def recruitment_hub():
         c4.metric("Onboarding", len(st.session_state.onboarding_list))
         
         try:
-            candidates = db.get_all_candidates()
+            candidates = get_cached_candidates()
             total_apps = len(candidates) if not candidates.empty else 0
         except:
             total_apps = 0
@@ -5833,7 +5841,7 @@ def ai_recruitment_agent():
         st.subheader("🚀 Recruitment Pipeline & Bulk Screening")
         
         try:
-            candidates = db.get_all_candidates()
+            candidates = get_cached_candidates()
             if not candidates.empty:
                 # Job filter
                 job_map = {}
@@ -6276,7 +6284,7 @@ def ai_recruitment_agent():
                 if user_message:
                     st.session_state.ai_chat_history.append({"role": "user", "content": user_message})
                     try:
-                        candidates = db.get_all_candidates()
+                        candidates = get_cached_candidates()
                         screened = candidates[candidates['ai_score'] > 0] if not candidates.empty and 'ai_score' in candidates.columns else []
                         
                         if ai_agent.use_openai:
@@ -6361,7 +6369,7 @@ def ai_recruitment_agent():
     elif ai_section == "📊 Candidate Tiering":
         st.subheader("📊 Candidate Tiering Dashboard")
         try:
-            candidates = db.get_all_candidates()
+            candidates = get_cached_candidates()
             if not candidates.empty:
                 tier1 = len(candidates[candidates['ai_tier'].str.contains('Tier 1', na=False)])
                 tier2 = len(candidates[candidates['ai_tier'].str.contains('Tier 2', na=False)])
@@ -6454,7 +6462,7 @@ def ai_recruitment_agent():
     elif ai_section == "📄 Executive Report":
         st.subheader("📄 AI Executive Report Generator")
         try:
-            candidates = db.get_all_candidates()
+            candidates = get_cached_candidates()
             if not candidates.empty:
                 if st.button("📊 Generate Executive PDF Report", use_container_width=True, type="primary"):
                     try:
@@ -6542,7 +6550,7 @@ def ai_recruitment_agent():
     elif ai_section == "💾 Save Results":
         st.subheader("💾 Export & Save")
         try:
-            candidates = db.get_all_candidates()
+            candidates = get_cached_candidates()
             if not candidates.empty:
                 st.download_button("📥 Download All (CSV)", candidates.to_csv(index=False), "candidates.csv", "text/csv")
                 st.markdown("---")
@@ -6566,7 +6574,7 @@ def chat_communications():
     @st.cache_data(ttl=300)
     def get_employee_list():
         try:
-            df = db.get_all_employees()
+            df = get_cached_employees()
             if not df.empty:
                 return df
         except:
@@ -7437,7 +7445,7 @@ def reports_analytics():
     active_emp = 0
     
     try:
-        emp_df = db.get_all_employees()
+        emp_df = get_cached_employees()
         if not emp_df.empty:
             total_emp = len(emp_df)
             departments = len(emp_df['department'].unique())
@@ -7552,7 +7560,7 @@ def reports_analytics():
         total_candidates = 0
         active_jobs = 0
         try:
-            candidates = db.get_all_candidates()
+            candidates = get_cached_candidates()
             if not candidates.empty:
                 total_candidates = len(candidates)
             all_reqs = db.get_all_job_requisitions()
@@ -7835,7 +7843,7 @@ def notifications_page():
     # 1. Load real data from database
     employees_df = pd.DataFrame()
     try:
-        employees_df = db.get_all_employees()
+        employees_df = get_cached_employees()
     except:
         pass
     
@@ -9082,7 +9090,7 @@ def company_calendar():
     st.markdown("---")
     st.markdown("### 🎂 Birthdays This Month")
     try:
-        emp_df = db.get_all_employees()
+        emp_df = get_cached_employees()
         if not emp_df.empty:
             birthday_found = False
             for _, emp in emp_df.iterrows():
@@ -9756,7 +9764,7 @@ def employee_directory_readonly():
     st.markdown("""<div class="churchgate-header"><h1>🌐 Employee Directory</h1><p>Search Colleagues | Contact Info | Org Structure</p></div>""", unsafe_allow_html=True)
     
     try:
-        emp_df = db.get_all_employees()
+        emp_df = get_cached_employees()
         if not emp_df.empty:
             search = st.text_input("🔍 Search by name, department, or position", placeholder="Type to find colleagues...")
             
@@ -10002,7 +10010,7 @@ def send_celebration_emails():
     today_str = today.strftime('%Y-%m-%d')
     
     try:
-        emp_df = db.get_all_employees()
+        emp_df = get_cached_employees()
         if emp_df.empty:
             return 0, 0, "No employees found"
         
@@ -10175,7 +10183,7 @@ def my_profile():
     
     team_count = 0
     try:
-        emp_df = db.get_all_employees()
+        emp_df = get_cached_employees()
         if not emp_df.empty:
             team_count = len(emp_df[emp_df['department'] == emp_dept])
     except:
@@ -10375,7 +10383,7 @@ def my_profile():
             st.info(f"Showing colleagues in **{emp_dept}**")
             
             try:
-                emp_df = db.get_all_employees()
+                emp_df = get_cached_employees()
                 if not emp_df.empty:
                     team = emp_df[emp_df['department'] == emp_dept]
                     for _, teammate in team.head(10).iterrows():
@@ -11289,7 +11297,7 @@ def advanced_analytics():
     
     # Load all data sources
     try:
-        emp_df = db.get_all_employees()
+        emp_df = get_cached_employees()
         total_emp = len(emp_df) if not emp_df.empty else 0
         dept_count = len(emp_df['department'].unique()) if not emp_df.empty else 0
         active_emp = len(emp_df[emp_df['status'] == 'Active']) if not emp_df.empty else 0
@@ -11298,7 +11306,7 @@ def advanced_analytics():
         total_emp = 0
     
     try:
-        candidates = db.get_all_candidates()
+        candidates = get_cached_candidates()
         total_candidates = len(candidates) if not candidates.empty else 0
         screened = len(candidates[candidates['ai_score'] > 0]) if not candidates.empty and 'ai_score' in candidates.columns else 0
         hired = len(candidates[candidates['status'] == 'Hired']) if not candidates.empty and 'status' in candidates.columns else 0
