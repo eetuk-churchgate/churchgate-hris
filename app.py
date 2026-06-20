@@ -60,9 +60,9 @@ function showNotification(title, body) {
 """, unsafe_allow_html=True)
 
 CHURCHGATE_RED = "#CC0000"
-CHURCHGATE_DARK = "#1B1A18"
-CHURCHGATE_GREY = "#4A4640"
-CHURCHGATE_LIGHT = "#F5F2EC"
+CHURCHGATE_DARK = "#1a1a1a"
+CHURCHGATE_GREY = "#4a4a4a"
+CHURCHGATE_LIGHT = "#f5f5f5"
 CHURCHGATE_WHITE = "#ffffff"
 
 CHURCHGATE_PURPOSE = "To improve the lives of all those we serve."
@@ -88,57 +88,60 @@ CHURCHGATE_PORTFOLIO = [
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
-
-    .stApp, .stApp * { font-family: 'Inter', sans-serif; }
-    h1, h2, h3, .metric-value, .churchgate-header h1, .greeting-header h1 { font-family: 'Space Grotesk', sans-serif !important; }
-
-    .stApp { background: #F5F2EC; }
-    .main > div { background: #F5F2EC; }
-    section[data-testid="stSidebar"] { background-color: #1A1816 !important; }
-    section[data-testid="stSidebar"] * { color: #C9C5BC !important; }
-    section[data-testid="stSidebar"] .stButton > button { background-color: #242220 !important; border: 1px solid #35322D !important; color: #EDEAE3 !important; }
-    section[data-testid="stSidebar"] .nav-link { color: #A9A6A0 !important; }
-    section[data-testid="stSidebar"] .nav-link span { color: #A9A6A0 !important; font-size: 14px !important; }
+    .stApp { background: #e8e8e8; }
+    .main > div { background: #e8e8e8; }
+    section[data-testid="stSidebar"] { background-color: #d5d5d5 !important; }
+    section[data-testid="stSidebar"] * { color: #333333 !important; }
+    section[data-testid="stSidebar"] .stButton > button { background-color: #c0c0c0 !important; border: 1px solid #a0a0a0 !important; color: #333333 !important; }
+    section[data-testid="stSidebar"] .nav-link { color: #333333 !important; }
+    section[data-testid="stSidebar"] .nav-link span { color: #333333 !important; font-size: 14px !important; }
     section[data-testid="stSidebar"] .nav-link svg { color: #CC0000 !important; }
-    section[data-testid="stSidebar"] .nav-link-selected { background-color: rgba(204,0,0,0.18) !important; border-left: 3px solid #CC0000 !important; border-radius: 0 !important; }
-    section[data-testid="stSidebar"] .nav-link-selected span { color: #FFFFFF !important; font-weight: 700 !important; }
-    .churchgate-header { background: white; padding: 1.5rem 2rem; border-radius: 10px; margin-bottom: 1.5rem; border-left: 4px solid #CC0000; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .churchgate-header h1 { color: #1B1A18; font-size: 1.8rem; font-weight: 700; margin: 0; }
-    .churchgate-header p { color: #6F6A62; font-size: 0.9rem; margin-top: 0.3rem; }
-    .metric-card { background: white; padding: 1.2rem; border-radius: 0; border-top: 3px solid #CC0000; box-shadow: 0 1px 3px rgba(0,0,0,0.06); text-align: center; transition: all 0.2s ease; }
-    .metric-card:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.10); }
-    .metric-value { font-size: 1.8rem; font-weight: 700; color: #1B1A18; }
-    .metric-label { color: #8A857C; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    section[data-testid="stSidebar"] .nav-link-selected { background-color: #c0c0c0 !important; border-left: 3px solid #CC0000 !important; }
+    section[data-testid="stSidebar"] .nav-link-selected span { color: #CC0000 !important; font-weight: 700 !important; }
+    .churchgate-header { background: white; padding: 1.5rem 2rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #CC0000; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .churchgate-header h1 { color: #1a1a1a; font-size: 1.8rem; font-weight: 700; margin: 0; }
+    .churchgate-header p { color: #666; font-size: 0.9rem; margin-top: 0.3rem; }
+    .metric-card { background: white; padding: 1.2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center; border: 1px solid #cccccc; transition: all 0.2s ease; }
+    .metric-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .metric-value { font-size: 1.8rem; font-weight: 700; color: #1a1a1a; }
+    .metric-label { color: #666; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
     .stButton > button { background: #CC0000 !important; color: white !important; border: none !important; padding: 0.5rem 1rem !important; border-radius: 6px !important; font-weight: 600 !important; }
-    .stButton > button:hover { background: #A30000 !important; }
-    .mission-banner { background: #1A1816; padding: 1.5rem 2rem; border-radius: 0; text-align: center; margin: 1.5rem 0; border: none; }
-    .mission-banner h2 { color: #FFFFFF; background: #CC0000; display: inline-block; padding: 0.3rem 0.9rem; border-radius: 0; font-size: 1rem; letter-spacing: 0.5px; margin-bottom: 0.8rem; }
-    .mission-banner h3 { color: #F0EDE7; font-size: 1.1rem; font-weight: 600; }
-    .mission-banner p { color: #C9C5BC; }
-    .value-card { background: white; padding: 0.8rem; border-radius: 6px; text-align: center; border: 1px solid #E3DED3; }
-    .tier-1-badge { background: rgba(31,122,77,0.08); color: #1F7A4D; border: 1px solid #1F7A4D; padding: 0.25rem 0.6rem; border-radius: 4px; font-weight: 600; font-size: 0.8rem; }
-    .tier-2-badge { background: rgba(184,134,11,0.08); color: #8A6508; border: 1px solid #B8860B; padding: 0.25rem 0.6rem; border-radius: 4px; font-weight: 600; font-size: 0.8rem; }
-    .tier-3-badge { background: rgba(204,0,0,0.06); color: #CC0000; border: 1px solid #CC0000; padding: 0.25rem 0.6rem; border-radius: 4px; font-weight: 600; font-size: 0.8rem; }
-    .status-active { background: rgba(31,122,77,0.08); color: #1F7A4D; border: 1px solid #1F7A4D; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; }
-    .status-pending { background: rgba(184,134,11,0.08); color: #8A6508; border: 1px solid #B8860B; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; }
-    .status-at-risk { background: rgba(204,0,0,0.06); color: #CC0000; border: 1px solid #CC0000; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.8rem; }
+    .stButton > button:hover { background: #aa0000 !important; }
+    .mission-banner { background: #d5d5d5; padding: 1.5rem; border-radius: 8px; text-align: center; margin: 1.5rem 0; border: 2px solid #CC0000; }
+    .mission-banner h2 { color: #CC0000; font-size: 1.3rem; }
+    .mission-banner h3 { color: #1a1a1a; }
+    .mission-banner p { color: #333333; }
+    .value-card { background: white; padding: 0.8rem; border-radius: 6px; text-align: center; border: 1px solid #cccccc; }
+    .tier-1-badge { background: #38a169; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.8rem; }
+    .tier-2-badge { background: #d69e2e; color: #1a1a1a; padding: 0.3rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.8rem; }
+    .tier-3-badge { background: #CC0000; color: white; padding: 0.3rem 0.6rem; border-radius: 15px; font-weight: 600; font-size: 0.8rem; }
+    .status-active { background: #38a169; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
+    .status-pending { background: #d69e2e; color: #1a1a1a; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
+    .status-at-risk { background: #CC0000; color: white; padding: 0.2rem 0.6rem; border-radius: 15px; font-size: 0.8rem; }
     .stImage { display: flex; justify-content: center; }
-    .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #E3DED3; }
+    .chat-container { max-height: 400px; overflow-y: auto; padding: 1rem; background: white; border-radius: 8px; margin-bottom: 1rem; }
 .greeting-header {
-        background: white;
+        background: #d5d5d5;
         padding: 1rem 2rem;
         border-radius: 10px;
         margin-bottom: 1rem;
         border-left: 4px solid #CC0000;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
-    .greeting-header h1 { color: #1B1A18; font-size: 1.5rem; font-weight: 700; margin: 0; }
-    .greeting-header p { color: #6F6A62; font-size: 0.85rem; margin: 0.2rem 0 0 0; }
+    .greeting-header h1 { color: #1a1a1a; font-size: 1.5rem; font-weight: 700; margin: 0; }
+    .greeting-header p { color: #555; font-size: 0.85rem; margin: 0.2rem 0 0 0; }
     
+    .mission-banner {
+        background: #d5d5d5;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+        margin: 1rem 0;
+        border: 2px solid #CC0000;
+    }
+    .mission-banner h2 { color: #CC0000; font-size: 1.2rem; margin-bottom: 0.5rem; }
     .mission-item { 
         background: white; 
         padding: 0.8rem; 
@@ -149,17 +152,16 @@ st.markdown("""
         display: flex;
         flex-direction: column;
         justify-content: center;
-        border: 1px solid #E3DED3;
     }
     .mission-item h3 { color: #CC0000; font-size: 0.9rem; margin: 0 0 0.3rem 0; }
-    .mission-item p { font-size: 0.75rem; color: #6F6A62; margin: 0; line-height: 1.3; }
+    .mission-item p { font-size: 0.75rem; color: #666; margin: 0; line-height: 1.3; }
     
     .value-card {
         background: white;
         padding: 0.8rem;
         border-radius: 6px;
         text-align: center;
-        border: 1px solid #E3DED3;
+        border: 1px solid #e0e0e0;
         height: 100%;
         min-height: 100px;
         display: flex;
@@ -167,7 +169,7 @@ st.markdown("""
         justify-content: center;
     }
     .value-card h4 { color: #CC0000; font-size: 0.85rem; margin: 0 0 0.3rem 0; }
-    .value-card p { font-size: 0.7rem; color: #6F6A62; margin: 0; line-height: 1.3; }
+    .value-card p { font-size: 0.7rem; color: #666; margin: 0; line-height: 1.3; }
     
     /* Custom Expander Headers */
     [data-testid="stExpander"] details summary {
@@ -180,15 +182,15 @@ st.markdown("""
         margin-bottom: 0.3rem !important;
     }
     [data-testid="stExpander"] details summary:hover {
-        background: #F2EEE6 !important;
+        background: #f8f8f8 !important;
     }
     [data-testid="stExpander"] details summary svg {
         color: #CC0000 !important;
     }
     
-    #MainMenu { visibility: hidden; }
-    header { visibility: hidden; }
-    footer { visibility: hidden; }
+    #MainMenu {{ visibility: hidden; }}
+    header {{ visibility: hidden; }}
+    footer {{ visibility: hidden; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -614,13 +616,13 @@ def login_section():
             ca, cb, cc = st.columns([1, 1, 1])
             with cb:
                 st.image(logo, width=300)
-        st.markdown("""<div style="text-align: center; padding: 1rem 0;"><h1 style="color: #1B1A18; font-size: 2rem; font-weight: 700;">HRIS Portal</h1><p style="color: #6F6A62; font-size: 0.9rem;">Human Resource Information System</p></div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="text-align: center; padding: 1rem 0;"><h1 style="color: #1a1a1a; font-size: 2rem; font-weight: 700;">HRIS Portal</h1><p style="color: #666666; font-size: 0.9rem;">Human Resource Information System</p></div>""", unsafe_allow_html=True)
         
         # WTC Abuja Image
         wtc_path = Path(__file__).parent / "WTC Abuja 7 (1).jpg"
         if wtc_path.exists():
             st.image(str(wtc_path), use_container_width=True)
-            st.markdown("<p style='text-align:center;color:#8A857C;font-size:0.8rem;'>Churchgate Group</p>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center;color:#888;font-size:0.8rem;'>Churchgate Group</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
             email = st.text_input("📧 Corporate Email", placeholder="Enter your corporate email")
@@ -744,7 +746,7 @@ def sidebar_navigation():
         logo = get_logo()
         if logo:
             st.image(logo, width=220)
-        st.markdown("""<div style="text-align: center; padding: 0.8rem 0; background: #4A4640; border-radius: 6px; margin-bottom: 1rem; border: 1px solid #6F6A62;"><h3 style="color: #ffffff; margin: 0; font-size: 1.1rem; font-weight: 700;">CHURCHGATE GROUP</h3><p style="color: #E3DED3; font-size: 0.7rem; margin: 0;">HRIS v5.0</p></div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="text-align: center; padding: 0.8rem 0; background: #4a4a4a; border-radius: 6px; margin-bottom: 1rem; border: 1px solid #666666;"><h3 style="color: #ffffff; margin: 0; font-size: 1.1rem; font-weight: 700;">CHURCHGATE GROUP</h3><p style="color: #cccccc; font-size: 0.7rem; margin: 0;">HRIS v5.0</p></div>""", unsafe_allow_html=True)
         if st.session_state.user:
             user = st.session_state.user
             # Load real data from employees table
@@ -767,7 +769,7 @@ def sidebar_navigation():
                 profile_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">'
             else:
                 profile_html = f'<div style="width: 40px; height: 40px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: white;">{initials}</div>'
-            st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #1B1A18; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #6F6A62; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
             menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "📋 Audit Log", "📊 Advanced Analytics", "👤 My Profile"]
@@ -777,7 +779,7 @@ def sidebar_navigation():
             menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
 
         all_icons = ["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "folder-fill", "lightbulb-fill", "calendar-fill", "bullseye", "inbox-fill", "person-lines-fill", "book-half", "heart-fill", "mortarboard-fill", "shield-fill", "graph-up", "person-circle"]
-        selected = option_menu(menu_title=None, options=menu_options, icons=all_icons[:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#1B1A18", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
+        selected = option_menu(menu_title=None, options=menu_options, icons=all_icons[:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
             st.markdown("<p style='color: #CC0000; font-size: 0.75rem; margin-bottom: 0.5rem;'>⚡ QUICK ACTIONS</p>", unsafe_allow_html=True)
@@ -802,7 +804,7 @@ def sidebar_navigation():
             st.markdown("[🏠 Home](/)", unsafe_allow_html=True)
         with col2:
             st.markdown("[💼 Careers](/Careers)", unsafe_allow_html=True)
-        st.markdown("""<div style="text-align: center; padding: 0.5rem; margin-top: 1rem;"><p style="color: #8A857C; font-size: 0.65rem; margin: 0;">© 2026 Churchgate Group</p><p style="color: #8A857C; font-size: 0.65rem; margin: 0;">HRIS v5.0</p></div>""", unsafe_allow_html=True)
+        st.markdown("""<div style="text-align: center; padding: 0.5rem; margin-top: 1rem;"><p style="color: #888; font-size: 0.65rem; margin: 0;">© 2026 Churchgate Group</p><p style="color: #888; font-size: 0.65rem; margin: 0;">HRIS v5.0</p></div>""", unsafe_allow_html=True)
         return selected
 
 def employee_dashboard():
@@ -838,7 +840,7 @@ def employee_dashboard():
     initials = generate_initials(user_name)
     
     # Load profile picture for greeting
-    greeting_pic_html = f'<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#A32D2D);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;min-width:60px;overflow:hidden;">{initials}</div>'
+    greeting_pic_html = f'<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;min-width:60px;overflow:hidden;">{initials}</div>'
     db_pic = db.get_profile_picture(int(user.get('id', 0))) if user.get('id') else None
     if db_pic is not None:
         import base64
@@ -853,7 +855,7 @@ def employee_dashboard():
                 <p>{user_position} • {user_dept} • ID: {user_id}</p>
             </div>
         </div>
-        <div style="text-align:right;color:#E3DED3;font-size:0.85rem;">
+        <div style="text-align:right;color:#ccc;font-size:0.85rem;">
             {datetime.now().strftime('%A, %B %d, %Y')}
         </div>
     </div>
@@ -870,7 +872,7 @@ def employee_dashboard():
     ]
     ticker_text = " • ".join(announcements)
     st.markdown(f"""
-    <div style="background:#F0ECE4;color:#1B1A18;padding:0.6rem 1.5rem;border-radius:8px;margin-bottom:1rem;overflow:hidden;white-space:nowrap;">
+    <div style="background:#d5d5d5;color:#333;padding:0.6rem 1.5rem;border-radius:8px;margin-bottom:1rem;overflow:hidden;white-space:nowrap;">
         <marquee behavior="scroll" direction="left" scrollamount="3">{ticker_text}</marquee>
     </div>
     """, unsafe_allow_html=True)
@@ -903,11 +905,11 @@ def employee_dashboard():
     
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">📊 Performance</div><div class="metric-value">{perf_score:.0f}%</div><small style="color:#1F7A4D;">Latest appraisal</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">📊 Performance</div><div class="metric-value">{perf_score:.0f}%</div><small style="color:#38a169;">Latest appraisal</small></div>""", unsafe_allow_html=True)
     with c2:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Team Members</div><div class="metric-value">{team_count}</div><small>{user_dept}</small></div>""", unsafe_allow_html=True)
     with c3:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏖️ Leave Days</div><div class="metric-value">{st.session_state.leave_balance}</div><small style="color:#1F7A4D;">Remaining</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏖️ Leave Days</div><div class="metric-value">{st.session_state.leave_balance}</div><small style="color:#38a169;">Remaining</small></div>""", unsafe_allow_html=True)
     with c4:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">🎯 KPIs</div><div class="metric-value">4</div><small>Strategic pillars</small></div>""", unsafe_allow_html=True)
     with c5:
@@ -954,14 +956,14 @@ def employee_dashboard():
                 perf_data = perf_data.sort_values('sort_order')
                 for _, row in perf_data.iterrows():
                     progress = row.get('progress', 0)
-                    color = "#1F7A4D" if progress >= 85 else "#B8860B" if progress >= 65 else "#CC0000"
+                    color = "#38a169" if progress >= 85 else "#d69e2e" if progress >= 65 else "#CC0000"
                     st.markdown(f"""
                     <div style="background:white;padding:0.7rem 1rem;border-radius:8px;margin-bottom:0.4rem;">
                         <div style="display:flex;justify-content:space-between;">
                             <span style="font-weight:600;font-size:0.9rem;">{row.get('pillar_name', 'Pillar')}</span>
                             <span style="color:{color};font-weight:700;">{int(progress)}%</span>
                         </div>
-                        <div style="background:#EDE9E1;height:5px;border-radius:3px;margin-top:0.3rem;">
+                        <div style="background:#e0e0e0;height:5px;border-radius:3px;margin-top:0.3rem;">
                             <div style="background:{color};width:{int(progress)}%;height:5px;border-radius:3px;"></div>
                         </div>
                     </div>
@@ -975,9 +977,9 @@ def employee_dashboard():
         st.markdown("---")
         st.subheader("🌟 Recognition Wall")
         st.markdown("""
-        <div style="background:white;padding:1rem;border-radius:8px;text-align:center;border:1px dashed #B8860B;">
-            <p style="color:#8A857C;">🎉 Recognitions from colleagues will appear here!</p>
-            <small style="color:#B8860B;">Coming soon: Peer-to-peer recognition</small>
+        <div style="background:white;padding:1rem;border-radius:8px;text-align:center;border:1px dashed #d69e2e;">
+            <p style="color:#888;">🎉 Recognitions from colleagues will appear here!</p>
+            <small style="color:#d69e2e;">Coming soon: Peer-to-peer recognition</small>
         </div>
         """, unsafe_allow_html=True)
     
@@ -986,11 +988,11 @@ def employee_dashboard():
         initials = generate_initials(user_name)
         st.markdown(f"""
         <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin-bottom:1rem;">
-            <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#A32D2D);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;color:white;margin:0 auto;">{initials}</div>
+            <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;color:white;margin:0 auto;">{initials}</div>
             <h3 style="margin-top:0.8rem;">{user_name}</h3>
-            <p style="color:#6F6A62;">{user_position}</p>
-            <p style="color:#8A857C;font-size:0.85rem;">🏢 {user_dept}</p>
-            <p style="color:#8A857C;font-size:0.85rem;">📧 {user_email}</p>
+            <p style="color:#666;">{user_position}</p>
+            <p style="color:#888;font-size:0.85rem;">🏢 {user_dept}</p>
+            <p style="color:#888;font-size:0.85rem;">📧 {user_email}</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -1085,31 +1087,31 @@ def employee_dashboard():
         <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #CC0000;">
             <strong>Vinay Mahtani</strong><br>
             <small style="color:#CC0000;">GMD/CEO</small><br>
-            <small style="color:#8A857C;">Group-wide</small>
+            <small style="color:#888;">Group-wide</small>
         </div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown("""
-        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #A32D2D;">
+        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #e53e3e;">
             <strong>Jerome Das</strong><br>
-            <small style="color:#A32D2D;">COO</small><br>
-            <small style="color:#8A857C;">All Departments</small>
+            <small style="color:#e53e3e;">COO</small><br>
+            <small style="color:#888;">All Departments</small>
         </div>
         """, unsafe_allow_html=True)
     with col3:
         st.markdown("""
-        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #B5651D;">
+        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #dd6b20;">
             <strong>Ahmed Karim</strong><br>
-            <small style="color:#B5651D;">VP Sales</small><br>
-            <small style="color:#8A857C;">Sales & Marketing</small>
+            <small style="color:#dd6b20;">VP Sales</small><br>
+            <small style="color:#888;">Sales & Marketing</small>
         </div>
         """, unsafe_allow_html=True)
     with col4:
         st.markdown("""
-        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #6B5B95;">
+        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #805ad5;">
             <strong>Partab Lalchandani</strong><br>
-            <small style="color:#6B5B95;">GEA</small><br>
-            <small style="color:#8A857C;">Group Advisor</small>
+            <small style="color:#805ad5;">GEA</small><br>
+            <small style="color:#888;">Group Advisor</small>
         </div>
         """, unsafe_allow_html=True)
     
@@ -1128,9 +1130,9 @@ def employee_dashboard():
                     hod = dept_hod.iloc[0]
                     with cols[i % 5]:
                         st.markdown(f"""
-                        <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;margin-bottom:0.5rem;border:1px solid #EDE9E1;">
+                        <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;margin-bottom:0.5rem;border:1px solid #e0e0e0;">
                             <strong style="font-size:0.85rem;">{hod['first_name']} {hod['last_name']}</strong><br>
-                            <small style="color:#8A857C;font-size:0.75rem;">{dept}</small>
+                            <small style="color:#888;font-size:0.75rem;">{dept}</small>
                         </div>
                         """, unsafe_allow_html=True)
     except:
@@ -1147,11 +1149,11 @@ def employee_dashboard():
             'Sales & Marketing', 'Procurement', 'Security',
             'Legal', 'Operations']
         
-        colors = ['#CC0000', '#A32D2D', '#B5651D', '#6B5B95',
-            '#2F6690', '#2F6690', '#1F7A4D', '#1F7A4D',
-            '#A8487A', '#B8860B', '#6B5B95',
-            '#B5651D', '#1F4A66', '#6F6A62',
-            '#A32D2D', '#2C7A6E']
+        colors = ['#CC0000', '#e53e3e', '#dd6b20', '#805ad5',
+            '#3182ce', '#3182ce', '#38a169', '#38a169',
+            '#d53f8c', '#d69e2e', '#805ad5',
+            '#dd6b20', '#2b6cb0', '#718096',
+            '#e53e3e', '#319795']
         
         sources = [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3]
         targets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 11, 15]
@@ -1167,7 +1169,7 @@ def employee_dashboard():
         values += [10, 5, 12, 30]
         
         labels += ['Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members']
-        colors += ['#C2562B', '#1F7A4D', '#B8860B', '#1F4A66', '#6F6A62']
+        colors += ['#FF6B35', '#38a169', '#d69e2e', '#2b6cb0', '#718096']
         
         fig = go.Figure(data=[go.Sankey(
             node=dict(pad=20, thickness=18, label=labels, color=colors),
@@ -1289,7 +1291,7 @@ def employee_dashboard():
                             <h4>{course.get('title', 'Training')[:40]}</h4>
                             <p style="font-size:0.8rem;">{course.get('description', '')[:80]}</p>
                             <small style="color:#CC0000;">📅 {course.get('start_date', '')}</small>
-                            <br><small style="color:#8A857C;">{course.get('provider', '')} • {course.get('format', '')}</small>
+                            <br><small style="color:#888;">{course.get('provider', '')} • {course.get('format', '')}</small>
                         </div>
                         """, unsafe_allow_html=True)
             else:
@@ -1390,7 +1392,7 @@ def executive_dashboard():
     if alerts:
         alert_html = " | ".join(alerts)
         st.markdown(f"""
-        <div style="background:#F5E4BE;padding:0.8rem 1.5rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid #B8860B;">
+        <div style="background:#fff3cd;padding:0.8rem 1.5rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid #d69e2e;">
             <strong>⚠️ Executive Alerts:</strong> {alert_html}
         </div>
         """, unsafe_allow_html=True)
@@ -1398,17 +1400,17 @@ def executive_dashboard():
     # ============ TOP KPI CARDS - ALL REAL DATA ============
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     with c1:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Total Employees</div><div class="metric-value">{total_employees}</div><small style="color:#1F7A4D;">{active_employees} active</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Total Employees</div><div class="metric-value">{total_employees}</div><small style="color:#38a169;">{active_employees} active</small></div>""", unsafe_allow_html=True)
     with c2:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏢 Departments</div><div class="metric-value">{departments}</div><small style="color:#1F7A4D;">2 regions</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏢 Departments</div><div class="metric-value">{departments}</div><small style="color:#38a169;">2 regions</small></div>""", unsafe_allow_html=True)
     with c3:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">📋 Open Positions</div><div class="metric-value">{open_positions}</div><small style="color:#CC0000;">Active hiring</small></div>""", unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏠 Occupancy</div><div class="metric-value">{metrics['occupancy']}%</div><small style="color:#1F7A4D;">Portfolio avg</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏠 Occupancy</div><div class="metric-value">{metrics['occupancy']}%</div><small style="color:#38a169;">Portfolio avg</small></div>""", unsafe_allow_html=True)
     with c5:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">💰 Revenue</div><div class="metric-value">{metrics['revenue']}%</div><small style="color:#B8860B;">vs budget</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">💰 Revenue</div><div class="metric-value">{metrics['revenue']}%</div><small style="color:#d69e2e;">vs budget</small></div>""", unsafe_allow_html=True)
     with c6:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">{metrics['rating']}</div><small style="color:#1F7A4D;">Tenant satisfaction</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">⭐ Rating</div><div class="metric-value">{metrics['rating']}</div><small style="color:#38a169;">Tenant satisfaction</small></div>""", unsafe_allow_html=True)
     
     # ============ ADMIN UPDATE METRICS ============
     is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
@@ -1447,7 +1449,7 @@ def executive_dashboard():
         
         if has_celebration:
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #FBEAEA, #fffbf0); padding: 0.8rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border: 2px solid #CC0000;">
+            <div style="background: linear-gradient(135deg, #fff5f5, #fffbf0); padding: 0.8rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border: 2px solid #CC0000;">
                 <strong>🎉 Today's Celebrations!</strong> There are birthdays or work anniversaries today. Send celebration emails to all employees.
             </div>
             """, unsafe_allow_html=True)
@@ -1533,7 +1535,7 @@ def executive_dashboard():
         portfolio_data = pd.DataFrame({'Property': props, 'Occupancy %': occ_vals, 'Revenue %': rev_vals})
         fig = go.Figure()
         fig.add_trace(go.Bar(name='Occupancy %', x=portfolio_data['Property'], y=portfolio_data['Occupancy %'], marker_color='#CC0000', text=portfolio_data['Occupancy %'], textposition='outside'))
-        fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue %'], marker_color='#4A4640', text=portfolio_data['Revenue %'], textposition='outside'))
+        fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue %'], marker_color='#4a4a4a', text=portfolio_data['Revenue %'], textposition='outside'))
         fig.update_layout(height=350, barmode='group', margin=dict(t=20))
         st.plotly_chart(fig, use_container_width=True)
     
@@ -1542,7 +1544,7 @@ def executive_dashboard():
         if not emp_df.empty:
             dept_counts = emp_df['department'].value_counts()
             fig2 = px.pie(values=dept_counts.values, names=dept_counts.index, hole=0.4,
-                         color_discrete_sequence=['#CC0000', '#2F6690', '#1F7A4D', '#B8860B', '#6B5B95', '#B5651D', '#1F4A66', '#6F6A62', '#A32D2D', '#2C7A6E', '#A8487A'])
+                         color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e', '#805ad5', '#dd6b20', '#2b6cb0', '#718096', '#e53e3e', '#319795', '#d53f8c'])
             fig2.update_layout(height=350, margin=dict(t=20))
             st.plotly_chart(fig2, use_container_width=True)
     
@@ -1556,9 +1558,9 @@ def executive_dashboard():
         # Load real performance data
         pillar_progress = {
             '1. Occupancy & Revenue Growth': {'progress': 0, 'color': '#CC0000'},
-            '2. Process Simplification': {'progress': 0, 'color': '#1F7A4D'},
-            '3. Asset Reliability & Digitalization': {'progress': 0, 'color': '#2F6690'},
-            '4. People & Culture': {'progress': 0, 'color': '#B8860B'},
+            '2. Process Simplification': {'progress': 0, 'color': '#38a169'},
+            '3. Asset Reliability & Digitalization': {'progress': 0, 'color': '#3182ce'},
+            '4. People & Culture': {'progress': 0, 'color': '#d69e2e'},
         }
         
         try:
@@ -1581,7 +1583,7 @@ def executive_dashboard():
                     <span style="font-weight:600;font-size:0.9rem;">{name}</span>
                     <span style="color:{data['color']};font-weight:700;">{data['progress']}%</span>
                 </div>
-                <div style="background:#EDE9E1;height:6px;border-radius:3px;margin-top:0.4rem;">
+                <div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;">
                     <div style="background:{data['color']};width:{data['progress']}%;height:6px;border-radius:3px;"></div>
                 </div>
             </div>
@@ -1591,14 +1593,14 @@ def executive_dashboard():
         st.subheader("🌍 Gender Diversity (Real-Time)")
         if male_count > 0 or female_count > 0:
             gender_data = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [male_count, female_count]})
-            fig3 = px.pie(gender_data, values='Count', names='Gender', hole=0.6, color_discrete_sequence=['#2F6690', '#CC0000'])
+            fig3 = px.pie(gender_data, values='Count', names='Gender', hole=0.6, color_discrete_sequence=['#3182ce', '#CC0000'])
             fig3.update_layout(height=300, margin=dict(t=20))
             st.plotly_chart(fig3, use_container_width=True)
             
             st.markdown(f"""
             <div style="text-align:center;margin-top:-5rem;position:relative;z-index:1;">
                 <span style="font-size:2rem;font-weight:900;color:#CC0000;">{total_employees}</span><br>
-                <small style="color:#8A857C;">Total Workforce</small>
+                <small style="color:#888;">Total Workforce</small>
             </div>
             """, unsafe_allow_html=True)
         else:
@@ -1622,7 +1624,7 @@ def executive_dashboard():
         
         fig4 = go.Figure()
         fig4.add_trace(go.Scatter(x=months, y=actual, mode='lines+markers', name='Actual', line=dict(color='#CC0000', width=3), fill='tozeroy', fillcolor='rgba(204,0,0,0.1)'))
-        fig4.add_trace(go.Scatter(x=months, y=target, mode='lines', name='Target', line=dict(color='#4A4640', width=2, dash='dash')))
+        fig4.add_trace(go.Scatter(x=months, y=target, mode='lines', name='Target', line=dict(color='#4a4a4a', width=2, dash='dash')))
         fig4.update_layout(height=300, margin=dict(t=20))
         st.plotly_chart(fig4, use_container_width=True)
         
@@ -1679,16 +1681,16 @@ def executive_dashboard():
                     due = datetime.strptime(d['date'], '%Y-%m-%d')
                     days_left = (due - datetime.now()).days
                     days_str = f"{days_left} days left" if days_left > 0 else "🔴 OVERDUE"
-                    urgency_color = "#CC0000" if days_left < 30 else "#B8860B" if days_left < 60 else "#1F7A4D"
+                    urgency_color = "#CC0000" if days_left < 30 else "#d69e2e" if days_left < 60 else "#38a169"
                 except:
                     days_str = d['date']
-                    urgency_color = "#6F6A62"
+                    urgency_color = "#718096"
                 
                 st.markdown(f"""
                 <div style="background:white;padding:0.7rem 1rem;border-radius:6px;margin-bottom:0.4rem;display:flex;justify-content:space-between;align-items:center;border-left:3px solid {urgency_color};">
                     <div>
                         <strong style="font-size:0.9rem;">{d['task']}</strong>
-                        <span style="background:{'#CC0000' if d['priority']=='High' else '#B8860B'};color:white;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.7rem;margin-left:0.5rem;">{d['priority']}</span>
+                        <span style="background:{'#CC0000' if d['priority']=='High' else '#d69e2e'};color:white;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.7rem;margin-left:0.5rem;">{d['priority']}</span>
                     </div>
                     <small style="color:{urgency_color};font-weight:600;">{days_str}</small>
                 </div>
@@ -1771,7 +1773,7 @@ def executive_dashboard():
         <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;gap:1rem;border-left:3px solid #CC0000;">
             <span style="font-size:1.5rem;">{activity['icon']}</span>
             <div style="flex:1;"><strong>{activity['action']}</strong><br><small>{activity['detail']}</small></div>
-            <small style="color:#8A857C;">{activity['time']}</small>
+            <small style="color:#888;">{activity['time']}</small>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1794,10 +1796,10 @@ def employee_management():
     employees_df = load_employees()
     
     dept_colors = {
-        'Senior Management': '#CC0000', 'Technology Group': '#2F6690', 'Facility Management': '#1F7A4D',
-        'Human Resources': '#B8860B', 'Accounts & Finance': '#6B5B95', 'Sales & Marketing': '#B5651D',
-        'Procurement': '#1F4A66', 'Security': '#6F6A62', 'Legal': '#A32D2D', 'Operations': '#2C7A6E',
-        'Engineering': '#A8487A'
+        'Senior Management': '#CC0000', 'Technology Group': '#3182ce', 'Facility Management': '#38a169',
+        'Human Resources': '#d69e2e', 'Accounts & Finance': '#805ad5', 'Sales & Marketing': '#dd6b20',
+        'Procurement': '#2b6cb0', 'Security': '#718096', 'Legal': '#e53e3e', 'Operations': '#319795',
+        'Engineering': '#d53f8c'
     }
     
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
@@ -1890,7 +1892,7 @@ def employee_management():
                     st.session_state.dir_page -= 1
                     st.rerun()
             with pg_col2:
-                st.markdown(f"<p style='text-align:center;color:#6F6A62;'>Page <strong>{st.session_state.dir_page}</strong> of <strong>{total_pages}</strong></p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='text-align:center;color:#666;'>Page <strong>{st.session_state.dir_page}</strong> of <strong>{total_pages}</strong></p>", unsafe_allow_html=True)
             with pg_col3:
                 if st.button("Next ➡️", disabled=st.session_state.dir_page >= total_pages, use_container_width=True):
                     st.session_state.dir_page += 1
@@ -1901,15 +1903,15 @@ def employee_management():
             
             for _, emp in filtered_df.iloc[start_idx:end_idx].iterrows():
                 initials = generate_initials(f"{emp['first_name']} {emp['last_name']}")
-                status_color = "#1F7A4D" if emp.get('status') == 'Active' else "#B8860B" if emp.get('status') == 'On Leave' else "#CC0000"
-                status_bg = "#E3F0E2" if emp.get('status') == 'Active' else "#F5E4BE" if emp.get('status') == 'On Leave' else "#FBEAEA"
+                status_color = "#38a169" if emp.get('status') == 'Active' else "#d69e2e" if emp.get('status') == 'On Leave' else "#CC0000"
+                status_bg = "#e6f9e6" if emp.get('status') == 'Active' else "#fff8e6" if emp.get('status') == 'On Leave' else "#ffe6e6"
                 border_color = dept_colors.get(emp.get('department', ''), '#CC0000')
                 
                 with st.expander(f"👤 {emp['first_name']} {emp['last_name']} • {emp.get('position', 'N/A')}", expanded=False):
                     col1, col2, col3 = st.columns([1, 3, 1])
                     with col1:
                         st.markdown(f"""
-                        <div style="width:55px;height:55px;border-radius:50%;background:linear-gradient(135deg,{border_color},#A32D2D);
+                        <div style="width:55px;height:55px;border-radius:50%;background:linear-gradient(135deg,{border_color},#e53e3e);
                                     display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;color:white;">
                             {initials}
                         </div>
@@ -1918,8 +1920,8 @@ def employee_management():
                         st.markdown(f"""
                         <div style="line-height:1.6;">
                             <strong style="font-size:1.1rem;">{emp['first_name']} {emp['last_name']}</strong><br>
-                            <span style="color:#6F6A62;">💼 {emp.get('position', 'N/A')}</span><br>
-                            <span style="color:#8A857C;font-size:0.85rem;">🏢 {emp.get('department', 'N/A')} • 🆔 {emp.get('employee_id', 'N/A')}</span>
+                            <span style="color:#666;">💼 {emp.get('position', 'N/A')}</span><br>
+                            <span style="color:#888;font-size:0.85rem;">🏢 {emp.get('department', 'N/A')} • 🆔 {emp.get('employee_id', 'N/A')}</span>
                         </div>
                         """, unsafe_allow_html=True)
                     with col3:
@@ -1928,7 +1930,7 @@ def employee_management():
                             <span style="background:{status_bg};color:{status_color};padding:0.3rem 0.8rem;border-radius:20px;font-size:0.8rem;font-weight:600;border:1px solid {status_color};">
                                 {emp.get('status', 'Active')}
                             </span>
-                            <br><small style="color:#8A857C;">📅 {emp.get('join_date', 'N/A')}</small>
+                            <br><small style="color:#888;">📅 {emp.get('join_date', 'N/A')}</small>
                         </div>
                         """, unsafe_allow_html=True)
                     
@@ -2189,7 +2191,7 @@ def employee_management():
                     <div style="background:white;padding:1.2rem;border-radius:10px;margin-bottom:0.8rem;border-left:4px solid {color};box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                         <strong>{dept}</strong>
                         <span style="float:right;font-size:1.5rem;font-weight:700;color:{color};">{count}</span>
-                        <br><small style="color:#8A857C;">staff members</small>
+                        <br><small style="color:#888;">staff members</small>
                     </div>
                     """, unsafe_allow_html=True)
     
@@ -2205,35 +2207,35 @@ def employee_management():
             <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #CC0000;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                 <div style="width:50px;height:50px;border-radius:50%;background:#CC0000;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">VM</div>
                 <strong style="display:block;margin-top:0.5rem;">Vinay Mahtani</strong>
-                <small style="color:#8A857C;">GMD/CEO</small><br>
+                <small style="color:#888;">GMD/CEO</small><br>
                 <small style="color:#CC0000;">👥 Group-wide</small>
             </div>
             """, unsafe_allow_html=True)
         with c2:
             st.markdown("""
-            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #A32D2D;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                <div style="width:50px;height:50px;border-radius:50%;background:#A32D2D;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">JD</div>
+            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #e53e3e;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <div style="width:50px;height:50px;border-radius:50%;background:#e53e3e;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">JD</div>
                 <strong style="display:block;margin-top:0.5rem;">Jerome Das</strong>
-                <small style="color:#8A857C;">COO</small><br>
-                <small style="color:#A32D2D;">👥 All Departments</small>
+                <small style="color:#888;">COO</small><br>
+                <small style="color:#e53e3e;">👥 All Departments</small>
             </div>
             """, unsafe_allow_html=True)
         with c3:
             st.markdown("""
-            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #B5651D;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                <div style="width:50px;height:50px;border-radius:50%;background:#B5651D;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">AK</div>
+            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #dd6b20;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <div style="width:50px;height:50px;border-radius:50%;background:#dd6b20;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">AK</div>
                 <strong style="display:block;margin-top:0.5rem;">Ahmed Karim</strong>
-                <small style="color:#8A857C;">VP Sales</small><br>
-                <small style="color:#B5651D;">👥 Sales & Marketing</small>
+                <small style="color:#888;">VP Sales</small><br>
+                <small style="color:#dd6b20;">👥 Sales & Marketing</small>
             </div>
             """, unsafe_allow_html=True)
         with c4:
             st.markdown("""
-            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #6B5B95;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                <div style="width:50px;height:50px;border-radius:50%;background:#6B5B95;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">PL</div>
+            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #805ad5;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                <div style="width:50px;height:50px;border-radius:50%;background:#805ad5;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">PL</div>
                 <strong style="display:block;margin-top:0.5rem;">Partab Lalchandani</strong>
-                <small style="color:#8A857C;">GEA</small><br>
-                <small style="color:#6B5B95;">👥 Group Advisor</small>
+                <small style="color:#888;">GEA</small><br>
+                <small style="color:#805ad5;">👥 Group Advisor</small>
             </div>
             """, unsafe_allow_html=True)
         
@@ -2255,14 +2257,14 @@ def employee_management():
         ]
         
         colors = [
-            '#CC0000', '#A32D2D', '#B5651D', '#6B5B95',
-            '#2F6690', '#2F6690',
-            '#1F7A4D', '#1F7A4D',
-            '#A8487A', '#B8860B', '#6B5B95',
-            '#B5651D', '#1F4A66', '#6F6A62',
-            '#A32D2D', '#2C7A6E',
-            '#C2562B',
-            '#1F7A4D', '#B8860B', '#1F4A66', '#6F6A62'
+            '#CC0000', '#e53e3e', '#dd6b20', '#805ad5',
+            '#3182ce', '#3182ce',
+            '#38a169', '#38a169',
+            '#d53f8c', '#d69e2e', '#805ad5',
+            '#dd6b20', '#2b6cb0', '#718096',
+            '#e53e3e', '#319795',
+            '#FF6B35',
+            '#38a169', '#d69e2e', '#2b6cb0', '#718096'
         ]
         
         sources = [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3]
@@ -2327,7 +2329,7 @@ def employee_management():
             'Direct Reports': [5, 12, 6, 12, 20, 8, 10]
         })
         fig2 = px.bar(span_data, x='Leader', y='Direct Reports', color='Region', text='Direct Reports',
-                     color_discrete_sequence=['#CC0000', '#2F6690', '#1F7A4D'])
+                     color_discrete_sequence=['#CC0000', '#3182ce', '#38a169'])
         fig2.update_layout(height=350)
         fig2.update_traces(textposition='outside')
         st.plotly_chart(fig2, use_container_width=True)
@@ -2398,7 +2400,7 @@ def employee_management():
         # Gender distribution
         st.markdown("### 👥 Gender Distribution")
         gender_data = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [38, 18]})
-        fig = px.pie(gender_data, values='Count', names='Gender', hole=0.5, color_discrete_sequence=['#2F6690', '#CC0000'])
+        fig = px.pie(gender_data, values='Count', names='Gender', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000'])
         fig.update_layout(height=350)
         st.plotly_chart(fig, use_container_width=True)
         
@@ -2410,7 +2412,7 @@ def employee_management():
             'Male': [10, 10, 3, 6, 4, 3, 10, 1, 4, 3],
             'Female': [4, 3, 5, 4, 2, 2, 2, 1, 1, 1]
         })
-        fig2 = px.bar(dept_gender, x='Department', y=['Male', 'Female'], barmode='group', color_discrete_sequence=['#2F6690', '#CC0000'])
+        fig2 = px.bar(dept_gender, x='Department', y=['Male', 'Female'], barmode='group', color_discrete_sequence=['#3182ce', '#CC0000'])
         fig2.update_layout(height=400)
         st.plotly_chart(fig2, use_container_width=True)
         
@@ -2433,7 +2435,7 @@ def employee_management():
             if tenure_data:
                 tenure_df = pd.DataFrame(pd.Series(tenure_data).value_counts()).reset_index()
                 tenure_df.columns = ['Tenure', 'Count']
-                fig3 = px.bar(tenure_df, x='Tenure', y='Count', color='Tenure', color_discrete_sequence=['#CC0000', '#2F6690', '#1F7A4D', '#B8860B'])
+                fig3 = px.bar(tenure_df, x='Tenure', y='Count', color='Tenure', color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e'])
                 fig3.update_layout(height=350, showlegend=False)
                 st.plotly_chart(fig3, use_container_width=True)
         except:
@@ -2445,7 +2447,7 @@ def employee_management():
         if not employees_df.empty:
             grade_counts = employees_df['grade'].value_counts()
             grade_df = pd.DataFrame({'Grade': grade_counts.index, 'Count': grade_counts.values})
-            fig4 = px.pie(grade_df, values='Count', names='Grade', hole=0.4, color_discrete_sequence=['#CC0000', '#2F6690', '#1F7A4D', '#B8860B', '#6B5B95'])
+            fig4 = px.pie(grade_df, values='Count', names='Grade', hole=0.4, color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e', '#805ad5'])
             fig4.update_layout(height=350)
             st.plotly_chart(fig4, use_container_width=True)
     
@@ -2570,8 +2572,8 @@ def performance_okrs():
                 }
     
     def get_kpi_status(progress):
-        if progress >= 85: return 'On Track', "#1F7A4D"
-        elif progress >= 65: return 'Near Target', "#B8860B"
+        if progress >= 85: return 'On Track', "#38a169"
+        elif progress >= 65: return 'Near Target', "#d69e2e"
         else: return 'At Risk', "#CC0000"
 
     import re
@@ -2597,12 +2599,12 @@ def performance_okrs():
             
             if has_approved_kpis:
                 if days_left > 0:
-                    color = "#1F7A4D" if days_left > 14 else "#B8860B" if days_left > 7 else "#CC0000"
+                    color = "#38a169" if days_left > 14 else "#d69e2e" if days_left > 7 else "#CC0000"
                     st.markdown(f"""
                     <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {color};">
                         <strong>📊 Appraisal Active: {st.session_state.appraisal_cycle_name}</strong>
                         <span style="float:right;color:{color};font-weight:700;">⏰ {days_left} day{'s' if days_left > 1 else ''} remaining</span>
-                        <br><small style="color:#1F7A4D;">✅ Your KPIs are approved — you're ready for self-assessment!</small>
+                        <br><small style="color:#38a169;">✅ Your KPIs are approved — you're ready for self-assessment!</small>
                     </div>
                     """, unsafe_allow_html=True)
                 elif days_left == 0:
@@ -2662,7 +2664,7 @@ def performance_okrs():
         
         # Admin can view all departments for comparison
         if is_admin:
-            st.markdown("""<div style="background: linear-gradient(135deg, #1B1A18, #2A2722); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #CC0000;"><strong>🔐 Admin Console</strong> — View any department's KPIs</div>""", unsafe_allow_html=True)
+            st.markdown("""<div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #CC0000;"><strong>🔐 Admin Console</strong> — View any department's KPIs</div>""", unsafe_allow_html=True)
             view_type = st.radio("View", ["My KPIs", "Department Overview"], horizontal=True)
             if view_type == "Department Overview":
                 selected_dept = st.selectbox("🏢 Select Department", all_depts)
@@ -2703,8 +2705,8 @@ def performance_okrs():
                 elif p.get('submission_status') == 'Approved':
                     user_kpi_status = "Approved"
         
-        status_colors = {'Draft': '#9B9690', 'Submitted': '#B8860B', 'Approved': '#1F7A4D', 'Sealed': '#1B1A18'}
-        status_badge = status_colors.get(user_kpi_status, '#9B9690')
+        status_colors = {'Draft': '#a0aec0', 'Submitted': '#d69e2e', 'Approved': '#38a169', 'Sealed': '#1a1a1a'}
+        status_badge = status_colors.get(user_kpi_status, '#a0aec0')
         
         st.markdown(f"""
         <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {status_badge};display:flex;justify-content:space-between;align-items:center;">
@@ -2754,7 +2756,7 @@ def performance_okrs():
                 df_comp = pd.DataFrame(comp_data)
                 fig = px.bar(df_comp.melt(id_vars=['Department'], var_name='Pillar', value_name='Progress'),
                             x='Department', y='Progress', color='Pillar', barmode='group',
-                            color_discrete_sequence=['#CC0000', '#4A4640', '#8A857C', '#C9C5BC'])
+                            color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#aaaaaa'])
                 fig.update_layout(height=350)
                 st.plotly_chart(fig, use_container_width=True)
         
@@ -2765,7 +2767,7 @@ def performance_okrs():
                 pillar_data = dept_data[pillar_name]
                 status_text, color = get_kpi_status(pillar_data['progress'])
                 if pillar_data['status'] in ['Exceeding', 'Completed']:
-                    color = "#1F7A4D"
+                    color = "#38a169"
             
             with st.expander(f"{pillar_name} | {pillar_data['progress']}% | {pillar_data['status']}", expanded=False):
                 st.progress(pillar_data['progress'] / 100)
@@ -3695,8 +3697,8 @@ def performance_okrs():
         
         if user_dept in performance_data:
             for pillar_name, pillar_data in performance_data[user_dept].items():
-                color = "#1F7A4D" if pillar_data['progress'] >= 85 else "#B8860B" if pillar_data['progress'] >= 65 else "#CC0000"
-                st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem; border-left: 4px solid {color};"><strong>{pillar_name}</strong> ({pillar_data['weight']}%)<br><small>Progress: {pillar_data['progress']}% | {pillar_data['status']}</small><div style="background: #EDE9E1; height: 6px; border-radius: 3px; margin-top: 0.5rem;"><div style="background: {color}; width: {pillar_data['progress']}%; height: 6px; border-radius: 3px;"></div></div></div>""", unsafe_allow_html=True)
+                color = "#38a169" if pillar_data['progress'] >= 85 else "#d69e2e" if pillar_data['progress'] >= 65 else "#CC0000"
+                st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem; border-left: 4px solid {color};"><strong>{pillar_name}</strong> ({pillar_data['weight']}%)<br><small>Progress: {pillar_data['progress']}% | {pillar_data['status']}</small><div style="background: #e0e0e0; height: 6px; border-radius: 3px; margin-top: 0.5rem;"><div style="background: {color}; width: {pillar_data['progress']}%; height: 6px; border-radius: 3px;"></div></div></div>""", unsafe_allow_html=True)
         
         c1, c2, c3 = st.columns(3)
         total_prog = sum(p['progress'] * p['weight'] / 100 for p in performance_data.get(user_dept, {}).values()) if user_dept in performance_data else 0
@@ -3718,8 +3720,8 @@ def performance_okrs():
             group_avg = group_avg / count if count > 0 else 0
             
             bench_data = pd.DataFrame({'Metric': ['My Score', 'Dept Average', 'Group Average', 'Target'], 'Score': [total_prog, dept_avg, group_avg, 85]})
-            fig = px.bar(bench_data, x='Metric', y='Score', color='Metric', color_discrete_sequence=['#CC0000', '#4A4640', '#8A857C', '#1F7A4D'])
-            fig.add_hline(y=85, line_dash="dash", line_color="#1F7A4D", annotation_text="Target")
+            fig = px.bar(bench_data, x='Metric', y='Score', color='Metric', color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#38a169'])
+            fig.add_hline(y=85, line_dash="dash", line_color="#38a169", annotation_text="Target")
             fig.update_layout(height=350)
             st.plotly_chart(fig, use_container_width=True)
         
@@ -3856,7 +3858,7 @@ def promotions():
         
         if st.session_state.aplayer_nominations:
             pending_count = len(st.session_state.aplayer_nominations)
-            st.markdown(f"""<div style="background: #F5E4BE; padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #B8860B;"><strong>🔔 {pending_count} Pending Nomination{'s' if pending_count > 1 else ''}</strong></div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div style="background: #fff3cd; padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #d69e2e;"><strong>🔔 {pending_count} Pending Nomination{'s' if pending_count > 1 else ''}</strong></div>""", unsafe_allow_html=True)
         
         all_players = []
         for dept, players in aplayers_data.items():
@@ -3887,7 +3889,7 @@ def promotions():
         if display_players:
             for player in display_players:
                 player_key = f"{player['name']}_{player['department']}"
-                color = "#1F7A4D" if player['readiness'] == 'Ready Now' else "#B8860B" if 'Q3' in str(player['readiness']) else "#2F6690" if 'Q4' in str(player['readiness']) else "#CC0000"
+                color = "#38a169" if player['readiness'] == 'Ready Now' else "#d69e2e" if 'Q3' in str(player['readiness']) else "#3182ce" if 'Q4' in str(player['readiness']) else "#CC0000"
                 initials = generate_initials(player['name'])
                 st.markdown(f"""
                 <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 0.8rem; border-left: 5px solid {color}; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
@@ -3897,7 +3899,7 @@ def promotions():
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <strong style="font-size: 1.1rem;">{player['name']}</strong>
-                                    <span style="color: #6F6A62; font-size: 0.85rem; margin-left: 0.5rem;">{player['department']}</span>
+                                    <span style="color: #666; font-size: 0.85rem; margin-left: 0.5rem;">{player['department']}</span>
                                     <br><small>{player['position']} → <strong>Nominated by: {player['nominated_by']}</strong></small>
                                 </div>
                                 <div style="text-align: right;">
@@ -3906,12 +3908,12 @@ def promotions():
                                 </div>
                             </div>
                             <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <span style="background: #F0ECE4; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Perf: {player['perf_score']}%</span>
-                                <span style="background: #F0ECE4; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Leadership: {player['leadership']}%</span>
-                                <span style="background: #F0ECE4; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Strategic: {player['strategic']}%</span>
-                                <span style="background: #F0ECE4; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Peer: {player['peer_review']}%</span>
-                                <span style="background: #F0ECE4; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Junior: {player['junior_review']}%</span>
-                                <span style="background: #F0ECE4; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Indep: {player['independent_review']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Perf: {player['perf_score']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Leadership: {player['leadership']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Strategic: {player['strategic']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Peer: {player['peer_review']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Junior: {player['junior_review']}%</span>
+                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Indep: {player['independent_review']}%</span>
                             </div>
                             <div style="margin-top: 0.3rem;"><small style="color: #CC0000;">Gap: {player['gap']}</small></div>
                         </div>
@@ -3957,7 +3959,7 @@ def promotions():
             for i, nom in enumerate(st.session_state.aplayer_nominations):
                 c1, c2 = st.columns([3, 1])
                 with c1:
-                    st.markdown(f"""<div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #B8860B;"><strong>{nom.get('name', '')}</strong> - {nom.get('position', '')}<br><small>{nom.get('department', '')} | By: {nom.get('nominated_by', '')} | {str(nom.get('date', nom.get('created_at', '')))[:10]}</small><br><small style="color: #6F6A62;">Reason: {nom.get('reason', 'N/A')}</small></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #d69e2e;"><strong>{nom.get('name', '')}</strong> - {nom.get('position', '')}<br><small>{nom.get('department', '')} | By: {nom.get('nominated_by', '')} | {str(nom.get('date', nom.get('created_at', '')))[:10]}</small><br><small style="color: #666;">Reason: {nom.get('reason', 'N/A')}</small></div>""", unsafe_allow_html=True)
                 with c2:
                     if is_admin:
                         action_key = f"action_{i}"
@@ -4050,7 +4052,7 @@ def promotions():
             st.dataframe(df, use_container_width=True, hide_index=True)
             
             readiness_counts = df['Readiness'].value_counts()
-            fig = px.pie(values=readiness_counts.values, names=readiness_counts.index, hole=0.5, color_discrete_sequence=['#1F7A4D', '#B8860B', '#2F6690', '#CC0000'])
+            fig = px.pie(values=readiness_counts.values, names=readiness_counts.index, hole=0.5, color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000'])
             fig.update_layout(height=350)
             st.plotly_chart(fig, use_container_width=True)
     
@@ -4852,13 +4854,13 @@ def recruitment_hub():
                 cv_text = str(row.get('resume_text', ''))
                 
                 if score >= 85:
-                    border, badge, emoji = "#1F7A4D", "#1F7A4D", "🌟"
+                    border, badge, emoji = "#38a169", "#38a169", "🌟"
                 elif score >= 70:
-                    border, badge, emoji = "#B8860B", "#B8860B", "👍"
+                    border, badge, emoji = "#d69e2e", "#d69e2e", "👍"
                 elif score > 0:
-                    border, badge, emoji = "#B5651D", "#B5651D", "🔶"
+                    border, badge, emoji = "#dd6b20", "#dd6b20", "🔶"
                 else:
-                    border, badge, emoji = "#9B9690", "#9B9690", "⏳"
+                    border, badge, emoji = "#a0aec0", "#a0aec0", "⏳"
                 
                 initials = (first[:1] + last[:1]).upper() if first and last else "??"
                 
@@ -4944,7 +4946,7 @@ def recruitment_hub():
                 with col1:
                     tier3 = len(candidates[candidates['ai_tier'].str.contains('Tier 3', na=False)]) if 'ai_tier' in candidates.columns else 0
                     tier4 = len(candidates[candidates['ai_tier'].str.contains('Tier 4', na=False)]) if 'ai_tier' in candidates.columns else 0
-                    fig = px.pie(values=[tier1, tier2, tier3, tier4, total-screened], names=['T1⭐','T2👍','T3🔶','T4❌','Pending'], hole=0.5, color_discrete_sequence=['#1F7A4D','#B8860B','#B5651D','#CC0000','#9B9690'])
+                    fig = px.pie(values=[tier1, tier2, tier3, tier4, total-screened], names=['T1⭐','T2👍','T3🔶','T4❌','Pending'], hole=0.5, color_discrete_sequence=['#38a169','#d69e2e','#dd6b20','#CC0000','#a0aec0'])
                     fig.update_layout(height=350)
                     st.plotly_chart(fig, use_container_width=True)
                 with col2:
@@ -4990,7 +4992,7 @@ def recruitment_hub():
             st.markdown("### 📅 Upcoming Interviews")
             for iv in st.session_state.interviews_scheduled:
                 st.markdown(f"""
-                <div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #2F6690;">
+                <div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #3182ce;">
                     <strong>{iv['candidate']}</strong> - {iv['type']}<br>
                     <small>📅 {iv['date']} at {iv['time']} | 👤 {iv['interviewer']} | 📍 {iv['location']}</small>
                 </div>
@@ -5032,7 +5034,7 @@ def recruitment_hub():
                     preview_html = f"""
                     <div style="background:white;padding:1.5rem;border-radius:8px;border:2px solid #CC0000;max-width:700px;margin:0 auto;">
                         <div style="text-align:center;border-bottom:2px solid #CC0000;padding-bottom:1rem;margin-bottom:1rem;">
-                            <h2 style="color:#1B1A18;margin:0;">CHURCHGATE GROUP</h2>
+                            <h2 style="color:#1a1a1a;margin:0;">CHURCHGATE GROUP</h2>
                             <p style="color:#CC0000;font-weight:600;">OFFER OF EMPLOYMENT</p>
                         </div>
                         <p>Dear <strong>{offer_name}</strong>,</p>
@@ -5178,12 +5180,12 @@ def recruitment_hub():
                 for offer in filtered:
                     status = offer.get('status', 'Pending Acceptance')
                     status_colors = {
-                        'Pending Acceptance': '#B8860B',
-                        'Accepted': '#1F7A4D',
+                        'Pending Acceptance': '#d69e2e',
+                        'Accepted': '#38a169',
                         'Rejected': '#CC0000',
-                        'Expired': '#9B9690'
+                        'Expired': '#a0aec0'
                     }
-                    color = status_colors.get(status, '#9B9690')
+                    color = status_colors.get(status, '#a0aec0')
                     
                     with st.expander(f"📝 {offer.get('candidate_name', 'Unknown')} — {offer.get('position', 'N/A')} | {status}"):
                         col1, col2 = st.columns([3, 1])
@@ -5317,7 +5319,7 @@ def recruitment_hub():
                     total = len(employee_tasks)
                     progress = int(completed / total * 100) if total > 0 else 0
                     
-                    progress_color = "#1F7A4D" if progress >= 80 else "#B8860B" if progress >= 50 else "#CC0000"
+                    progress_color = "#38a169" if progress >= 80 else "#d69e2e" if progress >= 50 else "#CC0000"
                     
                     with st.expander(f"🎯 {onboard.get('employee_name', 'Unknown')} — {onboard.get('position', 'N/A')} ({onboard.get('department', '')}) | {progress}% Complete"):
                         # Progress bar
@@ -5327,7 +5329,7 @@ def recruitment_hub():
                                 <span><strong>Onboarding Progress</strong></span>
                                 <span style="color:{progress_color};font-weight:700;">{completed}/{total} tasks ({progress}%)</span>
                             </div>
-                            <div style="background:#EDE9E1;height:8px;border-radius:4px;margin-top:0.3rem;">
+                            <div style="background:#e0e0e0;height:8px;border-radius:4px;margin-top:0.3rem;">
                                 <div style="background:{progress_color};width:{progress}%;height:8px;border-radius:4px;"></div>
                             </div>
                         </div>
@@ -5423,7 +5425,7 @@ def recruitment_hub():
                 col1, col2 = st.columns(2)
                 with col1:
                     fig = px.pie(values=list(dept_data.values()), names=list(dept_data.keys()), hole=0.5,
-                               color_discrete_sequence=['#CC0000', '#B8860B', '#2F6690', '#1F7A4D', '#B5651D', '#6B5B95'])
+                               color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169', '#dd6b20', '#805ad5'])
                     fig.update_layout(height=350, title="Onboarding by Department")
                     st.plotly_chart(fig, use_container_width=True)
                 with col2:
@@ -5598,12 +5600,12 @@ def recruitment_hub():
                                 <p><strong>Reference ID:</strong> {ref_id}</p>
                             </div>
                             <p><strong>Verification Request:</strong></p>
-                            <p style="background:#F5F2EC;padding:1rem;border-radius:6px;">{ext_message}</p>
+                            <p style="background:#f5f5f5;padding:1rem;border-radius:6px;">{ext_message}</p>
                             <p>Please reply to this email with your detailed response. Include the Reference ID ({ref_id}) in your reply.</p>
                             <p>Alternatively, you can submit your response directly at:</p>
                             <p><a href="https://churchgate-hris.streamlit.app/Careers?ref={ref_id}" style="color:#CC0000;">Submit Verification Response</a></p>
                             <p>Thank you for your time and honest assessment.</p>
-                            <p style="color:#8A857C;">Churchgate Group HR Team<br>hr@churchgate.com</p>
+                            <p style="color:#888;">Churchgate Group HR Team<br>hr@churchgate.com</p>
                             """
                             EmailService().send_email(ext_ref_email, ref_subject, ref_body)
                             st.success(f"✅ Verification request sent to {ext_ref_name} ({ext_ref_email})!")
@@ -5661,22 +5663,22 @@ def recruitment_hub():
                     priority = bg.get('priority', 'Standard')
                     
                     status_colors = {
-                        'Pending': '#B8860B',
-                        'Awaiting External Response': '#2F6690',
-                        'Responded': '#1F7A4D',
-                        'Completed': '#1F7A4D',
+                        'Pending': '#d69e2e',
+                        'Awaiting External Response': '#3182ce',
+                        'Responded': '#38a169',
+                        'Completed': '#38a169',
                         'Rejected': '#CC0000'
                     }
-                    color = status_colors.get(status, '#9B9690')
+                    color = status_colors.get(status, '#a0aec0')
                     
                     # SLA Timer
                     try:
                         request_date = datetime.strptime(str(bg.get('request_date', ''))[:10], '%Y-%m-%d')
                         days_since = (datetime.now() - request_date).days
-                        sla_color = "#1F7A4D" if days_since <= 3 else "#B8860B" if days_since <= 5 else "#CC0000"
+                        sla_color = "#38a169" if days_since <= 3 else "#d69e2e" if days_since <= 5 else "#CC0000"
                     except:
                         days_since = 0
-                        sla_color = "#9B9690"
+                        sla_color = "#a0aec0"
                     
                     with st.expander(f"{icon} {bg.get('candidate_name', 'Unknown')} — {bg.get('position', 'N/A')} | {status} | ⏱️ {days_since}d"):
                         col1, col2 = st.columns([3, 1])
@@ -5740,7 +5742,7 @@ def recruitment_hub():
                         s = b.get('status', 'Unknown')
                         status_data[s] = status_data.get(s, 0) + 1
                     fig = px.pie(values=list(status_data.values()), names=list(status_data.keys()), hole=0.5,
-                               color_discrete_sequence=['#1F7A4D', '#B8860B', '#2F6690', '#CC0000', '#9B9690'])
+                               color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000', '#a0aec0'])
                     fig.update_layout(height=350, title="Status Distribution")
                     st.plotly_chart(fig, use_container_width=True)
                 with col2:
@@ -5752,7 +5754,7 @@ def recruitment_hub():
                                 check_types[t] = check_types.get(t, 0) + 1
                     if check_types:
                         fig2 = px.bar(x=list(check_types.keys()), y=list(check_types.values()),
-                                    color=list(check_types.values()), color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+                                    color=list(check_types.values()), color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
                         fig2.update_layout(height=350, title="Check Types Requested")
                         st.plotly_chart(fig2, use_container_width=True)
                 
@@ -5789,7 +5791,7 @@ def recruitment_hub():
         st.markdown("---")
         st.markdown("### 🌍 Diversity & Inclusion")
         div_data = pd.DataFrame({'Category': ['Male', 'Female', 'Other'], 'Applicants': [28, 17, 2]})
-        fig2 = px.pie(div_data, values='Applicants', names='Category', hole=0.5, color_discrete_sequence=['#2F6690', '#CC0000', '#6F6A62'])
+        fig2 = px.pie(div_data, values='Applicants', names='Category', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000', '#718096'])
         st.plotly_chart(fig2, use_container_width=True)
         
         st.markdown("---")
@@ -5882,10 +5884,10 @@ def ai_recruitment_agent():
                     cols = st.columns(len(stages))
                     for i, (stage, count) in enumerate(pipeline_stats.items()):
                         with cols[i]:
-                            color = "#1F7A4D" if stage in ['Hired'] else "#2F6690" if stage in ['Offer Sent', 'Interview Scheduled'] else "#B8860B" if stage in ['Shortlisted', 'Manager Review'] else "#9B9690"
+                            color = "#38a169" if stage in ['Hired'] else "#3182ce" if stage in ['Offer Sent', 'Interview Scheduled'] else "#d69e2e" if stage in ['Shortlisted', 'Manager Review'] else "#a0aec0"
                             st.markdown(f"""
                             <div style="background:white;padding:0.5rem;border-radius:6px;text-align:center;border-top:3px solid {color};">
-                                <small style="color:#8A857C;">{stage}</small><br>
+                                <small style="color:#888;">{stage}</small><br>
                                 <strong style="font-size:1.2rem;">{count}</strong>
                             </div>
                             """, unsafe_allow_html=True)
@@ -6248,7 +6250,7 @@ def ai_recruitment_agent():
             if msg['role'] == 'user':
                 st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-left:3rem;"><strong>You</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
             else:
-                st.markdown(f"""<div style="background:#F0ECE4;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-right:3rem;"><strong>🤖 AI Assistant</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div style="background:#f0f0f0;padding:0.8rem;border-radius:10px;margin:0.5rem 0;margin-right:3rem;"><strong>🤖 AI Assistant</strong><p style="margin:0.3rem 0;">{msg['content']}</p></div>""", unsafe_allow_html=True)
         
         qc1, qc2, qc3, qc4 = st.columns(4)
         with qc1:
@@ -6370,7 +6372,7 @@ def ai_recruitment_agent():
                 c3.metric("👎 Tier 3 - Not Recommended", tier3)
                 st.markdown("---")
                 div_data = pd.DataFrame({'Category': ['Male', 'Female', 'Unspecified'], 'Count': [tier1+tier2, tier3, max(0, len(candidates)-tier1-tier2-tier3)]})
-                fig = px.pie(div_data, values='Count', names='Category', hole=0.5, color_discrete_sequence=['#2F6690', '#CC0000', '#6F6A62'])
+                fig = px.pie(div_data, values='Count', names='Category', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000', '#718096'])
                 st.plotly_chart(fig, use_container_width=True)
                 st.dataframe(candidates[['first_name', 'last_name', 'email', 'job_id', 'ai_score', 'ai_tier', 'status']], use_container_width=True, hide_index=True)
         except:
@@ -6395,7 +6397,7 @@ def ai_recruitment_agent():
                 else:
                     skill_scores[skill] = random.randint(10, 35)
             skills_df = pd.DataFrame({'Skill': list(skill_scores.keys()), 'Score': list(skill_scores.values())})
-            fig = px.bar(skills_df, x='Skill', y='Score', color='Score', color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+            fig = px.bar(skills_df, x='Skill', y='Score', color='Score', color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
             fig.update_layout(height=350)
             st.plotly_chart(fig, use_container_width=True)
             
@@ -6442,7 +6444,7 @@ def ai_recruitment_agent():
             categories = ['Skills', 'Experience', 'Leadership', 'Culture Fit', 'Communication', 'Technical']
             fig2 = go.Figure()
             fig2.add_trace(go.Scatterpolar(r=[skill_scores.get('Leadership', 50), skill_scores.get('Project Management', 50), random.randint(40,90), culture_pct, random.randint(50,90), random.randint(40,90)], theta=categories, fill='toself', name=candidate.get('first_name', 'Candidate'), line_color='#CC0000'))
-            fig2.add_trace(go.Scatterpolar(r=[80, 75, 70, 80, 75, 80], theta=categories, fill='toself', name='Ideal Profile', line_color='#1F7A4D'))
+            fig2.add_trace(go.Scatterpolar(r=[80, 75, 70, 80, 75, 80], theta=categories, fill='toself', name='Ideal Profile', line_color='#38a169'))
             fig2.update_layout(height=400)
             st.plotly_chart(fig2, use_container_width=True)
         else:
@@ -6691,12 +6693,12 @@ def chat_communications():
         with chat_container:
             for msg in st.session_state.chat_messages[selected_channel][-50:]:
                 if msg['type'] == 'system':
-                    st.markdown(f"<div style='text-align:center;color:#8A857C;font-size:0.8rem;padding:0.3rem;'>{msg['content']} — {msg['time']}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='text-align:center;color:#888;font-size:0.8rem;padding:0.3rem;'>{msg['content']} — {msg['time']}</div>", unsafe_allow_html=True)
                 elif msg['sender'] == user_name:
                     st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;text-align:right;"><strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
                 else:
                     initials = generate_initials(msg['sender'])
-                    st.markdown(f"""<div style="background:#F0ECE4;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>{initials} {msg['sender']}</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>{initials} {msg['sender']}</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
         with st.form(f"chat_form_{selected_channel.replace('#', '').replace(' ', '_')}", clear_on_submit=True):
             col1, col2 = st.columns([4, 1])
             with col1:
@@ -6783,7 +6785,7 @@ def chat_communications():
                         st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;"><strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
                     else:
                         initials = generate_initials(msg['sender'])
-                        st.markdown(f"""<div style="background:#F0ECE4;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>{initials} {msg['sender']}</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>{initials} {msg['sender']}</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
             else:
                 st.info(f"No messages with {dm_with} yet. Say hello! 👋")
             
@@ -6860,7 +6862,7 @@ def chat_communications():
                 {"title": "Holiday Notice - Democracy Day", "date": "2026-05-25", "priority": "Important", "content": "Office closed on June 12 for Democracy Day. Normal operations resume June 13.", "posted_by": "Admin", "time": "11:00 AM"},
             ]
         for ann in reversed(all_announcements):
-            pc = "#CC0000" if ann['priority'] == 'Urgent' else "#B8860B" if ann['priority'] == 'Important' else "#2F6690"
+            pc = "#CC0000" if ann['priority'] == 'Urgent' else "#d69e2e" if ann['priority'] == 'Important' else "#3182ce"
             st.markdown(f"""<div style="background:white;padding:1rem;border-radius:8px;margin-bottom:0.6rem;border-left:4px solid {pc};"><div style="display:flex;justify-content:space-between;"><strong>{ann['title']}</strong><span style="background:{pc};color:white;padding:0.2rem 0.6rem;border-radius:10px;font-size:0.75rem;">{ann['priority']}</span></div><p style="margin:0.4rem 0;">{ann['content']}</p><small>📅 {ann['date']} | 👤 {ann.get('posted_by', 'System')} | 🕐 {ann.get('time', '')}</small></div>""", unsafe_allow_html=True)
     
     with tab4:
@@ -6901,7 +6903,7 @@ def chat_communications():
         st.markdown("### 🏆 Recent Kudos")
         if st.session_state.kudos_board:
             for k in reversed(st.session_state.kudos_board[-15:]):
-                st.markdown(f"""<div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid #B8860B;">{k['emoji']} <strong>{k['from']}</strong> <small>({k.get('from_dept', '')})</small> → <strong>{k['to']}</strong><p style="margin:0.2rem 0;">"{k['message']}"</p><small>{k['time']}</small></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid #d69e2e;">{k['emoji']} <strong>{k['from']}</strong> <small>({k.get('from_dept', '')})</small> → <strong>{k['to']}</strong><p style="margin:0.2rem 0;">"{k['message']}"</p><small>{k['time']}</small></div>""", unsafe_allow_html=True)
         else:
             st.info("No kudos yet. Be the first to appreciate a colleague! 🌟")
     
@@ -6979,7 +6981,7 @@ def chat_communications():
         for group in groups:
             col1, col2, col3 = st.columns([3, 1, 1])
             with col1:
-                st.markdown(f"**{group['name']}** — {group['members']} members<br><small style='color:#6F6A62;'>{group['description']}</small>", unsafe_allow_html=True)
+                st.markdown(f"**{group['name']}** — {group['members']} members<br><small style='color:#666;'>{group['description']}</small>", unsafe_allow_html=True)
             with col2:
                 group_key = group['name']
                 if group_key not in st.session_state.interest_groups:
@@ -7007,7 +7009,7 @@ def chat_communications():
             if msg['role'] == 'user':
                 st.markdown(f"""<div style="background:#CC0000;color:white;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-left:4rem;"><strong>You</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
             else:
-                st.markdown(f"""<div style="background:#F0ECE4;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>🤖 HRIS Bot</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
+                st.markdown(f"""<div style="background:#f0f0f0;padding:0.6rem 1rem;border-radius:10px;margin:0.3rem 0;margin-right:4rem;"><strong>🤖 HRIS Bot</strong><p style="margin:0.2rem 0;">{msg['content']}</p><small>{msg['time']}</small></div>""", unsafe_allow_html=True)
         policy_kb = {
             'leave': "🏖️ **Leave Policy:** Annual leave varies by grade level. Level 1: 14 days, Level 2-3: 28 days, Level 4-5: 30 days. Apply via HRIS. Maternity: 90 days. Sick leave requires medical certificate.",
             'payroll': "💰 **Payroll:** Processed on 25th monthly. Pay stubs available in My Documents. Salary includes basic, housing, transport, meal, utility, and education allowances.",
@@ -7157,21 +7159,21 @@ def chat_communications():
         st.subheader("🔌 External Integrations")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.markdown("""<div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="font-size:3rem;">💬</h2><h3>WhatsApp</h3><p style="color:#6F6A62;font-size:0.85rem;">Send notifications, birthday wishes, and announcements directly to employees' WhatsApp.</p></div>""", unsafe_allow_html=True)
+            st.markdown("""<div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="font-size:3rem;">💬</h2><h3>WhatsApp</h3><p style="color:#666;font-size:0.85rem;">Send notifications, birthday wishes, and announcements directly to employees' WhatsApp.</p></div>""", unsafe_allow_html=True)
             whatsapp_configured = bool(st.secrets.get("TWILIO_ACCOUNT_SID", ""))
             if whatsapp_configured:
                 st.success("✅ Connected (Twilio)")
             else:
                 st.info("Add Twilio credentials to enable")
         with col2:
-            st.markdown("""<div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="font-size:3rem;">💜</h2><h3>Slack</h3><p style="color:#6F6A62;font-size:0.85rem;">Auto-post announcements, kudos, and important alerts to Slack channels.</p></div>""", unsafe_allow_html=True)
+            st.markdown("""<div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="font-size:3rem;">💜</h2><h3>Slack</h3><p style="color:#666;font-size:0.85rem;">Auto-post announcements, kudos, and important alerts to Slack channels.</p></div>""", unsafe_allow_html=True)
             slack_configured = bool(st.secrets.get("SLACK_WEBHOOK_URL", ""))
             if slack_configured:
                 st.success("✅ Connected")
             else:
                 st.info("Add SLACK_WEBHOOK_URL to enable")
         with col3:
-            st.markdown("""<div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="font-size:3rem;">📋</h2><h3>Asana</h3><p style="color:#6F6A62;font-size:0.85rem;">Auto-create onboarding tasks and training checklists in Asana.</p></div>""", unsafe_allow_html=True)
+            st.markdown("""<div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="font-size:3rem;">📋</h2><h3>Asana</h3><p style="color:#666;font-size:0.85rem;">Auto-create onboarding tasks and training checklists in Asana.</p></div>""", unsafe_allow_html=True)
             asana_configured = bool(st.secrets.get("ASANA_PERSONAL_TOKEN", ""))
             if asana_configured:
                 st.success("✅ Connected")
@@ -7492,7 +7494,7 @@ def reports_analytics():
                 if not perf_data.empty:
                     pillar_avg = perf_data.groupby('pillar_name')['progress'].mean().reset_index()
                     fig = px.bar(pillar_avg, x='pillar_name', y='progress', color='progress',
-                               color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+                               color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
                     fig.update_layout(height=300)
                     st.plotly_chart(fig, use_container_width=True)
                 else:
@@ -7505,7 +7507,7 @@ def reports_analytics():
             if not emp_df.empty:
                 dept_health = emp_df.groupby('department').size().reset_index(name='count')
                 fig2 = px.treemap(dept_health, path=['department'], values='count', color='count',
-                                color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+                                color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
                 fig2.update_layout(height=300)
                 st.plotly_chart(fig2, use_container_width=True)
     
@@ -7525,13 +7527,13 @@ def reports_analytics():
             if not emp_df.empty:
                 dept_counts = emp_df['department'].value_counts()
                 fig = px.bar(x=dept_counts.index, y=dept_counts.values, color=dept_counts.values,
-                           color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+                           color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
                 fig.update_layout(height=350, xaxis_title="Department", yaxis_title="Employees")
                 st.plotly_chart(fig, use_container_width=True)
         with col2:
             exp_data = pd.DataFrame({'Experience': ['0-2 yrs', '3-5 yrs', '6-10 yrs', '10+ yrs'], 'Count': [8, 15, 22, 12]})
             fig = px.pie(exp_data, values='Count', names='Experience', hole=0.4,
-                       color_discrete_sequence=['#CC0000', '#B8860B', '#2F6690', '#1F7A4D'])
+                       color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169'])
             fig.update_layout(height=350)
             st.plotly_chart(fig, use_container_width=True)
         
@@ -7590,7 +7592,7 @@ def reports_analytics():
                 with col1:
                     dept_scores = perf_data.groupby('department')['progress'].mean().reset_index()
                     fig = px.bar(dept_scores, x='department', y='progress', color='progress',
-                               color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+                               color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
                     fig.update_layout(height=350)
                     st.plotly_chart(fig, use_container_width=True)
                 with col2:
@@ -7605,7 +7607,7 @@ def reports_analytics():
                                             'Target': [85, 85, 85, 85, 85, 85]})
                 fig3 = go.Figure()
                 fig3.add_trace(go.Scatter(x=forecast_data['Month'], y=forecast_data['Predicted'], mode='lines+markers', name='Forecast', line=dict(color='#CC0000', width=3)))
-                fig3.add_trace(go.Scatter(x=forecast_data['Month'], y=forecast_data['Target'], mode='lines', name='Target', line=dict(color='#1F7A4D', width=2, dash='dash')))
+                fig3.add_trace(go.Scatter(x=forecast_data['Month'], y=forecast_data['Target'], mode='lines', name='Target', line=dict(color='#38a169', width=2, dash='dash')))
                 fig3.update_layout(height=300)
                 st.plotly_chart(fig3, use_container_width=True)
             else:
@@ -7641,7 +7643,7 @@ def reports_analytics():
             col1, col2 = st.columns(2)
             with col1:
                 gender_df = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [male_count, female_count]})
-                fig = px.pie(gender_df, values='Count', names='Gender', hole=0.5, color_discrete_sequence=['#2F6690', '#CC0000'])
+                fig = px.pie(gender_df, values='Count', names='Gender', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000'])
                 fig.update_layout(height=400)
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
@@ -7681,13 +7683,13 @@ def reports_analytics():
                                     'Cost': [1.3, 1.4, 1.5, 1.5, 1.6, 1.7]})
             fig = go.Figure()
             fig.add_trace(go.Bar(name='Revenue (₦B)', x=fin_data['Month'], y=fin_data['Revenue'], marker_color='#CC0000'))
-            fig.add_trace(go.Bar(name='Cost (₦B)', x=fin_data['Month'], y=fin_data['Cost'], marker_color='#4A4640'))
+            fig.add_trace(go.Bar(name='Cost (₦B)', x=fin_data['Month'], y=fin_data['Cost'], marker_color='#4a4a4a'))
             fig.update_layout(height=350, barmode='group')
             st.plotly_chart(fig, use_container_width=True)
         with col2:
             props = list(metrics['portfolio_data'].keys())
             occ_vals = [metrics['portfolio_data'][p]['occupancy'] for p in props]
-            fig2 = px.bar(x=props, y=occ_vals, color=occ_vals, color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+            fig2 = px.bar(x=props, y=occ_vals, color=occ_vals, color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
             fig2.update_layout(height=350)
             st.plotly_chart(fig2, use_container_width=True)
     
@@ -7711,7 +7713,7 @@ def reports_analytics():
                 })
                 fig = go.Figure()
                 fig.add_trace(go.Bar(name=dept1, x=comp_data['Metric'], y=comp_data[dept1], marker_color='#CC0000'))
-                fig.add_trace(go.Bar(name=dept2, x=comp_data['Metric'], y=comp_data[dept2], marker_color='#2F6690'))
+                fig.add_trace(go.Bar(name=dept2, x=comp_data['Metric'], y=comp_data[dept2], marker_color='#3182ce'))
                 fig.update_layout(height=350, barmode='group')
                 st.plotly_chart(fig, use_container_width=True)
     
@@ -7727,7 +7729,7 @@ def reports_analytics():
             'High Risk': [1, 4, 1, 2, 3]
         })
         fig = px.bar(risk_data, x='Department', y=['Low Risk', 'Medium Risk', 'High Risk'],
-                    color_discrete_sequence=['#1F7A4D', '#B8860B', '#CC0000'])
+                    color_discrete_sequence=['#38a169', '#d69e2e', '#CC0000'])
         fig.update_layout(height=400, barmode='stack')
         st.plotly_chart(fig, use_container_width=True)
     
@@ -7742,7 +7744,7 @@ def reports_analytics():
             'Not Started': [5, 10, 5, 10, 8, 10, 10]
         })
         fig = px.bar(training_data, x='Department', y=['Completed', 'In Progress', 'Not Started'],
-                    color_discrete_sequence=['#1F7A4D', '#B8860B', '#CC0000'])
+                    color_discrete_sequence=['#38a169', '#d69e2e', '#CC0000'])
         fig.update_layout(height=400, barmode='stack')
         st.plotly_chart(fig, use_container_width=True)
     
@@ -8174,12 +8176,12 @@ def notifications_page():
                     # Priority colors
                     priority_colors = {
                         'critical': '#CC0000',
-                        'high': '#A32D2D',
-                        'medium': '#B8860B',
-                        'low': '#6F6A62'
+                        'high': '#e53e3e',
+                        'medium': '#d69e2e',
+                        'low': '#718096'
                     }
-                    border_color = priority_colors.get(n.get('priority', 'low'), '#6F6A62')
-                    bg_color = '#FBEAEA' if is_unread else '#F5F2EC'
+                    border_color = priority_colors.get(n.get('priority', 'low'), '#718096')
+                    bg_color = '#fff5f5' if is_unread else '#fafafa'
                     
                     # Notification card
                     col1, col2, col3 = st.columns([8, 1, 1])
@@ -8190,8 +8192,8 @@ def notifications_page():
                                 <div style="flex:1;">
                                     <strong style="font-size:0.95rem;">{n['title']}</strong>
                                     {'<span style="background:#CC0000;color:white;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.7rem;margin-left:0.5rem;">NEW</span>' if is_unread else ''}
-                                    <p style="margin:0.3rem 0;color:#5C5850;font-size:0.85rem;">{n['message']}</p>
-                                    <small style="color:#8A857C;">🕐 {n['time']} | 🏷️ {n.get('priority', 'normal').upper()}</small>
+                                    <p style="margin:0.3rem 0;color:#555;font-size:0.85rem;">{n['message']}</p>
+                                    <small style="color:#888;">🕐 {n['time']} | 🏷️ {n.get('priority', 'normal').upper()}</small>
                                 </div>
                             </div>
                         </div>
@@ -8267,7 +8269,7 @@ def notifications_page():
                 
                 # Chart
                 fig = px.bar(digest_df, x='Category', y='Count', color='Critical',
-                           color_continuous_scale=['#1F7A4D', '#B8860B', '#CC0000'])
+                           color_continuous_scale=['#38a169', '#d69e2e', '#CC0000'])
                 fig.update_layout(height=300)
                 st.plotly_chart(fig, use_container_width=True)
 
@@ -8573,7 +8575,7 @@ def ideas_box():
         my_ideas = [i for i in all_ideas if i.get('employee_id') == user_id]
         if my_ideas:
             for idea in my_ideas:
-                status_color = "#1F7A4D" if idea.get('status') == 'Approved' else "#B8860B" if idea.get('status') == 'Under Review' else "#9B9690"
+                status_color = "#38a169" if idea.get('status') == 'Approved' else "#d69e2e" if idea.get('status') == 'Under Review' else "#a0aec0"
                 with st.expander(f"{idea.get('title', 'Untitled')} — {idea.get('votes', 0)} votes | {idea.get('status', 'Submitted')}"):
                     st.markdown(f"**Category:** {idea.get('category', 'N/A')}")
                     st.markdown(f"**Description:** {idea.get('description', '')}")
@@ -8740,10 +8742,10 @@ def company_calendar():
         defaults = [
             ("Democracy Day", "holiday", "2026-06-12", "Public Holiday - Office Closed", "#CC0000"),
             ("Eid al-Adha", "holiday", "2026-06-17", "Public Holiday", "#CC0000"),
-            ("Q2 Performance Reviews Due", "deadline", "2026-06-30", "All departments submit Q2 reviews", "#B8860B"),
-            ("BMS Advanced Training", "training", "2026-06-15", "Building Management Systems - Siemens Academy", "#2F6690"),
-            ("AI in FM Webinar", "training", "2026-06-20", "Practical AI Applications for Facility Management", "#2F6690"),
-            ("World Trade Center Day", "event", "2026-07-01", "Annual WTC Abuja Celebration", "#1F7A4D"),
+            ("Q2 Performance Reviews Due", "deadline", "2026-06-30", "All departments submit Q2 reviews", "#d69e2e"),
+            ("BMS Advanced Training", "training", "2026-06-15", "Building Management Systems - Siemens Academy", "#3182ce"),
+            ("AI in FM Webinar", "training", "2026-06-20", "Practical AI Applications for Facility Management", "#3182ce"),
+            ("World Trade Center Day", "event", "2026-07-01", "Annual WTC Abuja Celebration", "#38a169"),
             ("Independence Day", "holiday", "2026-10-01", "Nigeria Independence Day", "#CC0000"),
             ("Christmas Day", "holiday", "2026-12-25", "Public Holiday", "#CC0000"),
             ("Boxing Day", "holiday", "2026-12-26", "Public Holiday", "#CC0000"),
@@ -8756,12 +8758,12 @@ def company_calendar():
     # Color mapping
     event_colors = {
         'holiday': '#CC0000',
-        'deadline': '#B8860B',
-        'training': '#2F6690',
-        'event': '#1F7A4D',
-        'birthday': '#B5651D',
-        'meeting': '#6B5B95',
-        'financial': '#1B1A18'
+        'deadline': '#d69e2e',
+        'training': '#3182ce',
+        'event': '#38a169',
+        'birthday': '#dd6b20',
+        'meeting': '#805ad5',
+        'financial': '#1a1a1a'
     }
     
     event_icons = {
@@ -8802,15 +8804,15 @@ def company_calendar():
             break
     
     st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #1B1A18, #2A2722); color: white; padding: 1.2rem 1.5rem; border-radius: 10px; margin-bottom: 1.5rem; border: 2px solid #CC0000;">
+    <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1.2rem 1.5rem; border-radius: 10px; margin-bottom: 1.5rem; border: 2px solid #CC0000;">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
             <div>
                 <h3 style="margin:0;color:white;">📊 Financial Year {fy_start}/{fy_end}</h3>
-                <p style="margin:0.3rem 0 0 0;color:#E3DED3;">April {fy_start} — March {fy_end} | Current: {current_quarter}</p>
+                <p style="margin:0.3rem 0 0 0;color:#ccc;">April {fy_start} — March {fy_end} | Current: {current_quarter}</p>
             </div>
             <div style="text-align:right;">
                 <span style="font-weight:700;font-size:1.1rem;">Month {fy_progress_month} of 12 ({fy_pct}%)</span>
-                <div style="background:#5C5850;height:8px;border-radius:4px;width:220px;margin-top:0.4rem;">
+                <div style="background:#555;height:8px;border-radius:4px;width:220px;margin-top:0.4rem;">
                     <div style="background:#CC0000;width:{fy_pct}%;height:8px;border-radius:4px;"></div>
                 </div>
             </div>
@@ -8898,7 +8900,7 @@ def company_calendar():
         st.markdown("---")
         legend_cols = st.columns(7)
         for i, (etype, icon) in enumerate(event_icons.items()):
-            color = event_colors.get(etype, '#8A857C')
+            color = event_colors.get(etype, '#888')
             legend_cols[i % 7].markdown(f'<span style="color:{color};">{icon} {etype.title()}</span>', unsafe_allow_html=True)
         
         # Today's events
@@ -8929,7 +8931,7 @@ def company_calendar():
         
         for event in filtered:
             etype = event.get('event_type', 'event')
-            color = event_colors.get(etype, '#8A857C')
+            color = event_colors.get(etype, '#888')
             icon = event_icons.get(etype, '📌')
             
             try:
@@ -8944,11 +8946,11 @@ def company_calendar():
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <div>
                         <strong>{icon} {event.get('title', 'Event')}</strong>
-                        <br><small style="color:#6F6A62;">{event.get('description', '')}</small>
+                        <br><small style="color:#666;">{event.get('description', '')}</small>
                     </div>
                     <div style="text-align:right;">
                         <span style="background:{color};color:white;padding:0.2rem 0.6rem;border-radius:10px;font-size:0.75rem;">{etype.title()}</span>
-                        <br><small style="color:#8A857C;">{event.get('event_date', '')[:10]}</small>
+                        <br><small style="color:#888;">{event.get('event_date', '')[:10]}</small>
                         <br><small style="color:{color};">{days_str}</small>
                     </div>
                 </div>
@@ -8971,12 +8973,12 @@ def company_calendar():
             day_events = [e for e in events if e.get('event_date', '')[:10] == date_str]
             
             is_today = date_str == today.strftime('%Y-%m-%d')
-            bg = "#FBEAEA" if is_today else "#F5F2EC"
+            bg = "#fff3f3" if is_today else "#fafafa"
             
             with col:
                 st.markdown(f"""
-                <div style="background:{bg};padding:0.5rem;border-radius:6px;text-align:center;min-height:80px;border:{ '2px solid #CC0000' if is_today else '1px solid #EDE9E1'};">
-                    <small style="color:{'#CC0000' if is_today else '#8A857C'};font-weight:{'700' if is_today else '400'};">{day_name[:3]}</small>
+                <div style="background:{bg};padding:0.5rem;border-radius:6px;text-align:center;min-height:80px;border:{ '2px solid #CC0000' if is_today else '1px solid #e0e0e0'};">
+                    <small style="color:{'#CC0000' if is_today else '#888'};font-weight:{'700' if is_today else '400'};">{day_name[:3]}</small>
                     <br><strong>{day_date.day}</strong>
                     {''.join([f'<br><small>{event_icons.get(e.get("event_type",""),"📌")}</small>' for e in day_events]) if day_events else ''}
                 </div>
@@ -9031,7 +9033,7 @@ def company_calendar():
             <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                 <h2 style="font-size:2.5rem;">📧</h2>
                 <h3>Google Calendar</h3>
-                <p style="color:#6F6A62;font-size:0.85rem;">Sync company events with Google Calendar. Add to your personal calendar with one click.</p>
+                <p style="color:#666;font-size:0.85rem;">Sync company events with Google Calendar. Add to your personal calendar with one click.</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -9048,7 +9050,7 @@ def company_calendar():
             <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                 <h2 style="font-size:2.5rem;">💜</h2>
                 <h3>Microsoft Teams</h3>
-                <p style="color:#6F6A62;font-size:0.85rem;">Auto-create Teams meetings for company events and training sessions.</p>
+                <p style="color:#666;font-size:0.85rem;">Auto-create Teams meetings for company events and training sessions.</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -9065,7 +9067,7 @@ def company_calendar():
             <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
                 <h2 style="font-size:2.5rem;">📱</h2>
                 <h3>iCal/Outlook</h3>
-                <p style="color:#6F6A62;font-size:0.85rem;">Download .ics files for any event to add to Apple Calendar or Outlook.</p>
+                <p style="color:#666;font-size:0.85rem;">Download .ics files for any event to add to Apple Calendar or Outlook.</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -9143,9 +9145,9 @@ def personal_goals():
     
     pillar_colors = {
         "1. Occupancy & Revenue Growth": "#CC0000",
-        "2. Process Simplification": "#1F7A4D",
-        "3. Asset Reliability & Digitalization": "#2F6690",
-        "4. People & Culture": "#B8860B"
+        "2. Process Simplification": "#38a169",
+        "3. Asset Reliability & Digitalization": "#3182ce",
+        "4. People & Culture": "#d69e2e"
     }
     
     pillar_icons = {
@@ -9193,7 +9195,7 @@ def personal_goals():
                 progress = int(goal.get('progress', 0))
                 status = goal.get('status', 'In Progress')
                 
-                status_color = "#1F7A4D" if status == 'Completed' else "#B8860B" if status == 'In Progress' else "#9B9690"
+                status_color = "#38a169" if status == 'Completed' else "#d69e2e" if status == 'In Progress' else "#a0aec0"
                 
                 with st.expander(f"{icon} {goal.get('goal_title', 'Untitled')} — {progress}% — {status}"):
                     col1, col2 = st.columns([3, 1])
@@ -9308,13 +9310,13 @@ def personal_goals():
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <div>
                             <strong>{emoji} {goal.get('goal_title', 'Untitled')}</strong>
-                            <br><small style="color:#8A857C;">{goal.get('pillar', '')} | Target: {goal.get('target_date', '')[:10]}</small>
+                            <br><small style="color:#888;">{goal.get('pillar', '')} | Target: {goal.get('target_date', '')[:10]}</small>
                         </div>
                         <div style="text-align:right;">
                             <span style="font-size:1.2rem;font-weight:700;color:{color};">{progress}%</span>
                         </div>
                     </div>
-                    <div style="background:#EDE9E1;height:8px;border-radius:4px;margin-top:0.5rem;">
+                    <div style="background:#e0e0e0;height:8px;border-radius:4px;margin-top:0.5rem;">
                         <div style="background:{color};width:{progress}%;height:8px;border-radius:4px;"></div>
                     </div>
                 </div>
@@ -9472,24 +9474,24 @@ def requests_hub():
                 priority = req.get('priority', 'Medium')
                 
                 status_colors = {
-                    'Submitted': '#9B9690',
-                    'Recommended by TL': '#2F6690',
-                    'Approved by HOD': '#B8860B',
-                    'Approved': '#1F7A4D',
+                    'Submitted': '#a0aec0',
+                    'Recommended by TL': '#3182ce',
+                    'Approved by HOD': '#d69e2e',
+                    'Approved': '#38a169',
                     'Rejected': '#CC0000',
-                    'Completed': '#1F7A4D'
+                    'Completed': '#38a169'
                 }
                 
-                priority_colors = {'Low': '#9B9690', 'Medium': '#B8860B', 'High': '#B5651D', 'Urgent': '#CC0000'}
+                priority_colors = {'Low': '#a0aec0', 'Medium': '#d69e2e', 'High': '#dd6b20', 'Urgent': '#CC0000'}
                 
-                color = status_colors.get(status, '#9B9690')
+                color = status_colors.get(status, '#a0aec0')
                 
                 with st.expander(f"{req.get('request_type', '')} — {req.get('title', '')} | {status} | {req.get('submitted_at', '')[:10]}"):
                     col1, col2 = st.columns([3, 1])
                     with col1:
                         st.markdown(f"**Request ID:** {req.get('request_id', 'N/A')}")
                         st.markdown(f"**Description:** {req.get('description', '')}")
-                        st.markdown(f"**Priority:** <span style='color:{priority_colors.get(priority, '#8A857C')};font-weight:600;'>{priority}</span>", unsafe_allow_html=True)
+                        st.markdown(f"**Priority:** <span style='color:{priority_colors.get(priority, '#888')};font-weight:600;'>{priority}</span>", unsafe_allow_html=True)
                         
                         # Show approval chain
                         st.markdown("---")
@@ -9536,7 +9538,7 @@ def requests_hub():
             if pending_my_approval:
                 for req in pending_my_approval:
                     priority = req.get('priority', 'Medium')
-                    border_color = "#CC0000" if priority == 'Urgent' else "#B5651D" if priority == 'High' else "#B8860B"
+                    border_color = "#CC0000" if priority == 'Urgent' else "#dd6b20" if priority == 'High' else "#d69e2e"
                     
                     with st.expander(f"{'🚨' if priority == 'Urgent' else '🔔'} {req.get('request_type', '')} — {req.get('title', '')} | {req.get('employee_name', '')} | {req.get('submitted_at', '')[:10]}", expanded=(priority == 'Urgent')):
                         st.markdown(f"**Request ID:** {req.get('request_id', 'N/A')}")
@@ -9681,7 +9683,7 @@ def requests_hub():
             if tracked:
                 for req in tracked[:20]:
                     status = req.get('status', 'Submitted')
-                    color = {'Submitted': '#9B9690', 'Recommended by TL': '#2F6690', 'Approved by HOD': '#B8860B', 'Approved': '#1F7A4D', 'Rejected': '#CC0000', 'Completed': '#1F7A4D'}.get(status, '#9B9690')
+                    color = {'Submitted': '#a0aec0', 'Recommended by TL': '#3182ce', 'Approved by HOD': '#d69e2e', 'Approved': '#38a169', 'Rejected': '#CC0000', 'Completed': '#38a169'}.get(status, '#a0aec0')
                     
                     st.markdown(f"""
                     <div style="background:white;padding:0.6rem 1rem;border-radius:6px;margin-bottom:0.3rem;border-left:4px solid {color};">
@@ -9718,16 +9720,16 @@ def requests_hub():
                 st.plotly_chart(fig1, use_container_width=True)
             with col2:
                 st.markdown("### By Status")
-                status_colors = {'Submitted': '#9B9690', 'Recommended by TL': '#2F6690', 'Approved by HOD': '#B8860B', 'Approved': '#1F7A4D', 'Rejected': '#CC0000', 'Completed': '#1F7A4D'}
+                status_colors = {'Submitted': '#a0aec0', 'Recommended by TL': '#3182ce', 'Approved by HOD': '#d69e2e', 'Approved': '#38a169', 'Rejected': '#CC0000', 'Completed': '#38a169'}
                 fig2 = px.pie(values=list(by_status.values()), names=list(by_status.keys()), hole=0.5,
-                            color_discrete_sequence=[status_colors.get(s, '#8A857C') for s in by_status.keys()])
+                            color_discrete_sequence=[status_colors.get(s, '#888') for s in by_status.keys()])
                 fig2.update_layout(height=350)
                 st.plotly_chart(fig2, use_container_width=True)
             
             st.markdown("---")
             st.markdown("### By Department")
             fig3 = px.bar(x=list(by_dept.keys()), y=list(by_dept.values()), color=list(by_dept.values()),
-                        color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+                        color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
             fig3.update_layout(height=350)
             st.plotly_chart(fig3, use_container_width=True)
             
@@ -9784,9 +9786,9 @@ def employee_directory_readonly():
                     <div style="background:white;padding:1rem;border-radius:8px;margin-bottom:0.8rem;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.05);border-top:3px solid #CC0000;">
                         <div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;margin:0 auto;font-size:1.1rem;">{initials}</div>
                         <strong style="display:block;margin-top:0.5rem;">{emp['first_name']} {emp['last_name']}</strong>
-                        <small style="color:#6F6A62;">{emp.get('position', '')}</small><br>
-                        <small style="color:#8A857C;">🏢 {emp.get('department', '')}</small><br>
-                        <small style="color:#8A857C;">📧 {emp.get('email', 'N/A')}</small>
+                        <small style="color:#666;">{emp.get('position', '')}</small><br>
+                        <small style="color:#888;">🏢 {emp.get('department', '')}</small><br>
+                        <small style="color:#888;">📧 {emp.get('email', 'N/A')}</small>
                     </div>
                     """, unsafe_allow_html=True)
         else:
@@ -9889,10 +9891,10 @@ def wellness_perks():
         
         tip = random.choice(tips)
         st.markdown(f"""
-        <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:4px solid #1F7A4D;">
+        <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:4px solid #38a169;">
             <h2 style="font-size:3rem;">{tip[0].split()[0]}</h2>
             <h3>{tip[0]}</h3>
-            <p style="color:#6F6A62;">{tip[1]}</p>
+            <p style="color:#666;">{tip[1]}</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -9912,28 +9914,28 @@ def wellness_perks():
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("""
-            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #6B5B95;">
+            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #805ad5;">
                 <h4>🧘 Mindfulness</h4>
-                <p style="color:#6F6A62;font-size:0.9rem;">Practice deep breathing for 2 minutes between meetings. Inhale for 4 counts, hold for 4, exhale for 4.</p>
+                <p style="color:#666;font-size:0.9rem;">Practice deep breathing for 2 minutes between meetings. Inhale for 4 counts, hold for 4, exhale for 4.</p>
             </div>
             """, unsafe_allow_html=True)
             st.markdown("""
-            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #2F6690;">
+            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #3182ce;">
                 <h4>💬 Talk to Someone</h4>
-                <p style="color:#6F6A62;font-size:0.9rem;">HR offers confidential counseling. Reach out to Adebayo Sakote or Ibeabuchi Chukwunonye anytime.</p>
+                <p style="color:#666;font-size:0.9rem;">HR offers confidential counseling. Reach out to Adebayo Sakote or Ibeabuchi Chukwunonye anytime.</p>
             </div>
             """, unsafe_allow_html=True)
         with col2:
             st.markdown("""
-            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #B8860B;">
+            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #d69e2e;">
                 <h4>🏖️ Take Your Leave</h4>
-                <p style="color:#6F6A62;font-size:0.9rem;">Rest is productive. Use your annual leave days — they're part of your compensation.</p>
+                <p style="color:#666;font-size:0.9rem;">Rest is productive. Use your annual leave days — they're part of your compensation.</p>
             </div>
             """, unsafe_allow_html=True)
             st.markdown("""
-            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #1F7A4D;">
+            <div style="background:white;padding:1.2rem;border-radius:8px;margin-bottom:0.8rem;border-left:4px solid #38a169;">
                 <h4>🤝 Peer Support</h4>
-                <p style="color:#6F6A62;font-size:0.9rem;">Connect with colleagues through our Interest Groups. Social connection is a proven stress reducer.</p>
+                <p style="color:#666;font-size:0.9rem;">Connect with colleagues through our Interest Groups. Social connection is a proven stress reducer.</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -9963,7 +9965,7 @@ def wellness_perks():
                 st.markdown(f"""
                 <div style="background:white;padding:1rem;border-radius:8px;margin-bottom:0.6rem;border-left:4px solid #CC0000;">
                     <h3>{icon} {title}</h3>
-                    <p style="color:#6F6A62;font-size:0.9rem;">{desc}</p>
+                    <p style="color:#666;font-size:0.9rem;">{desc}</p>
                 </div>
                 """, unsafe_allow_html=True)
         
@@ -10059,29 +10061,29 @@ def send_celebration_emails():
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: #CC0000; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
                 <h1 style="color: white; margin: 0;">Churchgate Group</h1>
-                <p style="color: #F5C9C9; margin: 5px 0 0 0;">Celebrating Our People</p>
+                <p style="color: #ffcccc; margin: 5px 0 0 0;">Celebrating Our People</p>
             </div>
-            <div style="background: white; padding: 25px; border: 1px solid #EDE9E1; border-top: none;">
-                <h2 style="color: #1B1A18;">🎉 Today's Celebrations — {today.strftime('%B %d, %Y')}</h2>
+            <div style="background: white; padding: 25px; border: 1px solid #e0e0e0; border-top: none;">
+                <h2 style="color: #1a1a1a;">🎉 Today's Celebrations — {today.strftime('%B %d, %Y')}</h2>
         """
         
         if birthdays_today:
             body += '<h3 style="color: #CC0000;">🎂 Happy Birthday!</h3><p>Join us in wishing a very happy birthday to:</p>'
             for b in birthdays_today:
-                body += f'<div style="background: #FBEAEA; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #CC0000;"><strong>{b["name"]}</strong><br><small>{b["position"]} — {b["department"]}</small></div>'
+                body += f'<div style="background: #fff5f5; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #CC0000;"><strong>{b["name"]}</strong><br><small>{b["position"]} — {b["department"]}</small></div>'
         
         if anniversaries_today:
-            body += '<h3 style="color: #B8860B;">⭐ Work Anniversary!</h3><p>Celebrating dedication and loyalty:</p>'
+            body += '<h3 style="color: #d69e2e;">⭐ Work Anniversary!</h3><p>Celebrating dedication and loyalty:</p>'
             for a in anniversaries_today:
-                body += f'<div style="background: #fffbf0; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #B8860B;"><strong>{a["name"]}</strong> — {a["years"]} year{"s" if a["years"] > 1 else ""} at Churchgate<br><small>{a["department"]}</small></div>'
+                body += f'<div style="background: #fffbf0; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #d69e2e;"><strong>{a["name"]}</strong> — {a["years"]} year{"s" if a["years"] > 1 else ""} at Churchgate<br><small>{a["department"]}</small></div>'
         
         body += f"""
-                <div style="background: #F2EEE6; padding: 15px; margin-top: 20px; border-radius: 6px; text-align: center;">
-                    <p style="color: #6F6A62; margin: 0;">💡 <strong>Take a moment today</strong> to reach out and celebrate your colleague! A simple message, a call, or a coffee together goes a long way.</p>
+                <div style="background: #f8f8f8; padding: 15px; margin-top: 20px; border-radius: 6px; text-align: center;">
+                    <p style="color: #666; margin: 0;">💡 <strong>Take a moment today</strong> to reach out and celebrate your colleague! A simple message, a call, or a coffee together goes a long way.</p>
                 </div>
             </div>
-            <div style="background: #1B1A18; padding: 15px; text-align: center; border-radius: 0 0 8px 8px;">
-                <p style="color: #8A857C; margin: 0; font-size: 12px;">Churchgate Group HRIS | hr@churchgate.com</p>
+            <div style="background: #1a1a1a; padding: 15px; text-align: center; border-radius: 0 0 8px 8px;">
+                <p style="color: #888; margin: 0; font-size: 12px;">Churchgate Group HRIS | hr@churchgate.com</p>
             </div>
         </body>
         </html>
@@ -10207,9 +10209,9 @@ def my_profile():
         else:
             st.markdown(f"""
             <div style="text-align:center;padding:1.2rem;background:white;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-bottom:1rem;">
-                <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#A32D2D);display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:700;color:white;margin:0 auto;">{initials}</div>
+                <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#CC0000,#e53e3e);display:flex;align-items:center;justify-content:center;font-size:2.2rem;font-weight:700;color:white;margin:0 auto;">{initials}</div>
                 <h3 style="margin-top:0.6rem;">{user_name}</h3>
-                <p style="color:#6F6A62;">{emp_position}</p>
+                <p style="color:#666;">{emp_position}</p>
                 <p style="color:#CC0000;font-weight:600;">ID: {user_id}</p>
             </div>
              """, unsafe_allow_html=True)
@@ -10399,7 +10401,7 @@ def my_profile():
                         st.markdown(f"""
                         <div style="background:white;padding:0.6rem;border-radius:6px;margin-bottom:0.3rem;border-left:3px solid #CC0000;">
                             <strong>{activity.get('action', '')}</strong><br>
-                            <small style="color:#8A857C;">{activity.get('details', '')} • {activity.get('timestamp', '')}</small>
+                            <small style="color:#888;">{activity.get('details', '')} • {activity.get('timestamp', '')}</small>
                         </div>
                         """, unsafe_allow_html=True)
                 else:
@@ -10616,7 +10618,7 @@ def lms_dashboard():
                     progress = enrollment.get('progress_percent', 0)
                     status = enrollment.get('status', 'Enrolled')
                     
-                    status_color = "#1F7A4D" if status == 'Completed' else "#B8860B" if status == 'In Progress' else "#2F6690"
+                    status_color = "#38a169" if status == 'Completed' else "#d69e2e" if status == 'In Progress' else "#3182ce"
                     
                     with st.expander(f"{'✅' if status == 'Completed' else '📖'} {course.get('title', 'Course')} — {progress:.0f}% — {status}"):
                         st.markdown(f"**Provider:** {course.get('provider', 'N/A')}")
@@ -10714,14 +10716,14 @@ def lms_dashboard():
                 course = next((c for c in courses if c.get('id') == enrollment.get('course_id')), None)
                 if course:
                     progress = enrollment.get('progress_percent', 0)
-                    color = "#1F7A4D" if progress >= 80 else "#B8860B" if progress >= 50 else "#CC0000"
+                    color = "#38a169" if progress >= 80 else "#d69e2e" if progress >= 50 else "#CC0000"
                     
                     st.markdown(f"""
                     <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {color};">
                         <strong>{course.get('title', 'Course')}</strong>
                         <span style="float:right;font-weight:700;color:{color};">{progress:.0f}%</span>
                         <br><small>{course.get('provider', '')} | {course.get('duration_hours', 0)}h | {enrollment.get('status', '')}</small>
-                        <div style="background:#EDE9E1;height:6px;border-radius:3px;margin-top:0.3rem;">
+                        <div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.3rem;">
                             <div style="background:{color};width:{progress}%;height:6px;border-radius:3px;"></div>
                         </div>
                     </div>
@@ -10827,7 +10829,7 @@ def lms_dashboard():
                 avg_prog = data['total_progress'] / data['courses'] if data['courses'] > 0 else 0
                 
                 st.markdown(f"""
-                <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;gap:1rem;border-left:4px solid {'#B8860B' if rank < 3 else '#CC0000'};">
+                <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;display:flex;align-items:center;gap:1rem;border-left:4px solid {'#d69e2e' if rank < 3 else '#CC0000'};">
                     <span style="font-size:1.5rem;">{medal}</span>
                     <div style="flex:1;">
                         <strong>{name}</strong> — {data['dept']}<br>
@@ -10855,10 +10857,10 @@ def lms_dashboard():
                 if course:
                     with cols[i % 3]:
                         st.markdown(f"""
-                        <div style="background:white;padding:1rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.08);border-top:3px solid #B8860B;margin-bottom:1rem;">
+                        <div style="background:white;padding:1rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.08);border-top:3px solid #d69e2e;margin-bottom:1rem;">
                             <h2 style="font-size:2.5rem;">🏅</h2>
                             <strong>{course.get('title', 'Course')[:40]}</strong><br>
-                            <small style="color:#B8860B;">{course.get('certification_type', 'Certificate')}</small><br>
+                            <small style="color:#d69e2e;">{course.get('certification_type', 'Certificate')}</small><br>
                             <small>Provider: {course.get('provider', 'N/A')}</small><br>
                             <small>Completed: {enrollment.get('completion_date', '')[:10]}</small>
                         </div>
@@ -10963,7 +10965,7 @@ def lms_dashboard():
             with cols[i % 3]:
                 opacity = "1" if badge['earned'] else "0.4"
                 st.markdown(f"""
-                <div style="background:white;padding:1rem;border-radius:8px;text-align:center;opacity:{opacity};margin-bottom:0.5rem;border:2px solid {'#B8860B' if badge['earned'] else '#EDE9E1'};">
+                <div style="background:white;padding:1rem;border-radius:8px;text-align:center;opacity:{opacity};margin-bottom:0.5rem;border:2px solid {'#d69e2e' if badge['earned'] else '#e0e0e0'};">
                     <h3>{'✅' if badge['earned'] else '🔒'}</h3>
                     <strong>{badge['name']}</strong><br>
                     <small>{badge['desc']}</small>
@@ -11000,7 +11002,7 @@ def lms_dashboard():
                     hours_left = int(course.get('duration_hours', 0) * (100 - progress) / 100)
                     
                     st.markdown(f"""
-                    <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid #2F6690;">
+                    <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid #3182ce;">
                         <strong>📖 {course.get('title', 'Course')[:50]}</strong><br>
                         <small>⏱️ ~{hours_left} hours remaining | 📊 {progress:.0f}% complete</small>
                     </div>
@@ -11175,19 +11177,19 @@ def audit_log_viewer():
                     severity = "Critical"
                 elif 'password' in str(action).lower() or 'security' in str(details).lower():
                     icon = "⚠️"
-                    border = "#B8860B"
+                    border = "#d69e2e"
                     severity = "Warning"
                 elif 'success' in str(details).lower() or 'complete' in str(action).lower():
                     icon = "✅"
-                    border = "#1F7A4D"
+                    border = "#38a169"
                     severity = "Info"
                 elif 'update' in str(action).lower() or 'edit' in str(action).lower() or 'change' in str(action).lower():
                     icon = "📝"
-                    border = "#2F6690"
+                    border = "#3182ce"
                     severity = "Info"
                 else:
                     icon = "ℹ️"
-                    border = "#9B9690"
+                    border = "#a0aec0"
                     severity = "Info"
                 
                 # Format timestamp
@@ -11273,7 +11275,7 @@ def audit_log_viewer():
             top_users = sorted(user_data.items(), key=lambda x: x[1], reverse=True)[:10]
             if top_users:
                 fig2 = px.bar(x=[u[0] for u in top_users], y=[u[1] for u in top_users],
-                            title="Top Users by Activity", color_discrete_sequence=['#2F6690'])
+                            title="Top Users by Activity", color_discrete_sequence=['#3182ce'])
                 fig2.update_layout(height=300)
                 st.plotly_chart(fig2, use_container_width=True)
 
@@ -11371,7 +11373,7 @@ def advanced_analytics():
                 dept_counts = emp_df['department'].value_counts().head(10)
                 fig = px.bar(x=dept_counts.index, y=dept_counts.values, 
                            title="Headcount by Department", color=dept_counts.values,
-                           color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+                           color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
                 fig.update_layout(height=350)
                 st.plotly_chart(fig, use_container_width=True)
         
@@ -11381,7 +11383,7 @@ def advanced_analytics():
                 grade_counts = emp_df['grade'].value_counts()
                 fig2 = px.pie(values=grade_counts.values, names=grade_counts.index, 
                             title="Grade Distribution", hole=0.5,
-                            color_discrete_sequence=['#CC0000', '#B8860B', '#2F6690', '#1F7A4D', '#6B5B95'])
+                            color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169', '#805ad5'])
                 fig2.update_layout(height=350)
                 st.plotly_chart(fig2, use_container_width=True)
         
@@ -11420,7 +11422,7 @@ def advanced_analytics():
                 tenure_df.columns = ['Tenure', 'Count']
                 fig3 = px.bar(tenure_df, x='Tenure', y='Count', color='Tenure',
                             title="Employee Tenure Distribution",
-                            color_discrete_sequence=['#CC0000', '#B8860B', '#2F6690', '#1F7A4D'])
+                            color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169'])
                 fig3.update_layout(height=350, showlegend=False)
                 st.plotly_chart(fig3, use_container_width=True)
     
@@ -11436,7 +11438,7 @@ def advanced_analytics():
             appraisal_values = [completed_appraisals, max(0, total_appraisals - completed_appraisals), max(0, total_emp - total_appraisals)]
             fig4 = px.pie(values=appraisal_values, names=appraisal_labels, 
                         title="Appraisal Completion Status", hole=0.5,
-                        color_discrete_sequence=['#1F7A4D', '#B8860B', '#9B9690'])
+                        color_discrete_sequence=['#38a169', '#d69e2e', '#a0aec0'])
             fig4.update_layout(height=350)
             st.plotly_chart(fig4, use_container_width=True)
         
@@ -11448,7 +11450,7 @@ def advanced_analytics():
                     dept_progress = perf_data.groupby('department')['progress'].mean().reset_index()
                     fig5 = px.bar(dept_progress, x='department', y='progress', 
                                 title="Avg KPI Progress by Department", color='progress',
-                                color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+                                color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
                     fig5.update_layout(height=350)
                     st.plotly_chart(fig5, use_container_width=True)
             except:
@@ -11490,7 +11492,7 @@ def advanced_analytics():
                 }
                 fig7 = px.pie(values=list(learning_status.values()), names=list(learning_status.keys()),
                             title="Course Completion Rate", hole=0.5,
-                            color_discrete_sequence=['#1F7A4D', '#B8860B'])
+                            color_discrete_sequence=['#38a169', '#d69e2e'])
                 fig7.update_layout(height=350)
                 st.plotly_chart(fig7, use_container_width=True)
         
@@ -11505,7 +11507,7 @@ def advanced_analytics():
                 if dept_enrollments:
                     fig8 = px.bar(x=list(dept_enrollments.keys()), y=list(dept_enrollments.values()),
                                 title="Enrollments by Department", color=list(dept_enrollments.values()),
-                                color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+                                color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
                     fig8.update_layout(height=350)
                     st.plotly_chart(fig8, use_container_width=True)
             except:
@@ -11534,7 +11536,7 @@ def advanced_analytics():
                 
                 fig9 = px.pie(values=list(idea_status.values()), names=list(idea_status.keys()),
                             title="Ideas by Status", hole=0.5,
-                            color_discrete_sequence=['#9B9690', '#B8860B', '#2F6690', '#1F7A4D'])
+                            color_discrete_sequence=['#a0aec0', '#d69e2e', '#3182ce', '#38a169'])
                 fig9.update_layout(height=350)
                 st.plotly_chart(fig9, use_container_width=True)
         
@@ -11548,7 +11550,7 @@ def advanced_analytics():
                 if idea_categories:
                     fig10 = px.bar(x=list(idea_categories.keys()), y=list(idea_categories.values()),
                                  title="Ideas by Category", color=list(idea_categories.values()),
-                                 color_continuous_scale=['#CC0000', '#B8860B', '#1F7A4D'])
+                                 color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
                     fig10.update_layout(height=350)
                     st.plotly_chart(fig10, use_container_width=True)
         
@@ -11731,4 +11733,4 @@ def main():
         st.session_state.pending_notifications = []
 
 if __name__ == "__main__":
-    main()
+    main()
