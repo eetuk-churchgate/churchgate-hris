@@ -194,28 +194,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=60)
-def get_cached_employees():
-    return db.get_all_employees() if db else pd.DataFrame()
-
-@st.cache_data(ttl=60)
-def get_cached_candidates():
-    return db.get_all_candidates() if db else pd.DataFrame()
-
-@st.cache_data(ttl=60)
-def get_cached_performance_data(user_name=None):
-    if user_name:
-        return get_cached_performance_data(user_name)
-    return get_cached_performance_data()
-
-@st.cache_data(ttl=60)
-def get_cached_appraisals():
-    return db.get_all_appraisals()
-
-@st.cache_data(ttl=60)
-def get_cached_audit_trail():
-    return db.get_audit_trail()
-
 @st.cache_resource
 def init_resources():
     db = DatabaseManager()
@@ -903,7 +881,7 @@ def employee_dashboard():
     # Real data calculations
     team_count = 0
     try:
-        emp_df = get_cached_employees()
+        emp_df = db.get_all_employees()
         if not emp_df.empty:
             team_count = len(emp_df[emp_df['department'] == user_dept])
     except:
@@ -970,7 +948,7 @@ def employee_dashboard():
         # KPI Progress
         st.subheader("🎯 My KPI Progress")
         try:
-            perf_data = get_cached_performance_data(user_name)
+            perf_data = db.get_performance_data(user_name)
             if not perf_data.empty:
                 # Sort by pillar order 1-2-3-4
                 pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
@@ -1036,7 +1014,7 @@ def employee_dashboard():
         st.markdown("---")
         st.subheader("🎂 Birthdays This Month")
         try:
-            emp_df = get_cached_employees()
+            emp_df = db.get_all_employees()
             if not emp_df.empty:
                 today = datetime.now()
                 found_birthday = False
@@ -1141,7 +1119,7 @@ def employee_dashboard():
     st.markdown("---")
     st.markdown("**Department Heads**")
     try:
-        emp_df = get_cached_employees()
+        emp_df = db.get_all_employees()
         if not emp_df.empty:
             hod_df = emp_df[emp_df['grade'].isin(['Manager', 'HOD', 'C-Level'])]
             dept_list = hod_df['department'].unique()
@@ -1204,7 +1182,7 @@ def employee_dashboard():
         st.markdown("---")
         st.markdown("### 👥 Department Heads")
         try:
-            emp_df = get_cached_employees()
+            emp_df = db.get_all_employees()
             if not emp_df.empty:
                 hod_df = emp_df[emp_df['grade'].isin(['Manager', 'HOD', 'C-Level'])]
                 hod_data = []
@@ -1224,7 +1202,7 @@ def employee_dashboard():
     
     # Get colleagues list
     try:
-        emp_df = get_cached_employees()
+        emp_df = db.get_all_employees()
         if not emp_df.empty:
             colleague_list = [f"{row['first_name']} {row['last_name']}" for _, row in emp_df.iterrows() if f"{row['first_name']} {row['last_name']}" != user_name]
         else:
@@ -1341,7 +1319,7 @@ def executive_dashboard():
     emp_df = pd.DataFrame()
     
     try:
-        emp_df = get_cached_employees()
+        emp_df = db.get_all_employees()
         if not emp_df.empty:
             total_employees = len(emp_df)
             active_employees = len(emp_df[emp_df['status'] == 'Active'])
@@ -1356,7 +1334,7 @@ def executive_dashboard():
         all_reqs = db.get_all_job_requisitions()
         if all_reqs:
             open_positions = len([r for r in all_reqs if r.get('status') == 'Approved - Live'])
-        candidates_df = get_cached_candidates()
+        candidates_df = db.get_all_candidates()
         if not candidates_df.empty:
             open_positions += len(candidates_df[candidates_df['status'] == 'New'])
     except:
@@ -1443,7 +1421,7 @@ def executive_dashboard():
         today = datetime.now()
         has_celebration = False
         try:
-            emp_df = get_cached_employees()
+            emp_df = db.get_all_employees()
             if not emp_df.empty:
                 for _, emp in emp_df.iterrows():
                     dob = emp.get('date_of_birth')
@@ -1586,7 +1564,7 @@ def executive_dashboard():
         }
         
         try:
-            perf_data = get_cached_performance_data()
+            perf_data = db.get_performance_data()
             if not perf_data.empty:
                 for _, row in perf_data.iterrows():
                     pillar = row.get('pillar_name', '')
@@ -1808,7 +1786,7 @@ def employee_management():
     
     def load_employees():
         try:
-            df = get_cached_employees()
+            df = db.get_all_employees()
             if df is None or df.empty:
                 df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'status'])
             return df
@@ -2567,7 +2545,7 @@ def performance_okrs():
     
     performance_data = {}
     try:
-        db_perf = get_cached_performance_data()
+        db_perf = db.get_performance_data()
         if not db_perf.empty:
             for _, row in db_perf.iterrows():
                 dept = row['department']
@@ -2611,7 +2589,7 @@ def performance_okrs():
             days_left = (end_date - datetime.now()).days
             
             # Check if user has approved KPIs
-            user_kpis = get_cached_performance_data(user_name)
+            user_kpis = db.get_performance_data(user_name)
             has_approved_kpis = False
             if not user_kpis.empty:
                 for _, row in user_kpis.iterrows():
@@ -2649,7 +2627,7 @@ def performance_okrs():
         st.subheader("🎯 My Strategic Pillars")
         
         # Reload KPIs from database for current user
-        existing_data = get_cached_performance_data(user_name)
+        existing_data = db.get_performance_data(user_name)
         if not existing_data.empty:
             for _, row in existing_data.iterrows():
                 p_name = row.get('pillar_name', '')
@@ -2808,12 +2786,9 @@ def performance_okrs():
                         performance_data[selected_dept][pillar_name]['status'] = new_status
                         performance_data[selected_dept][pillar_name]['weight'] = new_weight
                         try:
-                            db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'], pd_data.get('submission_status', 'Draft'))
-                            get_cached_performance_data.clear()
+                            db.save_performance_data(selected_dept, pillar_name, new_weight, new_progress, new_status, pillar_data['deadline'], pillar_data['kpis'])
                         except:
                             pass
-
-
                         st.rerun()
                 
                 if pillar_data['kpis']:
@@ -2858,14 +2833,12 @@ def performance_okrs():
                                             pillar_data['weight'] = total_weight
                                         
                                         db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'], pillar_data.get('submission_status', 'Draft'))
-                                        get_cached_performance_data.clear()
                                         st.success("✅ KPI saved!")
                                         st.rerun()
                                 with col_btn2:
                                     if st.button("🗑️ Delete", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
                                         del pillar_data['kpis'][kpi_index]
                                         db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
-                                        get_cached_performance_data.clear()
                                         st.success("✅ KPI deleted!")
                                         st.rerun()
                                 with col_btn3:
@@ -2944,7 +2917,7 @@ def performance_okrs():
                     else:
                         if user_name not in performance_data:
                             performance_data[user_name] = {}
-                            existing_data = get_cached_performance_data(user_name)
+                            existing_data = db.get_performance_data(user_name)
                             if not existing_data.empty:
                                 for _, row in existing_data.iterrows():
                                     p_name = row.get('pillar_name', '')
@@ -2968,11 +2941,9 @@ def performance_okrs():
                     
                     pd_data = performance_data[user_name][pillar_choice]
                     try:
-                        db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'], pd_data.get('submission_status', 'Draft'))
-                        get_cached_performance_data.clear()
+                        db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
                     except:
                         pass
-
                     
                     if submit_continue:
                         st.rerun()
@@ -3008,7 +2979,7 @@ def performance_okrs():
             with st.expander("📋 KPI History Log"):
                 # Load all employees once for department mapping
                 try:
-                    all_emps = get_cached_employees()
+                    all_emps = db.get_all_employees()
                     emp_dept_map = {}
                     if not all_emps.empty:
                         for _, e in all_emps.iterrows():
@@ -3049,7 +3020,7 @@ def performance_okrs():
                 pass
             
             # KPI Eligibility Check
-            user_kpis = get_cached_performance_data(user_name)
+            user_kpis = db.get_performance_data(user_name)
             has_approved_kpis = False
             if not user_kpis.empty:
                 for _, row in user_kpis.iterrows():
@@ -3080,7 +3051,7 @@ def performance_okrs():
                     
                     # Only send to employees with approved KPIs for THIS cycle
                     try:
-                        emp_df = get_cached_employees()
+                        emp_df = db.get_all_employees()
                         from utils.email_service import EmailService
                         email_svc = EmailService()
                         sent = 0
@@ -3089,7 +3060,7 @@ def performance_okrs():
                             emp_name = f"{emp['first_name']} {emp['last_name']}"
                             emp_email = emp.get('email', '')
                             if emp_email and '@' in str(emp_email):
-                                emp_kpis = get_cached_performance_data(emp_name)
+                                emp_kpis = db.get_performance_data(emp_name)
                                 has_approved_for_cycle = False
                                 if not emp_kpis.empty:
                                     for _, row in emp_kpis.iterrows():
@@ -4211,7 +4182,7 @@ def recruitment_hub():
     is_manager = is_admin or user_role in ['Manager', 'HOD']
     
     try:
-        employees_df = get_cached_employees()
+        employees_df = db.get_all_employees()
     except:
         employees_df = pd.DataFrame()
     
@@ -4707,7 +4678,7 @@ def recruitment_hub():
         st.caption(f"🧠 AI Engine: {'OpenAI (95%+ confidence)' if ai_agent.use_openai else 'Enhanced Keyword (85%+ confidence)'}")
         
         try:
-            candidates = get_cached_candidates()
+            candidates = db.get_all_candidates()
         except:
             candidates = pd.DataFrame()
         
@@ -5807,7 +5778,7 @@ def recruitment_hub():
         c4.metric("Onboarding", len(st.session_state.onboarding_list))
         
         try:
-            candidates = get_cached_candidates()
+            candidates = db.get_all_candidates()
             total_apps = len(candidates) if not candidates.empty else 0
         except:
             total_apps = 0
@@ -5862,7 +5833,7 @@ def ai_recruitment_agent():
         st.subheader("🚀 Recruitment Pipeline & Bulk Screening")
         
         try:
-            candidates = get_cached_candidates()
+            candidates = db.get_all_candidates()
             if not candidates.empty:
                 # Job filter
                 job_map = {}
@@ -6305,7 +6276,7 @@ def ai_recruitment_agent():
                 if user_message:
                     st.session_state.ai_chat_history.append({"role": "user", "content": user_message})
                     try:
-                        candidates = get_cached_candidates()
+                        candidates = db.get_all_candidates()
                         screened = candidates[candidates['ai_score'] > 0] if not candidates.empty and 'ai_score' in candidates.columns else []
                         
                         if ai_agent.use_openai:
@@ -6390,7 +6361,7 @@ def ai_recruitment_agent():
     elif ai_section == "📊 Candidate Tiering":
         st.subheader("📊 Candidate Tiering Dashboard")
         try:
-            candidates = get_cached_candidates()
+            candidates = db.get_all_candidates()
             if not candidates.empty:
                 tier1 = len(candidates[candidates['ai_tier'].str.contains('Tier 1', na=False)])
                 tier2 = len(candidates[candidates['ai_tier'].str.contains('Tier 2', na=False)])
@@ -6483,7 +6454,7 @@ def ai_recruitment_agent():
     elif ai_section == "📄 Executive Report":
         st.subheader("📄 AI Executive Report Generator")
         try:
-            candidates = get_cached_candidates()
+            candidates = db.get_all_candidates()
             if not candidates.empty:
                 if st.button("📊 Generate Executive PDF Report", use_container_width=True, type="primary"):
                     try:
@@ -6571,7 +6542,7 @@ def ai_recruitment_agent():
     elif ai_section == "💾 Save Results":
         st.subheader("💾 Export & Save")
         try:
-            candidates = get_cached_candidates()
+            candidates = db.get_all_candidates()
             if not candidates.empty:
                 st.download_button("📥 Download All (CSV)", candidates.to_csv(index=False), "candidates.csv", "text/csv")
                 st.markdown("---")
@@ -6595,7 +6566,7 @@ def chat_communications():
     @st.cache_data(ttl=300)
     def get_employee_list():
         try:
-            df = get_cached_employees()
+            df = db.get_all_employees()
             if not df.empty:
                 return df
         except:
@@ -7466,7 +7437,7 @@ def reports_analytics():
     active_emp = 0
     
     try:
-        emp_df = get_cached_employees()
+        emp_df = db.get_all_employees()
         if not emp_df.empty:
             total_emp = len(emp_df)
             departments = len(emp_df['department'].unique())
@@ -7519,7 +7490,7 @@ def reports_analytics():
         with col1:
             st.subheader("Strategic Pillar Progress")
             try:
-                perf_data = get_cached_performance_data()
+                perf_data = db.get_performance_data()
                 if not perf_data.empty:
                     pillar_avg = perf_data.groupby('pillar_name')['progress'].mean().reset_index()
                     fig = px.bar(pillar_avg, x='pillar_name', y='progress', color='progress',
@@ -7581,7 +7552,7 @@ def reports_analytics():
         total_candidates = 0
         active_jobs = 0
         try:
-            candidates = get_cached_candidates()
+            candidates = db.get_all_candidates()
             if not candidates.empty:
                 total_candidates = len(candidates)
             all_reqs = db.get_all_job_requisitions()
@@ -7615,7 +7586,7 @@ def reports_analytics():
         st.subheader("🎯 Performance Trends & Forecasting")
         
         try:
-            perf_data = get_cached_performance_data()
+            perf_data = db.get_performance_data()
             if not perf_data.empty:
                 col1, col2 = st.columns(2)
                 with col1:
@@ -7654,7 +7625,7 @@ def reports_analytics():
             for dept in dept_list:
                 dept_emp = len(emp_df[emp_df['department'] == dept])
                 try:
-                    perf = get_cached_performance_data(dept)
+                    perf = db.get_performance_data(dept)
                     avg_score = perf['progress'].mean() if not perf.empty else 0
                 except:
                     avg_score = 0
@@ -7864,7 +7835,7 @@ def notifications_page():
     # 1. Load real data from database
     employees_df = pd.DataFrame()
     try:
-        employees_df = get_cached_employees()
+        employees_df = db.get_all_employees()
     except:
         pass
     
@@ -7914,7 +7885,7 @@ def notifications_page():
     
     # 3. KPI Deadline Reminders
     try:
-        perf_data = get_cached_performance_data()
+        perf_data = db.get_performance_data()
         if not perf_data.empty:
             for _, row in perf_data.iterrows():
                 deadline = row.get('deadline', '')
@@ -9111,7 +9082,7 @@ def company_calendar():
     st.markdown("---")
     st.markdown("### 🎂 Birthdays This Month")
     try:
-        emp_df = get_cached_employees()
+        emp_df = db.get_all_employees()
         if not emp_df.empty:
             birthday_found = False
             for _, emp in emp_df.iterrows():
@@ -9785,7 +9756,7 @@ def employee_directory_readonly():
     st.markdown("""<div class="churchgate-header"><h1>🌐 Employee Directory</h1><p>Search Colleagues | Contact Info | Org Structure</p></div>""", unsafe_allow_html=True)
     
     try:
-        emp_df = get_cached_employees()
+        emp_df = db.get_all_employees()
         if not emp_df.empty:
             search = st.text_input("🔍 Search by name, department, or position", placeholder="Type to find colleagues...")
             
@@ -10031,7 +10002,7 @@ def send_celebration_emails():
     today_str = today.strftime('%Y-%m-%d')
     
     try:
-        emp_df = get_cached_employees()
+        emp_df = db.get_all_employees()
         if emp_df.empty:
             return 0, 0, "No employees found"
         
@@ -10204,7 +10175,7 @@ def my_profile():
     
     team_count = 0
     try:
-        emp_df = get_cached_employees()
+        emp_df = db.get_all_employees()
         if not emp_df.empty:
             team_count = len(emp_df[emp_df['department'] == emp_dept])
     except:
@@ -10404,7 +10375,7 @@ def my_profile():
             st.info(f"Showing colleagues in **{emp_dept}**")
             
             try:
-                emp_df = get_cached_employees()
+                emp_df = db.get_all_employees()
                 if not emp_df.empty:
                     team = emp_df[emp_df['department'] == emp_dept]
                     for _, teammate in team.head(10).iterrows():
@@ -11318,7 +11289,7 @@ def advanced_analytics():
     
     # Load all data sources
     try:
-        emp_df = get_cached_employees()
+        emp_df = db.get_all_employees()
         total_emp = len(emp_df) if not emp_df.empty else 0
         dept_count = len(emp_df['department'].unique()) if not emp_df.empty else 0
         active_emp = len(emp_df[emp_df['status'] == 'Active']) if not emp_df.empty else 0
@@ -11327,7 +11298,7 @@ def advanced_analytics():
         total_emp = 0
     
     try:
-        candidates = get_cached_candidates()
+        candidates = db.get_all_candidates()
         total_candidates = len(candidates) if not candidates.empty else 0
         screened = len(candidates[candidates['ai_score'] > 0]) if not candidates.empty and 'ai_score' in candidates.columns else 0
         hired = len(candidates[candidates['status'] == 'Hired']) if not candidates.empty and 'status' in candidates.columns else 0
@@ -11474,7 +11445,7 @@ def advanced_analytics():
         with col2:
             # KPI progress across departments
             try:
-                perf_data = get_cached_performance_data()
+                perf_data = db.get_performance_data()
                 if not perf_data.empty:
                     dept_progress = perf_data.groupby('department')['progress'].mean().reset_index()
                     fig5 = px.bar(dept_progress, x='department', y='progress', 
