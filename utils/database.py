@@ -162,10 +162,9 @@ class DatabaseManager:
         self._delete("aplayer_nominations", {"id": nomination_id})
     
     def save_performance_data(self, department, pillar_name, weight, progress, status, deadline, kpi_data, submission_status='Draft'):
-        # Check if row exists for this user and pillar
         existing = self._get("performance_data", {"user_name": department, "pillar_name": pillar_name})
         if existing and len(existing) > 0:
-            # Update ALL matching rows (in case duplicates exist)
+            # Update ALL matching rows to be safe
             for row in existing:
                 self._patch("performance_data", {
                     "weight": weight, "progress": progress, "status": status,
@@ -173,7 +172,6 @@ class DatabaseManager:
                     "submission_status": submission_status
                 }, {"id": row['id']})
         else:
-            # Insert new row
             self._post("performance_data", {
                 "user_name": department, "department": department, "pillar_name": pillar_name,
                 "weight": weight, "progress": progress, "status": status,
