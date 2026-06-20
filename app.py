@@ -2808,10 +2808,10 @@ def performance_okrs():
                         performance_data[selected_dept][pillar_name]['status'] = new_status
                         performance_data[selected_dept][pillar_name]['weight'] = new_weight
                         try:
-                        db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'], pd_data.get('submission_status', 'Draft'))
-                        get_cached_performance_data.clear()
-                    except:
-                        pass
+                            db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'], pd_data.get('submission_status', 'Draft'))
+                            get_cached_performance_data.clear()
+                        except:
+                            pass
 
 
                         st.rerun()
