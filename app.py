@@ -38,8 +38,11 @@ if logo_icon.exists():
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
 
-# HIDE STREAMLIT FOOTER - WORKS ON FREE TIER!
-st.markdown('<style>footer {visibility: hidden !important;}</style>', unsafe_allow_html=True)
+# =============================================
+# HIDE STREAMLIT FOOTER - JUST THIS ONE LINE!
+# =============================================
+st.markdown('<style>footer {display: none !important;}</style>', unsafe_allow_html=True)
+# =============================================
 
 # Browser Notification Setup
 st.markdown("""
