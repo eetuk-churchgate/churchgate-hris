@@ -94,6 +94,22 @@ if REDIRECT_MODE:
             font-size: 0.9rem;
             margin-top: 1.5rem;
         }
+        .redirect-button {
+            display: inline-block;
+            background: #CC0000;
+            color: white !important;
+            padding: 12px 40px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+            transition: background 0.3s ease;
+        }
+        .redirect-button:hover {
+            background: #aa0000 !important;
+            color: white !important;
+        }
     </style>
     <div class="redirect-container">
         <div class="redirect-title">🚀 We've Moved!</div>
@@ -107,13 +123,12 @@ if REDIRECT_MODE:
             <a href="https://churchgate-churchgate-hris.hf.space" target="_blank">
                 https://churchgate-churchgate-hris.hf.space
             </a>
+            <br>
+            <a href="https://churchgate-churchgate-hris.hf.space" target="_blank" class="redirect-button">
+                Click Here to Access New Portal →
+            </a>
             <p style="margin-top: 0.8rem; font-size: 0.9rem; color: #666;">
                 📌 Please update your bookmarks
-            </p>
-        </div>
-        <div class="redirect-message">
-            <p style="font-size: 0.95rem; color: #666;">
-                You will be automatically redirected in <strong>10 seconds</strong>.
             </p>
         </div>
         <div class="redirect-footer">
@@ -121,11 +136,6 @@ if REDIRECT_MODE:
             <p style="font-size: 0.8rem; margin-top: 0.5rem;">© 2026 Churchgate Group</p>
         </div>
     </div>
-    """, unsafe_allow_html=True)
-    
-    # Auto-redirect after 10 seconds
-    st.markdown("""
-    <meta http-equiv="refresh" content="10; url=https://churchgate-churchgate-hris.hf.space" />
     """, unsafe_allow_html=True)
     
     st.stop()  # Stops the rest of the app from loading
