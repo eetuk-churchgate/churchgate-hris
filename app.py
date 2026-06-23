@@ -33,12 +33,12 @@ from utils.training_service import TrainingService
 from streamlit_quill import st_quill
 
 logo_icon = Path(__file__).parent / "churchgate-logo.jpeg"
-f logo_icon.exists():
+if logo_icon.exists():
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon=str(logo_icon), layout="wide", initial_sidebar_state="expanded")
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
 
-# HIDE FOOTER - BACKUP METHOD
+# HIDE STREAMLIT FOOTER - WORKS ON FREE TIER!
 st.markdown('<style>footer {visibility: hidden !important;}</style>', unsafe_allow_html=True)
 
 # Browser Notification Setup
