@@ -24,6 +24,113 @@ import calendar
 
 sys.path.append(str(Path(__file__).parent))
 
+# =============================================
+# REDIRECT MODE - SET TO True TO ACTIVATE
+# =============================================
+REDIRECT_MODE = True  # Change to False to re-enable the app
+
+if REDIRECT_MODE:
+    st.set_page_config(
+        page_title="Churchgate HRIS - New Portal",
+        page_icon="🚀",
+        layout="centered"
+    )
+    
+    st.markdown("""
+    <style>
+        .redirect-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 70vh;
+            text-align: center;
+            padding: 2rem;
+        }
+        .redirect-title {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #CC0000;
+            margin-bottom: 0.5rem;
+        }
+        .redirect-subtitle {
+            font-size: 1.5rem;
+            color: #1a1a1a;
+            margin-bottom: 1rem;
+        }
+        .redirect-message {
+            font-size: 1.1rem;
+            color: #444;
+            max-width: 650px;
+            line-height: 1.8;
+        }
+        .redirect-box {
+            background: #f5f5f5;
+            padding: 1.5rem 2rem;
+            border-radius: 10px;
+            border-left: 4px solid #CC0000;
+            margin: 1.5rem 0;
+            width: 100%;
+            max-width: 550px;
+        }
+        .redirect-box a {
+            color: #CC0000;
+            font-weight: 600;
+            font-size: 1.2rem;
+            word-break: break-all;
+            text-decoration: underline;
+        }
+        .redirect-box a:hover {
+            color: #aa0000;
+        }
+        .redirect-divider {
+            width: 80px;
+            height: 3px;
+            background: #CC0000;
+            margin: 1rem auto;
+        }
+        .redirect-footer {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 1.5rem;
+        }
+    </style>
+    <div class="redirect-container">
+        <div class="redirect-title">🚀 We've Moved!</div>
+        <div class="redirect-subtitle">Churchgate Group HRIS</div>
+        <div class="redirect-divider"></div>
+        <div class="redirect-message">
+            <p>Our HRIS Portal has been <strong>upgraded</strong> and is now hosted at a new location.</p>
+        </div>
+        <div class="redirect-box">
+            <p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #333;">🔗 New Portal URL:</p>
+            <a href="https://churchgate-churchgate-hris.hf.space" target="_blank">
+                https://churchgate-churchgate-hris.hf.space
+            </a>
+            <p style="margin-top: 0.8rem; font-size: 0.9rem; color: #666;">
+                📌 Please update your bookmarks
+            </p>
+        </div>
+        <div class="redirect-message">
+            <p style="font-size: 0.95rem; color: #666;">
+                You will be automatically redirected in <strong>10 seconds</strong>.
+            </p>
+        </div>
+        <div class="redirect-footer">
+            <p>For urgent matters, contact HR at hr@churchgate.com</p>
+            <p style="font-size: 0.8rem; margin-top: 0.5rem;">© 2026 Churchgate Group</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Auto-redirect after 10 seconds
+    st.markdown("""
+    <meta http-equiv="refresh" content="10; url=https://churchgate-churchgate-hris.hf.space" />
+    """, unsafe_allow_html=True)
+    
+    st.stop()  # Stops the rest of the app from loading
+# =============================================
+
 from utils.database import DatabaseManager
 from utils.ai_agent import AIRecruitmentAgent
 from utils.linkedin_parser import LinkedInParser
@@ -58,7 +165,6 @@ function showNotification(title, body) {
 }
 </script>
 """, unsafe_allow_html=True)
-
 CHURCHGATE_RED = "#CC0000"
 CHURCHGATE_DARK = "#1a1a1a"
 CHURCHGATE_GREY = "#4a4a4a"
