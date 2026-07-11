@@ -25,120 +25,43 @@ import calendar
 sys.path.append(str(Path(__file__).parent))
 
 # =============================================
-# REDIRECT MODE - SET TO True TO ACTIVATE
+# FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
 # =============================================
-REDIRECT_MODE = True  # Change to False to re-enable the app
+# This wraps st.secrets to also check environment variables
+class HuggingFaceSecrets:
+    def __getitem__(self, key):
+        # Try st.secrets first
+        try:
+            # Check if st.secrets has the key
+            if hasattr(st, 'secrets') and hasattr(st.secrets, '_secrets'):
+                if key in st.secrets._secrets:
+                    return st.secrets._secrets[key]
+        except:
+            pass
+        
+        # Fallback to environment variables
+        return os.environ.get(key)
+    
+    def get(self, key, default=None):
+        try:
+            val = self.__getitem__(key)
+            return val if val is not None else default
+        except:
+            return default
+    
+    def __contains__(self, key):
+        try:
+            return self.__getitem__(key) is not None
+        except:
+            return False
 
-if REDIRECT_MODE:
-    st.set_page_config(
-        page_title="Churchgate HRIS - New Portal",
-        page_icon="🚀",
-        layout="centered"
-    )
-    
-    st.markdown("""
-    <style>
-        .redirect-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 70vh;
-            text-align: center;
-            padding: 2rem;
-        }
-        .redirect-title {
-            font-size: 3rem;
-            font-weight: 700;
-            color: #CC0000;
-            margin-bottom: 0.5rem;
-        }
-        .redirect-subtitle {
-            font-size: 1.5rem;
-            color: #1a1a1a;
-            margin-bottom: 1rem;
-        }
-        .redirect-message {
-            font-size: 1.1rem;
-            color: #444;
-            max-width: 650px;
-            line-height: 1.8;
-        }
-        .redirect-box {
-            background: #f5f5f5;
-            padding: 1.5rem 2rem;
-            border-radius: 10px;
-            border-left: 4px solid #CC0000;
-            margin: 1.5rem 0;
-            width: 100%;
-            max-width: 550px;
-        }
-        .redirect-box a {
-            color: #CC0000;
-            font-weight: 600;
-            font-size: 1.2rem;
-            word-break: break-all;
-            text-decoration: underline;
-        }
-        .redirect-box a:hover {
-            color: #aa0000;
-        }
-        .redirect-divider {
-            width: 80px;
-            height: 3px;
-            background: #CC0000;
-            margin: 1rem auto;
-        }
-        .redirect-footer {
-            color: #888;
-            font-size: 0.9rem;
-            margin-top: 1.5rem;
-        }
-        .redirect-button {
-            display: inline-block;
-            background: #CC0000;
-            color: white !important;
-            padding: 12px 40px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1.1rem;
-            margin-top: 0.5rem;
-            transition: background 0.3s ease;
-        }
-        .redirect-button:hover {
-            background: #aa0000 !important;
-            color: white !important;
-        }
-    </style>
-    <div class="redirect-container">
-        <div class="redirect-title">🚀 We've Moved!</div>
-        <div class="redirect-subtitle">Churchgate Group HRIS</div>
-        <div class="redirect-divider"></div>
-        <div class="redirect-message">
-            <p>Our HRIS Portal has been <strong>upgraded</strong> and is now hosted at a new location.</p>
-        </div>
-        <div class="redirect-box">
-            <p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #333;">🔗 New Portal URL:</p>
-            <a href="https://churchgate-churchgate-hris.hf.space" target="_blank">
-                https://churchgate-churchgate-hris.hf.space
-            </a>
-            <br>
-            <a href="https://churchgate-churchgate-hris.hf.space" target="_blank" class="redirect-button">
-                Click Here to Access New Portal →
-            </a>
-            <p style="margin-top: 0.8rem; font-size: 0.9rem; color: #666;">
-                📌 Please update your bookmarks
-            </p>
-        </div>
-        <div class="redirect-footer">
-            <p>For urgent matters, contact HR at hr@churchgate.com</p>
-            <p style="font-size: 0.8rem; margin-top: 0.5rem;">© 2026 Churchgate Group</p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.stop()  # Stops the rest of the app from loading
+# Backup the original secrets if it exists
+_original_secrets = None
+if hasattr(st, 'secrets') and st.secrets:
+    _original_secrets = st.secrets
+
+# Replace st.secrets with our wrapper
+st.secrets = HuggingFaceSecrets()
 # =============================================
 
 from utils.database import DatabaseManager
@@ -148,6 +71,10 @@ from utils.email_service import EmailService
 from utils.chat_service import ChatService
 from utils.training_service import TrainingService
 from streamlit_quill import st_quill
+# ============================================================
+# SECTION 4: REST OF YOUR CODE (logo, page config, etc)
+# ============================================================
+logo_icon = Path(__file__).parent / "churchgate-logo.jpeg"
 
 logo_icon = Path(__file__).parent / "churchgate-logo.jpeg"
 if logo_icon.exists():
@@ -175,6 +102,7 @@ function showNotification(title, body) {
 }
 </script>
 """, unsafe_allow_html=True)
+
 CHURCHGATE_RED = "#CC0000"
 CHURCHGATE_DARK = "#1a1a1a"
 CHURCHGATE_GREY = "#4a4a4a"
@@ -1438,6 +1366,9 @@ def employee_dashboard():
         st.session_state['navigate_to'] = "🎓 Training & Development"
         st.rerun()
 
+
+
+
 def executive_dashboard():
     show_churchgate_mission()
     st.markdown("""<div class="churchgate-header"><h1>📊 Executive Dashboard</h1><p>Corporate Strategy 2026-2027 | Real-Time Group Performance Intelligence</p></div>""", unsafe_allow_html=True)
@@ -2121,7 +2052,7 @@ def employee_management():
                                         current_dob_date = date(1990, 1, 1)
                                 else:
                                     current_dob_date = date(1990, 1, 1)
-                                new_dob = st.date_input("Date of Birth", value=current_dob_date, min_value=date(1920, 1, 1), max_value=date(2020, 12, 31), key=f"dob_{emp['employee_id']}_{st.session_state.dir_page}")
+                                new_dob = st.date_input("Date of Birth", value=current_dob_date, min_value=date(1920, 1, 1), max_value=date(2026, 12, 31), key=f"dob_{emp['employee_id']}_{st.session_state.dir_page}")
                             
                             if st.form_submit_button("💾 Save Changes", use_container_width=True):
                                 try:
@@ -2195,12 +2126,27 @@ def employee_management():
                 employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
                 department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                 region = st.selectbox("Region *", ['Abuja', 'Lagos'])
+                subsidiary_options = {
+                    'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                    'Lagos': [
+                        'First Continental Properties Limited', 'R. B Properties Limited', 
+                        'Churchgate Nigeria Limited', 'Aba Textile Mills PLC',
+                        'Associated Textile Manufacturing Company Limited',
+                        'Food & Confectionery Products (Nig.) Limited',
+                        'First Spinners PLC', 'HotelInvest & Resorts Limited',
+                        'International Textile Industries (Nig.) Limited',
+                        'Intercott Limited', 'Ocean Fisheries (Nig.) Limited',
+                        'Platinum Travel Limited', 'Reliance Mills Limited',
+                        'Vineyard Designs Nig. Limited'
+                    ]
+                }
+                subsidiary = st.selectbox("Subsidiary *", subsidiary_options.get(region, []))
                 position = st.text_input("Position *")
                 grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'])
             with c3:
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
                 join_date = st.date_input("Join Date")
-                date_of_birth = st.date_input("Date of Birth *", min_value=date(1920, 1, 1), max_value=date(2020, 12, 31), value=date(1990, 1, 1))
+                date_of_birth = st.date_input("Date of Birth *", min_value=date(1920, 1, 1), max_value=date(2026, 12, 31), value=date(1990, 1, 1))
                 system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'])
                 status = st.selectbox("Status", ['Active', 'Probation'])
             
@@ -3174,15 +3120,29 @@ def performance_okrs():
                     index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 0)
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.session_state.appraisal_start = st.text_input("Start Date", st.session_state.appraisal_start)
+                    start_val = st.session_state.appraisal_start
+                    if isinstance(start_val, str):
+                        start_val = datetime.strptime(start_val, '%Y-%m-%d')
+                    elif hasattr(start_val, 'strftime'):
+                        start_val = start_val
+                    else:
+                        start_val = datetime.now()
+                    st.session_state.appraisal_start = st.date_input("Start Date", value=start_val)
                 with c2:
-                    st.session_state.appraisal_end = st.text_input("End Date", st.session_state.appraisal_end)
+                    end_val = st.session_state.appraisal_end
+                    if isinstance(end_val, str):
+                        end_val = datetime.strptime(end_val, '%Y-%m-%d')
+                    elif hasattr(end_val, 'strftime'):
+                        end_val = end_val
+                    else:
+                        end_val = datetime.now()
+                    st.session_state.appraisal_end = st.date_input("End Date", value=end_val)
                 st.session_state.appraisal_locked = st.checkbox("Lock Scores", value=st.session_state.appraisal_locked)
-                # Check which employees have KPIs for this cycle
                 cycle_name = st.session_state.appraisal_cycle_name
                 
                 if st.button("💾 Activate Appraisal Cycle", use_container_width=True):
-                    log_audit('Cycle Activated', f'Appraisal cycle {st.session_state.appraisal_cycle_name} activated')
+                    st.session_state.appraisal_start = st.session_state.appraisal_start.strftime('%Y-%m-%d') if hasattr(st.session_state.appraisal_start, 'strftime') else str(st.session_state.appraisal_start)
+                    st.session_state.appraisal_end = st.session_state.appraisal_end.strftime('%Y-%m-%d') if hasattr(st.session_state.appraisal_end, 'strftime') else str(st.session_state.appraisal_end)
                     
                     # Only send to employees with approved KPIs for THIS cycle
                     try:
@@ -3212,7 +3172,7 @@ def performance_okrs():
                                     try:
                                         email_svc.send_email(emp_email,
                                             f"📊 Appraisal Cycle Now Open: {st.session_state.appraisal_cycle_name}",
-                                            f"Dear {emp_name},\n\nThe appraisal cycle '{st.session_state.appraisal_cycle_name}' is now active.\n\nPeriod: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}\n\nPlease log in to complete your self-assessment.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
+                                            f"Dear {emp_name},\n\nThe appraisal cycle '{st.session_state.appraisal_cycle_name}' is now active.\n\nPeriod: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}\n\nPlease log in to complete your self-assessment.\n\nhttps://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
                                         sent += 1
                                     except:
                                         pass
@@ -4321,7 +4281,7 @@ def recruitment_hub():
     except:
         employees_df = pd.DataFrame()
     
-    STREAMLIT_URL = "https://churchgate-hris.streamlit.app"
+    STREAMLIT_URL = "https://churchgate-churchgate-hris.hf.space"
     
     # CHANGE 1: Load from database
     if 'job_requisitions' not in st.session_state:
@@ -4489,7 +4449,7 @@ def recruitment_hub():
                         EmailService().send_email(
                             lm_email,
                             f"🔔 New Job Requisition Awaiting Authorization: {job_title}",
-                            f"A new job requisition for '{job_title}' ({department}) has been submitted by {user_name}.\n\nPlease review and authorize in the HRIS: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}"
+                            f"A new job requisition for '{job_title}' ({department}) has been submitted by {user_name}.\n\nPlease review and authorize in the HRIS: https://churchgate-churchgate-hris.hf.space\n\nRequisition ID: {req['id']}"
                         )
                         st.info(f"📧 Authorization request sent to Line Manager")
                     except:
@@ -4585,7 +4545,7 @@ def recruitment_hub():
                                                     email_svc.send_email(
                                                         hr_email,
                                                         f"🔔 Job Requisition Authorized by LM: {req['title']}",
-                                                        f"Line Manager has authorized '{req['title']}' ({req['department']}).\n\nValidate at: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}"
+                                                        f"Line Manager has authorized '{req['title']}' ({req['department']}).\n\nValidate at: https://churchgate-churchgate-hris.hf.space\n\nRequisition ID: {req['id']}"
                                                     )
                                                 st.info("📧 HR team notified")
                                             except:
@@ -4636,7 +4596,7 @@ def recruitment_hub():
                                                 email_svc.send_email(
                                                     "jeromedas@churchgate.com",
                                                     f"🔔 Job Requisition Ready for Final Approval: {req['title']}",
-                                                    f"HR has validated '{req['title']}' ({req['department']}).\n\nApprove at: https://churchgate-hris.streamlit.app\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}"
+                                                    f"HR has validated '{req['title']}' ({req['department']}).\n\nApprove at: https://churchgate-churchgate-hris.hf.space\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}"
                                                 )
                                                 st.info("📧 Email sent to COO (Jerome Das)")
                                             except:
@@ -4667,7 +4627,7 @@ def recruitment_hub():
                                         st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
                                         st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
                                         job_ref = req['id']
-                                        STREAMLIT_URL = "https://churchgate-hris.streamlit.app"
+                                        STREAMLIT_URL = "https://churchgate-churchgate-hris.hf.space"
                                         public_url = f"{STREAMLIT_URL}/Careers?job={job_ref}"
                                         
                                         st.session_state.active_jobs.append({
@@ -5097,7 +5057,7 @@ def recruitment_hub():
         
         else:
             st.info("🤖 No applications yet. Share the Careers Page URL to start building your talent pipeline.")
-            st.code("https://churchgate-hris.streamlit.app/Careers", language=None)
+            st.code("https://churchgate-churchgate-hris.hf.space/Careers", language=None)
     
     # ============ TAB 5: INTERVIEWS ============
     with tab5:
@@ -5643,7 +5603,7 @@ def recruitment_hub():
                                 EmailService().send_email(
                                     hr_email,
                                     f"🔍 New Background Check: {bg_name} — {bg_position}",
-                                    f"A new background check has been requested for {bg_name} ({bg_position}, {bg_department}).\n\nCheck Type: {', '.join(bg_type)}\nPriority: {bg_priority}\n\nPlease process in the HRIS: https://churchgate-hris.streamlit.app"
+                                    f"A new background check has been requested for {bg_name} ({bg_position}, {bg_department}).\n\nCheck Type: {', '.join(bg_type)}\nPriority: {bg_priority}\n\nPlease process in the HRIS: https://churchgate-churchgate-hris.hf.space"
                                 )
                             st.info("📧 HR team notified via email")
                         except:
@@ -5738,7 +5698,7 @@ def recruitment_hub():
                             <p style="background:#f5f5f5;padding:1rem;border-radius:6px;">{ext_message}</p>
                             <p>Please reply to this email with your detailed response. Include the Reference ID ({ref_id}) in your reply.</p>
                             <p>Alternatively, you can submit your response directly at:</p>
-                            <p><a href="https://churchgate-hris.streamlit.app/Careers?ref={ref_id}" style="color:#CC0000;">Submit Verification Response</a></p>
+                            <p><a href="https://churchgate-churchgate-hris.hf.space/Careers?ref={ref_id}" style="color:#CC0000;">Submit Verification Response</a></p>
                             <p>Thank you for your time and honest assessment.</p>
                             <p style="color:#888;">Churchgate Group HR Team<br>hr@churchgate.com</p>
                             """
@@ -9210,7 +9170,7 @@ def company_calendar():
         
         st.markdown("---")
         st.markdown("### 📋 iCal Feed URL")
-        st.code("https://churchgate-hris.streamlit.app/api/calendar.ics", language=None)
+        st.code("https://churchgate-churchgate-hris.hf.space/api/calendar.ics", language=None)
         st.caption("Use this URL to subscribe to the Churchgate calendar from any calendar app.")
     
     # ============ BIRTHDAYS ============
@@ -10408,7 +10368,9 @@ def my_profile():
                         current_dob_date = datetime.now().date()
                 else:
                     current_dob_date = datetime.now().date()
-                new_dob = st.date_input("Date of Birth *", value=current_dob_date, min_value=date(1920, 1, 1), max_value=date(2020, 12, 31))
+                if current_dob_date > date(2026, 12, 31) or current_dob_date < date(1920, 1, 1):
+                    current_dob_date = date(1990, 1, 1)
+                new_dob = st.date_input("Date of Birth *", value=current_dob_date, min_value=date(1920, 1, 1), max_value=date(2026, 12, 31))
                 
                 st.markdown("---")
                 st.markdown("**Emergency Contact**")
@@ -11742,7 +11704,7 @@ def send_kpi_notification(action, employee_name, employee_email, hod_email=None)
         if action == 'submitted_to_hod' and hod_email:
             es.send_email(hod_email,
                 f"📊 KPIs Ready for Review — {employee_name}",
-                f"Dear HOD,\n\n{employee_name} has submitted their KPIs and they are ready for your review.\n\nPlease log in to the HRIS to review, approve, or request revisions.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
+                f"Dear HOD,\n\n{employee_name} has submitted their KPIs and they are ready for your review.\n\nPlease log in to the HRIS to review, approve, or request revisions.\n\nhttps://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
         
         if action == 'approved':
             es.send_email(employee_email,
@@ -11752,7 +11714,7 @@ def send_kpi_notification(action, employee_name, employee_email, hod_email=None)
         if action == 'revision_requested':
             es.send_email(employee_email,
                 "🔄 KPI Revision Requested",
-                f"Dear {employee_name},\n\nYour HOD has requested revisions to your KPIs. Your KPIs have been unlocked for editing.\n\nPlease log in, review the HOD comments, update your KPIs, and resubmit.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
+                f"Dear {employee_name},\n\nYour HOD has requested revisions to your KPIs. Your KPIs have been unlocked for editing.\n\nPlease log in, review the HOD comments, update your KPIs, and resubmit.\n\nhttps://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
         
         return True
     except:
