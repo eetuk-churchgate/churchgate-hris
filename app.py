@@ -30,16 +30,15 @@ sys.path.append(str(Path(__file__).parent))
 # This wraps st.secrets to also check environment variables
 class HuggingFaceSecrets:
     def __getitem__(self, key):
-        # Try st.secrets first
+        # Try file-based Streamlit secrets first (.streamlit/secrets.toml,
+        # captured in _original_secrets before we replaced st.secrets)...
         try:
-            # Check if st.secrets has the key
-            if hasattr(st, 'secrets') and hasattr(st.secrets, '_secrets'):
-                if key in st.secrets._secrets:
-                    return st.secrets._secrets[key]
+            if _original_secrets is not None and key in _original_secrets:
+                return _original_secrets[key]
         except:
             pass
 
-        # Fallback to environment variables
+        # ...then fall back to environment variables (Hugging Face / Railway).
         return os.environ.get(key)
 
     def get(self, key, default=None):
