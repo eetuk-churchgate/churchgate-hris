@@ -38,17 +38,17 @@ class HuggingFaceSecrets:
                     return st.secrets._secrets[key]
         except:
             pass
-        
+
         # Fallback to environment variables
         return os.environ.get(key)
-    
+
     def get(self, key, default=None):
         try:
             val = self.__getitem__(key)
             return val if val is not None else default
         except:
             return default
-    
+
     def __contains__(self, key):
         try:
             return self.__getitem__(key) is not None
@@ -63,6 +63,42 @@ if hasattr(st, 'secrets') and st.secrets:
 # Replace st.secrets with our wrapper
 st.secrets = HuggingFaceSecrets()
 # =============================================
+
+# ============================================================================
+# ORG STRUCTURE CONFIG — single source of truth
+# ----------------------------------------------------------------------------
+# Subsidiaries and region (Abuja/Lagos) are INDEPENDENT dimensions — a subsidiary
+# can have employees in either region. Edit CHURCHGATE_BUSINESSES here and the
+# names flow to every selectbox and filter automatically.
+# ============================================================================
+CHURCHGATE_BUSINESSES = [
+    "Aba Textile Mills PLC",
+    "Agroline Ventures Limited",
+    "Associated Textile Manufacturing Company Limited",
+    "Churchgate Nigeria Limited",
+    "Food & Confectionery Products (Nig.) Limited",
+    "First Continental Properties Limited – WTC",
+    "First Continental Properties Limited",
+    "First Spinners PLC",
+    "HotelInvest & Resorts Limited",
+    "International Textile Industries (Nig.) Limited",
+    "Intercott Limited",
+    "Ocean Fisheries (Nig.) Limited",
+    "Platinum Travel Limited",
+    "R. B Properties Limited",
+    "Reliance Mills Limited",
+    "Vineyard Designs Nig. Limited",
+]
+
+# Canonical department list (consolidates the previously-divergent hardcoded lists).
+DEPARTMENTS = [
+    'Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
+    'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal',
+    'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services'
+]
+# Filter variants (with an "All" sentinel) for dashboards/filters.
+DEPARTMENTS_WITH_ALL = ['All'] + DEPARTMENTS
+BUSINESSES_WITH_ALL = ['All'] + CHURCHGATE_BUSINESSES
 
 from utils.database import DatabaseManager
 from utils.ai_agent import AIRecruitmentAgent
@@ -1377,17 +1413,20 @@ def executive_dashboard():
     total_employees = 0
     active_employees = 0
     departments = 0
+    businesses = 0
     open_positions = 0
     male_count = 0
     female_count = 0
     emp_df = pd.DataFrame()
-    
+
     try:
         emp_df = db.get_all_employees()
         if not emp_df.empty:
             total_employees = len(emp_df)
             active_employees = len(emp_df[emp_df['status'] == 'Active'])
             departments = len(emp_df['department'].unique())
+            if 'subsidiary' in emp_df.columns:
+                businesses = emp_df['subsidiary'].dropna().nunique()
             if 'gender' in emp_df.columns:
                 male_count = len(emp_df[emp_df['gender'].str.lower() == 'male'])
                 female_count = len(emp_df[emp_df['gender'].str.lower() == 'female'])
@@ -1466,7 +1505,7 @@ def executive_dashboard():
     with c1:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Total Employees</div><div class="metric-value">{total_employees}</div><small style="color:#38a169;">{active_employees} active</small></div>""", unsafe_allow_html=True)
     with c2:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏢 Departments</div><div class="metric-value">{departments}</div><small style="color:#38a169;">2 regions</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏢 Departments</div><div class="metric-value">{departments}</div><small style="color:#38a169;">{businesses} subsidiaries</small></div>""", unsafe_allow_html=True)
     with c3:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">📋 Open Positions</div><div class="metric-value">{open_positions}</div><small style="color:#CC0000;">Active hiring</small></div>""", unsafe_allow_html=True)
     with c4:
@@ -1852,10 +1891,10 @@ def employee_management():
         try:
             df = db.get_all_employees()
             if df is None or df.empty:
-                df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'status'])
+                df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'region', 'subsidiary', 'position', 'grade', 'employment_type', 'join_date', 'status'])
             return df
         except:
-            return pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'status'])
+            return pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'region', 'subsidiary', 'position', 'grade', 'employment_type', 'join_date', 'status'])
     
     employees_df = load_employees()
     
@@ -1910,12 +1949,15 @@ def employee_management():
         st.markdown("---")
         
         # Search & Filters
-        c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
+        c1, c2, c5, c3, c4 = st.columns([2, 1, 1, 1, 1])
         with c1:
             search = st.text_input("🔍 Search", placeholder="Name, ID, email, department, position...")
         with c2:
             all_depts = ['All'] + sorted(list(employees_df['department'].dropna().unique())) if not employees_df.empty else ['All']
             dept_filter = st.selectbox("Department", all_depts)
+        with c5:
+            all_biz = ['All'] + sorted(list(employees_df['subsidiary'].dropna().unique())) if (not employees_df.empty and 'subsidiary' in employees_df.columns) else ['All']
+            business_filter = st.selectbox("Subsidiary", all_biz)
         with c3:
             all_grades = ['All'] + sorted(list(employees_df['grade'].dropna().unique())) if not employees_df.empty else ['All']
             grade_filter = st.selectbox("Grade", all_grades)
@@ -1936,6 +1978,8 @@ def employee_management():
                 ]
             if dept_filter != 'All':
                 filtered_df = filtered_df[filtered_df['department'] == dept_filter]
+            if business_filter != 'All' and 'subsidiary' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['subsidiary'] == business_filter]
             if grade_filter != 'All':
                 filtered_df = filtered_df[filtered_df['grade'] == grade_filter]
             if status_filter != 'All':
@@ -2016,7 +2060,7 @@ def employee_management():
                             ec1, ec2, ec3 = st.columns(3)
                             with ec1:
                                 current_dept = str(emp.get('department', 'Technology Group'))
-                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
+                                dept_options = DEPARTMENTS
                                 dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 1
                                 new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -2124,23 +2168,9 @@ def employee_management():
                 phone = st.text_input("Phone")
             with c2:
                 employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
-                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                business = st.selectbox("Subsidiary *", CHURCHGATE_BUSINESSES)
+                department = st.selectbox("Department *", DEPARTMENTS)
                 region = st.selectbox("Region *", ['Abuja', 'Lagos'])
-                subsidiary_options = {
-                    'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
-                    'Lagos': [
-                        'First Continental Properties Limited', 'R. B Properties Limited', 
-                        'Churchgate Nigeria Limited', 'Aba Textile Mills PLC',
-                        'Associated Textile Manufacturing Company Limited',
-                        'Food & Confectionery Products (Nig.) Limited',
-                        'First Spinners PLC', 'HotelInvest & Resorts Limited',
-                        'International Textile Industries (Nig.) Limited',
-                        'Intercott Limited', 'Ocean Fisheries (Nig.) Limited',
-                        'Platinum Travel Limited', 'Reliance Mills Limited',
-                        'Vineyard Designs Nig. Limited'
-                    ]
-                }
-                subsidiary = st.selectbox("Subsidiary *", subsidiary_options.get(region, []))
                 position = st.text_input("Position *")
                 grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'])
             with c3:
@@ -2156,7 +2186,7 @@ def employee_management():
                         result = db._post("employees", {
                             "employee_id": employee_id, "first_name": first_name, "last_name": last_name,
                             "email": email, "phone": phone, "department": department,
-                            "region": region,
+                            "region": region, "subsidiary": business,
                             "position": position, "grade": grade, "employment_type": employment_type,
                             "join_date": join_date.strftime('%Y-%m-%d'), 
                             "date_of_birth": date_of_birth.strftime('%Y-%m-%d'),
@@ -2178,8 +2208,8 @@ def employee_management():
     # ============ TAB 3: BULK UPLOAD ============
     with tab3:
         st.subheader("📤 Bulk Employee Upload")
-        st.info("Upload CSV with columns: employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date")
-        template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date'])
+        st.info("Upload CSV with columns: employee_id, first_name, last_name, email, phone, department, region, subsidiary, position, grade, employment_type, join_date")
+        template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'region', 'subsidiary', 'position', 'grade', 'employment_type', 'join_date'])
         st.download_button("📥 Download Template", template_df.to_csv(index=False), "employee_template.csv", "text/csv")
         uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
         if uploaded_file:
@@ -2194,6 +2224,7 @@ def employee_management():
                             "employee_id": str(row.get('employee_id', '')), "first_name": str(row.get('first_name', '')),
                             "last_name": str(row.get('last_name', '')), "email": str(row.get('email', '')),
                             "phone": str(row.get('phone', '')), "department": str(row.get('department', '')),
+                            "region": str(row.get('region', '')), "subsidiary": str(row.get('subsidiary', '')),
                             "position": str(row.get('position', '')), "grade": str(row.get('grade', 'Junior')),
                             "employment_type": str(row.get('employment_type', 'Full-time')),
                             "join_date": str(row.get('join_date', '')), "status": "Active"
@@ -2218,7 +2249,7 @@ def employee_management():
                 single_name = st.text_input("Full Name *")
                 single_pw = st.text_input("Password", value="churchgate2026")
             with c2:
-                single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], key="single_dept")
+                single_dept = st.selectbox("Department", DEPARTMENTS, key="single_dept")
                 single_role = st.selectbox("Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key="single_role")
                 single_id = st.text_input("Employee ID", placeholder="e.g., AN00001")
             
@@ -2378,26 +2409,48 @@ def employee_management():
         
         st.markdown("---")
         
-        # Department Heads by Region
+        # Businesses & Department Heads by Region — driven from live employee data.
+        def _region_breakdown(df, region_name):
+            """Business/Department/Headcount/HODs table for a region, from real data."""
+            if df is None or df.empty or 'region' not in df.columns:
+                return None
+            rdf = df[df['region'].astype(str).str.strip().str.lower() == region_name.lower()]
+            if rdf.empty:
+                return None
+            rows = []
+            group_cols = [c for c in ['subsidiary', 'department'] if c in rdf.columns]
+            if not group_cols:
+                return None
+            for keys, grp in rdf.groupby(group_cols):
+                keys = keys if isinstance(keys, tuple) else (keys,)
+                info = dict(zip(group_cols, keys))
+                hods = grp[grp.get('grade', pd.Series(dtype=str)).astype(str).isin(['HOD', 'C-Level'])] if 'grade' in grp.columns else grp.iloc[0:0]
+                hod_names = ', '.join(f"{r['first_name']} {r['last_name']}" for _, r in hods.iterrows()) or 'TBD'
+                rows.append({
+                    'Subsidiary': info.get('subsidiary', '—') or '—',
+                    'Department': info.get('department', '—') or '—',
+                    'Headcount': len(grp),
+                    'HOD(s)': hod_names,
+                })
+            return pd.DataFrame(rows).sort_values(['Subsidiary', 'Department']) if rows else None
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
-            st.markdown("### 🏢 Abuja Region — Department Heads")
-            abuja_hods = pd.DataFrame({
-                'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'],
-                'HOD': ['Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'Adebayo Sakote', 'Jeff Arikawe', 'Ahmed Karim (VP)', 'Anand Bora', 'Usman Sani', 'David Aiyedun', 'Ibukun Adeogun'],
-                'Team': [12, 20, 8, 6, 8, 12, 6, 15, 3, 10]
-            })
-            st.dataframe(abuja_hods, use_container_width=True, hide_index=True)
-        
+            st.markdown("### 🏢 Abuja Region — Businesses & Heads")
+            _abuja = _region_breakdown(employees_df, 'Abuja')
+            if _abuja is not None:
+                st.dataframe(_abuja, use_container_width=True, hide_index=True)
+            else:
+                st.info("No Abuja employees categorized by business/department yet.")
+
         with col2:
-            st.markdown("### 🏢 Lagos Region — Department Heads")
-            lagos_hods = pd.DataFrame({
-                'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'],
-                'HOD': ['Lawal Mohammed', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD'],
-                'Team': ['TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD']
-            })
-            st.dataframe(lagos_hods, use_container_width=True, hide_index=True)
+            st.markdown("### 🏢 Lagos Region — Businesses & Heads")
+            _lagos = _region_breakdown(employees_df, 'Lagos')
+            if _lagos is not None:
+                st.dataframe(_lagos, use_container_width=True, hide_index=True)
+            else:
+                st.info("No Lagos employees categorized by business/department yet.")
         
         st.markdown("---")
         
@@ -2549,6 +2602,72 @@ def employee_management():
             st.markdown("### 📊 Quick Stats")
             st.dataframe(employees_df.describe(), use_container_width=True)
 
+def generate_appraisal_certificate(name, cycle_name, final_score, completed_date):
+    """Build a one-page PDF appraisal completion certificate. Returns bytes (or None on failure)."""
+    try:
+        import fpdf
+        FPDF = fpdf.FPDF
+        pdf = FPDF(orientation='L', unit='mm', format='A4')
+        pdf.set_auto_page_break(auto=False)
+        pdf.add_page()
+
+        # Churchgate header band
+        pdf.set_fill_color(26, 26, 26)
+        pdf.rect(0, 0, 297, 34, 'F')
+        pdf.set_fill_color(204, 0, 0)
+        pdf.rect(0, 34, 297, 3, 'F')
+        pdf.set_font('Helvetica', 'B', 26)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_y(9)
+        pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
+
+        # Decorative border
+        pdf.set_draw_color(204, 0, 0)
+        pdf.set_line_width(1.2)
+        pdf.rect(12, 44, 273, 150)
+
+        pdf.set_y(58)
+        pdf.set_font('Helvetica', 'B', 30)
+        pdf.set_text_color(26, 26, 26)
+        pdf.cell(0, 16, 'CERTIFICATE OF COMPLETION', ln=True, align='C')
+        pdf.set_font('Helvetica', '', 13)
+        pdf.set_text_color(90, 90, 90)
+        pdf.cell(0, 10, 'Performance Appraisal', ln=True, align='C')
+        pdf.ln(8)
+
+        pdf.set_font('Helvetica', '', 12)
+        pdf.set_text_color(60, 60, 60)
+        pdf.cell(0, 8, 'This is to certify that', ln=True, align='C')
+        pdf.ln(2)
+        pdf.set_font('Helvetica', 'B', 24)
+        pdf.set_text_color(204, 0, 0)
+        pdf.cell(0, 14, str(name), ln=True, align='C')
+        pdf.ln(2)
+        pdf.set_font('Helvetica', '', 12)
+        pdf.set_text_color(60, 60, 60)
+        pdf.cell(0, 8, f"has successfully completed the appraisal for", ln=True, align='C')
+        pdf.set_font('Helvetica', 'B', 14)
+        pdf.set_text_color(26, 26, 26)
+        pdf.cell(0, 10, str(cycle_name), ln=True, align='C')
+        pdf.ln(4)
+
+        if final_score is not None:
+            pdf.set_font('Helvetica', 'B', 16)
+            pdf.set_text_color(56, 161, 105)
+            pdf.cell(0, 10, f"Final Agreed Score: {final_score:.1f}%", ln=True, align='C')
+
+        # Footer: date + signature line
+        pdf.set_y(178)
+        pdf.set_font('Helvetica', '', 11)
+        pdf.set_text_color(90, 90, 90)
+        pdf.cell(140, 8, f"  Date Completed: {completed_date}", 0, 0, 'L')
+        pdf.cell(133, 8, "Authorised Signature: ______________________  ", 0, 1, 'R')
+
+        out = pdf.output(dest='S')
+        return out.encode('latin-1') if isinstance(out, str) else bytes(out)
+    except Exception:
+        return None
+
 def performance_okrs():
     st.markdown("""<div class="churchgate-header"><h1>📈 Performance & Appraisal Engine</h1><p>KPI Management | Self-Assessment | HOD Review | Goal Cascading | Evidence Upload | Smart Notifications | Audit Trail</p></div>""", unsafe_allow_html=True)
     
@@ -2569,7 +2688,20 @@ def performance_okrs():
                  'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     
     if 'appraisal_cycle_active' not in st.session_state:
-        st.session_state.appraisal_cycle_active = False
+        # Seed cycle state from the shared key-value store so every user session
+        # (not just the admin who activated it) sees the same active cycle.
+        try:
+            _cycle = db.get_cycle_state()
+        except Exception:
+            _cycle = None
+        if _cycle:
+            st.session_state.appraisal_cycle_active = _cycle['active']
+            st.session_state.appraisal_cycle_name = _cycle['name'] or "2026 Half-Year Appraisal"
+            st.session_state.appraisal_start = _cycle['start'] or "2026-06-01"
+            st.session_state.appraisal_end = _cycle['end'] or "2026-12-31"
+            st.session_state.appraisal_locked = _cycle['locked']
+        else:
+            st.session_state.appraisal_cycle_active = False
     if 'appraisal_cycle_name' not in st.session_state:
         st.session_state.appraisal_cycle_name = "2026 Half-Year Appraisal"
     if 'appraisal_start' not in st.session_state:
@@ -3143,8 +3275,22 @@ def performance_okrs():
                 if st.button("💾 Activate Appraisal Cycle", use_container_width=True):
                     st.session_state.appraisal_start = st.session_state.appraisal_start.strftime('%Y-%m-%d') if hasattr(st.session_state.appraisal_start, 'strftime') else str(st.session_state.appraisal_start)
                     st.session_state.appraisal_end = st.session_state.appraisal_end.strftime('%Y-%m-%d') if hasattr(st.session_state.appraisal_end, 'strftime') else str(st.session_state.appraisal_end)
-                    
+
+                    log_audit('Cycle Activated', f'Appraisal cycle {st.session_state.appraisal_cycle_name} activated')
+
+                    # Persist cycle state (as strings) so all employee sessions see the active cycle.
+                    try:
+                        db.save_cycle_state(
+                            st.session_state.appraisal_cycle_active,
+                            st.session_state.appraisal_cycle_name,
+                            st.session_state.appraisal_start,
+                            st.session_state.appraisal_end,
+                            st.session_state.appraisal_locked)
+                    except Exception:
+                        pass
+
                     # Only send to employees with approved KPIs for THIS cycle
+
                     try:
                         emp_df = db.get_all_employees()
                         from utils.email_service import EmailService
@@ -3191,6 +3337,11 @@ def performance_okrs():
             if st.session_state.appraisal_locked:
                 st.warning("🔒 Scores are locked.")
             else:
+                _my_a = st.session_state.self_assessments.get(user_name, {})
+                if _my_a.get('status') == 'Revision Requested':
+                    st.error("🔄 **Your HOD has requested a revision.** Please update and resubmit your self-assessment below.")
+                    if _my_a.get('hod_comments'):
+                        st.info(f"**HOD comments:** {_my_a['hod_comments']}")
                 st.markdown("### Rate Yourself (0-100%)")
                 st.info("Provide justification and attach evidence for each pillar. Evidence files strengthen your assessment.")
                 
@@ -3302,6 +3453,7 @@ def performance_okrs():
                     with c1:
                         if st.button("✅ Accept HOD Review", use_container_width=True):
                             st.session_state.self_assessments[user_name]['acceptance'] = 'Accepted'
+                            st.session_state.self_assessments[user_name]['status'] = 'Completed'
                             try:
                                 db.archive_appraisal(user_name, user_email, user_dept,
                                     st.session_state.appraisal_cycle_name, 'Accepted',
@@ -3309,8 +3461,17 @@ def performance_okrs():
                                     now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                             except:
                                 pass
+                            # Persist acceptance so it survives a fresh session (archive alone doesn't update the appraisals record).
+                            try:
+                                db.save_appraisal(user_name, user_email, user_dept,
+                                    st.session_state.appraisal_cycle_name, 'Completed',
+                                    a.get('scores'), a.get('comments', ''), a.get('pillar_comments'),
+                                    a.get('hod_scores'), a.get('hod_comments', ''), a.get('hod_pillar_comments'),
+                                    'Accepted', a.get('sr_decision', ''), a.get('date', ''))
+                            except Exception:
+                                pass
                             log_audit('Appraisal Accepted', f'{user_name} accepted HOD review')
-                            send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, '', '')
+                            send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, user_email, user_name)
                             st.success("✅ Appraisal accepted! Cycle complete. Certificate available below.")
                             st.balloons()
                             st.rerun()
@@ -3319,12 +3480,35 @@ def performance_okrs():
                             st.session_state.self_assessments[user_name]['acceptance'] = 'Rejected'
                             st.session_state.self_assessments[user_name]['status'] = 'Awaiting HOD Re-review'
                             st.session_state.self_assessments[user_name]['reject_count'] = a.get('reject_count', 0) + 1
+                            # Persist so the re-review actually routes back to the HOD (survives reload).
+                            try:
+                                db.save_appraisal(user_name, user_email, user_dept,
+                                    st.session_state.appraisal_cycle_name, 'Awaiting HOD Re-review',
+                                    a.get('scores'), a.get('comments', ''), a.get('pillar_comments'),
+                                    a.get('hod_scores'), a.get('hod_comments', ''), a.get('hod_pillar_comments'),
+                                    'Rejected', a.get('sr_decision', ''), a.get('date', ''))
+                            except Exception:
+                                pass
                             log_audit('Appraisal Rejected', f'{user_name} rejected - sent back to HOD')
+                            send_appraisal_cycle_email('rejected', st.session_state.appraisal_cycle_name, user_email, user_name)
                             st.warning("⚠️ Rejected. Sent back to HOD for re-review.")
                             st.rerun()
                 elif a.get('acceptance') == 'Accepted':
                     st.success("🎉 Appraisal Complete! Cycle closed.")
-                    # Certificate download button (existing code)
+                    # Final agreed score = mean of HOD scores (fallback to self scores).
+                    _cert_scores = a.get('hod_scores') or a.get('scores') or {}
+                    try:
+                        _vals = [float(v) for v in _cert_scores.values()]
+                        _final_score = sum(_vals) / len(_vals) if _vals else None
+                    except Exception:
+                        _final_score = None
+                    _cert_pdf = generate_appraisal_certificate(
+                        user_name, st.session_state.appraisal_cycle_name, _final_score,
+                        a.get('date', now_wat.strftime('%Y-%m-%d')))
+                    if _cert_pdf:
+                        st.download_button("📜 Download Certificate", _cert_pdf,
+                            file_name=f"Appraisal_Certificate_{user_name.replace(' ', '_')}.pdf",
+                            mime="application/pdf", use_container_width=True)
     
     # ============ TAB 4: HOD REVIEW ============
     with tab4:
@@ -3537,10 +3721,21 @@ def performance_okrs():
                                         st.error("❌ All justifications required!")
                             with c2:
                                 if st.button(f"✋ Stand Firm - Escalate", key=f"standfirm_{staff_name}"):
+                                    _sf_hod_scores = hod_scores if hod_scores else assessment.get('hod_scores', {})
+                                    _sf_hod_comments = hod_overall if hod_overall else assessment.get('hod_comments', '')
                                     st.session_state.self_assessments[staff_name]['status'] = 'Approved'
                                     st.session_state.self_assessments[staff_name]['acceptance'] = 'Rejected'
-                                    st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores if hod_scores else assessment.get('hod_scores', {})
-                                    st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall if hod_overall else assessment.get('hod_comments', '')
+                                    st.session_state.self_assessments[staff_name]['hod_scores'] = _sf_hod_scores
+                                    st.session_state.self_assessments[staff_name]['hod_comments'] = _sf_hod_comments
+                                    # Persist so the Senior-Management committee queue (filters acceptance=='Rejected') survives reload.
+                                    try:
+                                        db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
+                                            st.session_state.appraisal_cycle_name, 'Approved',
+                                            assessment.get('scores'), assessment.get('comments', ''), assessment.get('pillar_comments', {}),
+                                            _sf_hod_scores, _sf_hod_comments, assessment.get('hod_pillar_comments'),
+                                            'Rejected', assessment.get('sr_decision', ''), assessment.get('date', ''))
+                                    except Exception:
+                                        pass
                                     log_audit('HOD Stands Firm', f'{staff_name} escalated to Sr. Management')
                                     st.warning(f"✋ Standing firm. Escalated to Sr. Management.")
                                     st.rerun()
@@ -3570,10 +3765,25 @@ def performance_okrs():
                                         st.error("❌ All justifications required!")
                             with c2:
                                 if st.button(f"🔄 Request Revision", key=f"rev_{staff_name}"):
-                                    st.session_state.self_assessments[staff_name]['status'] = 'Revision Requested'
-                                    log_audit('Revision Requested', f'Revision requested for {staff_name}')
-                                    st.warning(f"🔄 Revision requested from {staff_name}")
-                                    st.rerun()
+                                    if not hod_overall:
+                                        st.error("❌ Add an overall comment so the employee knows what to revise.")
+                                    else:
+                                        st.session_state.self_assessments[staff_name]['status'] = 'Revision Requested'
+                                        st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall
+                                        # Persist so the employee's Self-Assessment tab actually re-opens for revision.
+                                        try:
+                                            db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
+                                                st.session_state.appraisal_cycle_name, 'Revision Requested',
+                                                assessment.get('scores'), assessment.get('comments', ''), assessment.get('pillar_comments', {}),
+                                                assessment.get('hod_scores'), hod_overall, assessment.get('hod_pillar_comments'),
+                                                assessment.get('acceptance', ''), assessment.get('sr_decision', ''),
+                                                assessment.get('date', ''))
+                                        except Exception:
+                                            pass
+                                        log_audit('Revision Requested', f'Revision requested for {staff_name}')
+                                        send_appraisal_cycle_email('revision_requested', st.session_state.appraisal_cycle_name, assessment.get('email', ''), staff_name)
+                                        st.warning(f"🔄 Revision requested from {staff_name}")
+                                        st.rerun()
             else:
                 st.info("No pending assessments for your team.")
         
@@ -3631,7 +3841,15 @@ def performance_okrs():
                                         now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                                 except:
                                     pass
-                                send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, '', '')
+                                try:
+                                    db.save_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
+                                        st.session_state.appraisal_cycle_name, 'Completed',
+                                        assessment.get('scores'), assessment.get('comments', ''), assessment.get('pillar_comments'),
+                                        assessment.get('hod_scores'), assessment.get('hod_comments', ''), assessment.get('hod_pillar_comments'),
+                                        'Accepted', 'HOD Upheld', assessment.get('date', ''))
+                                except Exception:
+                                    pass
+                                send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, assessment.get('email', ''), staff_name)
                                 st.success(f"✅ HOD decision upheld. Appraisal complete.")
                                 st.balloons()
                                 time.sleep(1.5)
@@ -3651,7 +3869,15 @@ def performance_okrs():
                                         now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                                 except:
                                     pass
-                                send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, '', '')
+                                try:
+                                    db.save_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
+                                        st.session_state.appraisal_cycle_name, 'Completed',
+                                        assessment.get('scores'), assessment.get('comments', ''), assessment.get('pillar_comments'),
+                                        assessment.get('scores'), assessment.get('hod_comments', ''), assessment.get('hod_pillar_comments'),
+                                        'Accepted', 'Overturned in Favor of Staff', assessment.get('date', ''))
+                                except Exception:
+                                    pass
+                                send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, assessment.get('email', ''), staff_name)
                                 st.success(f"🔄 Decision overturned in favor of {staff_name}. Appraisal complete.")
                                 st.balloons()
                                 time.sleep(1.5)
@@ -4357,7 +4583,7 @@ def recruitment_hub():
             c1, c2 = st.columns(2)
             with c1:
                 job_title = st.text_input("Job Title *", placeholder="e.g., Senior Network Engineer")
-                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services'])
+                department = st.selectbox("Department *", DEPARTMENTS)
                 location = st.selectbox("Location", ["World Trade Center Abuja", "Churchgate Tower 1 Lagos", "Churchgate Tower 2 Lagos", "Churchgate Plaza Abuja", "Remote/Hybrid"])
                 employment_type = st.selectbox("Employment Type", ["Full-time", "Contract", "Part-time", "Intern"])
             with c2:
@@ -5110,7 +5336,7 @@ def recruitment_hub():
                     offer_name = st.text_input("Candidate Full Name *")
                     offer_email = st.text_input("Candidate Email *")
                     offer_position = st.text_input("Position *")
-                    offer_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                    offer_dept = st.selectbox("Department *", DEPARTMENTS)
                 with c2:
                     offer_salary = st.text_input("Salary Package *", placeholder="e.g., ₦1,200,000 Gross per Annum")
                     offer_start = st.date_input("Start Date *")
@@ -5251,7 +5477,7 @@ def recruitment_hub():
                 with col1:
                     offer_status_filter = st.selectbox("Status", ["All", "Pending Acceptance", "Accepted", "Rejected", "Expired"])
                 with col2:
-                    offer_dept_filter = st.selectbox("Department", ["All", 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                    offer_dept_filter = st.selectbox("Department", DEPARTMENTS_WITH_ALL)
                 
                 filtered = offers
                 if offer_status_filter != "All":
@@ -5338,7 +5564,7 @@ def recruitment_hub():
                 with c1:
                     nh_name = st.text_input("Employee Full Name *")
                     nh_email = st.text_input("Employee Email *")
-                    nh_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                    nh_dept = st.selectbox("Department *", DEPARTMENTS)
                     nh_position = st.text_input("Position *")
                 with c2:
                     nh_start = st.date_input("Start Date *")
@@ -5564,7 +5790,7 @@ def recruitment_hub():
                 with c1:
                     bg_name = st.text_input("Candidate Name *")
                     bg_position = st.text_input("Position Applied For *")
-                    bg_department = st.selectbox("Department", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                    bg_department = st.selectbox("Department", DEPARTMENTS)
                 with c2:
                     bg_type = st.multiselect("Check Type *", [
                         "Employment Verification",
@@ -7306,7 +7532,7 @@ def training_development():
         with c1:
             course_filter = st.selectbox("Category", ["All", "Technical", "Leadership", "Compliance", "Soft Skills", "Professional"])
         with c2:
-            dept_filter_course = st.selectbox("Department", ["All", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations", "Engineering"])
+            dept_filter_course = st.selectbox("Department", DEPARTMENTS_WITH_ALL)
         with c3:
             level_filter = st.selectbox("Level", ["All", "Beginner", "Intermediate", "Advanced", "Expert"])
         
@@ -10227,6 +10453,7 @@ def my_profile():
     emp_leave = int(emp_data.get('leave_balance', 20)) if emp_data else 20
     emp_status = emp_data.get('status', 'Active') if emp_data else 'Active'
     emp_region = emp_data.get('region', 'Abuja') if emp_data else 'Abuja'
+    emp_business = emp_data.get('subsidiary', '') if emp_data else ''
     emp_gender = emp_data.get('gender', 'Male') if emp_data else 'Male'
     
     time_in_company = "N/A"
@@ -10354,9 +10581,11 @@ def my_profile():
                     new_gender = st.selectbox("Gender", ['Male', 'Female'], index=0 if emp_gender == 'Male' else 1)
                 with c2:
                     new_last = st.text_input("Last Name", value=last_name)
-                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
+                    dept_list = DEPARTMENTS
                     dept_idx = dept_list.index(emp_dept) if emp_dept in dept_list else 0
                     new_dept = st.selectbox("Department", dept_list, index=dept_idx)
+                    _biz_opts = CHURCHGATE_BUSINESSES if emp_business in CHURCHGATE_BUSINESSES else [emp_business] + CHURCHGATE_BUSINESSES if emp_business else CHURCHGATE_BUSINESSES
+                    new_business = st.selectbox("Subsidiary", _biz_opts, index=(_biz_opts.index(emp_business) if emp_business in _biz_opts else 0))
                     new_region = st.selectbox("Region", ['Abuja', 'Lagos'], index=0 if emp_region == 'Abuja' else 1)
                 
                 # Date of Birth
@@ -10386,6 +10615,7 @@ def my_profile():
                             "first_name": new_first, "last_name": new_last,
                             "email": new_email, "phone": new_phone,
                             "department": new_dept, "region": new_region,
+                            "subsidiary": new_business,
                             "gender": new_gender,
                             "date_of_birth": new_dob.strftime('%Y-%m-%d'),
                             "emergency_name": emergency_name,
@@ -11730,6 +11960,34 @@ def send_browser_notification(title, body, user_email=None):
         'body': body,
         'time': datetime.now().strftime('%H:%M')
     })
+
+def send_appraisal_cycle_email(event, cycle_name, recipient_email, recipient_name):
+    """Send appraisal-workflow notifications. Never raises — email failure must not block the workflow."""
+    if not recipient_email or '@' not in str(recipient_email):
+        return False
+    try:
+        from utils.email_service import EmailService
+        es = EmailService()
+        name = recipient_name or "Colleague"
+
+        if event == 'completed':
+            es.send_email(recipient_email,
+                f"🎉 Appraisal Complete — {cycle_name}",
+                f"Dear {name},\n\nYour appraisal for '{cycle_name}' is now complete and closed.\n\nYou can download your completion certificate from the Performance & OKRs module.\n\nThank you for your contributions.\nChurchgate Group HR")
+
+        elif event == 'revision_requested':
+            es.send_email(recipient_email,
+                f"🔄 Appraisal Revision Requested — {cycle_name}",
+                f"Dear {name},\n\nYour HOD has requested revisions to your self-assessment for '{cycle_name}'.\n\nPlease log in, review the HOD comments, update your self-assessment, and resubmit.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
+
+        elif event == 'rejected':
+            es.send_email(recipient_email,
+                f"⚠️ Appraisal Sent Back for Re-review — {cycle_name}",
+                f"Dear {name},\n\nAn employee has declined the HOD review for '{cycle_name}' and requested a re-review.\n\nPlease log in to the HRIS to re-review the appraisal.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
+
+        return True
+    except:
+        return False
 
 def main():
     if 'user' not in st.session_state:

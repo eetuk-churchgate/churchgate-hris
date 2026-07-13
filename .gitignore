@@ -1,4 +1,8 @@
-__pycache__/ 
-*.pyc 
-data/churchgate_hr.db 
-.streamlit/ 
+__pycache__/
+*.pyc
+data/churchgate_hr.db
+.streamlit/
+.env
+.env.*
+!.env.example
+.venv/

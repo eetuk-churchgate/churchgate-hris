@@ -11,11 +11,13 @@ from datetime import datetime
 class EmailService:
     def __init__(self):
         import streamlit as st
-        self.smtp_server = "smtp.gmail.com"
-        self.smtp_port = 587
-        self.sender_email = st.secrets.get("SMTP_EMAIL", "eetuk@churchgate.com")
-        self.sender_name = "Churchgate Group HRIS"
-        self.smtp_username = st.secrets.get("SMTP_EMAIL", "eetuk@churchgate.com")
+        # Honor a full SMTP config; fall back to the legacy SMTP_EMAIL / Gmail defaults.
+        username = st.secrets.get("SMTP_USERNAME", st.secrets.get("SMTP_EMAIL", "eetuk@churchgate.com"))
+        self.smtp_server = st.secrets.get("SMTP_SERVER", "smtp.gmail.com")
+        self.smtp_port = int(st.secrets.get("SMTP_PORT", 587))
+        self.sender_email = st.secrets.get("SMTP_SENDER_EMAIL", st.secrets.get("SMTP_EMAIL", username))
+        self.sender_name = st.secrets.get("SMTP_SENDER_NAME", "Churchgate Group HRIS")
+        self.smtp_username = username
         self.smtp_password = st.secrets.get("SMTP_PASSWORD", "")
     
     def _create_html_email(self, subject, body_content):
