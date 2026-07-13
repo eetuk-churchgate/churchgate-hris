@@ -51,4 +51,8 @@ emit() {
   emit GOOGLE_CALENDAR_API_KEY "${GOOGLE_CALENDAR_API_KEY:-}"
 } > .streamlit/secrets.toml
 
+# Inject Churchgate branding + Open Graph tags into Streamlit's served HTML so
+# shared links show a proper preview card (best-effort; never blocks startup).
+python scripts/patch_streamlit_meta.py || true
+
 exec streamlit run app.py --server.port "${PORT:-8501}" --server.address 0.0.0.0
