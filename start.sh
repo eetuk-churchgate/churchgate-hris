@@ -51,6 +51,17 @@ emit() {
   emit GOOGLE_CALENDAR_API_KEY "${GOOGLE_CALENDAR_API_KEY:-}"
 } > .streamlit/secrets.toml
 
+# Startup diagnostic: report which REQUIRED secrets resolved (names only, no values).
+# Checks both the env var and the generated secrets.toml so a missing Supabase
+# credential shows up clearly in the Railway deploy logs.
+for k in SUPABASE_URL SUPABASE_KEY SMTP_PASSWORD; do
+  if [ -n "$(printenv "$k" || true)" ] || grep -q "^${k} " .streamlit/secrets.toml 2>/dev/null; then
+    echo "[start] secret ${k}: present"
+  else
+    echo "[start] secret ${k}: MISSING  <-- set this in Railway → Variables"
+  fi
+done
+
 # Inject Churchgate branding + Open Graph tags into Streamlit's served HTML so
 # shared links show a proper preview card (best-effort; never blocks startup).
 python scripts/patch_streamlit_meta.py || true
