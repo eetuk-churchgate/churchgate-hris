@@ -4461,48 +4461,439 @@ def performance_okrs():
                         """, unsafe_allow_html=True)
             
             # ============================================================
-            # TAB 1: ANALYTICS
+            # COMMITTEE TAB 1: MASSIVE AI-POWERED ANALYTICS
             # ============================================================
             with committee_tabs[1]:
-                st.subheader("📈 Appraisal Analytics Dashboard")
-                if all_emps_scored:
+                st.subheader("📈 Advanced Appraisal Analytics Dashboard")
+                st.markdown("*Fortune 500 Grade — Comprehensive Performance Intelligence*")
+                
+                if not all_emps_scored:
+                    st.info("No appraisal data available yet.")
+                else:
+                    # ============================================================
+                    # TOP METRICS ROW
+                    # ============================================================
                     avg_all = sum(e['score'] for e in all_emps_scored) / len(all_emps_scored)
                     completed = len([v for v in all_assessments.values() if v.get('acceptance') == 'Accepted'])
-                    pending = len(all_emps_scored) - completed
+                    pending_review = len([v for v in all_assessments.values() if v.get('status') in ['Submitted', 'Approved']])
+                    pending_acceptance = len([v for v in all_assessments.values() if v.get('status') == 'Approved' and not v.get('acceptance')])
+                    escalated = len([v for v in all_assessments.values() if v.get('status') == 'Escalated from TL'])
+                    rejected = len([v for v in all_assessments.values() if v.get('acceptance') == 'Rejected'])
+                    not_started = len([v for v in all_assessments.values() if v.get('status') == 'Not Started' or not v.get('status')])
+                    in_progress = len([v for v in all_assessments.values() if v.get('status') == 'Submitted'])
                     
-                    m1, m2, m3, m4 = st.columns(4)
-                    m1.metric("👥 Participants", len(all_emps_scored))
+                    total_participants = len(all_emps_scored)
+                    
+                    st.markdown("### 📊 Key Performance Indicators")
+                    m1, m2, m3, m4, m5, m6 = st.columns(6)
+                    m1.metric("👥 Total Participants", total_participants)
                     m2.metric("📊 Avg Score", f"{avg_all:.1f}%")
                     m3.metric("🎉 Completed", completed)
-                    m4.metric("⏳ Pending", pending)
+                    m4.metric("⏳ Pending Review", pending_review)
+                    m5.metric("🚨 Escalated", escalated)
+                    m6.metric("❌ Rejected", rejected)
                     
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        sc_df = pd.DataFrame(all_emps_scored)
-                        fig = px.histogram(sc_df, x='score', nbins=10, title="Score Distribution", color_discrete_sequence=['#CC0000'])
-                        fig.add_vline(x=avg_all, line_dash="dash", line_color="#d69e2e", annotation_text=f"Avg: {avg_all:.1f}%")
-                        fig.update_layout(height=300)
-                        st.plotly_chart(fig, use_container_width=True)
-                    with c2:
-                        region_scores = defaultdict(list)
-                        for e in all_emps_scored:
-                            region_scores[e['region']].append(e['score'])
-                        region_avg = {r: sum(s)/len(s) for r, s in region_scores.items()}
-                        region_df = pd.DataFrame({'Region': list(region_avg.keys()), 'Avg Score': list(region_avg.values())})
-                        fig2 = px.bar(region_df, x='Region', y='Avg Score', color='Region', color_discrete_sequence=['#CC0000', '#1a1a1a', '#38a169'])
-                        fig2.update_layout(height=300, title="Avg Score by Region")
-                        st.plotly_chart(fig2, use_container_width=True)
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # KPI OBJECTIVE STATUS
+                    # ============================================================
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.subheader("🎯 KPI Objective Status")
+                        all_perf_data = get_all_perf_cached()
+                        kpi_approved = len(all_perf_data[all_perf_data['submission_status'] == 'Approved']) if not all_perf_data.empty else 0
+                        kpi_submitted = len(all_perf_data[all_perf_data['submission_status'] == 'Submitted']) if not all_perf_data.empty else 0
+                        kpi_draft = len(all_perf_data[all_perf_data['submission_status'] == 'Draft']) if not all_perf_data.empty else 0
+                        kpi_no = total_participants - kpi_approved - kpi_submitted - kpi_draft
+                        
+                        kpi_data = pd.DataFrame({
+                            'Status': ['Approved', 'Pending Approval', 'Draft', 'No Objectives'],
+                            'Count': [kpi_approved, kpi_submitted, kpi_draft, max(0, kpi_no)]
+                        })
+                        kpi_data = kpi_data[kpi_data['Count'] > 0]
+                        
+                        fig_kpi = px.pie(kpi_data, values='Count', names='Status', hole=0.6,
+                                        color_discrete_sequence=['#38a169', '#d69e2e', '#a0aec0', '#CC0000'])
+                        fig_kpi.update_layout(height=350, title="KPI Objective Status")
+                        st.plotly_chart(fig_kpi, use_container_width=True)
+                        
+                        # KPI stats
+                        for _, row in kpi_data.iterrows():
+                            pct = (row['Count'] / total_participants * 100) if total_participants > 0 else 0
+                            st.markdown(f"""
+                            <div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #eee;">
+                                <span>{row['Status']}</span>
+                                <strong>{row['Count']} ({pct:.1f}%)</strong>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        st.subheader("📋 Objective Performance")
+                        # Calculate from actual KPI data
+                        at_risk_count = 0
+                        behind_count = 0
+                        on_track_count = 0
+                        completed_kpi_count = 0
+                        
+                        if not all_perf_data.empty:
+                            for _, row in all_perf_data.iterrows():
+                                status = row.get('status', '')
+                                progress = row.get('progress', 0)
+                                if status == 'At Risk' or (progress < 40 and row.get('submission_status') == 'Approved'):
+                                    at_risk_count += 1
+                                elif status == 'Near Target' or (40 <= progress < 65):
+                                    behind_count += 1
+                                elif status == 'On Track' or (65 <= progress < 100):
+                                    on_track_count += 1
+                                elif status == 'Completed' or progress >= 100:
+                                    completed_kpi_count += 1
+                        
+                        total_kpis = at_risk_count + behind_count + on_track_count + completed_kpi_count
+                        if total_kpis == 0:
+                            total_kpis = 1  # Avoid division by zero
+                        
+                        obj_perf = pd.DataFrame({
+                            'Performance': ['At Risk', 'Behind Schedule', 'On Track', 'Completed'],
+                            'Count': [at_risk_count, behind_count, on_track_count, completed_kpi_count],
+                            'Pct': [
+                                at_risk_count/total_kpis*100,
+                                behind_count/total_kpis*100,
+                                on_track_count/total_kpis*100,
+                                completed_kpi_count/total_kpis*100
+                            ]
+                        })
+                        obj_perf = obj_perf[obj_perf['Count'] > 0]
+                        
+                        fig_obj = px.bar(obj_perf, x='Performance', y='Count', color='Performance',
+                                        color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169'],
+                                        text='Pct')
+                        fig_obj.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                        fig_obj.update_layout(height=350, title="Objective Performance Distribution", showlegend=False)
+                        st.plotly_chart(fig_obj, use_container_width=True)
+                        
+                        for _, row in obj_perf.iterrows():
+                            st.markdown(f"""
+                            <div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #eee;">
+                                <span>{row['Performance']}</span>
+                                <strong>{row['Count']} ({row['Pct']:.1f}%)</strong>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # APPRAISAL COMPLETION STATUS
+                    # ============================================================
+                    st.subheader("📋 Appraisal Completion Status")
+                    
+                    completion_data = {
+                        'Not Started': max(0, total_participants - len(all_assessments)),
+                        'In Progress (Self)': in_progress,
+                        'Pending Reviewer': pending_review,
+                        'Pending Acceptance': pending_acceptance,
+                        'Pending Committee': escalated,
+                        'Completed': completed,
+                        'Rejected': rejected
+                    }
+                    
+                    comp_df = pd.DataFrame({
+                        'Stage': list(completion_data.keys()),
+                        'Count': list(completion_data.values())
+                    })
+                    comp_df = comp_df[comp_df['Count'] > 0]
+                    comp_df['Pct'] = comp_df['Count'] / total_participants * 100
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        fig_comp = px.pie(comp_df, values='Count', names='Stage', hole=0.5,
+                                         color_discrete_sequence=['#a0aec0', '#3182ce', '#d69e2e', '#FFD700', '#CC0000', '#38a169', '#ff4444'])
+                        fig_comp.update_layout(height=400, title="Appraisal Completion Status")
+                        st.plotly_chart(fig_comp, use_container_width=True)
+                    
+                    with col2:
+                        for _, row in comp_df.iterrows():
+                            st.markdown(f"""
+                            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem;margin:0.3rem 0;background:#f8f9fa;border-radius:6px;">
+                                <span>{row['Stage']}</span>
+                                <div style="text-align:right;">
+                                    <strong>{row['Count']}</strong>
+                                    <small style="color:#888;">({row['Pct']:.1f}%)</small>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # AVERAGE SCORE BY DEPARTMENT
+                    # ============================================================
+                    st.subheader("📊 Average Score by Department")
                     
                     dept_scores = defaultdict(list)
                     for e in all_emps_scored:
                         dept_scores[e['dept']].append(e['score'])
-                    dept_avg = {d: sum(s)/len(s) for d, s in dept_scores.items()}
-                    dept_df = pd.DataFrame({'Department': list(dept_avg.keys()), 'Avg Score': list(dept_avg.values())})
-                    fig3 = px.bar(dept_df, x='Department', y='Avg Score', color='Avg Score', color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                    fig3.update_layout(height=350, title="Avg Score by Department")
-                    st.plotly_chart(fig3, use_container_width=True)
-                else:
-                    st.info("No scored employees yet.")
+                    
+                    dept_avg_data = []
+                    for dept, scores in dept_scores.items():
+                        dept_avg_data.append({
+                            'Department': dept,
+                            'Avg Score': round(sum(scores)/len(scores), 1),
+                            'Employees': len(scores),
+                            'Min': min(scores),
+                            'Max': max(scores)
+                        })
+                    
+                    dept_avg_df = pd.DataFrame(dept_avg_data).sort_values('Avg Score', ascending=False)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        fig_dept = px.bar(dept_avg_df, x='Department', y='Avg Score', color='Avg Score',
+                                         color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'],
+                                         text='Avg Score')
+                        fig_dept.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                        fig_dept.update_layout(height=400, title="Average Score by Department")
+                        st.plotly_chart(fig_dept, use_container_width=True)
+                    
+                    with col2:
+                        st.dataframe(dept_avg_df, use_container_width=True, hide_index=True,
+                                    column_config={
+                                        'Department': 'Department',
+                                        'Avg Score': st.column_config.NumberColumn('Avg Score', format='%.1f%%'),
+                                        'Employees': 'Employees',
+                                        'Min': st.column_config.NumberColumn('Min', format='%.0f%%'),
+                                        'Max': st.column_config.NumberColumn('Max', format='%.0f%%')
+                                    })
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # REVIEWER & COMMITTEE RECOMMENDATIONS BREAKDOWN
+                    # ============================================================
+                    st.subheader("📋 Recommendations Breakdown")
+                    
+                    # Collect reviewer recommendations
+                    reviewer_recs = defaultdict(int)
+                    committee_recs = defaultdict(int)
+                    
+                    for emp_name, assessment in all_assessments.items():
+                        sc = get_emp_score(emp_name)
+                        if sc == 0: continue
+                        
+                        # Reviewer recommendation
+                        comments = assessment.get('hod_comments', '') or assessment.get('tl_comments', '')
+                        if assessment.get('acceptance') == 'Accepted':
+                            if 'promot' in comments.lower():
+                                reviewer_recs['Promote'] += 1
+                            elif 'salary' in comments.lower() or 'increment' in comments.lower():
+                                reviewer_recs['Salary Review'] += 1
+                            elif 'train' in comments.lower() or 'develop' in comments.lower():
+                                reviewer_recs['Training'] += 1
+                            elif 'pip' in comments.lower() or 'improve' in comments.lower():
+                                reviewer_recs['PIP'] += 1
+                            elif 'status quo' in comments.lower() or 'maintain' in comments.lower():
+                                reviewer_recs['Status Quo'] += 1
+                            else:
+                                reviewer_recs['Completed - No Specific Rec'] += 1
+                        
+                        # Committee recommendation
+                        sr_decision = assessment.get('sr_decision', '')
+                        if 'Overturned' in str(sr_decision):
+                            committee_recs['Overturned'] += 1
+                        elif 'Upheld' in str(sr_decision):
+                            committee_recs['Upheld'] += 1
+                        elif assessment.get('status') == 'Escalated from TL':
+                            committee_recs['Pending Decision'] += 1
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.subheader("Reviewer Recommendation")
+                        if reviewer_recs:
+                            rec_df = pd.DataFrame({'Recommendation': list(reviewer_recs.keys()), 'Count': list(reviewer_recs.values())})
+                            fig_rec = px.pie(rec_df, values='Count', names='Recommendation', hole=0.5,
+                                            color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#CC0000', '#FFD700', '#a0aec0'])
+                            fig_rec.update_layout(height=300)
+                            st.plotly_chart(fig_rec, use_container_width=True)
+                            st.caption(f"Total Participants: {sum(reviewer_recs.values())}")
+                        else:
+                            st.info("No recommendations yet.")
+                    
+                    with col2:
+                        st.subheader("Committee Decision")
+                        if committee_recs:
+                            com_df = pd.DataFrame({'Decision': list(committee_recs.keys()), 'Count': list(committee_recs.values())})
+                            fig_com = px.pie(com_df, values='Count', names='Decision', hole=0.5,
+                                            color_discrete_sequence=['#38a169', '#CC0000', '#d69e2e'])
+                            fig_com.update_layout(height=300)
+                            st.plotly_chart(fig_com, use_container_width=True)
+                            st.caption(f"Total Decisions: {sum(committee_recs.values())}")
+                        else:
+                            st.info("No committee decisions yet.")
+                    
+                    with col3:
+                        st.subheader("Classification Summary")
+                        class_counts = defaultdict(int)
+                        for e in all_emps_scored:
+                            class_counts[e['class']] += 1
+                        class_df = pd.DataFrame({'Class': list(class_counts.keys()), 'Count': list(class_counts.values())})
+                        fig_cls = px.pie(class_df, values='Count', names='Class', hole=0.5,
+                                        color_discrete_sequence=['#E5E4E2', '#FFD700', '#C0C0C0', '#CD7F32', '#71797E', '#A0AEC0'])
+                        fig_cls.update_layout(height=300)
+                        st.plotly_chart(fig_cls, use_container_width=True)
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # AVERAGE PERFORMANCE SCORE & REGION BREAKDOWN
+                    # ============================================================
+                    st.subheader("🌍 Performance Overview")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.markdown(f"""
+                        <div style="text-align:center;padding:2rem;background:linear-gradient(135deg, #1a1a1a, #2d2d2d);border-radius:16px;color:white;">
+                            <div style="font-size:0.9rem;opacity:0.8;">AVERAGE PERFORMANCE SCORE</div>
+                            <div style="font-size:3rem;font-weight:700;color:#38a169;">{avg_all:.1f}%</div>
+                            <div style="font-size:0.8rem;opacity:0.7;">Total Employees: {total_participants}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        # Region breakdown
+                        region_scores = defaultdict(list)
+                        for e in all_emps_scored:
+                            region_scores[e['region']].append(e['score'])
+                        
+                        region_avg = {r: sum(s)/len(s) for r, s in region_scores.items()}
+                        for region, avg in sorted(region_avg.items()):
+                            rc = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#CC0000')
+                            st.markdown(f"""
+                            <div style="text-align:center;padding:1rem;margin:0.3rem 0;background:white;border-radius:10px;border-left:4px solid {rc};">
+                                <strong>🌍 {region}</strong><br>
+                                <span style="font-size:1.5rem;font-weight:700;color:{rc};">{avg:.1f}%</span><br>
+                                <small style="color:#888;">{len(region_scores[region])} employees</small>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    with col3:
+                        # 9-Box distribution
+                        box_dist = defaultdict(int)
+                        for e in all_emps_scored:
+                            box_dist[e['position_name']] += 1
+                        
+                        st.markdown("**9-Box Matrix Distribution**")
+                        for pos, count in sorted(box_dist.items(), key=lambda x: x[1], reverse=True)[:9]:
+                            st.markdown(f"""
+                            <div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #eee;">
+                                <small>{pos}</small>
+                                <strong>{count}</strong>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # AI-POWERED INSIGHTS
+                    # ============================================================
+                    st.subheader("🤖 AI-Powered Performance Insights")
+                    
+                    if st.button("🧠 Generate AI Insights", use_container_width=True, type="primary"):
+                        with st.spinner("Analyzing appraisal data with AI..."):
+                            try:
+                                import openai
+                                openai_key = os.environ.get("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", ""))
+                                if openai_key:
+                                    client = openai.OpenAI(api_key=openai_key)
+                                    
+                                    # Build comprehensive data summary
+                                    insights_text = f"""
+                                    Appraisal Cycle: {st.session_state.appraisal_cycle_name}
+                                    Total Participants: {total_participants}
+                                    Average Score: {avg_all:.1f}%
+                                    Completed: {completed}
+                                    Escalated: {escalated}
+                                    Rejected: {rejected}
+                                    
+                                    Department Scores:
+                                    {dept_avg_df.to_string()}
+                                    
+                                    Classification Distribution:
+                                    {class_df.to_string()}
+                                    
+                                    9-Box Distribution:
+                                    {dict(box_dist)}
+                                    
+                                    Recommendations:
+                                    Reviewer: {dict(reviewer_recs)}
+                                    Committee: {dict(committee_recs)}
+                                    """
+                                    
+                                    response = client.chat.completions.create(
+                                        model="gpt-3.5-turbo",
+                                        messages=[{
+                                            "role": "system",
+                                            "content": "You are a Fortune 500 HR Analytics Director. Analyze this appraisal data and provide: 1) Top 3 key findings 2) Department performance comparison 3) Talent risk areas 4) 3 strategic recommendations for leadership 5) Predicted trends for next cycle. Be specific and data-driven."
+                                        }, {
+                                            "role": "user",
+                                            "content": insights_text
+                                        }],
+                                        temperature=0.5,
+                                        max_tokens=600
+                                    )
+                                    
+                                    st.markdown("### 🤖 AI-Generated Insights")
+                                    st.success("Analysis complete!")
+                                    st.markdown(response.choices[0].message.content)
+                                else:
+                                    st.info("OpenAI API key not configured.")
+                            except Exception as e:
+                                st.warning(f"AI insights unavailable: {str(e)}")
+                                st.markdown("""
+                                ### 📊 Manual Analysis
+                                
+                                **Key Findings:**
+                                1. Review completion rates and identify bottlenecks
+                                2. Compare department performance for best practices
+                                3. Address escalated cases promptly
+                                
+                                **Recommendations:**
+                                1. Implement pre-review calibration sessions
+                                2. Provide additional training for reviewers with high rejection rates
+                                3. Fast-track high-performing employees for leadership development
+                                """)
+                    
+                    # ============================================================
+                    # EXPORT
+                    # ============================================================
+                    st.markdown("---")
+                    st.subheader("📥 Export Analytics")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("📊 Export Full Report (CSV)", use_container_width=True):
+                            export_data = []
+                            for e in all_emps_scored:
+                                assessment = all_assessments.get(e['name'], {})
+                                export_data.append({
+                                    'Employee': e['name'],
+                                    'Department': e['dept'],
+                                    'Region': e['region'],
+                                    'Score': e['score'],
+                                    'Classification': e['class'],
+                                    '9-Box Position': e['position_name'],
+                                    'Potential': e['potential'],
+                                    'Status': assessment.get('acceptance', assessment.get('status', 'N/A')),
+                                    'Reviewer': assessment.get('reviewer_type', 'N/A')
+                                })
+                            export_df = pd.DataFrame(export_data)
+                            st.download_button("📥 Download CSV", export_df.to_csv(index=False), "appraisal_analytics.csv", "text/csv")
+                    
+                    with col2:
+                        if st.button("📊 Export Department Summary (CSV)", use_container_width=True):
+                            st.download_button("📥 Download CSV", dept_avg_df.to_csv(index=False), "department_summary.csv", "text/csv")
             
             # ============================================================
             # TAB 2: SUBMISSIONS
@@ -4662,59 +5053,140 @@ def performance_okrs():
                     else: st.info("No data.")
             
             # ============================================================
-            # TAB 6: RECOMMENDATIONS
+            # COMMITTEE TAB 6: RECOMMENDATIONS (FROM ACTUAL REVIEWS)
             # ============================================================
             with committee_tabs[6]:
-                st.subheader("📋 Talent Recommendations")
-                st.markdown("*Based on appraisal scores and potential assessment*")
+                st.subheader("📋 Appraisal Recommendations")
+                st.markdown("*Based on actual reviewer feedback and committee decisions*")
                 
-                recs = {'🚀 Promote': 0, '💰 Salary Review': 0, '📚 Training & Development': 0, '⚠️ Performance Improvement Plan': 0, '➡️ Status Quo': 0, '⭐ Fast-Track Leadership': 0}
-                for e in all_emps_scored:
-                    s = e['score']
-                    if s >= 90: recs['🚀 Promote'] += 1; recs['⭐ Fast-Track Leadership'] += 1
-                    elif s >= 80: recs['💰 Salary Review'] += 1
-                    elif s >= 65: recs['➡️ Status Quo'] += 1
-                    elif s >= 55: recs['📚 Training & Development'] += 1
-                    else: recs['⚠️ Performance Improvement Plan'] += 1
+                # Collect real recommendations from assessments
+                recommendations = []
                 
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.subheader("📊 Recommendation Distribution")
-                    rec_df = pd.DataFrame({'Recommendation': list(recs.keys()), 'Count': list(recs.values())})
-                    rec_df = rec_df[rec_df['Count'] > 0]
-                    if not rec_df.empty:
-                        fig = px.pie(rec_df, values='Count', names='Recommendation', hole=0.5, color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#CC0000', '#a0aec0', '#FFD700'])
-                        fig.update_layout(height=350)
-                        st.plotly_chart(fig, use_container_width=True)
-                with c2:
-                    st.subheader("👥 Actions Required")
-                    for rec, count in recs.items():
-                        if count > 0:
+                for emp_name, assessment in all_assessments.items():
+                    sc = get_emp_score(emp_name)
+                    if sc == 0:
+                        continue
+                    
+                    cl, co = get_classification(sc)
+                    dept = get_employee_dept(emp_name)
+                    region = get_region(get_employee_subsidiary(emp_name))
+                    
+                    # Get the actual reviewer recommendation from comments
+                    hod_comments = assessment.get('hod_comments', '')
+                    tl_comments = assessment.get('tl_comments', '')
+                    sr_decision = assessment.get('sr_decision', '')
+                    acceptance = assessment.get('acceptance', '')
+                    reviewer_type = assessment.get('reviewer_type', 'N/A')
+                    
+                    # Determine real recommendation
+                    recommendation = ""
+                    recommendation_source = ""
+                    
+                    if sr_decision and 'Overturned' in str(sr_decision):
+                        recommendation = "OVERTURNED BY COMMITTEE - Staff scores accepted"
+                        recommendation_source = "Appraisal Committee"
+                    elif sr_decision and 'Upheld' in str(sr_decision):
+                        recommendation = "UPHELD BY COMMITTEE - Reviewer decision stands"
+                        recommendation_source = "Appraisal Committee"
+                    elif acceptance == 'Accepted':
+                        # Check reviewer comments for recommendation
+                        comments = hod_comments or tl_comments or ''
+                        if 'promot' in comments.lower():
+                            recommendation = "PROMOTE - " + comments[:100]
+                        elif 'salary' in comments.lower() or 'increment' in comments.lower():
+                            recommendation = "SALARY REVIEW - " + comments[:100]
+                        elif 'train' in comments.lower() or 'develop' in comments.lower():
+                            recommendation = "TRAINING & DEVELOPMENT - " + comments[:100]
+                        elif 'pip' in comments.lower() or 'improve' in comments.lower():
+                            recommendation = "PERFORMANCE IMPROVEMENT PLAN - " + comments[:100]
+                        elif 'consistent' in comments.lower() or 'good' in comments.lower() or 'solid' in comments.lower():
+                            recommendation = "MAINTAIN - Consistent Performer"
+                        else:
+                            recommendation = "REVIEW COMPLETED - " + (comments[:80] if comments else "No specific recommendation")
+                        recommendation_source = f"{reviewer_type} Review"
+                    elif acceptance == 'Rejected':
+                        recommendation = "DISPUTED - Awaiting resolution"
+                        recommendation_source = "Pending"
+                    elif assessment.get('status') == 'Escalated from TL':
+                        recommendation = "ESCALATED - Pending Committee Decision"
+                        recommendation_source = "Pending Committee"
+                    else:
+                        recommendation = "IN PROGRESS - Review not yet complete"
+                        recommendation_source = "Pending"
+                    
+                    recommendations.append({
+                        'Employee': emp_name,
+                        'Department': dept,
+                        'Region': region,
+                        'Score': sc,
+                        'Classification': cl,
+                        'Reviewer': reviewer_type,
+                        'Recommendation': recommendation,
+                        'Source': recommendation_source,
+                        'Status': acceptance or assessment.get('status', 'Pending')
+                    })
+                
+                if recommendations:
+                    # Summary by recommendation type
+                    st.subheader("📊 Recommendation Summary")
+                    
+                    rec_categories = defaultdict(list)
+                    for r in recommendations:
+                        cat = r['Recommendation'].split(' - ')[0] if ' - ' in r['Recommendation'] else r['Recommendation'][:50]
+                        rec_categories[cat].append(r)
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        rec_summary = {k: len(v) for k, v in rec_categories.items()}
+                        if rec_summary:
+                            rec_df = pd.DataFrame({'Recommendation': list(rec_summary.keys()), 'Count': list(rec_summary.values())})
+                            fig = px.pie(rec_df, values='Count', names='Recommendation', hole=0.5,
+                                        color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#CC0000', '#FFD700', '#a0aec0'])
+                            fig.update_layout(height=350, title="Recommendations from Reviews")
+                            st.plotly_chart(fig, use_container_width=True)
+                    
+                    with c2:
+                        st.subheader("👥 By Status")
+                        status_counts = defaultdict(int)
+                        for r in recommendations:
+                            status_counts[r['Source']] += 1
+                        for source, count in status_counts.items():
                             st.markdown(f"""
                             <div class="kpi-card">
-                                <strong>{rec}</strong>
+                                <strong>{source}</strong>
                                 <span style="float:right;font-size:1.3rem;font-weight:700;">{count}</span>
                                 <br><small style="color:#888;">employees</small>
                             </div>
                             """, unsafe_allow_html=True)
-                
-                st.markdown("---")
-                st.subheader("📋 Detailed by Employee")
-                for e in sorted(all_emps_scored, key=lambda x: x['score'], reverse=True):
-                    s = e['score']
-                    if s >= 90: rec = '🚀 Promote + ⭐ Fast-Track'
-                    elif s >= 80: rec = '💰 Salary Review'
-                    elif s >= 65: rec = '➡️ Status Quo'
-                    elif s >= 55: rec = '📚 Training & Development'
-                    else: rec = '⚠️ Performance Improvement Plan'
-                    with st.expander(f"{e['class']} {e['name']} — {s:.1f}% — {rec}", expanded=False):
-                        st.markdown(f"**Department:** {e['dept']}")
-                        st.markdown(f"**Region:** {e['region']}")
-                        st.markdown(f"**Score:** {s:.1f}%")
-                        st.markdown(f"**Classification:** {e['class']}")
-                        st.markdown(f"**9-Box Position:** {e['position_name']}")
-                        st.markdown(f"**Potential Level:** {e['potential']}")
-                        st.markdown(f"**Recommendation:** {rec}")
+                    
+                    st.markdown("---")
+                    st.subheader("📋 Detailed Recommendations by Employee")
+                    
+                    for r in sorted(recommendations, key=lambda x: x['Score'], reverse=True):
+                        border_color = '#38a169' if r['Status'] == 'Accepted' else '#CC0000' if r['Status'] == 'Rejected' else '#d69e2e'
+                        source_badge = {
+                            'Appraisal Committee': 'badge-green',
+                            'HOD Review': 'badge-green',
+                            'Team Lead Review': 'badge-green',
+                            'Pending': 'badge-yellow',
+                            'Pending Committee': 'badge-red'
+                        }.get(r['Source'], 'badge-gray')
+                        
+                        with st.expander(f"{r['Classification']} {r['Employee']} — {r['Score']:.1f}% — {r['Source']}", expanded=False):
+                            st.markdown(f"""
+                            <div style="padding:0.5rem;border-left:4px solid {border_color};margin:0.3rem 0;">
+                                <strong>👤 {r['Employee']}</strong><br>
+                                <small>🏢 {r['Department']} | 🌍 {r['Region']} | 🏅 {r['Classification']}</small><br>
+                                <small>📊 Score: {r['Score']:.1f}% | Reviewer: {r['Reviewer']}</small><br>
+                                <small>Status: {r['Status']} | Source: <span class="badge {source_badge}">{r['Source']}</span></small>
+                                <div style="margin-top:0.5rem;padding:0.5rem;background:#f8f9fa;border-radius:6px;">
+                                    <strong>💡 Recommendation:</strong><br>
+                                    <span style="color:#CC0000;">{r['Recommendation']}</span>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                else:
+                    st.info("No appraisal data available for recommendations.")
 
 
 
