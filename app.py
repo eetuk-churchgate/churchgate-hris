@@ -3478,7 +3478,7 @@ def performance_okrs():
                     st.warning("🛑 Cycle deactivated."); st.rerun()
     
     # ============================================================
-    # TAB 8: ADVANCED DASHBOARD - COMPLETE FINAL VERSION
+    # TAB 8: ADVANCED DASHBOARD - NO st.rerun() - OPTIMIZED
     # ============================================================
     with tab8:
         st.markdown('<div class="glass-card"><h3>📊 Advanced Dashboard</h3><p style="color:#888;">Full Group-Wide Performance Disclosure & Analytics</p></div>', unsafe_allow_html=True)
@@ -3504,7 +3504,8 @@ def performance_okrs():
                 with filter_col2:
                     if dash_region_filter == 'All Regions':
                         all_subs = []
-                        for subs in SUBSIDIARY_OPTIONS_DASH.values(): all_subs.extend(subs)
+                        for subs in SUBSIDIARY_OPTIONS_DASH.values():
+                            all_subs.extend(subs)
                     else:
                         all_subs = SUBSIDIARY_OPTIONS_DASH.get(dash_region_filter, [])
                     dash_sub_filter = st.selectbox("🏢 Subsidiary", ['All Subsidiaries'] + sorted(all_subs), key="dash_sub_filter")
@@ -3512,9 +3513,12 @@ def performance_okrs():
                     dash_dept_filter = st.selectbox("🏭 Department", ['All Departments'] + all_depts, key="dash_dept_filter")
                 
                 def apply_dash_filters(region, subsidiary, department):
-                    if dash_region_filter != 'All Regions' and region != dash_region_filter: return False
-                    if dash_sub_filter != 'All Subsidiaries' and subsidiary != dash_sub_filter: return False
-                    if dash_dept_filter != 'All Departments' and department != dash_dept_filter: return False
+                    if dash_region_filter != 'All Regions' and region != dash_region_filter:
+                        return False
+                    if dash_sub_filter != 'All Subsidiaries' and subsidiary != dash_sub_filter:
+                        return False
+                    if dash_dept_filter != 'All Departments' and department != dash_dept_filter:
+                        return False
                     return True
                 
                 st.markdown("---")
@@ -3535,9 +3539,12 @@ def performance_okrs():
                     total_rejected = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected'])
                     
                     c1, c2, c3, c4, c5, c6 = st.columns(6)
-                    c1.metric("✅ KPIs Approved", total_approved); c2.metric("📝 Submitted", total_submitted)
-                    c3.metric("📊 Appraisals In", total_appraisals_in); c4.metric("🎉 Completed", total_completed)
-                    c5.metric("🚨 Escalated", total_escalated); c6.metric("❌ Rejected", total_rejected)
+                    c1.metric("✅ KPIs Approved", total_approved)
+                    c2.metric("📝 Submitted", total_submitted)
+                    c3.metric("📊 Appraisals In", total_appraisals_in)
+                    c4.metric("🎉 Completed", total_completed)
+                    c5.metric("🚨 Escalated", total_escalated)
+                    c6.metric("❌ Rejected", total_rejected)
                     
                     st.markdown("---")
                     st.subheader("🌍 Performance by Region → Subsidiary → Department")
@@ -3579,7 +3586,8 @@ def performance_okrs():
                             expand_icon = "▼" if st.session_state[sub_key] else "▶"
                             col1, col2 = st.columns([1, 20])
                             with col1:
-                                if st.button(expand_icon, key=f"btn_{sub_key}"): st.session_state[sub_key] = not st.session_state[sub_key]; st.rerun()
+                                if st.button(expand_icon, key=f"btn_{sub_key}"):
+                                    st.session_state[sub_key] = not st.session_state[sub_key]
                             with col2:
                                 st.markdown(f"""<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {subsidiary} — 👥 {sub_emps} | ✅ {sub_approved} KPIs | 🎉 {sub_completed} Completed</div>""", unsafe_allow_html=True)
                             if st.session_state[sub_key]:
@@ -3629,7 +3637,8 @@ def performance_okrs():
                                 expand_icon = "▼" if st.session_state[sub_key] else "▶"
                                 col1, col2 = st.columns([1, 20])
                                 with col1:
-                                    if st.button(expand_icon, key=f"revbtn_{sub_key}"): st.session_state[sub_key] = not st.session_state[sub_key]; st.rerun()
+                                    if st.button(expand_icon, key=f"revbtn_{sub_key}"):
+                                        st.session_state[sub_key] = not st.session_state[sub_key]
                                 with col2: st.markdown(f"""<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {subsidiary}</div>""", unsafe_allow_html=True)
                                 if st.session_state[sub_key]:
                                     for department in sorted(reviewer_breakdown[region][subsidiary].keys()):
@@ -3678,7 +3687,8 @@ def performance_okrs():
                                 expand_icon = "▼" if st.session_state[sub_key] else "▶"
                                 col1, col2 = st.columns([1, 20])
                                 with col1:
-                                    if st.button(expand_icon, key=f"scorebtn_{sub_key}"): st.session_state[sub_key] = not st.session_state[sub_key]; st.rerun()
+                                    if st.button(expand_icon, key=f"scorebtn_{sub_key}"):
+                                        st.session_state[sub_key] = not st.session_state[sub_key]
                                 with col2: st.markdown(f'<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {subsidiary}</div>', unsafe_allow_html=True)
                                 if st.session_state[sub_key]:
                                     for department in sorted(score_breakdown[region][subsidiary].keys()):
@@ -3717,7 +3727,8 @@ def performance_okrs():
                                 expand_icon = "▼" if st.session_state[sub_key] else "▶"
                                 col1, col2 = st.columns([1, 20])
                                 with col1:
-                                    if st.button(expand_icon, key=f"rejbtn_{sub_key}"): st.session_state[sub_key] = not st.session_state[sub_key]; st.rerun()
+                                    if st.button(expand_icon, key=f"rejbtn_{sub_key}"):
+                                        st.session_state[sub_key] = not st.session_state[sub_key]
                                 with col2: st.markdown(f'<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {sub}</div>', unsafe_allow_html=True)
                                 if st.session_state[sub_key]:
                                     for dept in sorted(rej_breakdown[region][sub].keys()):
@@ -3784,7 +3795,8 @@ def performance_okrs():
                             expand_icon = "▼" if st.session_state[sub_key] else "▶"
                             col1, col2 = st.columns([1, 20])
                             with col1:
-                                if st.button(expand_icon, key=f"hierbtn_{sub_key}"): st.session_state[sub_key] = not st.session_state[sub_key]; st.rerun()
+                                if st.button(expand_icon, key=f"hierbtn_{sub_key}"):
+                                    st.session_state[sub_key] = not st.session_state[sub_key]
                             with col2: st.markdown(f"""<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {subsidiary} — {len(departments)} depts | 👥 {sub_emp_count}</div>""", unsafe_allow_html=True)
                             if st.session_state[sub_key]:
                                 for department in sorted(departments.keys()):
@@ -3795,7 +3807,8 @@ def performance_okrs():
                                     dept_icon = "▼" if st.session_state[dept_key] else "▶"
                                     col1d, col2d = st.columns([1, 20])
                                     with col1d:
-                                        if st.button(dept_icon, key=f"hierdeptbtn_{dept_key}"): st.session_state[dept_key] = not st.session_state[dept_key]; st.rerun()
+                                        if st.button(dept_icon, key=f"hierdeptbtn_{dept_key}"):
+                                            st.session_state[dept_key] = not st.session_state[dept_key]
                                     with col2d:
                                         dept_completed = sum(1 for e in employees.values() if e['acceptance'] == 'Accepted'); dept_rejected = sum(1 for e in employees.values() if e['acceptance'] == 'Rejected')
                                         st.markdown(f"""<div style="background:#f8f9fa;padding:0.4rem 1rem;border-radius:6px;margin:0.2rem 0;border-left:3px solid #CC0000;">🏭 {department} — 👥 {len(employees)} | 🎉 {dept_completed} done | ❌ {dept_rejected} rejected</div>""", unsafe_allow_html=True)
@@ -3850,172 +3863,84 @@ def performance_okrs():
                             emp_id = st.session_state.user.get('employee_id', 'N/A')
                             reviewer = user_assessment.get('reviewer_type', 'HOD')
                             
-                            if avg_score >= 90:
-                                pdf_class_color = (229, 228, 226)
-                            elif avg_score >= 80:
-                                pdf_class_color = (255, 215, 0)
-                            elif avg_score >= 70:
-                                pdf_class_color = (192, 192, 192)
-                            elif avg_score >= 60:
-                                pdf_class_color = (205, 127, 50)
-                            elif avg_score >= 50:
-                                pdf_class_color = (113, 121, 126)
-                            else:
-                                pdf_class_color = (160, 174, 192)
+                            if avg_score >= 90: pdf_class_color = (229, 228, 226)
+                            elif avg_score >= 80: pdf_class_color = (255, 215, 0)
+                            elif avg_score >= 70: pdf_class_color = (192, 192, 192)
+                            elif avg_score >= 60: pdf_class_color = (205, 127, 50)
+                            elif avg_score >= 50: pdf_class_color = (113, 121, 126)
+                            else: pdf_class_color = (160, 174, 192)
                             
-                            if avg_score >= 90:
-                                grade = "A+"
-                            elif avg_score >= 80:
-                                grade = "A"
-                            elif avg_score >= 70:
-                                grade = "B"
-                            elif avg_score >= 60:
-                                grade = "C"
-                            elif avg_score >= 50:
-                                grade = "D"
-                            else:
-                                grade = "F"
+                            if avg_score >= 90: grade = "A+"
+                            elif avg_score >= 80: grade = "A"
+                            elif avg_score >= 70: grade = "B"
+                            elif avg_score >= 60: grade = "C"
+                            elif avg_score >= 50: grade = "D"
+                            else: grade = "F"
                             
-                            if avg_score >= 80:
-                                rating = "EXCEEDS EXPECTATIONS"
-                            elif avg_score >= 60:
-                                rating = "MEETS EXPECTATIONS"
-                            else:
-                                rating = "BELOW EXPECTATIONS"
+                            if avg_score >= 80: rating = "EXCEEDS EXPECTATIONS"
+                            elif avg_score >= 60: rating = "MEETS EXPECTATIONS"
+                            else: rating = "BELOW EXPECTATIONS"
                             
                             pillar_scores = {}
                             for key, val in final_scores.items():
                                 pillar_name = key.split('_')[0] if '_' in key else key[:35]
-                                if pillar_name not in pillar_scores:
-                                    pillar_scores[pillar_name] = []
+                                if pillar_name not in pillar_scores: pillar_scores[pillar_name] = []
                                 pillar_scores[pillar_name].append(int(val) if val else 0)
                             pillar_avgs = {k: sum(v)/len(v) for k, v in pillar_scores.items()}
                             
                             pdf = FPDF(orientation='L', unit='mm', format='A4')
                             pdf.add_page()
-                            
-                            pdf.set_draw_color(*pdf_class_color)
-                            pdf.set_line_width(2)
-                            pdf.rect(6, 6, 285, 198)
-                            pdf.set_line_width(0.5)
-                            pdf.rect(8, 8, 281, 194)
-                            
-                            pdf.set_fill_color(26, 26, 26)
-                            pdf.rect(10, 10, 277, 40, 'F')
-                            pdf.set_fill_color(204, 0, 0)
-                            pdf.rect(10, 50, 277, 3, 'F')
-                            pdf.set_fill_color(*pdf_class_color)
-                            pdf.rect(10, 53, 277, 1.5, 'F')
-                            pdf.set_font('Helvetica', 'B', 28)
-                            pdf.set_text_color(255, 255, 255)
+                            pdf.set_draw_color(*pdf_class_color); pdf.set_line_width(2)
+                            pdf.rect(6, 6, 285, 198); pdf.set_line_width(0.5); pdf.rect(8, 8, 281, 194)
+                            pdf.set_fill_color(26, 26, 26); pdf.rect(10, 10, 277, 40, 'F')
+                            pdf.set_fill_color(204, 0, 0); pdf.rect(10, 50, 277, 3, 'F')
+                            pdf.set_fill_color(*pdf_class_color); pdf.rect(10, 53, 277, 1.5, 'F')
+                            pdf.set_font('Helvetica', 'B', 28); pdf.set_text_color(255, 255, 255)
                             pdf.cell(0, 22, 'CHURCHGATE GROUP', ln=True, align='C')
-                            pdf.set_font('Helvetica', 'B', 13)
-                            pdf.set_text_color(*pdf_class_color)
+                            pdf.set_font('Helvetica', 'B', 13); pdf.set_text_color(*pdf_class_color)
                             pdf.cell(0, 8, 'PERFORMANCE APPRAISAL CERTIFICATE OF ACHIEVEMENT', ln=True, align='C')
-                            pdf.ln(12)
-                            
-                            pdf.set_text_color(26, 26, 26)
-                            pdf.set_font('Helvetica', '', 13)
-                            pdf.cell(0, 8, 'This is to certify that', ln=True, align='C')
-                            pdf.ln(4)
-                            pdf.set_font('Helvetica', 'B', 24)
-                            pdf.set_text_color(204, 0, 0)
-                            pdf.cell(0, 14, safe_name.upper(), ln=True, align='C')
-                            pdf.ln(4)
-                            pdf.set_text_color(26, 26, 26)
-                            pdf.set_font('Helvetica', '', 12)
+                            pdf.ln(12); pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 13)
+                            pdf.cell(0, 8, 'This is to certify that', ln=True, align='C'); pdf.ln(4)
+                            pdf.set_font('Helvetica', 'B', 24); pdf.set_text_color(204, 0, 0)
+                            pdf.cell(0, 14, safe_name.upper(), ln=True, align='C'); pdf.ln(4)
+                            pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 12)
                             pdf.cell(0, 8, f'has successfully completed the {st.session_state.appraisal_cycle_name}', ln=True, align='C')
                             pdf.cell(0, 8, f'from {st.session_state.appraisal_start} to {st.session_state.appraisal_end}', ln=True, align='C')
                             pdf.ln(6)
-                            
-                            box_y = pdf.get_y()
-                            pdf.set_fill_color(245, 245, 245)
-                            pdf.rect(25, box_y, 247, 28, 'F')
+                            box_y = pdf.get_y(); pdf.set_fill_color(245, 245, 245); pdf.rect(25, box_y, 247, 28, 'F')
                             col_w = 247 / 4
-                            metrics = [
-                                ('OVERALL SCORE', f'{avg_score:.1f}%', (56, 161, 105)),
-                                ('GRADE', grade, (204, 0, 0)),
-                                ('RATING', rating, (*pdf_class_color,)),
-                                ('CLASSIFICATION', classification, (*pdf_class_color,))
-                            ]
+                            metrics = [('OVERALL SCORE', f'{avg_score:.1f}%', (56, 161, 105)), ('GRADE', grade, (204, 0, 0)), ('RATING', rating, (*pdf_class_color,)), ('CLASSIFICATION', classification, (*pdf_class_color,))]
                             for i, (label, value, color) in enumerate(metrics):
-                                pdf.set_xy(25 + i*col_w, box_y + 4)
-                                pdf.set_font('Helvetica', '', 8)
-                                pdf.set_text_color(128, 128, 128)
-                                pdf.cell(col_w, 6, label, align='C')
-                                pdf.set_xy(25 + i*col_w, box_y + 12)
-                                pdf.set_font('Helvetica', 'B', 13)
-                                pdf.set_text_color(*color[:3])
-                                pdf.cell(col_w, 8, value, align='C')
-                            pdf.set_y(box_y + 32)
-                            
-                            pdf.ln(4)
-                            pdf.set_font('Helvetica', 'B', 11)
-                            pdf.set_text_color(26, 26, 26)
-                            pdf.cell(0, 8, 'PERFORMANCE PILLAR BREAKDOWN', ln=True, align='C')
-                            pdf.ln(3)
+                                pdf.set_xy(25 + i*col_w, box_y + 4); pdf.set_font('Helvetica', '', 8); pdf.set_text_color(128, 128, 128); pdf.cell(col_w, 6, label, align='C')
+                                pdf.set_xy(25 + i*col_w, box_y + 12); pdf.set_font('Helvetica', 'B', 13); pdf.set_text_color(*color[:3]); pdf.cell(col_w, 8, value, align='C')
+                            pdf.set_y(box_y + 32); pdf.ln(4)
+                            pdf.set_font('Helvetica', 'B', 11); pdf.set_text_color(26, 26, 26)
+                            pdf.cell(0, 8, 'PERFORMANCE PILLAR BREAKDOWN', ln=True, align='C'); pdf.ln(3)
                             table_x = 40
-                            pdf.set_fill_color(26, 26, 26)
-                            pdf.set_text_color(255, 255, 255)
-                            pdf.set_font('Helvetica', 'B', 9)
+                            pdf.set_fill_color(26, 26, 26); pdf.set_text_color(255, 255, 255); pdf.set_font('Helvetica', 'B', 9)
                             pdf.set_xy(table_x, pdf.get_y())
-                            pdf.cell(110, 8, ' Strategic Pillar', 1, 0, 'L', True)
-                            pdf.cell(40, 8, 'Score', 1, 0, 'C', True)
-                            pdf.cell(40, 8, 'Rating', 1, 0, 'C', True)
-                            pdf.cell(40, 8, 'Grade', 1, 0, 'C', True)
-                            pdf.ln()
-                            pdf.set_text_color(26, 26, 26)
-                            pdf.set_font('Helvetica', '', 8)
+                            pdf.cell(110, 8, ' Strategic Pillar', 1, 0, 'L', True); pdf.cell(40, 8, 'Score', 1, 0, 'C', True); pdf.cell(40, 8, 'Rating', 1, 0, 'C', True); pdf.cell(40, 8, 'Grade', 1, 0, 'C', True); pdf.ln()
+                            pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 8)
                             for pillar, avg in pillar_avgs.items():
-                                if avg >= 90:
-                                    p_grade = "A+"
-                                elif avg >= 80:
-                                    p_grade = "A"
-                                elif avg >= 70:
-                                    p_grade = "B"
-                                elif avg >= 60:
-                                    p_grade = "C"
-                                elif avg >= 50:
-                                    p_grade = "D"
-                                else:
-                                    p_grade = "F"
-                                if avg >= 80:
-                                    p_rating = 'Exceeds'
-                                elif avg >= 60:
-                                    p_rating = 'Meets'
-                                else:
-                                    p_rating = 'Below'
-                                pdf.set_xy(table_x, pdf.get_y())
-                                pdf.cell(110, 7, f' {pillar[:45]}', 1, 0, 'L')
-                                pdf.cell(40, 7, f'{avg:.1f}%', 1, 0, 'C')
-                                pdf.cell(40, 7, p_rating, 1, 0, 'C')
-                                pdf.cell(40, 7, p_grade, 1, 0, 'C')
-                                pdf.ln()
-                            pdf.ln(8)
-                            pdf.set_font('Helvetica', '', 9)
-                            pdf.set_text_color(80, 80, 80)
+                                if avg >= 90: p_grade = "A+"
+                                elif avg >= 80: p_grade = "A"
+                                elif avg >= 70: p_grade = "B"
+                                elif avg >= 60: p_grade = "C"
+                                elif avg >= 50: p_grade = "D"
+                                else: p_grade = "F"
+                                if avg >= 80: p_rating = 'Exceeds'
+                                elif avg >= 60: p_rating = 'Meets'
+                                else: p_rating = 'Below'
+                                pdf.set_xy(table_x, pdf.get_y()); pdf.cell(110, 7, f' {pillar[:45]}', 1, 0, 'L'); pdf.cell(40, 7, f'{avg:.1f}%', 1, 0, 'C'); pdf.cell(40, 7, p_rating, 1, 0, 'C'); pdf.cell(40, 7, p_grade, 1, 0, 'C'); pdf.ln()
+                            pdf.ln(8); pdf.set_font('Helvetica', '', 9); pdf.set_text_color(80, 80, 80)
                             pdf.cell(0, 6, f'Department: {dept}    |    Reviewer: {reviewer}    |    Employee ID: {emp_id}', ln=True, align='C')
                             pdf.cell(0, 6, f'Date of Issue: {now_wat.strftime("%B %d, %Y")}    |    Time: {now_wat.strftime("%H:%M WAT")}', ln=True, align='C')
-                            pdf.ln(6)
-                            sig_w = 75
-                            pdf.set_font('Helvetica', 'B', 9)
-                            pdf.set_text_color(26, 26, 26)
-                            pdf.cell(sig_w, 7, '_______________________', align='C')
-                            pdf.cell(25, 7, '')
-                            pdf.cell(sig_w, 7, '_______________________', align='C')
-                            pdf.cell(25, 7, '')
-                            pdf.cell(sig_w, 7, '_______________________', align='C')
-                            pdf.ln()
-                            pdf.set_font('Helvetica', '', 8)
-                            pdf.set_text_color(128, 128, 128)
-                            pdf.cell(sig_w, 5, 'Reviewer / HOD', align='C')
-                            pdf.cell(25, 5, '')
-                            pdf.cell(sig_w, 5, 'HR Director', align='C')
-                            pdf.cell(25, 5, '')
-                            pdf.cell(sig_w, 5, 'GMD / CEO', align='C')
-                            pdf.ln(12)
-                            pdf.set_font('Helvetica', 'I', 7)
-                            pdf.set_text_color(160, 160, 160)
+                            pdf.ln(6); sig_w = 75
+                            pdf.set_font('Helvetica', 'B', 9); pdf.set_text_color(26, 26, 26)
+                            pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.cell(25, 7, ''); pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.cell(25, 7, ''); pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.ln()
+                            pdf.set_font('Helvetica', '', 8); pdf.set_text_color(128, 128, 128)
+                            pdf.cell(sig_w, 5, 'Reviewer / HOD', align='C'); pdf.cell(25, 5, ''); pdf.cell(sig_w, 5, 'HR Director', align='C'); pdf.cell(25, 5, ''); pdf.cell(sig_w, 5, 'GMD / CEO', align='C')
+                            pdf.ln(12); pdf.set_font('Helvetica', 'I', 7); pdf.set_text_color(160, 160, 160)
                             pdf.cell(0, 5, 'This certificate is electronically generated by Churchgate Group HRIS and is valid without physical signature.', ln=True, align='C')
                             pdf.cell(0, 5, 'Churchgate Group - Nigeria | hris@churchgate.com', ln=True, align='C')
                             
@@ -4024,37 +3949,26 @@ def performance_okrs():
                             st.success("✅ Fortune 500 Certificate ready!")
                         except Exception as e:
                             st.error(f"PDF error: {str(e)}")
-            
-            if st.session_state.appraisal_cycle_active:
-                current_status = user_assessment.get('status', 'Not Started')
-                acceptance = user_assessment.get('acceptance', '')
                 
-                # If accepted, always show as complete
-                if acceptance == 'Accepted' or current_status == 'Completed':
-                    current_status = 'Completed'
+                if st.session_state.appraisal_cycle_active:
+                    current_status = user_assessment.get('status', 'Not Started')
+                    acceptance = user_assessment.get('acceptance', '')
+                    if acceptance == 'Accepted' or current_status == 'Completed':
+                        current_status = 'Completed'
+                    steps = [("Set KPIs", 1), ("Self-Assessment", 2), ("Review", 3), ("Complete", 4)]
+                    status_map = {'Not Started': 0, 'KPIs Set': 1, 'Submitted': 2, 'Approved': 3, 'Awaiting HOD Re-review': 3, 'Awaiting TL Re-review': 3, 'Accepted': 4, 'Completed': 4}
+                    current_step = status_map.get(current_status, 0)
+                    cols = st.columns(4)
+                    for i, (step_name, step_num) in enumerate(steps):
+                        with cols[i]:
+                            if step_num < current_step: st.success(f"✅ {step_name}")
+                            elif step_num == current_step: st.success(f"✅ {step_name}")
+                            else: st.markdown(f"⏳ {step_name}")
                 
-                steps = [("Set KPIs", 1), ("Self-Assessment", 2), ("Review", 3), ("Complete", 4)]
-                status_map = {
-                    'Not Started': 0, 'KPIs Set': 1, 'Submitted': 2,
-                    'Approved': 3, 'Awaiting HOD Re-review': 3,
-                    'Awaiting TL Re-review': 3, 'Accepted': 4, 'Completed': 4
-                }
-                current_step = status_map.get(current_status, 0)
-                cols = st.columns(4)
-                for i, (step_name, step_num) in enumerate(steps):
-                    with cols[i]:
-                        if step_num < current_step:
-                            st.success(f"✅ {step_name}")
-                        elif step_num == current_step:
-                            st.success(f"✅ {step_name}")
-                        else:
-                            st.markdown(f"⏳ {step_name}")
-            
-            pillar_data = load_user_pillar_data()
-            for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
-                pd_data = pillar_data[pillar_name]
-                status_text, color = get_kpi_status(pd_data['progress'])
-                st.markdown(f"""<div class="glass-card" style="border-left:4px solid {color};padding:0.8rem;"><strong>{pillar_name}</strong> ({pd_data['weight']}%)<br><small>Progress: {pd_data['progress']}% | {pd_data['status']}</small><div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;"><div style="background:{color};width:{pd_data['progress']}%;height:6px;border-radius:3px;"></div></div></div>""", unsafe_allow_html=True)
+                pillar_data = load_user_pillar_data()
+                for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                    pd_data = pillar_data[pillar_name]; status_text, color = get_kpi_status(pd_data['progress'])
+                    st.markdown(f"""<div class="glass-card" style="border-left:4px solid {color};padding:0.8rem;"><strong>{pillar_name}</strong> ({pd_data['weight']}%)<br><small>Progress: {pd_data['progress']}% | {pd_data['status']}</small><div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;"><div style="background:{color};width:{pd_data['progress']}%;height:6px;border-radius:3px;"></div></div></div>""", unsafe_allow_html=True)
                 
                 total_prog = sum(p['progress'] * p['weight'] / 100 for p in pillar_data.values())
                 c1, c2, c3 = st.columns(3)
@@ -4109,167 +4023,84 @@ def performance_okrs():
                         emp_id = st.session_state.user.get('employee_id', 'N/A')
                         reviewer = user_assessment.get('reviewer_type', 'HOD')
                         
-                        if avg_score >= 90:
-                            pdf_class_color = (229, 228, 226)
-                        elif avg_score >= 80:
-                            pdf_class_color = (255, 215, 0)
-                        elif avg_score >= 70:
-                            pdf_class_color = (192, 192, 192)
-                        elif avg_score >= 60:
-                            pdf_class_color = (205, 127, 50)
-                        elif avg_score >= 50:
-                            pdf_class_color = (113, 121, 126)
-                        else:
-                            pdf_class_color = (160, 174, 192)
+                        if avg_score >= 90: pdf_class_color = (229, 228, 226)
+                        elif avg_score >= 80: pdf_class_color = (255, 215, 0)
+                        elif avg_score >= 70: pdf_class_color = (192, 192, 192)
+                        elif avg_score >= 60: pdf_class_color = (205, 127, 50)
+                        elif avg_score >= 50: pdf_class_color = (113, 121, 126)
+                        else: pdf_class_color = (160, 174, 192)
                         
-                        if avg_score >= 90:
-                            grade = "A+"
-                        elif avg_score >= 80:
-                            grade = "A"
-                        elif avg_score >= 70:
-                            grade = "B"
-                        elif avg_score >= 60:
-                            grade = "C"
-                        elif avg_score >= 50:
-                            grade = "D"
-                        else:
-                            grade = "F"
+                        if avg_score >= 90: grade = "A+"
+                        elif avg_score >= 80: grade = "A"
+                        elif avg_score >= 70: grade = "B"
+                        elif avg_score >= 60: grade = "C"
+                        elif avg_score >= 50: grade = "D"
+                        else: grade = "F"
                         
-                        if avg_score >= 80:
-                            rating = "EXCEEDS EXPECTATIONS"
-                        elif avg_score >= 60:
-                            rating = "MEETS EXPECTATIONS"
-                        else:
-                            rating = "BELOW EXPECTATIONS"
+                        if avg_score >= 80: rating = "EXCEEDS EXPECTATIONS"
+                        elif avg_score >= 60: rating = "MEETS EXPECTATIONS"
+                        else: rating = "BELOW EXPECTATIONS"
                         
                         pillar_scores = {}
                         for key, val in final_scores.items():
                             pillar_name = key.split('_')[0] if '_' in key else key[:35]
-                            if pillar_name not in pillar_scores:
-                                pillar_scores[pillar_name] = []
+                            if pillar_name not in pillar_scores: pillar_scores[pillar_name] = []
                             pillar_scores[pillar_name].append(int(val) if val else 0)
                         pillar_avgs = {k: sum(v)/len(v) for k, v in pillar_scores.items()}
                         
                         pdf = FPDF(orientation='L', unit='mm', format='A4')
                         pdf.add_page()
-                        pdf.set_draw_color(*pdf_class_color)
-                        pdf.set_line_width(2)
-                        pdf.rect(6, 6, 285, 198)
-                        pdf.set_line_width(0.5)
-                        pdf.rect(8, 8, 281, 194)
-                        pdf.set_fill_color(26, 26, 26)
-                        pdf.rect(10, 10, 277, 40, 'F')
-                        pdf.set_fill_color(204, 0, 0)
-                        pdf.rect(10, 50, 277, 3, 'F')
-                        pdf.set_fill_color(*pdf_class_color)
-                        pdf.rect(10, 53, 277, 1.5, 'F')
-                        pdf.set_font('Helvetica', 'B', 28)
-                        pdf.set_text_color(255, 255, 255)
+                        pdf.set_draw_color(*pdf_class_color); pdf.set_line_width(2)
+                        pdf.rect(6, 6, 285, 198); pdf.set_line_width(0.5); pdf.rect(8, 8, 281, 194)
+                        pdf.set_fill_color(26, 26, 26); pdf.rect(10, 10, 277, 40, 'F')
+                        pdf.set_fill_color(204, 0, 0); pdf.rect(10, 50, 277, 3, 'F')
+                        pdf.set_fill_color(*pdf_class_color); pdf.rect(10, 53, 277, 1.5, 'F')
+                        pdf.set_font('Helvetica', 'B', 28); pdf.set_text_color(255, 255, 255)
                         pdf.cell(0, 22, 'CHURCHGATE GROUP', ln=True, align='C')
-                        pdf.set_font('Helvetica', 'B', 13)
-                        pdf.set_text_color(*pdf_class_color)
+                        pdf.set_font('Helvetica', 'B', 13); pdf.set_text_color(*pdf_class_color)
                         pdf.cell(0, 8, 'PERFORMANCE APPRAISAL CERTIFICATE OF ACHIEVEMENT', ln=True, align='C')
-                        pdf.ln(12)
-                        pdf.set_text_color(26, 26, 26)
-                        pdf.set_font('Helvetica', '', 13)
-                        pdf.cell(0, 8, 'This is to certify that', ln=True, align='C')
-                        pdf.ln(4)
-                        pdf.set_font('Helvetica', 'B', 24)
-                        pdf.set_text_color(204, 0, 0)
-                        pdf.cell(0, 14, safe_name.upper(), ln=True, align='C')
-                        pdf.ln(4)
-                        pdf.set_text_color(26, 26, 26)
-                        pdf.set_font('Helvetica', '', 12)
+                        pdf.ln(12); pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 13)
+                        pdf.cell(0, 8, 'This is to certify that', ln=True, align='C'); pdf.ln(4)
+                        pdf.set_font('Helvetica', 'B', 24); pdf.set_text_color(204, 0, 0)
+                        pdf.cell(0, 14, safe_name.upper(), ln=True, align='C'); pdf.ln(4)
+                        pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 12)
                         pdf.cell(0, 8, f'has successfully completed the {st.session_state.appraisal_cycle_name}', ln=True, align='C')
                         pdf.cell(0, 8, f'from {st.session_state.appraisal_start} to {st.session_state.appraisal_end}', ln=True, align='C')
                         pdf.ln(6)
-                        box_y = pdf.get_y()
-                        pdf.set_fill_color(245, 245, 245)
-                        pdf.rect(25, box_y, 247, 28, 'F')
+                        box_y = pdf.get_y(); pdf.set_fill_color(245, 245, 245); pdf.rect(25, box_y, 247, 28, 'F')
                         col_w = 247 / 4
-                        metrics = [
-                            ('OVERALL SCORE', f'{avg_score:.1f}%', (56, 161, 105)),
-                            ('GRADE', grade, (204, 0, 0)),
-                            ('RATING', rating, (*pdf_class_color,)),
-                            ('CLASSIFICATION', classification, (*pdf_class_color,))
-                        ]
+                        metrics = [('OVERALL SCORE', f'{avg_score:.1f}%', (56, 161, 105)), ('GRADE', grade, (204, 0, 0)), ('RATING', rating, (*pdf_class_color,)), ('CLASSIFICATION', classification, (*pdf_class_color,))]
                         for i, (label, value, color) in enumerate(metrics):
-                            pdf.set_xy(25 + i*col_w, box_y + 4)
-                            pdf.set_font('Helvetica', '', 8)
-                            pdf.set_text_color(128, 128, 128)
-                            pdf.cell(col_w, 6, label, align='C')
-                            pdf.set_xy(25 + i*col_w, box_y + 12)
-                            pdf.set_font('Helvetica', 'B', 13)
-                            pdf.set_text_color(*color[:3])
-                            pdf.cell(col_w, 8, value, align='C')
-                        pdf.set_y(box_y + 32)
-                        pdf.ln(4)
-                        pdf.set_font('Helvetica', 'B', 11)
-                        pdf.set_text_color(26, 26, 26)
-                        pdf.cell(0, 8, 'PERFORMANCE PILLAR BREAKDOWN', ln=True, align='C')
-                        pdf.ln(3)
+                            pdf.set_xy(25 + i*col_w, box_y + 4); pdf.set_font('Helvetica', '', 8); pdf.set_text_color(128, 128, 128); pdf.cell(col_w, 6, label, align='C')
+                            pdf.set_xy(25 + i*col_w, box_y + 12); pdf.set_font('Helvetica', 'B', 13); pdf.set_text_color(*color[:3]); pdf.cell(col_w, 8, value, align='C')
+                        pdf.set_y(box_y + 32); pdf.ln(4)
+                        pdf.set_font('Helvetica', 'B', 11); pdf.set_text_color(26, 26, 26)
+                        pdf.cell(0, 8, 'PERFORMANCE PILLAR BREAKDOWN', ln=True, align='C'); pdf.ln(3)
                         table_x = 40
-                        pdf.set_fill_color(26, 26, 26)
-                        pdf.set_text_color(255, 255, 255)
-                        pdf.set_font('Helvetica', 'B', 9)
+                        pdf.set_fill_color(26, 26, 26); pdf.set_text_color(255, 255, 255); pdf.set_font('Helvetica', 'B', 9)
                         pdf.set_xy(table_x, pdf.get_y())
-                        pdf.cell(110, 8, ' Strategic Pillar', 1, 0, 'L', True)
-                        pdf.cell(40, 8, 'Score', 1, 0, 'C', True)
-                        pdf.cell(40, 8, 'Rating', 1, 0, 'C', True)
-                        pdf.cell(40, 8, 'Grade', 1, 0, 'C', True)
-                        pdf.ln()
-                        pdf.set_text_color(26, 26, 26)
-                        pdf.set_font('Helvetica', '', 8)
+                        pdf.cell(110, 8, ' Strategic Pillar', 1, 0, 'L', True); pdf.cell(40, 8, 'Score', 1, 0, 'C', True); pdf.cell(40, 8, 'Rating', 1, 0, 'C', True); pdf.cell(40, 8, 'Grade', 1, 0, 'C', True); pdf.ln()
+                        pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 8)
                         for pillar, avg in pillar_avgs.items():
-                            if avg >= 90:
-                                p_grade = "A+"
-                            elif avg >= 80:
-                                p_grade = "A"
-                            elif avg >= 70:
-                                p_grade = "B"
-                            elif avg >= 60:
-                                p_grade = "C"
-                            elif avg >= 50:
-                                p_grade = "D"
-                            else:
-                                p_grade = "F"
-                            if avg >= 80:
-                                p_rating = 'Exceeds'
-                            elif avg >= 60:
-                                p_rating = 'Meets'
-                            else:
-                                p_rating = 'Below'
-                            pdf.set_xy(table_x, pdf.get_y())
-                            pdf.cell(110, 7, f' {pillar[:45]}', 1, 0, 'L')
-                            pdf.cell(40, 7, f'{avg:.1f}%', 1, 0, 'C')
-                            pdf.cell(40, 7, p_rating, 1, 0, 'C')
-                            pdf.cell(40, 7, p_grade, 1, 0, 'C')
-                            pdf.ln()
-                        pdf.ln(8)
-                        pdf.set_font('Helvetica', '', 9)
-                        pdf.set_text_color(80, 80, 80)
+                            if avg >= 90: p_grade = "A+"
+                            elif avg >= 80: p_grade = "A"
+                            elif avg >= 70: p_grade = "B"
+                            elif avg >= 60: p_grade = "C"
+                            elif avg >= 50: p_grade = "D"
+                            else: p_grade = "F"
+                            if avg >= 80: p_rating = 'Exceeds'
+                            elif avg >= 60: p_rating = 'Meets'
+                            else: p_rating = 'Below'
+                            pdf.set_xy(table_x, pdf.get_y()); pdf.cell(110, 7, f' {pillar[:45]}', 1, 0, 'L'); pdf.cell(40, 7, f'{avg:.1f}%', 1, 0, 'C'); pdf.cell(40, 7, p_rating, 1, 0, 'C'); pdf.cell(40, 7, p_grade, 1, 0, 'C'); pdf.ln()
+                        pdf.ln(8); pdf.set_font('Helvetica', '', 9); pdf.set_text_color(80, 80, 80)
                         pdf.cell(0, 6, f'Department: {dept}    |    Reviewer: {reviewer}    |    Employee ID: {emp_id}', ln=True, align='C')
                         pdf.cell(0, 6, f'Date of Issue: {now_wat.strftime("%B %d, %Y")}    |    Time: {now_wat.strftime("%H:%M WAT")}', ln=True, align='C')
-                        pdf.ln(6)
-                        sig_w = 75
-                        pdf.set_font('Helvetica', 'B', 9)
-                        pdf.set_text_color(26, 26, 26)
-                        pdf.cell(sig_w, 7, '_______________________', align='C')
-                        pdf.cell(25, 7, '')
-                        pdf.cell(sig_w, 7, '_______________________', align='C')
-                        pdf.cell(25, 7, '')
-                        pdf.cell(sig_w, 7, '_______________________', align='C')
-                        pdf.ln()
-                        pdf.set_font('Helvetica', '', 8)
-                        pdf.set_text_color(128, 128, 128)
-                        pdf.cell(sig_w, 5, 'Reviewer / HOD', align='C')
-                        pdf.cell(25, 5, '')
-                        pdf.cell(sig_w, 5, 'HR Director', align='C')
-                        pdf.cell(25, 5, '')
-                        pdf.cell(sig_w, 5, 'GMD / CEO', align='C')
-                        pdf.ln(12)
-                        pdf.set_font('Helvetica', 'I', 7)
-                        pdf.set_text_color(160, 160, 160)
+                        pdf.ln(6); sig_w = 75
+                        pdf.set_font('Helvetica', 'B', 9); pdf.set_text_color(26, 26, 26)
+                        pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.cell(25, 7, ''); pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.cell(25, 7, ''); pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.ln()
+                        pdf.set_font('Helvetica', '', 8); pdf.set_text_color(128, 128, 128)
+                        pdf.cell(sig_w, 5, 'Reviewer / HOD', align='C'); pdf.cell(25, 5, ''); pdf.cell(sig_w, 5, 'HR Director', align='C'); pdf.cell(25, 5, ''); pdf.cell(sig_w, 5, 'GMD / CEO', align='C')
+                        pdf.ln(12); pdf.set_font('Helvetica', 'I', 7); pdf.set_text_color(160, 160, 160)
                         pdf.cell(0, 5, 'This certificate is electronically generated by Churchgate Group HRIS and is valid without physical signature.', ln=True, align='C')
                         pdf.cell(0, 5, 'Churchgate Group - Nigeria | hris@churchgate.com', ln=True, align='C')
                         
@@ -4282,28 +4113,17 @@ def performance_okrs():
             if st.session_state.appraisal_cycle_active:
                 current_status = user_assessment.get('status', 'Not Started')
                 acceptance = user_assessment.get('acceptance', '')
-                
-                # If accepted, always show as complete
                 if acceptance == 'Accepted' or current_status == 'Completed':
                     current_status = 'Completed'
-                
                 steps = [("Set KPIs", 1), ("Self-Assessment", 2), ("Review", 3), ("Complete", 4)]
-                status_map = {
-                    'Not Started': 0, 'KPIs Set': 1, 'Submitted': 2,
-                    'Approved': 3, 'Awaiting HOD Re-review': 3,
-                    'Awaiting TL Re-review': 3, 'Accepted': 4, 'Completed': 4
-                }
+                status_map = {'Not Started': 0, 'KPIs Set': 1, 'Submitted': 2, 'Approved': 3, 'Awaiting HOD Re-review': 3, 'Awaiting TL Re-review': 3, 'Accepted': 4, 'Completed': 4}
                 current_step = status_map.get(current_status, 0)
                 cols = st.columns(4)
                 for i, (step_name, step_num) in enumerate(steps):
                     with cols[i]:
-                        if step_num < current_step:
-                            st.success(f"✅ {step_name}")
-                        elif step_num == current_step:
-                            st.success(f"✅ {step_name}")
-                        else:
-                            st.markdown(f"⏳ {step_name}")
-
+                        if step_num < current_step: st.success(f"✅ {step_name}")
+                        elif step_num == current_step: st.success(f"✅ {step_name}")
+                        else: st.markdown(f"⏳ {step_name}")
             
             pillar_data = load_user_pillar_data()
             for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
