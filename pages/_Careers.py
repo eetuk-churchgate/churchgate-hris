@@ -261,13 +261,7 @@ else:
     </div>"""
     st.markdown(hero_html, unsafe_allow_html=True)
     
-    # Stats bar - RIGHT AFTER HERO, BEFORE SEARCH
-    try:
-        emp_count = len(db.get_all_employees()) if not db.get_all_employees().empty else 200
-    except:
-        emp_count = 200
-    
-    # Load jobs first to get live count
+    # Load jobs for stats count
     jobs = []
     try:
         import requests
@@ -286,6 +280,11 @@ else:
     except:
         pass
     
+    # Stats bar
+    try:
+        emp_count = len(db.get_all_employees()) if not db.get_all_employees().empty else 200
+    except:
+        emp_count = 200
     live_count = len(jobs)
     st.markdown(f"""<div style="display:flex;justify-content:space-around;background:#1a1a1a;padding:0.3rem 1rem;border-bottom:2px solid #D4AF37;"><div style="text-align:center;"><div style="font-size:1rem;font-weight:800;color:#D4AF37;">{emp_count}+</div><div style="font-size:0.5rem;color:#c4b998;">TEAM</div></div><div style="text-align:center;"><div style="font-size:1rem;font-weight:800;color:#D4AF37;">3</div><div style="font-size:0.5rem;color:#c4b998;">REGIONS</div></div><div style="text-align:center;"><div style="font-size:1rem;font-weight:800;color:#D4AF37;">16</div><div style="font-size:0.5rem;color:#c4b998;">SUBSIDIARIES</div></div><div style="text-align:center;"><div style="font-size:1rem;font-weight:800;color:#D4AF37;">{live_count}</div><div style="font-size:0.5rem;color:#c4b998;">OPENINGS</div></div><div style="text-align:center;"><div style="font-size:1rem;font-weight:800;color:#D4AF37;">50+</div><div style="font-size:0.5rem;color:#c4b998;">YEARS</div></div></div>""", unsafe_allow_html=True)
     
@@ -298,15 +297,12 @@ else:
     with c3:
         type_filter = st.selectbox("Type", ["All Types", "Full-time", "Contract", "Part-time", "Intern"], label_visibility="collapsed")
     
-    # Filter jobs based on search
+    # Filter jobs
     filtered_jobs = []
     for job in jobs:
-        if search_query and search_query.lower() not in job['title'].lower():
-            continue
-        if dept_filter != "All Departments" and job['dept'] != dept_filter:
-            continue
-        if type_filter != "All Types" and job['type'] != type_filter:
-            continue
+        if search_query and search_query.lower() not in job['title'].lower(): continue
+        if dept_filter != "All Departments" and job['dept'] != dept_filter: continue
+        if type_filter != "All Types" and job['type'] != type_filter: continue
         filtered_jobs.append(job)
     
     st.markdown("---")
@@ -329,34 +325,34 @@ else:
                 
                 jd_text = job["jd"]
                 import re
-                section_headers = ['About the Role', 'What You Will Do', 'Key Responsibilities', 'Requirements', 'Qualifications', 'Skills']
+                section_headers = ['About the Role', 'What You Will Do', 'What Success Looks Like', 'What We Are Looking For', 'Preferred Background', 'Key Responsibilities', 'Requirements', 'Experience', 'Education', 'Skills & Competencies', 'Working Conditions', 'Why Join Churchgate', 'How to Apply', 'Job Summary', 'Job Details', 'About Company']
                 for header in section_headers:
-                    jd_text = jd_text.replace(header, f'<br><br><strong style="font-size:1rem;color:#1a1a1a;">{header}</strong><br>')
-                jd_text = jd_text.replace('• ', '<br>🔹 ')
+                    jd_text = jd_text.replace(header, f'<br><br><strong style="font-size:1.15rem;color:#1a1a1a;border-bottom:2px solid #CC0000;padding-bottom:3px;">{header}</strong><br>')
+                jd_text = jd_text.replace('• ', '<br>🔹 ').replace('● ', '<br>🔹 ')
                 jd_text = re.sub(r'(?<=\n)- ', '<br>🔹 ', jd_text)
                 jd_text = jd_text.replace('\n\n', '<br><br>').replace('\n', '<br>')
-                st.markdown(f'<div class="jd-content">{jd_text[:500]}...</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="jd-content animate-fade-in">{jd_text}</div>', unsafe_allow_html=True)
                 
                 st.markdown(f"<small style='color:#888;'>📅 Closes: {job['closing']} | Ref: {job['ref']}</small>", unsafe_allow_html=True)
                 
                 c1, c2 = st.columns([1, 1])
                 with c1:
-                    if st.button(f"📝 Apply Now", key=f"apply_{job['ref']}", type="primary"):
+                    if st.button(f"📝 Apply Now - {job['title']}", key=f"apply_{job['ref']}"):
                         st.query_params['job'] = job['ref']
                         st.rerun()
                 with c2:
                     share_url = f"https://churchgate-churchgate-hris.hf.space/Careers?job={job['ref']}"
-                    st.markdown(f"<small>Share: <a href='https://www.linkedin.com/sharing/share-offsite/?url={share_url}' target='_blank'>LinkedIn</a> | <a href='https://wa.me/?text=Job:{job['title']}%20at%20Churchgate%20Group%20{share_url}' target='_blank'>WhatsApp</a></small>", unsafe_allow_html=True)
+                    st.markdown(f"""<div style="margin-top:0.5rem;"><a href="https://www.linkedin.com/sharing/share-offsite/?url={share_url}" target="_blank">🔗 LinkedIn</a> <a href="https://wa.me/?text=Job:{job['title']}%20at%20Churchgate%20Group%20{share_url}" target="_blank">💬 WhatsApp</a> <a href="https://twitter.com/intent/tweet?text=Job:{job['title']}%20at%20Churchgate%20Group&url={share_url}" target="_blank">🐦 Twitter</a></div>""", unsafe_allow_html=True)
     else:
         st.info("🎯 No open positions at the moment.")
     
     st.markdown("---")
     with st.expander("🔔 Get Job Alerts"):
         alert_email = st.text_input("Your email", placeholder="Enter email for job notifications", key="alert_email")
-        if st.button("Subscribe") and alert_email:
+        if st.button("Subscribe to Job Alerts") and alert_email:
             try:
                 db._post("job_alerts", {"email": alert_email, "created_at": datetime.now().strftime('%Y-%m-%d %H:%M')})
-                st.success("✅ Subscribed!")
+                st.success("✅ You'll be notified of new openings!")
             except:
                 st.success("✅ Subscribed!")
     
@@ -364,26 +360,26 @@ else:
     st.markdown("## 🎁 Why Choose Churchgate Group?")
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown('<div class="benefit-card"><div class="benefit-icon">🏥</div><h4>Health Insurance</h4><p style="font-size:0.8rem;color:#888;">Comprehensive HMO coverage</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="benefit-card animate-fade-in-up"><div class="benefit-icon">🏥</div><h4>Health Insurance</h4><p style="font-size:0.85rem;color:#666;">Comprehensive HMO coverage</p></div>', unsafe_allow_html=True)
     with c2:
-        st.markdown('<div class="benefit-card"><div class="benefit-icon">💰</div><h4>Pension Plan</h4><p style="font-size:0.8rem;color:#888;">Secure retirement</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="benefit-card animate-fade-in-up"><div class="benefit-icon">💰</div><h4>Pension Plan</h4><p style="font-size:0.85rem;color:#666;">Secure retirement with contributory pension scheme</p></div>', unsafe_allow_html=True)
     with c3:
-        st.markdown('<div class="benefit-card"><div class="benefit-icon">📚</div><h4>Learning</h4><p style="font-size:0.8rem;color:#888;">Training & mentorship</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="benefit-card animate-fade-in-up"><div class="benefit-icon">📚</div><h4>Learning & Development</h4><p style="font-size:0.85rem;color:#666;">Continuous training, certifications, and mentorship</p></div>', unsafe_allow_html=True)
     with c4:
-        st.markdown('<div class="benefit-card"><div class="benefit-icon">🏖️</div><h4>Annual Leave</h4><p style="font-size:0.8rem;color:#888;">Generous time off</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="benefit-card animate-fade-in-up"><div class="benefit-icon">🏖️</div><h4>Annual Leave</h4><p style="font-size:0.85rem;color:#666;">Generous paid time off to recharge and refresh</p></div>', unsafe_allow_html=True)
     
     st.markdown("---")
     st.markdown("## 🌟 What Our Team Says")
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown('<div class="testimonial-card"><p style="font-size:0.8rem;color:#888;">"Churchgate gave me the platform to grow."</p><p style="color:#D4AF37;font-weight:600;">— Senior Engineer</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="testimonial-card animate-slide-in"><h4>🎯 Career Growth</h4><p style="font-size:0.9rem;color:#666;">"Churchgate gave me the platform to grow from a junior engineer to leading major projects across Africa."</p><p style="color:#CC0000;font-weight:600;">— Senior Engineer, Technology Group</p></div>', unsafe_allow_html=True)
     with c2:
-        st.markdown('<div class="testimonial-card"><p style="font-size:0.8rem;color:#888;">"Freedom to innovate with AI."</p><p style="color:#D4AF37;font-weight:600;">— AI Lead</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="testimonial-card animate-slide-in"><h4>💡 Innovation</h4><p style="font-size:0.9rem;color:#666;">"The freedom to innovate and implement AI solutions has been the highlight of my career."</p><p style="color:#CC0000;font-weight:600;">— AI Transformation Lead</p></div>', unsafe_allow_html=True)
     with c3:
-        st.markdown('<div class="testimonial-card"><p style="font-size:0.8rem;color:#888;">"Every voice matters here."</p><p style="color:#D4AF37;font-weight:600;">— HR Partner</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="testimonial-card animate-slide-in"><h4>🤝 Culture</h4><p style="font-size:0.9rem;color:#666;">"The collaborative spirit here is unmatched. Every voice matters, every idea counts."</p><p style="color:#CC0000;font-weight:600;">— HR Business Partner</p></div>', unsafe_allow_html=True)
     
     st.markdown("---")
-    st.markdown(f'<div class="social-proof"><h3>🏆 Recognized Excellence</h3><p style="color:#888;">EDGE Certified | Premier Accredited by <a href="https://www.wtca.org" target="_blank" style="color:#D4AF37;">WTCA</a></p></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="social-proof"><h3>🏆 Recognized Excellence</h3><p style="color:#666;">EDGE Certified | Premier Accredited — Business & Member Services, Commercial Real Estate & Services, Trade Development by <a href="https://www.wtca.org" target="_blank" style="color: #CC0000; text-decoration: none;">WTCA</a></p></div>', unsafe_allow_html=True)
     
     st.markdown("---")
     with st.expander("🔍 Check Your Application Status"):
@@ -391,14 +387,24 @@ else:
         if tracking_input:
             try:
                 result = db.supabase.table("applications").select("*").eq("tracking_id", tracking_input).execute()
-                if result.data:
-                    app = result.data[0]
-                    st.success(f"Status: {app.get('status', 'Received')}")
+                apps = result.data if result.data else []
+                if apps and len(apps) > 0:
+                    app = apps[0]
+                    st.success("✅ Application Found!")
+                    st.markdown(f"**Status:** {app.get('status', 'Received')}")
+                    st.markdown(f"**Position:** {app.get('position_name', app.get('job_ref', 'N/A'))}")
+                    st.markdown(f"**Applied:** {app.get('applied_date', 'N/A')}")
+                else:
+                    st.warning("No application found with that Tracking ID.")
             except:
-                st.info("Check back soon.")
+                st.info("Status check is being set up. Please check back soon.")
 
-st.markdown("""<div class="footer">
+st.markdown("""
+<div class="footer">
     <h3>Churchgate Group</h3>
-    <p>Churchgate Towers, Victoria Island, Lagos. 📧 careers@churchgate.com</p>
-    <p style="font-size:0.7rem;">Equal opportunity employer. © 2026 Churchgate Group.</p>
-</div>""", unsafe_allow_html=True)
+    <p>Churchgate Towers, PC 30 Churchgate Street, Victoria Island, Lagos, Nigeria.</p>
+    <p>📧 careers@churchgate.com</p>
+    <p style="margin-top: 1rem; font-size: 0.85rem;">Churchgate Group is an equal opportunity employer. All employment decisions are based on merit, competence, and business needs.</p>
+    <p style="font-size: 0.8rem;">© 2026 Churchgate Group. All rights reserved.</p>
+</div>
+""", unsafe_allow_html=True)
