@@ -6397,6 +6397,7 @@ APPLY NOW: {public_url}
                 st.text_input("Email *", disabled=True)
                 st.text_input("Phone *", disabled=True)
                 st.file_uploader("Upload CV *", disabled=True)
+                st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png'], disabled=True, accept_multiple_files=True)
                 st.text_area("Screening Questions", disabled=True, placeholder="Auto-generated per job role")
     
      # ============ TAB 4: AI SCREENING ============
