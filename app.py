@@ -2232,8 +2232,37 @@ def employee_management():
                 success, fail = 0, 0
                 for _, row in df.iterrows():
                     try:
+                        # Convert dates from DD/MM/YYYY to YYYY-MM-DD
+                        join_date = str(row.get('join_date', ''))
+                        dob = str(row.get('date_of_birth', ''))
+                        
+                        # Try to convert date formats
+                        try:
+                            if '/' in join_date:
+                                parts = join_date.split('/')
+                                if len(parts[2]) == 4:  # DD/MM/YYYY
+                                    join_date = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        except:
+                            pass
+                        
+                        try:
+                            if '/' in dob:
+                                parts = dob.split('/')
+                                if len(parts[2]) == 4:  # DD/MM/YYYY
+                                    dob = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        except:
+                            pass
+                        
+                        # Check for duplicate employee ID
+                        emp_id = str(row.get('employee_id', ''))
+                        existing = db._get("employees", {"employee_id": emp_id})
+                        if existing and len(existing) > 0:
+                            # Skip duplicates
+                            fail += 1
+                            continue
+                        
                         db._post("employees", {
-                            "employee_id": str(row.get('employee_id', '')),
+                            "employee_id": emp_id,
                             "first_name": str(row.get('first_name', '')),
                             "last_name": str(row.get('last_name', '')),
                             "email": str(row.get('email', '')),
@@ -2242,8 +2271,8 @@ def employee_management():
                             "position": str(row.get('position', '')),
                             "grade": str(row.get('grade', 'Junior')),
                             "employment_type": str(row.get('employment_type', 'Full-time')),
-                            "join_date": str(row.get('join_date', '')),
-                            "date_of_birth": str(row.get('date_of_birth', '1990-01-01')),
+                            "join_date": join_date,
+                            "date_of_birth": dob,
                             "status": str(row.get('status', 'Active')),
                             "region": str(row.get('region', 'Lagos')),
                             "subsidiary": str(row.get('subsidiary', '')),
@@ -2253,7 +2282,7 @@ def employee_management():
                         success += 1
                     except:
                         fail += 1
-                st.success(f"✅ {success} uploaded! ({fail} skipped)")
+                st.success(f"✅ {success} uploaded! ({fail} skipped - duplicates or errors)")
                 st.balloons()
                 st.cache_data.clear()
     
