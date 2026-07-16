@@ -12,8 +12,11 @@ class DatabaseManager:
         self.use_supabase = False
         self.supabase = None
         try:
-            self.url = st.secrets["SUPABASE_URL"]
-            self.key = st.secrets["SUPABASE_KEY"]
+            self.url = os.environ.get("SUPABASE_URL", "")
+            self.key = os.environ.get("SUPABASE_KEY", "")
+            if not self.url:
+                self.url = st.secrets["SUPABASE_URL"]
+                self.key = st.secrets["SUPABASE_KEY"]
             from supabase import create_client
             self.supabase = create_client(self.url, self.key)
             self.use_supabase = True
@@ -117,7 +120,7 @@ class DatabaseManager:
         except:
             import hashlib
             hashed_pw = hashlib.sha256(password.encode()).hexdigest()
-        self._post("users", {"employee_id": employee_id, "name": name, "email": email, "password": hashed_pw, "role": role, "department": department, "position": position, "is_active": True})
+        self._post("users", {"employee_id": employee_id, "name": name, "email": email, "password_hash": hashed_pw, "role": role, "department": department, "position": position, "is_active": True})
         
         # Send welcome email
         try:
@@ -323,28 +326,6 @@ class DatabaseManager:
         if data:
             return {item['metric_name']: item['metric_value'] for item in data}
         return {}
-
-    def save_cycle_state(self, active, name, start, end, locked):
-        # Persist appraisal-cycle state in the shared key-value store so every
-        # user session reads the same source of truth (not per-session memory).
-        self.save_portfolio_metric("cycle_active", "True" if active else "False")
-        self.save_portfolio_metric("cycle_name", name or "")
-        self.save_portfolio_metric("cycle_start", start or "")
-        self.save_portfolio_metric("cycle_end", end or "")
-        self.save_portfolio_metric("cycle_locked", "True" if locked else "False")
-
-    def get_cycle_state(self):
-        # Returns the persisted cycle state, or None when nothing has been saved yet.
-        metrics = self.get_portfolio_metrics()
-        if "cycle_active" not in metrics:
-            return None
-        return {
-            "active": str(metrics.get("cycle_active", "False")) == "True",
-            "name": metrics.get("cycle_name", ""),
-            "start": metrics.get("cycle_start", ""),
-            "end": metrics.get("cycle_end", ""),
-            "locked": str(metrics.get("cycle_locked", "False")) == "True",
-        }
 
     def get_dashboard_stats(self):
         return {'total_employees': 48, 'open_positions': 5, 'new_candidates': 0, 'avg_performance': 85.0}
