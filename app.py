@@ -1902,11 +1902,19 @@ def employee_management():
         new_this_month = 0
         try:
             current_month = datetime.now().month
+            current_year = datetime.now().year
             for _, emp in employees_df.iterrows():
                 jd = emp.get('join_date')
                 if jd and pd.notna(jd):
-                    if hasattr(jd, 'month') and jd.month == current_month:
-                        new_this_month += 1
+                    try:
+                        if isinstance(jd, str):
+                            jd_date = datetime.strptime(str(jd)[:10], '%Y-%m-%d')
+                        else:
+                            jd_date = pd.to_datetime(jd)
+                        if jd_date.month == current_month and jd_date.year == current_year:
+                            new_this_month += 1
+                    except:
+                        pass
         except:
             pass
         
@@ -2169,22 +2177,37 @@ def employee_management():
             if st.form_submit_button("✅ Add Employee", use_container_width=True):
                 if first_name and last_name and employee_id and department and position:
                     try:
-                        result = db._post("employees", {
-                            "employee_id": employee_id, "first_name": first_name, "last_name": last_name,
-                            "email": email, "phone": phone, "department": department,
-                            "region": add_region, "subsidiary": add_subsidiary,
-                            "reports_to": add_reports_to if add_reports_to != 'None' else '',
-                            "position": position, "grade": grade, "employment_type": employment_type,
-                            "join_date": join_date.strftime('%Y-%m-%d'), 
-                            "date_of_birth": date_of_birth.strftime('%Y-%m-%d'),
-                            "status": status
-                        })
-                        if result:
-                            st.success(f"✅ {first_name} {last_name} added!"); st.balloons()
-                            st.cache_data.clear(); time.sleep(0.5); st.rerun()
-                        else: st.error("❌ Insert failed - check Supabase")
-                    except Exception as e: st.error(f"❌ Error: {str(e)}")
-                else: st.error("❌ Required fields missing!")
+                        # Check if employee ID already exists
+                        existing = db._get("employees", {"employee_id": employee_id})
+                        if existing and len(existing) > 0:
+                            st.error(f"❌ Employee ID '{employee_id}' already exists. Please use a different ID.")
+                        else:
+                            result = db._post("employees", {
+                                "employee_id": employee_id, "first_name": first_name, "last_name": last_name,
+                                "email": email, "phone": phone, "department": department,
+                                "region": add_region, "subsidiary": add_subsidiary,
+                                "reports_to": add_reports_to if add_reports_to != 'None' else '',
+                                "position": position, "grade": grade, "employment_type": employment_type,
+                                "join_date": join_date.strftime('%Y-%m-%d'), 
+                                "date_of_birth": date_of_birth.strftime('%Y-%m-%d'),
+                                "status": status
+                            })
+                            if result:
+                                st.success(f"✅ {first_name} {last_name} added!")
+                                st.balloons()
+                                st.cache_data.clear()
+                                time.sleep(0.5)
+                                st.rerun()
+                            else:
+                                st.error("❌ Could not add employee. Please try again.")
+                    except Exception as e:
+                        error_msg = str(e)
+                        if "duplicate" in error_msg.lower() or "23505" in error_msg:
+                            st.error(f"❌ Employee ID '{employee_id}' or email already exists. Please use a different one.")
+                        else:
+                            st.error(f"❌ Error: {error_msg}")
+                else:
+                    st.error("❌ Required fields missing!")
     
     # ============ TAB 3: BULK UPLOAD ============
     with tab3:
