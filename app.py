@@ -2195,6 +2195,14 @@ def employee_management():
                             if result:
                                 st.success(f"✅ {first_name} {last_name} added!")
                                 st.balloons()
+                                # Send welcome email
+                                if email and '@' in email:
+                                    try:
+                                        from utils.email_service import EmailService
+                                        EmailService().send_welcome_email(f"{first_name} {last_name}", email, "https://hris.churchgate.com")
+                                        st.info(f"📧 Welcome email sent to {email}")
+                                    except:
+                                        pass
                                 st.cache_data.clear()
                                 time.sleep(0.5)
                                 st.rerun()
@@ -2253,13 +2261,25 @@ def employee_management():
                 single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], key="single_dept")
                 single_role = st.selectbox("Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key="single_role")
                 single_id = st.text_input("Employee ID", placeholder="e.g., AN00001")
+            
             if st.form_submit_button("🔑 Create Single Login", use_container_width=True):
                 if single_email and single_name:
                     try:
                         db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, 'Staff')
-                        st.success(f"✅ Login created!"); st.balloons()
-                    except: st.warning("User may already exist.")
-                else: st.error("❌ Email and Name required!")
+                        st.success(f"✅ Login created for {single_name}!")
+                        st.info(f"🔗 Login at: https://hris.churchgate.com")
+                        # Send welcome email
+                        try:
+                            from utils.email_service import EmailService
+                            EmailService().send_welcome_email(single_name, single_email, "https://hris.churchgate.com")
+                            st.info(f"📧 Welcome email sent to {single_email}")
+                        except:
+                            pass
+                        st.balloons()
+                    except:
+                        st.warning(f"⚠️ A login for {single_email} may already exist.")
+                else:
+                    st.error("❌ Email and Name required!")
         
         st.markdown("---")
         st.markdown("### 👥 Bulk Generate for All Employees")
@@ -2275,12 +2295,21 @@ def employee_management():
                     if emp['Email'] and emp['Email'] != 'N/A':
                         try:
                             db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, 'Team Member', emp['Department'], 'Staff')
+                            # Send welcome email
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_welcome_email(emp['Name'], emp['Email'], "https://hris.churchgate.com")
+                            except:
+                                pass
                             count += 1
-                        except: pass
+                        except:
+                            pass
                 st.success(f"✅ {count} logins generated!")
-                st.info(f"Default password: **{default_pw}**")
+                st.info(f"🔗 Login URL: https://hris.churchgate.com")
+                st.info(f"🔑 Default password: **{default_pw}**")
                 st.download_button("📥 Download Login List", pd.DataFrame(emp_list).to_csv(index=False), "logins.csv", "text/csv")
-        else: st.info("No employees found.")
+        else:
+            st.info("No employees found.")
     
     # ============ TAB 5: DEPARTMENTS ============
     with tab5:
