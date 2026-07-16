@@ -2171,7 +2171,7 @@ def employee_management():
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
                 join_date = st.date_input("Join Date")
                 date_of_birth = st.date_input("Date of Birth *", min_value=date(1920, 1, 1), max_value=date(2026, 12, 31), value=date(1990, 1, 1))
-                system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'])
+                system_role = st.selectbox("System Role *", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], index=4)
                 status = st.selectbox("Status", ['Active', 'Probation'])
             
             if st.form_submit_button("✅ Add Employee", use_container_width=True):
@@ -2193,6 +2193,22 @@ def employee_management():
                                 "status": status
                             })
                             if result:
+                                # Also create user account with correct system role
+                                try:
+                                    import hashlib
+                                    default_pw = hashlib.sha256("churchgate2026".encode()).hexdigest()
+                                    db._post("users", {
+                                        "employee_id": employee_id,
+                                        "name": f"{first_name} {last_name}",
+                                        "email": email,
+                                        "password": default_pw,
+                                        "role": system_role,
+                                        "department": department,
+                                        "position": position
+                                    })
+                                except:
+                                    pass
+                                
                                 st.success(f"✅ {first_name} {last_name} added!")
                                 st.balloons()
                                 # Send welcome email
