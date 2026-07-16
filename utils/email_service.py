@@ -29,23 +29,25 @@ class EmailService:
         
         self.sender_name = "Churchgate Group HRIS"    
     def _create_html_email(self, subject, body_content):
-        """Create professional HTML email with Churchgate branding"""
+        """Create professional HTML email with Churchgate gold branding"""
         html = f"""
         <!DOCTYPE html>
         <html>
         <head>
             <style>
-                body {{ font-family: 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; }}
-                .email-container {{ max-width: 600px; margin: 20px auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
-                .email-header {{ background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 30px 20px; text-align: center; border-bottom: 4px solid #CC0000; }}
-                .email-header h1 {{ color: white; margin: 0; font-size: 26px; }}
-                .email-header p {{ color: #CC0000; margin: 8px 0 0 0; font-size: 16px; }}
-                .email-body {{ padding: 30px 25px; color: #333; }}
-                .email-body h2 {{ color: #1a1a1a; }}
-                .btn {{ display: inline-block; background: #CC0000; color: white; padding: 14px 35px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 15px 0; }}
-                .info-box {{ background: #d5d5d5; padding: 18px; border-radius: 8px; margin: 18px 0; border-left: 4px solid #CC0000; }}
-                .email-footer {{ background: #1a1a1a; padding: 15px; text-align: center; }}
-                .email-footer p {{ color: #888; font-size: 11px; margin: 0; }}
+                body {{ font-family: 'Segoe UI', Arial, sans-serif; background-color: #faf9f6; margin: 0; padding: 0; }}
+                .email-container {{ max-width: 600px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid #e8dcc8; }}
+                .email-header {{ background: linear-gradient(135deg, #1a1a1a 0%, #2d2a1f 100%); padding: 30px 20px; text-align: center; border-bottom: 3px solid #D4AF37; }}
+                .email-header h1 {{ color: #F5E6CC; margin: 0; font-size: 24px; }}
+                .email-header p {{ color: #D4AF37; margin: 8px 0 0 0; font-size: 14px; }}
+                .email-body {{ padding: 30px 25px; color: #3d3020; background: #faf9f6; }}
+                .email-body h2 {{ color: #1a1a1a; border-bottom: 2px solid #D4AF37; padding-bottom: 5px; display: inline-block; }}
+                .btn {{ display: inline-block; background: linear-gradient(135deg, #CC0000, #aa0000); color: white; padding: 14px 35px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 15px 0; }}
+                .btn:hover {{ background: linear-gradient(135deg, #D4AF37, #C9A84C); }}
+                .info-box {{ background: white; padding: 18px; border-radius: 8px; margin: 18px 0; border-left: 4px solid #D4AF37; border: 1px solid #e8dcc8; }}
+                .email-footer {{ background: linear-gradient(135deg, #1a1a1a, #2d2a1f); padding: 15px; text-align: center; border-top: 2px solid #D4AF37; }}
+                .email-footer p {{ color: #D4AF37; font-size: 11px; margin: 0; }}
+                p {{ color: #5c4a2a; }}
             </style>
         </head>
         <body>
@@ -59,8 +61,7 @@ class EmailService:
                     {body_content}
                 </div>
                 <div class="email-footer">
-                    <p>© {datetime.now().year} Churchgate Group. All rights reserved.</p>
-                    <p>World Trade Center, Abuja, Nigeria | hr@churchgate.com</p>
+                    <p>© {datetime.now().year} Churchgate Group. All rights reserved | hris@churchgate.com</p>
                 </div>
             </div>
         </body>
