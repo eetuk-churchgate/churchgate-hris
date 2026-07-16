@@ -6327,23 +6327,35 @@ APPLY NOW: {public_url}
                     q_pos = st.text_input("Position Applied For")
                     q_src = st.selectbox("Source", ["Walk-in", "Employee Referral", "Career Page", "LinkedIn", "Indeed", "Glassdoor", "Agency", "Other"])
                     q_job = st.text_input("Job Reference (if any)")
+                    q_linkedin = st.text_input("LinkedIn URL")
                 
-                q_cv = st.file_uploader("Upload CV", type=['pdf', 'docx'])
+                st.markdown("---")
+                q_cv = st.file_uploader("Upload CV *", type=['pdf', 'docx'])
+                q_other = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png'], accept_multiple_files=True)
                 q_notes = st.text_area("Notes", height=80)
                 
                 if st.form_submit_button("➕ Add Candidate", use_container_width=True):
-                    if q_fn and q_ln and q_em:
+                    if q_fn and q_ln and q_em and q_cv:
                         tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
                         try:
                             cv_text = ""
-                            if q_cv:
-                                if q_cv.type == "application/pdf":
-                                    import PyPDF2
-                                    for page in PyPDF2.PdfReader(q_cv).pages:
-                                        cv_text += page.extract_text() + "\n"
-                                elif "word" in q_cv.type:
-                                    import docx
-                                    cv_text = "\n".join([p.text for p in docx.Document(q_cv).paragraphs])
+                            file_ext = "pdf"
+                            if q_cv.type == "application/pdf":
+                                import PyPDF2
+                                for page in PyPDF2.PdfReader(q_cv).pages:
+                                    cv_text += page.extract_text() + "\n"
+                            elif "word" in q_cv.type:
+                                import docx
+                                cv_text = "\n".join([p.text for p in docx.Document(q_cv).paragraphs])
+                                file_ext = "docx"
+                            
+                            # Upload CV
+                            cv_url = ""
+                            try:
+                                q_cv.seek(0)
+                                cv_url = db.upload_file("cvs", f"{tracking_id}_{q_fn}_{q_ln}.{file_ext}", q_cv.read(), q_cv.type)
+                            except:
+                                pass
                             
                             db._post("candidates", {
                                 "candidate_ref": tracking_id,
@@ -6351,17 +6363,21 @@ APPLY NOW: {public_url}
                                 "last_name": q_ln,
                                 "email": q_em,
                                 "phone": q_ph,
+                                "linkedin_url": q_linkedin,
                                 "current_position": q_pos,
+                                "resume_filename": f"CV_{q_fn}_{q_ln}.{file_ext}",
                                 "resume_text": cv_text[:10000],
+                                "cv_url": cv_url,
                                 "job_id": q_job,
                                 "source": q_src,
                                 "status": "New"
                             })
-                            st.success(f"✅ Candidate {q_fn} {q_ln} added!")
+                            st.success(f"✅ Candidate {q_fn} {q_ln} added! (Ref: {tracking_id})")
+                            st.balloons()
                         except Exception as e:
                             st.error(f"Error: {str(e)}")
                     else:
-                        st.error("❌ Name and email required!")
+                        st.error("❌ Name, email, and CV are required!")
         
         # ===== SUB-TAB 3: PREVIEW CAREER PAGE =====
         with cand_tab3:
