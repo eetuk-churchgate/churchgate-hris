@@ -2220,8 +2220,8 @@ def employee_management():
     # ============ TAB 3: BULK UPLOAD ============
     with tab3:
         st.subheader("📤 Bulk Employee Upload")
-        st.info("Upload CSV with: employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date, region, subsidiary, reports_to")
-        template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'region', 'subsidiary', 'reports_to'])
+        st.info("Upload CSV with columns: employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date, date_of_birth, region, subsidiary, reports_to, gender, status, system_role")
+        template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'date_of_birth', 'region', 'subsidiary', 'reports_to', 'gender', 'status', 'system_role'])
         st.download_button("📥 Download Template", template_df.to_csv(index=False), "employee_template.csv", "text/csv")
         uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
         if uploaded_file:
@@ -2233,19 +2233,29 @@ def employee_management():
                 for _, row in df.iterrows():
                     try:
                         db._post("employees", {
-                            "employee_id": str(row.get('employee_id', '')), "first_name": str(row.get('first_name', '')),
-                            "last_name": str(row.get('last_name', '')), "email": str(row.get('email', '')),
-                            "phone": str(row.get('phone', '')), "department": str(row.get('department', '')),
-                            "position": str(row.get('position', '')), "grade": str(row.get('grade', 'Junior')),
+                            "employee_id": str(row.get('employee_id', '')),
+                            "first_name": str(row.get('first_name', '')),
+                            "last_name": str(row.get('last_name', '')),
+                            "email": str(row.get('email', '')),
+                            "phone": str(row.get('phone', '')),
+                            "department": str(row.get('department', '')),
+                            "position": str(row.get('position', '')),
+                            "grade": str(row.get('grade', 'Junior')),
                             "employment_type": str(row.get('employment_type', 'Full-time')),
-                            "join_date": str(row.get('join_date', '')), "status": "Active",
+                            "join_date": str(row.get('join_date', '')),
+                            "date_of_birth": str(row.get('date_of_birth', '1990-01-01')),
+                            "status": str(row.get('status', 'Active')),
                             "region": str(row.get('region', 'Lagos')),
                             "subsidiary": str(row.get('subsidiary', '')),
-                            "reports_to": str(row.get('reports_to', ''))
+                            "reports_to": str(row.get('reports_to', '')),
+                            "gender": str(row.get('gender', 'Male'))
                         })
                         success += 1
-                    except: fail += 1
-                st.success(f"✅ {success} uploaded! ({fail} skipped)"); st.balloons(); st.cache_data.clear()
+                    except:
+                        fail += 1
+                st.success(f"✅ {success} uploaded! ({fail} skipped)")
+                st.balloons()
+                st.cache_data.clear()
     
     # ============ TAB 4: GENERATE LOGINS ============
     with tab4:
