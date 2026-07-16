@@ -2982,18 +2982,57 @@ def performance_okrs():
                             with c2:
                                 if st.button(f"🔄 Revise", key=f"rev_{emp_name}"):
                                     if hod_comment:
-                                        for sub in submissions: db._patch("performance_data", {"submission_status": "Draft"}, {"id": sub['row_id']})
+                                        for sub in submissions:
+                                            db._patch("performance_data", {"submission_status": "Draft"}, {"id": sub['row_id']})
                                         emp_email_addr = get_employee_email(emp_name)
-                                        if emp_email_addr: send_kpi_notification('revision_requested', emp_name, emp_email_addr)
-                                        st.warning("🔄 Revision requested"); time.sleep(1); st.rerun()
-                                    else: st.error("❌ Please provide a comment!")
-                else: st.info("No pending KPI submissions.")
-            except Exception as e: st.error(f"Error: {str(e)}")
+                                        if emp_email_addr:
+                                            send_kpi_notification('revision_requested', emp_name, emp_email_addr)
+                                        st.warning("🔄 Revision requested")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Please provide a comment!")
+                else:
+                    st.info("No pending KPI submissions.")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+            
+            # ===== SECTION 1B: APPROVED KPIs PREVIEW =====
+            st.markdown("---")
+            st.markdown("### ✅ Team Approved KPIs")
+            try:
+                all_perf = db._get("performance_data")
+                team_approved = {}
+                for row in all_perf:
+                    if row.get('submission_status') == 'Approved':
+                        clean_name = ' '.join(str(row.get('user_name', '')).split())
+                        if is_admin or get_employee_dept(clean_name) == user_dept:
+                            if clean_name not in team_approved:
+                                team_approved[clean_name] = []
+                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                            team_approved[clean_name].append({
+                                'pillar': row.get('pillar_name', ''),
+                                'kpis': kpi_list,
+                                'weight': row.get('weight', 0)
+                            })
+                if team_approved:
+                    st.success(f"✅ {len(team_approved)} team member(s) with approved KPIs")
+                    for emp_name, kpi_data in team_approved.items():
+                        with st.expander(f"✅ {emp_name} — {len(kpi_data)} pillar(s) approved", expanded=False):
+                            for entry in kpi_data:
+                                st.markdown(f"**{entry['pillar']}** (Weight: {entry['weight']}%)")
+                                for kpi in entry['kpis']:
+                                    st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')} — Weight: {kpi.get('weight', 'N/A')}%")
+                                st.markdown("")
+                else:
+                    st.info("No team members have approved KPIs yet.")
+            except:
+                pass
             
             # ===== SECTION 2: APPRAISAL REVIEW (FIXED) =====
-            st.markdown("---"); st.markdown("### 📝 Appraisal Review")
+            st.markdown("---")
+            st.markdown("### 📝 Appraisal Review")
             
-            # Admin sees ALL appraisals, HOD sees their department
             if is_admin:
                 submitted_appraisals = {k: v for k, v in st.session_state.self_assessments.items() 
                                        if v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL']}
@@ -5556,6 +5595,18 @@ APPLY NOW: {public_url}
     # ============================================================
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
+    
+    # Auto-expire jobs past closing date
+    try:
+        today = datetime.now().strftime('%Y-%m-%d')
+        for i, req in enumerate(st.session_state.job_requisitions):
+            if req.get('status') == 'Approved - Live' and req.get('closing', '') and req.get('closing', '') < today:
+                st.session_state.job_requisitions[i]['status'] = 'Expired'
+                st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('ref') != req.get('id')]
+        st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('closing', '9999-12-31') >= today]
+    except:
+        pass
+    
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
@@ -6040,39 +6091,313 @@ APPLY NOW: {public_url}
     # ============ TAB 2: ACTIVE JOBS ============
     with tab2:
         st.subheader("📢 Active Job Postings")
-        if st.session_state.active_jobs:
+        
+        # Get expired jobs
+        expired_jobs = [req for req in st.session_state.job_requisitions if req.get('status') == 'Expired']
+        
+        # Stats row
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric("🟢 Live Jobs", len(st.session_state.active_jobs))
+        with c2:
+            st.metric("🔴 Expired", len(expired_jobs))
+        with c3:
+            total_apps = sum(job.get('applications', 0) for job in st.session_state.active_jobs)
+            st.metric("👥 Total Applicants", total_apps)
+        with c4:
+            # Jobs closing within 7 days
+            urgent = 0
             for job in st.session_state.active_jobs:
-                with st.expander(f"🟢 {job['ref']} - {job['title']} | {job['department']} | {job.get('applications', 0)} applicants", expanded=False):
-                    st.markdown(f"**Location:** {job['location']} | **Type:** {job['type']} | **Closes:** {job['closing']}")
-                    st.markdown(f"**📎 Public Careers URL:**")
-                    st.code(job['public_url'], language=None)
-                    st.markdown(f"**Platforms:** LinkedIn: {'✅' if job['posts'].get('linkedin') else '❌'} | Indeed: {'✅' if job['posts'].get('indeed') else '❌'} | Glassdoor: {'✅' if job['posts'].get('glassdoor') else '❌'}")
-        else:
-            st.info("No active jobs. Submit a requisition in Tab 1.")
+                try:
+                    days_left = (datetime.strptime(job['closing'], '%Y-%m-%d') - datetime.now()).days
+                    if days_left <= 7:
+                        urgent += 1
+                except:
+                    pass
+            st.metric("⏰ Closing Soon", urgent)
+        
+        st.markdown("---")
+        
+        # ===== LIVE JOBS =====
+        if st.session_state.active_jobs:
+            st.markdown("### 🟢 Live Jobs")
+            for job in st.session_state.active_jobs:
+                try:
+                    days_left = (datetime.strptime(job['closing'], '%Y-%m-%d') - datetime.now()).days
+                    if days_left <= 3:
+                        status_icon = "🔴"
+                        status_text = f"Closing in {days_left} days!"
+                    elif days_left <= 7:
+                        status_icon = "🟡"
+                        status_text = f"{days_left} days remaining"
+                    else:
+                        status_icon = "🟢"
+                        status_text = f"{days_left} days remaining"
+                except:
+                    status_icon = "🟢"
+                    status_text = ""
+                
+                with st.expander(f"{status_icon} {job['ref']} - {job['title']} | {job['department']} | {job.get('applications', 0)} applicants | {status_text}", expanded=False):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**📍 Location:** {job['location']}")
+                        st.markdown(f"**💼 Type:** {job['type']}")
+                        st.markdown(f"**💰 Salary:** {job.get('salary', 'Not specified')}")
+                        st.markdown(f"**📅 Closes:** {job['closing']} ({status_text})")
+                    with col2:
+                        st.markdown(f"**📎 Public URL:**")
+                        st.code(job['public_url'], language=None)
+                        st.markdown(f"**Platforms:** LinkedIn: {'✅' if job['posts'].get('linkedin') else '❌'} | Indeed: {'✅' if job['posts'].get('indeed') else '❌'} | Glassdoor: {'✅' if job['posts'].get('glassdoor') else '❌'}")
+                    
+                    st.markdown("---")
+                    
+                    # Quick actions
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        share_url = job['public_url']
+                        st.markdown(f"[🔗 LinkedIn Share](https://www.linkedin.com/sharing/share-offsite/?url={share_url})")
+                        st.markdown(f"[💬 WhatsApp Share](https://wa.me/?text=Job:{job['title']}%20at%20Churchgate%20Group%20{share_url})")
+                    with c2:
+                        st.markdown(f"[📋 View JD]({share_url})")
+                        st.markdown(f"📊 **Applications:** {job.get('applications', 0)}")
+                    with c3:
+                        if st.button(f"⏹️ Close Job Early", key=f"close_{job['ref']}"):
+                            for i, req in enumerate(st.session_state.job_requisitions):
+                                if req.get('id') == job['ref']:
+                                    st.session_state.job_requisitions[i]['status'] = 'Expired'
+                                    break
+                            st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('ref') != job['ref']]
+                            st.warning(f"⏹️ {job['title']} closed early!")
+                            st.rerun()
+        
+        # ===== EXPIRED JOBS =====
+        if expired_jobs:
+            st.markdown("---")
+            st.markdown("### 🔴 Expired Jobs")
+            for req in expired_jobs:
+                with st.expander(f"🔴 {req['id']} - {req['title']} | {req['department']} | Expired: {req.get('closing', 'N/A')}", expanded=False):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**📍 Location:** {req.get('location', 'N/A')}")
+                        st.markdown(f"**💼 Type:** {req.get('type', 'N/A')}")
+                        st.markdown(f"**📅 Closed:** {req.get('closing', 'N/A')}")
+                    with col2:
+                        st.markdown(f"**👤 Submitted By:** {req.get('submitted_by', 'N/A')}")
+                        st.markdown(f"**📊 Positions:** {req.get('positions', 1)}")
+                    
+                    st.markdown("---")
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        if st.button(f"📊 View Report", key=f"report_{req['id']}"):
+                            try:
+                                candidates = db.get_all_candidates()
+                                job_candidates = candidates[candidates['job_id'] == req['id']] if not candidates.empty else []
+                                st.metric("Total Applicants", len(job_candidates))
+                                if len(job_candidates) > 0:
+                                    st.dataframe(job_candidates[['first_name', 'last_name', 'email', 'status']], use_container_width=True)
+                            except:
+                                st.info("No application data available.")
+                    with c2:
+                        if st.button(f"🔄 Repost", key=f"repost_{req['id']}"):
+                            st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
+                            st.session_state.job_requisitions[i]['closing'] = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+                            st.success(f"🔄 {req['title']} reposted for 30 days!")
+                            st.rerun()
+                    with c3:
+                        if st.button(f"🗑️ Delete", key=f"del_{req['id']}"):
+                            st.session_state.job_requisitions = [r for r in st.session_state.job_requisitions if r['id'] != req['id']]
+                            st.success("🗑️ Deleted permanently!")
+                            st.rerun()
+        
+        if not st.session_state.active_jobs and not expired_jobs:
+            st.info("No active or expired jobs. Submit a requisition in Tab 1.")
     
     # ============ TAB 3: CANDIDATE PORTAL ============
     with tab3:
-        st.subheader("🌐 Candidate Application Portal Preview")
-        st.info("This is what candidates see on the live Careers Page. Actual applications appear in AI Screening tab.")
-        with st.expander("📝 Preview Application Form", expanded=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                st.text_input("First Name *", key="prev_fn", disabled=True)
-                st.text_input("Last Name *", key="prev_ln", disabled=True)
-                st.text_input("Email *", key="prev_em", disabled=True)
-                st.text_input("Phone *", key="prev_ph", disabled=True)
-                st.text_input("LinkedIn URL", key="prev_li", disabled=True)
-            with c2:
-                st.text_input("GitHub URL", key="prev_gh", disabled=True)
-                st.text_input("Portfolio URL", key="prev_pf", disabled=True)
-                st.text_input("Current Position", key="prev_cp", disabled=True)
-                st.text_input("Years of Experience", key="prev_ye", disabled=True)
-            st.text_area("Cover Letter (Optional)", key="prev_cl", disabled=True)
-            st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'], key="prev_cv", disabled=True)
-            st.markdown("### Screening Questions (Auto-generated per role)")
-            st.text_area("Q1: Relevant Experience *", key="prev_q1", disabled=True)
-            st.text_area("Q2: Key Achievement *", key="prev_q2", disabled=True)
-            st.text_area("Q3: Why Churchgate Group? *", key="prev_q3", disabled=True)
+        st.subheader("🌐 Candidate Management Portal")
+        
+        # Stats row
+        try:
+            candidates = db.get_all_candidates()
+            total_candidates = len(candidates) if not candidates.empty else 0
+            new_today = len(candidates[candidates['created_at'].str.contains(datetime.now().strftime('%Y-%m-%d'))]) if not candidates.empty and 'created_at' in candidates.columns else 0
+            shortlisted = len(candidates[candidates['status'] == 'Shortlisted']) if not candidates.empty and 'status' in candidates.columns else 0
+            interviewed = len(candidates[candidates['status'].str.contains('Interview', na=False)]) if not candidates.empty and 'status' in candidates.columns else 0
+        except:
+            total_candidates = 0
+            new_today = 0
+            shortlisted = 0
+            interviewed = 0
+        
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric("👥 Total Candidates", total_candidates)
+        with c2:
+            st.metric("🆕 New Today", new_today)
+        with c3:
+            st.metric("⭐ Shortlisted", shortlisted)
+        with c4:
+            st.metric("🎯 Interviewed", interviewed)
+        
+        st.markdown("---")
+        
+        # Sub-tabs for candidate management
+        cand_tab1, cand_tab2, cand_tab3 = st.tabs(["📋 All Candidates", "➕ Quick Add", "📱 Preview Career Page"])
+        
+        # ===== SUB-TAB 1: ALL CANDIDATES =====
+        with cand_tab1:
+            st.subheader("📋 Candidate Database")
+            
+            try:
+                candidates = db.get_all_candidates()
+                if not candidates.empty:
+                    # Filters
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        status_filter = st.selectbox("Status", ["All", "New", "Shortlisted", "Interview Scheduled", "Offered", "Hired", "Rejected"], key="cand_status")
+                    with col2:
+                        job_filter = st.selectbox("Job", ["All Jobs"] + list(candidates['job_id'].dropna().unique()) if 'job_id' in candidates.columns else ["All Jobs"], key="cand_job")
+                    with col3:
+                        sort_by = st.selectbox("Sort", ["Newest First", "Name A-Z", "Status"], key="cand_sort")
+                    with col4:
+                        search_cand = st.text_input("🔍 Search", placeholder="Name or email...", key="cand_search")
+                    
+                    # Apply filters
+                    display = candidates.copy()
+                    if status_filter != "All":
+                        display = display[display['status'] == status_filter]
+                    if job_filter != "All Jobs" and 'job_id' in display.columns:
+                        display = display[display['job_id'] == job_filter]
+                    if search_cand:
+                        s = search_cand.lower()
+                        display = display[display['first_name'].str.lower().str.contains(s, na=False) | display['last_name'].str.lower().str.contains(s, na=False) | display['email'].str.lower().str.contains(s, na=False)]
+                    
+                    st.markdown(f"**Showing {len(display)} candidates**")
+                    
+                    for _, cand in display.iterrows():
+                        initials = (str(cand.get('first_name', ''))[:1] + str(cand.get('last_name', ''))[:1]).upper()
+                        status = cand.get('status', 'New')
+                        status_color = {
+                            'New': '#3182ce', 'Shortlisted': '#d69e2e', 'Interview Scheduled': '#38a169',
+                            'Offered': '#805ad5', 'Hired': '#38a169', 'Rejected': '#CC0000'
+                        }.get(status, '#a0aec0')
+                        
+                        with st.expander(f"👤 {cand.get('first_name', '')} {cand.get('last_name', '')} | {cand.get('email', '')} | {status}", expanded=False):
+                            col1, col2 = st.columns([1, 3])
+                            with col1:
+                                st.markdown(f"""<div style="width:45px;height:45px;border-radius:50%;background:{status_color};display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
+                                st.markdown(f"<span style='background:{status_color};color:white;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.7rem;'>{status}</span>", unsafe_allow_html=True)
+                            with col2:
+                                st.markdown(f"**📧** {cand.get('email', 'N/A')} | **📱** {cand.get('phone', 'N/A')}")
+                                st.markdown(f"**💼** {cand.get('current_position', 'N/A')} | **📅** {cand.get('years_of_experience', 'N/A')} yrs")
+                                st.markdown(f"**🔗** {cand.get('linkedin_url', 'N/A')[:40] if cand.get('linkedin_url') else 'N/A'}")
+                            
+                            # Quick actions
+                            c1, c2, c3, c4 = st.columns(4)
+                            with c1:
+                                new_status = st.selectbox("Update Status", ["New", "Shortlisted", "Interview Scheduled", "Offered", "Hired", "Rejected"], key=f"status_{cand.get('candidate_ref')}")
+                            with c2:
+                                if st.button("💾 Update", key=f"upd_{cand.get('candidate_ref')}"):
+                                    db._patch("candidates", {"status": new_status}, {"candidate_ref": cand.get('candidate_ref')})
+                                    st.success("✅ Updated!")
+                                    st.rerun()
+                            with c3:
+                                if cand.get('resume_text') and len(str(cand.get('resume_text'))) > 10:
+                                    with st.expander("📄 View CV"):
+                                        st.text_area("CV Content", str(cand.get('resume_text'))[:2000], height=200, key=f"cv_{cand.get('candidate_ref')}")
+                            with c4:
+                                if st.button("📧 Email", key=f"email_{cand.get('candidate_ref')}"):
+                                    st.info(f"Email queued to {cand.get('email')}")
+            except:
+                st.info("No candidates yet. Share the Careers Page link to start receiving applications.")
+        
+        # ===== SUB-TAB 2: QUICK ADD CANDIDATE =====
+        with cand_tab2:
+            st.subheader("➕ Quick Add Candidate")
+            st.info("Manually add a candidate from walk-in, referral, or external source.")
+            
+            with st.form("quick_add_candidate", clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                with c1:
+                    q_fn = st.text_input("First Name *")
+                    q_ln = st.text_input("Last Name *")
+                    q_em = st.text_input("Email *")
+                    q_ph = st.text_input("Phone")
+                with c2:
+                    q_pos = st.text_input("Position Applied For")
+                    q_src = st.selectbox("Source", ["Walk-in", "Employee Referral", "Career Page", "LinkedIn", "Indeed", "Glassdoor", "Agency", "Other"])
+                    q_job = st.text_input("Job Reference (if any)")
+                
+                q_cv = st.file_uploader("Upload CV", type=['pdf', 'docx'])
+                q_notes = st.text_area("Notes", height=80)
+                
+                if st.form_submit_button("➕ Add Candidate", use_container_width=True):
+                    if q_fn and q_ln and q_em:
+                        tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
+                        try:
+                            cv_text = ""
+                            if q_cv:
+                                if q_cv.type == "application/pdf":
+                                    import PyPDF2
+                                    for page in PyPDF2.PdfReader(q_cv).pages:
+                                        cv_text += page.extract_text() + "\n"
+                                elif "word" in q_cv.type:
+                                    import docx
+                                    cv_text = "\n".join([p.text for p in docx.Document(q_cv).paragraphs])
+                            
+                            db._post("candidates", {
+                                "candidate_ref": tracking_id,
+                                "first_name": q_fn,
+                                "last_name": q_ln,
+                                "email": q_em,
+                                "phone": q_ph,
+                                "current_position": q_pos,
+                                "resume_text": cv_text[:10000],
+                                "job_id": q_job,
+                                "source": q_src,
+                                "status": "New"
+                            })
+                            st.success(f"✅ Candidate {q_fn} {q_ln} added!")
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+                    else:
+                        st.error("❌ Name and email required!")
+        
+        # ===== SUB-TAB 3: PREVIEW CAREER PAGE =====
+        with cand_tab3:
+            st.subheader("📱 Career Page Preview")
+            st.info("This is what candidates see on the live Careers Page.")
+            
+            # Quick preview of the actual career page
+            st.markdown("""
+            <div style="background:linear-gradient(135deg, #1a1a1a, #2d2a1f);padding:1.5rem;text-align:center;border-radius:8px;margin-bottom:1rem;">
+                <h2 style="color:#F5E6CC;margin:0;">🚀 Build Your Career at Churchgate Group</h2>
+                <p style="color:#c4b998;">Join a team of innovators, leaders, and changemakers.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Show active jobs preview
+            if st.session_state.active_jobs:
+                st.markdown(f"**🟢 {len(st.session_state.active_jobs)} Live Job(s) on Career Page**")
+                for job in st.session_state.active_jobs[:3]:
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.8rem;border-radius:6px;margin:0.3rem 0;border-left:4px solid #D4AF37;">
+                        <strong>{job['title']}</strong><br>
+                        <small>{job['department']} | {job['location']} | {job['type']}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            st.markdown(f"**🔗 Live Career Page:** [hris.churchgate.com/Careers](https://hris.churchgate.com/Careers)")
+            st.markdown(f"**📊 Application Form Preview:**")
+            
+            with st.expander("Preview Application Form", expanded=False):
+                st.text_input("First Name *", disabled=True, placeholder="Candidate fills this")
+                st.text_input("Last Name *", disabled=True)
+                st.text_input("Email *", disabled=True)
+                st.text_input("Phone *", disabled=True)
+                st.file_uploader("Upload CV *", disabled=True)
+                st.text_area("Screening Questions", disabled=True, placeholder="Auto-generated per job role")
     
      # ============ TAB 4: AI SCREENING ============
     with tab4:
