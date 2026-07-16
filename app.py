@@ -5456,7 +5456,104 @@ def promotions():
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
     
+    # ============================================================
+    # AUTO-POST FUNCTION
+    # ============================================================
+    def auto_post_job(job_title, job_department, job_location, job_type, job_salary, job_jd, job_ref, public_url):
+        """Auto-post job to LinkedIn, Indeed, and Glassdoor"""
+        import re
+        import urllib.parse
+        
+        clean_jd = re.sub(r'<[^>]+>', '', job_jd)
+        results = {}
+        
+        # LINKEDIN - Auto-post to personal profile + Company page link
+        import requests as req_linkedin
+        
+        linkedin_token = os.environ.get("LINKEDIN_ACCESS_TOKEN", st.secrets.get("LINKEDIN_ACCESS_TOKEN", ""))
+        
+        linkedin_post = f"""🚀 WE'RE HIRING: {job_title}
+
+📍 {job_location} | 💼 {job_type} | 🏢 {job_department}
+
+{clean_jd[:500]}...
+
+APPLY NOW: {public_url}
+
+#Hiring #Jobs #ChurchgateGroup #Careers #NigeriaJobs"""
+        
+        messages = []
+        
+        # 1. AUTO-POST TO PERSONAL PROFILE
+        if linkedin_token:
+            try:
+                user_url = "https://api.linkedin.com/v2/userinfo"
+                user_response = req_linkedin.get(user_url, headers={"Authorization": f"Bearer {linkedin_token}"})
+                
+                if user_response.status_code == 200:
+                    user_data = user_response.json()
+                    person_urn = f"urn:li:person:{user_data.get('sub')}"
+                    
+                    post_response = req_linkedin.post(
+                        "https://api.linkedin.com/v2/ugcPosts",
+                        headers={
+                            "Authorization": f"Bearer {linkedin_token}",
+                            "Content-Type": "application/json",
+                            "X-Restli-Protocol-Version": "2.0.0"
+                        },
+                        json={
+                            "author": person_urn,
+                            "lifecycleState": "PUBLISHED",
+                            "specificContent": {
+                                "com.linkedin.ugc.ShareContent": {
+                                    "shareCommentary": {"text": linkedin_post},
+                                    "shareMediaCategory": "NONE"
+                                }
+                            },
+                            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}
+                        }
+                    )
+                    
+                    if post_response.status_code in [200, 201]:
+                        messages.append('✅ Posted to personal LinkedIn')
+                    else:
+                        messages.append('⚠️ Personal LinkedIn: Click share link below')
+                else:
+                    messages.append('⚠️ LinkedIn auth issue')
+            except:
+                messages.append('⚠️ LinkedIn API error')
+        else:
+            messages.append('⚠️ No LinkedIn token configured')
+        
+        # 2. WTC ABUJA PAGE - One-click share link
+        wtc_url = f"https://www.linkedin.com/shareArticle?mini=true&url={urllib.parse.quote(public_url)}&title={urllib.parse.quote('WE ARE HIRING: ' + job_title)}&summary={urllib.parse.quote(clean_jd[:200])}"
+        messages.append(f'🏢 [Click to post on WTC Abuja Page]({wtc_url})')
+        
+        # 3. CHURCHGATE GROUP PAGE - One-click share link
+        cg_url = f"https://www.linkedin.com/shareArticle?mini=true&url={urllib.parse.quote(public_url)}&title={urllib.parse.quote('WE ARE HIRING: ' + job_title)}&summary={urllib.parse.quote(clean_jd[:200])}"
+        messages.append(f'🏢 [Click to post on Churchgate Group Page]({cg_url})')
+        
+        results['linkedin'] = {
+            'status': 'success',
+            'post_text': linkedin_post,
+            'message': ' | '.join(messages)
+        }
+        
+        # INDEED
+        try:
+            db_temp = DatabaseManager()
+            db_temp.upload_file("job-feeds", f"indeed_{job_ref}.txt", clean_jd[:2500].encode('utf-8'), "text/plain")
+            results['indeed'] = {'status': 'posted', 'message': '✅ Indeed feed saved! Upload at indeed.com/hire'}
+        except:
+            results['indeed'] = {'status': 'ready', 'message': '📋 Indeed content ready'}
+        
+        # GLASSDOOR
+        glassdoor_url = f"https://www.glassdoor.com/employers/post-job/?title={urllib.parse.quote(job_title)}&location={urllib.parse.quote(job_location)}"
+        results['glassdoor'] = {'status': 'ready', 'post_url': glassdoor_url, 'message': '🏢 Glassdoor post ready!'}
+        
+        return results
     
+    # ============================================================
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
@@ -5846,6 +5943,28 @@ def recruitment_hub():
                                                     )
                                             except:
                                                 pass
+                                        
+                                        # ===== AUTO-POST TO JOB BOARDS =====
+                                        post_settings = req.get('posts', {})
+                                        st.write(f"DEBUG posts: {post_settings}, type: {type(post_settings)}")
+                                        posting_results = []
+                                        
+                                        if post_settings.get('linkedin'):
+                                            result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
+                                            posting_results.append(result['linkedin']['message'])
+                                        
+                                        if post_settings.get('indeed'):
+                                            result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
+                                            posting_results.append(result['indeed']['message'])
+                                        
+                                        if post_settings.get('glassdoor'):
+                                            result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
+                                            posting_results.append(result['glassdoor']['message'])
+                                        
+                                        if posting_results:
+                                            for msg in posting_results:
+                                                st.success(msg)
+                                        # ===================================
                                         
                                         st.success(f"✅ Job is LIVE on Careers Page!")
                                         st.code(public_url, language=None)
@@ -7812,26 +7931,72 @@ def ai_recruitment_agent():
     # ============ LINKEDIN ============
     elif ai_section == "🔗 LinkedIn Parse":
         st.subheader("🔍 LinkedIn Profile Parser")
-        linkedin_url = st.text_input("Enter LinkedIn Profile URL")
-        if st.button("🔍 Parse Profile", use_container_width=True):
-            if linkedin_url:
-                with st.spinner("Parsing..."):
-                    time.sleep(1)
-                    profile = linkedin_parser.parse_profile(linkedin_url)
-                    st.success("✅ Profile Parsed!")
-                    st.json(profile)
-    
-    # ============ SAVE ============
-    elif ai_section == "💾 Save Results":
-        st.subheader("💾 Export & Save")
-        try:
-            candidates = db.get_all_candidates()
-            if not candidates.empty:
-                st.download_button("📥 Download All (CSV)", candidates.to_csv(index=False), "candidates.csv", "text/csv")
+        st.info("Paste a LinkedIn URL and optionally the profile text for AI analysis.")
+        
+        linkedin_url = st.text_input("LinkedIn Profile URL", placeholder="https://www.linkedin.com/in/username/")
+        
+        st.markdown("---")
+        st.markdown("### 📋 Optional: Paste Profile Text for Better Results")
+        st.caption("Copy and paste the visible text from the LinkedIn profile page for more accurate parsing.")
+        profile_text = st.text_area("Paste LinkedIn Profile Text", height=150, 
+            placeholder="Paste the text content from the LinkedIn profile page here...\n\nThis helps the AI extract more accurate information.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔍 Parse Profile", use_container_width=True, type="primary"):
+                if linkedin_url:
+                    with st.spinner("🤖 AI analyzing profile..."):
+                        if profile_text:
+                            result = linkedin_parser.parse_profile(linkedin_url, profile_text)
+                        else:
+                            result = linkedin_parser.parse_profile(linkedin_url)
+                        
+                        if result:
+                            st.session_state.parsed_profile = result
+                            st.success(f"✅ Profile analyzed! Parsed via: {result.get('parsed_via', 'unknown')}")
+                            st.rerun()
+                else:
+                    st.error("Please enter a LinkedIn URL")
+        
+        with col2:
+            cv_file = st.file_uploader("Or upload CV for enhanced parsing", type=['pdf', 'docx', 'txt'], key="linkedin_cv")
+            if cv_file and linkedin_url:
+                cv_text = save_uploaded_file(cv_file)
+                if st.button("🔍 Parse with CV", use_container_width=True):
+                    with st.spinner("🤖 Analyzing with CV..."):
+                        result = linkedin_parser.parse_with_cv_text(linkedin_url, cv_text)
+                        if result:
+                            st.session_state.parsed_profile = result
+                            st.success(f"✅ Profile analyzed with CV enhancement!")
+                            st.rerun()
+        
+        if 'parsed_profile' in st.session_state:
+            profile = st.session_state.parsed_profile
+            st.markdown("---")
+            st.markdown("### 📊 Parsed Profile Data")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"**👤 Name:** {profile.get('name', 'N/A')}")
+                st.markdown(f"**💼 Headline:** {profile.get('headline', 'N/A')}")
+                st.markdown(f"**📍 Location:** {profile.get('location', 'N/A')}")
+            with col2:
+                st.markdown(f"**🏢 Current Company:** {profile.get('current_company', 'N/A')}")
+                st.markdown(f"**📋 Position:** {profile.get('current_position', 'N/A')}")
+                st.markdown(f"**📅 Experience:** {profile.get('experience_years', 0)} years")
+            with col3:
+                st.markdown(f"**🎓 Education:** {profile.get('education', 'N/A')}")
+                st.markdown(f"**🔑 Skills:** {', '.join(profile.get('skills', [])[:8])}")
+                st.markdown(f"**📊 Parsed via:** {profile.get('parsed_via', 'unknown')}")
+            
+            if profile.get('summary'):
                 st.markdown("---")
-                st.metric("Predicted Time-to-Hire", "12-15 days", "Based on current pipeline velocity")
-        except:
-            st.info("No data to export.")
+                st.markdown(f"**📝 Summary:** {profile.get('summary', '')}")
+            
+            # Use profile button
+            if st.button("📋 Use This Profile Data", use_container_width=True, type="primary"):
+                st.session_state['prefill_candidate'] = profile
+                st.success("✅ Profile data ready! Go to Candidate Portal or Add Candidate to use it.")
 
 def chat_communications():
     st.markdown("""<div class="churchgate-header"><h1>💬 Social Hub</h1><p>Team Chat | Direct Messages | Announcements | Kudos | Polls | Interest Groups | Smart HRIS Bot | Integrations</p></div>""", unsafe_allow_html=True)
