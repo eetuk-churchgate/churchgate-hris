@@ -11578,7 +11578,7 @@ def requests_hub():
             
             col1, col2, col3 = st.columns(3)
             with col1:
-                my_type_filter = st.selectbox("Request Type", ["All"] + [t.split(" ")[-1] for t in request_types], key="my_type")
+                my_type_filter = st.selectbox("Request Type", ["All"] + request_types, key="my_type")
             with col2:
                 my_status_filter = st.selectbox("Status", ["All", "Draft", "Submitted", "Recommended by TL", "Approved by HOD", "Approved", "Rejected", "Completed"], key="my_status")
             with col3:
@@ -12243,7 +12243,7 @@ def requests_hub():
         if not (is_admin or is_hod):
             st.info("This section is for HODs, HR, and Admin only.")
         else:
-            board_tabs = st.tabs(["📋 Pending Approvals", "⚡ Bulk Actions", "👥 HR Leave Management"])
+            board_tabs = st.tabs(["📋 Pending Approvals", "⚡ Bulk Actions", "👥 HR Leave Management", "📤 Bulk Leave Upload"])
             
             # ----- Pending Approvals -----
             with board_tabs[0]:
@@ -12440,6 +12440,68 @@ def requests_hub():
                                         st.rerun()
                 except Exception as e:
                     st.error(f"Error loading employees: {str(e)}")
+            
+            # ----- Bulk Leave Upload -----
+            with board_tabs[3]:
+                st.markdown("### 📤 Bulk Leave Balance Upload")
+                st.info("Upload a CSV file to set leave balances for multiple employees at once.")
+                
+                template_data = []
+                for leave_type, defaults in LEAVE_TYPES.items():
+                    template_data.append({
+                        'employee_id': 'AN00001',
+                        'leave_type': leave_type,
+                        'entitled': defaults['default_entitled'],
+                        'carry_forward': 0,
+                        'adjustment': 0
+                    })
+                
+                template_df = pd.DataFrame(template_data)
+                
+                st.markdown("#### 📥 Step 1: Download Template")
+                st.download_button("📥 Download Leave Template CSV", template_df.to_csv(index=False), "leave_balance_template.csv", "text/csv")
+                
+                st.markdown("---")
+                st.markdown("#### 📤 Step 2: Upload Completed CSV")
+                uploaded_leave = st.file_uploader("Upload Leave Balance CSV", type=['csv'], key="leave_upload")
+                
+                if uploaded_leave:
+                    try:
+                        df_leave = pd.read_csv(uploaded_leave)
+                        st.markdown(f"**{len(df_leave)} records**")
+                        st.dataframe(df_leave.head(10), use_container_width=True)
+                        
+                        if st.button(f"📤 Upload {len(df_leave)} Leave Balances", use_container_width=True, type="primary"):
+                            success, errors = 0, 0
+                            for _, row in df_leave.iterrows():
+                                try:
+                                    emp_id = str(row.get('employee_id', '')).strip()
+                                    leave_type = str(row.get('leave_type', '')).strip()
+                                    entitled = float(row.get('entitled', 0))
+                                    carry_forward = float(row.get('carry_forward', 0))
+                                    adjustment = float(row.get('adjustment', 0))
+                                    
+                                    if not emp_id or not leave_type: errors += 1; continue
+                                    
+                                    existing = db._get("leave_balances", {"employee_id": emp_id, "leave_type": leave_type})
+                                    total_taken = float(existing[0].get('total_taken', 0)) if existing and len(existing) > 0 else 0
+                                    balance = entitled + carry_forward + adjustment - total_taken
+                                    
+                                    data = {"employee_id": emp_id, "leave_type": leave_type, "entitled": entitled, "carry_forward": carry_forward, "adjustment": adjustment, "total_taken": total_taken, "balance": balance, "year": datetime.now().year}
+                                    
+                                    if existing and len(existing) > 0:
+                                        db._patch("leave_balances", data, {"id": existing[0]['id']})
+                                    else:
+                                        db._post("leave_balances", data)
+                                    success += 1
+                                except:
+                                    errors += 1
+                            
+                            st.success(f"✅ {success} uploaded! ({errors} skipped)")
+                            st.balloons()
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
     
     # ============================================================
     # TAB 8: ANALYTICS
