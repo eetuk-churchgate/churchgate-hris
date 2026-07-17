@@ -24,20 +24,6 @@ import calendar
 
 sys.path.append(str(Path(__file__).parent))
 
-# ============================================
-# RESTRICT HUGGING FACE TO ADMIN ONLY
-# ============================================
-ALLOWED_EMAILS = ["admin@churchgate.com", "eetuk@churchgate.com"]
-
-# Check if user is logged in and restrict access
-if 'user' in st.session_state and st.session_state.user:
-    user_email = st.session_state.user.get('email', '')
-    if user_email not in ALLOWED_EMAILS:
-        st.error("⛔ Access Restricted")
-        st.warning("This is a test environment. Admin access only.")
-        st.info("🔗 Please use the live HRIS at [hris.churchgate.com](https://hris.churchgate.com)")
-        st.stop()
-
 # =============================================
 # FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
 # =============================================
@@ -692,9 +678,6 @@ def login_section():
             with cb:
                 st.image(logo, width=300)
         st.markdown("""<div style="text-align: center; padding: 1rem 0;"><h1 style="color: #1a1a1a; font-size: 2rem; font-weight: 700;">HRIS Portal</h1><p style="color: #666666; font-size: 0.9rem;">Human Resource Information System</p></div>""", unsafe_allow_html=True)
-        
-        # TEST ENVIRONMENT BANNER
-        st.info("🔧 **Test Environment** — Admin access only. All other users please visit [hris.churchgate.com](https://hris.churchgate.com)")
         
         # WTC Abuja Image
         wtc_path = Path(__file__).parent / "WTC Abuja 7 (1).jpg"
@@ -2365,7 +2348,6 @@ def employee_management():
                         st.warning(f"⚠️ A login for {single_email} may already exist.")
                 else:
                     st.error("❌ Email and Name required!")
-
         
         st.markdown("---")
         st.markdown("### 👥 Bulk Generate for All Employees")
@@ -2396,7 +2378,6 @@ def employee_management():
                 st.download_button("📥 Download Login List", pd.DataFrame(emp_list).to_csv(index=False), "logins.csv", "text/csv")
         else:
             st.info("No employees found.")
-
     
     # ============ TAB 5: DEPARTMENTS ============
     with tab5:
