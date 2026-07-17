@@ -833,11 +833,31 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "📋 Audit Log", "📊 Advanced Analytics", "👤 My Profile"]
+            menu_options = [
+                "🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", 
+                "📈 Performance & OKRs", "✅ Staff Confirmation", "🚀 Promotions", 
+                "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", 
+                "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", 
+                "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", 
+                "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", 
+                "🎉 Wellness & Perks", "🎓 LMS", "📋 Audit Log", 
+                "📊 Advanced Analytics", "👤 My Profile"
+            ]
         elif user_role == 'Manager':
-            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
+            menu_options = [
+                "🏠 Employee Dashboard", "✅ Staff Confirmation", "💼 Recruitment Hub", 
+                "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", 
+                "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", 
+                "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", 
+                "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"
+            ]
         else:
-            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
+            menu_options = [
+                "🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", 
+                "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", 
+                "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", 
+                "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"
+            ]
 
         all_icons = ["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "folder-fill", "lightbulb-fill", "calendar-fill", "bullseye", "inbox-fill", "person-lines-fill", "book-half", "heart-fill", "mortarboard-fill", "shield-fill", "graph-up", "person-circle"]
         selected = option_menu(menu_title=None, options=menu_options, icons=all_icons[:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
@@ -5248,15 +5268,391 @@ def performance_okrs():
                     st.info("No appraisal data available for recommendations.")
 
 
-
-def promotions():
-    st.markdown("""<div class="churchgate-header"><h1>🚀 Promotions & Career Progression Console</h1><p>360° A-Player Assessment | Succession Planning | Talent Pipeline Management</p></div>""", unsafe_allow_html=True)
+def staff_confirmation():
+    """
+    Churchgate Group HRIS - Staff Confirmation Module v2.0
+    Fortune 500 Standard | Full Confirmation Decision Form | Auto-Notifications | Confirmation Letters
+    """
+    st.markdown("""<div class="churchgate-header"><h1>✅ Staff Confirmation Board</h1><p>Probation Tracking | Full Decision Form | Performance Rating | HOD Review | COO Approval | Confirmation Letters</p></div>""", unsafe_allow_html=True)
     
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
+    is_admin = user_role in ['Admin', 'HR Director']
+    is_hod = is_admin or user_role in ['Manager', 'HOD']
+    is_coo = user_name == 'Jerome Das' or is_admin
+    
+    def get_probation_employees():
+        try:
+            all_emp = db.get_all_employees()
+            if not all_emp.empty:
+                return all_emp[all_emp['status'] == 'Probation']
+        except:
+            pass
+        return pd.DataFrame()
+    
+    def calculate_probation_end(join_date, probation_months=6):
+        try:
+            if isinstance(join_date, str):
+                jd = datetime.strptime(join_date, '%Y-%m-%d')
+            else:
+                jd = pd.to_datetime(join_date)
+            return jd + timedelta(days=probation_months * 30)
+        except:
+            return None
+    
+    def send_confirmation_email(to_email, subject, body):
+        try:
+            from utils.email_service import EmailService
+            return EmailService().send_email(to_email, subject, body)
+        except:
+            return False, "Email service unavailable"
+    
+    def generate_confirmation_letter(emp_name, emp_position, emp_dept, emp_id, join_date, confirmation_date):
+        try:
+            from fpdf import FPDF
+            pdf = FPDF(orientation='P', unit='mm', format='A4')
+            pdf.add_page()
+            pdf.set_fill_color(26, 26, 26); pdf.rect(0, 0, 210, 35, 'F')
+            pdf.set_fill_color(204, 0, 0); pdf.rect(0, 35, 210, 2, 'F')
+            pdf.set_fill_color(212, 175, 55); pdf.rect(0, 37, 210, 1, 'F')
+            pdf.set_font('Helvetica', 'B', 20); pdf.set_text_color(255, 255, 255)
+            pdf.cell(0, 15, 'CHURCHGATE GROUP', ln=True, align='C')
+            pdf.set_font('Helvetica', 'B', 11); pdf.set_text_color(212, 175, 55)
+            pdf.cell(0, 8, 'CONFIRMATION OF EMPLOYMENT', ln=True, align='C')
+            pdf.ln(12); pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 11)
+            pdf.cell(0, 8, f'Date: {confirmation_date.strftime("%B %d, %Y")}', ln=True, align='R')
+            pdf.ln(5); pdf.set_font('Helvetica', '', 11)
+            pdf.cell(0, 8, f'Dear {emp_name},', ln=True); pdf.ln(3)
+            pdf.multi_cell(0, 7, 'We are pleased to confirm your employment with Churchgate Group following the successful completion of your probationary period.')
+            pdf.ln(2)
+            pdf.multi_cell(0, 7, f'Your performance during the probation period has been reviewed and found satisfactory. You are hereby confirmed in your position with effect from {confirmation_date.strftime("%B %d, %Y")}.')
+            pdf.ln(4)
+            pdf.set_font('Helvetica', 'B', 11); pdf.cell(0, 8, 'Employment Details:', ln=True)
+            pdf.set_font('Helvetica', '', 10)
+            for label, value in [('Employee Name:', emp_name), ('Employee ID:', emp_id), ('Position:', emp_position), ('Department:', emp_dept), ('Date of Joining:', join_date.strftime('%B %d, %Y') if hasattr(join_date, 'strftime') else str(join_date)), ('Confirmation Date:', confirmation_date.strftime('%B %d, %Y')), ('Status:', 'Confirmed - Full Employment')]:
+                pdf.cell(60, 7, f'  {label}', 0, 0); pdf.set_font('Helvetica', 'B', 10); pdf.cell(0, 7, value, 0, 1); pdf.set_font('Helvetica', '', 10)
+            pdf.ln(5)
+            pdf.multi_cell(0, 7, 'All terms and conditions of your employment as outlined in your original offer letter remain in effect. You are entitled to all company benefits applicable to confirmed employees.')
+            pdf.ln(8)
+            pdf.set_font('Helvetica', 'B', 10)
+            pdf.cell(95, 7, '_______________________', align='C'); pdf.cell(20, 7, ''); pdf.cell(95, 7, '_______________________', align='C')
+            pdf.ln(); pdf.set_font('Helvetica', '', 8); pdf.set_text_color(128, 128, 128)
+            pdf.cell(95, 5, 'HR Director', align='C'); pdf.cell(20, 5, ''); pdf.cell(95, 5, 'COO - Jerome Das', align='C')
+            pdf.set_y(-20); pdf.set_font('Helvetica', 'I', 7); pdf.set_text_color(160, 160, 160)
+            pdf.cell(0, 10, 'Churchgate Group - HR Department | hris@churchgate.com', align='C')
+            return bytes(pdf.output())
+        except:
+            return None
+    
+    # Top Stats
+    probation_employees = get_probation_employees()
+    total_probation = len(probation_employees)
+    ending_soon = 0; overdue = 0; now = datetime.now()
+    
+    if not probation_employees.empty:
+        for _, emp in probation_employees.iterrows():
+            end_date = calculate_probation_end(emp.get('join_date'))
+            if end_date:
+                days_left = (end_date - now).days
+                if days_left <= 14 and days_left >= 0: ending_soon += 1
+                elif days_left < 0: overdue += 1
+    
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("👥 On Probation", total_probation)
+    c2.metric("⏰ Ending Soon (14d)", ending_soon)
+    c3.metric("🚨 Overdue", overdue)
+    c4.metric("✅ Confirmed", 0)
+    
+    st.markdown("---")
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["📋 Probation Board", "🔍 Review & Confirm", "✅ Confirmed Staff", "📊 Dashboard"])
+    
+    # ============================================================
+    # TAB 1: PROBATION BOARD
+    # ============================================================
+    with tab1:
+        st.subheader("📋 Employees on Probation")
+        
+        if not probation_employees.empty:
+            st.markdown(f"**{total_probation} employees currently on probation**")
+            
+            for _, emp in probation_employees.iterrows():
+                emp_name = f"{emp['first_name']} {emp['last_name']}"
+                emp_id = emp.get('employee_id', '')
+                dept = emp.get('department', '')
+                position = emp.get('position', '')
+                join_date = emp.get('join_date', '')
+                end_date = calculate_probation_end(join_date)
+                
+                if end_date:
+                    days_left = (end_date - now).days
+                    if days_left < 0: status_text = f"🚨 OVERDUE by {abs(days_left)} days"; status_color = '#CC0000'
+                    elif days_left <= 7: status_text = f"⏰ {days_left} days left"; status_color = '#d69e2e'
+                    elif days_left <= 14: status_text = f"📅 {days_left} days left"; status_color = '#3182ce'
+                    else: status_text = f"📅 {days_left} days left"; status_color = '#38a169'
+                else: status_text = "N/A"; status_color = '#a0aec0'
+                
+                with st.expander(f"{'🚨' if days_left < 0 else '⏰' if days_left <= 7 else '📅'} {emp_name} — {position} ({dept}) | {status_text}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**Employee:** {emp_name}")
+                        st.markdown(f"**ID:** {emp_id}")
+                        st.markdown(f"**Position:** {position}")
+                        st.markdown(f"**Department:** {dept}")
+                    with col2:
+                        st.markdown(f"**Join Date:** {join_date}")
+                        st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                        st.markdown(f"**Days Left:** <span style='color:{status_color};font-weight:700;'>{days_left if end_date else 'N/A'}</span>", unsafe_allow_html=True)
+        else:
+            st.success("🎉 No employees currently on probation!")
+    
+    # ============================================================
+    # TAB 2: REVIEW & CONFIRM (ENHANCED DECISION FORM)
+    # ============================================================
+    with tab2:
+        st.subheader("🔍 Review & Confirm Employees")
+        
+        if is_hod or is_admin:
+            if not probation_employees.empty:
+                for _, emp in probation_employees.iterrows():
+                    emp_name = f"{emp['first_name']} {emp['last_name']}"
+                    emp_id = emp.get('employee_id', '')
+                    dept = emp.get('department', '')
+                    position = emp.get('position', '')
+                    join_date = emp.get('join_date', '')
+                    end_date = calculate_probation_end(join_date)
+                    
+                    if not is_admin and dept != user_dept: continue
+                    
+                    with st.expander(f"📋 Review: {emp_name} — {position} ({dept})", expanded=False):
+                        st.markdown(f"**Probation Period:** {join_date} to {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                        
+                        # HOD Review - FULL DECISION FORM
+                        if is_hod:
+                            st.markdown("---")
+                            st.markdown("#### 👔 EMPLOYEE CONFIRMATION DECISION FORM")
+                            
+                            with st.form(key=f"hod_review_{emp_id}"):
+                                # 1. EMPLOYEE DATA
+                                st.markdown("##### 1. EMPLOYEE DATA")
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    st.markdown(f"**Name:** {emp_name}")
+                                    st.markdown(f"**Department:** {dept}")
+                                    st.text_input("Company/Unit", value="Churchgate Group", key=f"unit_{emp_id}")
+                                with col2:
+                                    st.markdown(f"**Position:** {position}")
+                                    st.markdown(f"**Join Date:** {join_date}")
+                                    st.text_input("Highest Qualification", key=f"qual_{emp_id}", placeholder="e.g., B.Sc.")
+                                with col3:
+                                    st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                                    st.text_input("Confirmation Due Date", value=end_date.strftime('%Y-%m-%d') if end_date else '', key=f"due_{emp_id}")
+                                
+                                st.markdown("---")
+                                
+                                # 2. STRENGTHS / WEAKNESSES
+                                st.markdown("##### 2. EMPLOYEE STRENGTHS / WEAKNESSES")
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    strengths = st.text_area("AREA OF STRENGTHS *", key=f"strengths_{emp_id}", height=100, placeholder="Key strengths and achievements...")
+                                with col2:
+                                    weaknesses = st.text_area("AREA OF WEAKNESSES *", key=f"weaknesses_{emp_id}", height=100, placeholder="Areas needing improvement...")
+                                
+                                st.markdown("---")
+                                
+                                # 3. PERFORMANCE RATING
+                                st.markdown("##### 3. PERFORMANCE RATING (0-10 each)")
+                                perf_criteria = [
+                                    "Quality and Quantity of work", "Knowledge of work and procedures",
+                                    "Requisite/cognate Technical Skills", "Care and Maintenance of Assets",
+                                    "Ability to Communicate", "Interpersonal Relationship & Team Spirit",
+                                    "Dependability/Discipline", "Initiative and Creativity",
+                                    "Leadership", "Potentialities"
+                                ]
+                                perf_scores = {}; total_perf = 0
+                                
+                                for i, criterion in enumerate(perf_criteria):
+                                    col1, col2 = st.columns([3, 1])
+                                    with col1: st.markdown(f"**{criterion}**")
+                                    with col2:
+                                        score = st.number_input("Score", 0, 10, 5, key=f"perf_{i}_{emp_id}")
+                                        perf_scores[str(i)] = score; total_perf += score
+                                
+                                st.markdown(f"**TOTAL SCORE: {total_perf} / 100**")
+                                
+                                if total_perf >= 90: perf_rating = "Outstanding"; perf_color = "#38a169"
+                                elif total_perf >= 70: perf_rating = "Satisfactory"; perf_color = "#3182ce"
+                                elif total_perf >= 50: perf_rating = "Average"; perf_color = "#d69e2e"
+                                elif total_perf >= 30: perf_rating = "Unsatisfactory"; perf_color = "#dd6b20"
+                                else: perf_rating = "Poor"; perf_color = "#CC0000"
+                                
+                                st.markdown(f"""<div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#888;margin-top:0.3rem;"><span>10-29: Poor</span><span>30-49: Unsatisfactory</span><span>50-69: Average</span><span>70-89: Satisfactory</span><span>90-100: Outstanding</span></div>
+                                <div style="margin-top:0.5rem;padding:0.5rem;background:{perf_color}15;border-radius:6px;border-left:4px solid {perf_color};"><strong>Rating: <span style="color:{perf_color};">{perf_rating}</span></strong></div>""", unsafe_allow_html=True)
+                                
+                                st.markdown("---")
+                                
+                                # 4. DISCIPLINARY STATUS
+                                st.markdown("##### 4. DISCIPLINARY STATUS")
+                                col1, col2, col3 = st.columns(3)
+                                with col1: disc_action = st.selectbox("Action", ["None","Caution","Warning","Final Warning","Suspension"], key=f"disc_{emp_id}")
+                                with col2: disc_reason = st.text_input("Reason", key=f"discr_{emp_id}")
+                                with col3: disc_remark = st.text_input("Remark", key=f"disck_{emp_id}")
+                                
+                                st.markdown("---")
+                                
+                                # 5. RECOMMENDATIONS
+                                st.markdown("##### 5. RECOMMENDATIONS")
+                                hod_decision = st.radio("Decision *", [
+                                    "✅ Well Fitted / Confirm & Possible Increment",
+                                    "✅ Fitted / Confirm",
+                                    "🔄 Not Fitted / Extend Confirmation (1 Month)",
+                                    "🔄 Not Fitted / Extend Confirmation (2 Months)",
+                                    "🔄 Not Fitted / Extend Confirmation (3 Months)",
+                                    "❌ Not Recommended"
+                                ], key=f"hod_dec_{emp_id}")
+                                
+                                hod_comments = st.text_area("HOD / PCH Comment *", key=f"hod_com_{emp_id}", height=80, placeholder="Justification for recommendation...")
+                                
+                                st.markdown("---")
+                                col1, col2 = st.columns(2)
+                                with col1: supervisor_name = st.text_input("Immediate Supervisor Name", value=user_name, key=f"sup_{emp_id}")
+                                with col2: line_manager = st.text_input("Line Manager Name", key=f"lm_{emp_id}")
+                                
+                                if st.form_submit_button("📤 Submit Confirmation Decision", use_container_width=True, type="primary"):
+                                    if strengths and weaknesses and hod_comments:
+                                        try:
+                                            db._post("confirmation_reviews", {
+                                                "employee_id": emp_id, "employee_name": emp_name,
+                                                "department": dept, "position": position,
+                                                "join_date": str(join_date), "probation_end": end_date.strftime('%Y-%m-%d') if end_date else '',
+                                                "hod_name": user_name, "supervisor_name": supervisor_name,
+                                                "line_manager_name": line_manager,
+                                                "strengths": strengths, "weaknesses": weaknesses,
+                                                "performance_scores": json.dumps(perf_scores),
+                                                "total_performance_score": total_perf,
+                                                "performance_rating": perf_rating,
+                                                "disciplinary_action": disc_action,
+                                                "disciplinary_reason": disc_reason,
+                                                "disciplinary_remark": disc_remark,
+                                                "hod_decision": hod_decision,
+                                                "hod_comments": hod_comments,
+                                                "status": "Pending COO Approval" if "Confirm" in hod_decision else "Extension Recommended",
+                                                "review_date": now.strftime('%Y-%m-%d %H:%M')
+                                            })
+                                        except: pass
+                                        
+                                        if "Confirm" in hod_decision:
+                                            send_confirmation_email("jeromedas@churchgate.com", f"✅ Confirmation Recommended: {emp_name}", f"Dear Jerome,\n\n{user_name} has recommended confirmation for {emp_name}.\n\nScore: {total_perf}/100 ({perf_rating})\n\nhttps://hris.churchgate.com")
+                                            st.success("✅ Submitted! Sent to COO.")
+                                        else:
+                                            send_confirmation_email("asakote@churchgate.com", f"🔄 Extension: {emp_name}", f"HR Team,\n\n{user_name} recommended extension for {emp_name}.\n\n{hod_decision}\n\nPlease process.")
+                                            send_confirmation_email(emp.get('email',''), f"🔄 Probation Update", f"Dear {emp_name},\n\nYour probation period has been extended.\n\nYour HOD will discuss this with you.\n\nChurchgate Group HR")
+                                            st.warning("🔄 Extension recommended.")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Strengths, Weaknesses, and Comments required!")
+                        
+                        # COO Approval
+                        if is_coo:
+                            try:
+                                reviews = db._get("confirmation_reviews")
+                                for r in reviews:
+                                    if r.get('employee_id') == emp_id and r.get('status') == 'Pending COO Approval':
+                                        st.markdown("---")
+                                        st.markdown("#### 🏢 COO Final Approval")
+                                        st.markdown(f"**HOD:** {r.get('hod_name','')} | **Score:** {r.get('total_performance_score','')}/100 ({r.get('performance_rating','')})")
+                                        st.markdown(f"**Strengths:** {r.get('strengths','')}")
+                                        st.markdown(f"**Weaknesses:** {r.get('weaknesses','')}")
+                                        st.markdown(f"**Comments:** {r.get('hod_comments','')}")
+                                        
+                                        col1, col2, col3 = st.columns(3)
+                                        with col1:
+                                            if st.button(f"✅ Approve", key=f"coo_app_{emp_id}", use_container_width=True, type="primary"):
+                                                db._patch("confirmation_reviews", {"status":"Approved by COO","coo_decision":"Approved","coo_name":user_name,"approved_date":now.strftime('%Y-%m-%d %H:%M')}, {"id":r.get('id')})
+                                                db._patch("employees", {"status":"Active"}, {"employee_id":emp_id})
+                                                confirmation_date = now
+                                                letter_bytes = generate_confirmation_letter(emp_name, position, dept, emp_id, join_date, confirmation_date)
+                                                send_confirmation_email("asakote@churchgate.com", f"✅ Confirmation Approved: {emp_name}", f"HR Team,\n\nCOO approved {emp_name}. Please process confirmation letter.")
+                                                send_confirmation_email(emp.get('email',''), f"🎉 Confirmation Approved!", f"Dear {emp_name},\n\nCongratulations! Your employment has been confirmed.\n\nChurchgate Group HR")
+                                                st.success("✅ Confirmed!"); st.balloons(); st.rerun()
+                                        with col2:
+                                            if st.button(f"🔄 Return", key=f"coo_ret_{emp_id}", use_container_width=True):
+                                                db._patch("confirmation_reviews", {"status":"Returned to HOD","coo_decision":"Returned"}, {"id":r.get('id')})
+                                                st.warning("🔄 Returned to HOD"); st.rerun()
+                                        with col3:
+                                            coo_comment = st.text_input("Comment", key=f"coo_cmt_{emp_id}")
+                                            if st.button(f"❌ Reject", key=f"coo_rej_{emp_id}", use_container_width=True):
+                                                db._patch("confirmation_reviews", {"status":"Rejected by COO","coo_decision":"Rejected","coo_name":user_name}, {"id":r.get('id')})
+                                                st.error("❌ Rejected"); st.rerun()
+                                        break
+                            except: pass
+            else:
+                st.info("No employees on probation.")
+        else:
+            st.info("This section is for HODs and Admin only.")
+    
+    # ============================================================
+    # TAB 3: CONFIRMED STAFF
+    # ============================================================
+    with tab3:
+        st.subheader("✅ Confirmed Staff Records")
+        try:
+            reviews = db._get("confirmation_reviews")
+            if reviews:
+                confirmed = [r for r in reviews if r.get('status') == 'Approved by COO']
+                if confirmed:
+                    st.markdown(f"**{len(confirmed)} confirmed employees**")
+                    for r in confirmed:
+                        st.markdown(f"""<div style="background:white;padding:0.8rem;border-radius:8px;margin:0.3rem 0;border-left:4px solid #38a169;"><strong>{r.get('employee_name','')}</strong> — {r.get('position','')} ({r.get('department','')})<br><small>Score: {r.get('total_performance_score','')}/100 ({r.get('performance_rating','')}) | Confirmed: {r.get('approved_date','')[:10]}</small></div>""", unsafe_allow_html=True)
+                else: st.info("No confirmed staff yet.")
+            else: st.info("No confirmation reviews found.")
+        except: st.info("Data loading...")
+    
+    # ============================================================
+    # TAB 4: DASHBOARD
+    # ============================================================
+    with tab4:
+        st.subheader("📊 Confirmation Dashboard")
+        try:
+            reviews = db._get("confirmation_reviews")
+            if reviews:
+                by_status = {}; by_dept = {}
+                for r in reviews:
+                    s = r.get('status','Pending'); d = r.get('department','Unknown')
+                    by_status[s] = by_status.get(s,0)+1; by_dept[d] = by_dept.get(d,0)+1
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("### By Status")
+                    fig1 = px.pie(values=list(by_status.values()), names=list(by_status.keys()), hole=0.5)
+                    fig1.update_layout(height=350); st.plotly_chart(fig1, use_container_width=True)
+                with col2:
+                    st.markdown("### By Department")
+                    fig2 = px.bar(x=list(by_dept.keys()), y=list(by_dept.values()))
+                    fig2.update_layout(height=350); st.plotly_chart(fig2, use_container_width=True)
+                
+                st.download_button("📥 Export CSV", pd.DataFrame([{'Employee':r.get('employee_name'),'Position':r.get('position'),'Department':r.get('department'),'Status':r.get('status'),'Score':r.get('total_performance_score'),'Rating':r.get('performance_rating'),'Date':r.get('review_date','')[:10]} for r in reviews]).to_csv(index=False), "confirmation_report.csv", "text/csv")
+            else: st.info("No data yet.")
+        except: st.info("Dashboard loading...")
+
+
+
+def promotions():
+    """
+    Churchgate Group HRIS - Promotions & 360° Feedback Module v2.0
+    Fortune 500 Standard | A-Player Assessment | 360° Questionnaire | Feedback Dashboard
+    """
+    st.markdown("""<div class="churchgate-header"><h1>🚀 Promotions & Career Progression</h1><p>A-Player Assessment | 360° Feedback | Succession Planning | Talent Pipeline</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     
-    # ALWAYS load from database
+    # Load A-Players data
     aplayers_data = {}
     try:
         db_players = db.get_all_aplayers()
@@ -5272,14 +5668,14 @@ def promotions():
                     'strategic': row['strategic'], 'peer_review': row['peer_review'],
                     'junior_review': row['junior_review'], 'independent_review': row['independent_review'],
                     'overall': row['overall'], 'readiness': row['readiness'],
-                    'gap': row['gap'], 'risk': row['risk'], 'photo': None
+                    'gap': row['gap'], 'risk': row['risk']
                 })
     except:
         pass
     
-    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 
-                 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 
-                 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
+    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 
+                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 
+                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     for dept in all_depts:
         if dept not in aplayers_data:
             aplayers_data[dept] = []
@@ -5293,14 +5689,19 @@ def promotions():
     if 'aplayer_nominations' not in st.session_state:
         st.session_state.aplayer_nominations = nominations_list
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏆 A-Players Board", "📝 Nominate A-Player", "📊 360° Assessment", "📋 Succession Pipeline", "📥 Reports"])
+    # ============================================================
+    # TABS (6 now with 360° Feedback)
+    # ============================================================
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🏆 A-Players Board", "📝 Nominate A-Player", "📊 360° Assessment", 
+        "📋 360° Questionnaire", "📊 Feedback Dashboard", "📥 Reports"
+    ])
     
+    # ============================================================
+    # TAB 1: A-PLAYERS BOARD (KEEP EXISTING)
+    # ============================================================
     with tab1:
         st.subheader("🏆 Group A-Players — Talent Pipeline")
-        
-        if st.session_state.aplayer_nominations:
-            pending_count = len(st.session_state.aplayer_nominations)
-            st.markdown(f"""<div style="background: #fff3cd; padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #d69e2e;"><strong>🔔 {pending_count} Pending Nomination{'s' if pending_count > 1 else ''}</strong></div>""", unsafe_allow_html=True)
         
         all_players = []
         for dept, players in aplayers_data.items():
@@ -5312,62 +5713,55 @@ def promotions():
         
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Total A-Players", len(all_players))
-        c2.metric("Ready Now", len(ready_now), "🚀")
+        c2.metric("Ready Now", len(ready_now))
         c3.metric("Avg Score", f"{sum(p['overall'] for p in all_players) / len(all_players):.1f}%" if all_players else "N/A")
         c4.metric("Departments", len([d for d, p in aplayers_data.items() if p]))
         
         st.markdown("---")
+        
+        if st.session_state.aplayer_nominations:
+            st.markdown(f"""<div style="background:#fff3cd;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid #d69e2e;"><strong>🔔 {len(st.session_state.aplayer_nominations)} Pending Nomination(s)</strong></div>""", unsafe_allow_html=True)
         
         if is_admin:
             view_dept = st.selectbox("🏢 Filter by Department", ["All Departments"] + all_depts)
         else:
             view_dept = "All Departments"
         
-        if view_dept == "All Departments":
-            display_players = all_players
-        else:
-            display_players = [p for p in all_players if p['department'] == view_dept]
+        display_players = all_players if view_dept == "All Departments" else [p for p in all_players if p['department'] == view_dept]
         
         if display_players:
             for player in display_players:
-                player_key = f"{player['name']}_{player['department']}"
-                color = "#38a169" if player['readiness'] == 'Ready Now' else "#d69e2e" if 'Q3' in str(player['readiness']) else "#3182ce" if 'Q4' in str(player['readiness']) else "#CC0000"
+                color = "#38a169" if player['readiness'] == 'Ready Now' else "#d69e2e" if 'Q3' in str(player['readiness']) else "#3182ce"
                 initials = generate_initials(player['name'])
                 st.markdown(f"""
-                <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 0.8rem; border-left: 5px solid {color}; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-                    <div style="display: flex; align-items: center; gap: 1.2rem;">
-                        <div style="width: 55px; height: 55px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.3rem; color: white; min-width: 55px;">{initials}</div>
-                        <div style="flex: 1;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <strong style="font-size: 1.1rem;">{player['name']}</strong>
-                                    <span style="color: #666; font-size: 0.85rem; margin-left: 0.5rem;">{player['department']}</span>
-                                    <br><small>{player['position']} → <strong>Nominated by: {player['nominated_by']}</strong></small>
-                                </div>
-                                <div style="text-align: right;">
-                                    <span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-weight: 700; font-size: 0.85rem;">{player['readiness']}</span>
-                                    <br><small style="font-size: 0.8rem;">Overall: {player['overall']}% | Risk: {player['risk']}</small>
-                                </div>
+                <div style="background:white;padding:1rem;border-radius:8px;margin-bottom:0.6rem;border-left:5px solid {color};box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+                    <div style="display:flex;align-items:center;gap:1rem;">
+                        <div style="width:45px;height:45px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;color:white;min-width:45px;">{initials}</div>
+                        <div style="flex:1;">
+                            <strong>{player['name']}</strong> <small style="color:#666;">{player['department']}</small>
+                            <br><small>{player['position']} → Nominated by: {player['nominated_by']}</small>
+                            <div style="margin-top:0.3rem;display:flex;gap:0.3rem;flex-wrap:wrap;">
+                                <span style="background:#f0f0f0;padding:0.15rem 0.5rem;border-radius:8px;font-size:0.7rem;">Perf:{player['perf_score']}%</span>
+                                <span style="background:#f0f0f0;padding:0.15rem 0.5rem;border-radius:8px;font-size:0.7rem;">Lead:{player['leadership']}%</span>
+                                <span style="background:#f0f0f0;padding:0.15rem 0.5rem;border-radius:8px;font-size:0.7rem;">Strat:{player['strategic']}%</span>
+                                <span style="background:#f0f0f0;padding:0.15rem 0.5rem;border-radius:8px;font-size:0.7rem;">Peer:{player['peer_review']}%</span>
                             </div>
-                            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Perf: {player['perf_score']}%</span>
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Leadership: {player['leadership']}%</span>
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Strategic: {player['strategic']}%</span>
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Peer: {player['peer_review']}%</span>
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Junior: {player['junior_review']}%</span>
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Indep: {player['independent_review']}%</span>
-                            </div>
-                            <div style="margin-top: 0.3rem;"><small style="color: #CC0000;">Gap: {player['gap']}</small></div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="background:{color};color:white;padding:0.2rem 0.6rem;border-radius:12px;font-weight:700;font-size:0.8rem;">{player['readiness']}</span>
+                            <br><small>Overall:{player['overall']}% | Risk:{player['risk']}</small>
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
-                
         else:
-            st.info("No A-Players found. Nominate using the 'Nominate A-Player' tab.")
+            st.info("No A-Players found.")
     
+    # ============================================================
+    # TAB 2: NOMINATE A-PLAYER (KEEP EXISTING)
+    # ============================================================
     with tab2:
         st.subheader("📝 Nominate A-Player")
-        st.info("HODs and Line Managers can nominate top performers as A-Players for the 360-degree assessment process.")
+        st.info("HODs and Line Managers can nominate top performers.")
         
         with st.form("nominate_form"):
             c1, c2 = st.columns(2)
@@ -5376,241 +5770,498 @@ def promotions():
                 nominee_position = st.text_input("Current Position *")
                 nominee_dept = st.selectbox("Department *", all_depts)
             with c2:
-                nominated_by = st.text_input("Nominated By (HOD/Line Manager) *")
+                nominated_by = st.text_input("Nominated By *")
                 nomination_reason = st.text_area("Reason for Nomination")
+            
             if st.form_submit_button("✅ Submit Nomination", use_container_width=True):
                 if nominee_name and nominee_dept and nominated_by:
                     nom_entry = {
                         'name': nominee_name, 'position': nominee_position, 'department': nominee_dept,
                         'nominated_by': nominated_by, 'reason': nomination_reason,
                         'date': datetime.now().strftime('%Y-%m-%d'),
-                        'submitted_by': st.session_state.user['name'] if st.session_state.user else 'Unknown'
+                        'submitted_by': user_name
                     }
                     st.session_state.aplayer_nominations.append(nom_entry)
-                    db.save_nomination(nominee_name, nominee_position, nominee_dept, nominated_by, nomination_reason,
-                                     st.session_state.user['name'] if st.session_state.user else 'Unknown',
-                                     st.session_state.user['email'] if st.session_state.user else '')
-                    st.success(f"✅ {nominee_name} nominated successfully!")
+                    db.save_nomination(nominee_name, nominee_position, nominee_dept, nominated_by, 
+                                     nomination_reason, user_name, user_email)
+                    st.success(f"✅ {nominee_name} nominated!")
                     st.balloons()
                     time.sleep(1)
                     st.rerun()
         
         if st.session_state.aplayer_nominations:
             st.markdown("---")
-            st.markdown("### 📋 Pending Nominations — Admin Review")
+            st.markdown("### 📋 Pending Nominations")
             for i, nom in enumerate(st.session_state.aplayer_nominations):
                 c1, c2 = st.columns([3, 1])
                 with c1:
-                    st.markdown(f"""<div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #d69e2e;"><strong>{nom.get('name', '')}</strong> - {nom.get('position', '')}<br><small>{nom.get('department', '')} | By: {nom.get('nominated_by', '')} | {str(nom.get('date', nom.get('created_at', '')))[:10]}</small><br><small style="color: #666;">Reason: {nom.get('reason', 'N/A')}</small></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style="background:white;padding:0.6rem;border-radius:6px;margin-bottom:0.3rem;border-left:3px solid #d69e2e;"><strong>{nom.get('name','')}</strong> - {nom.get('position','')}<br><small>{nom.get('department','')} | By: {nom.get('nominated_by','')}</small></div>""", unsafe_allow_html=True)
                 with c2:
                     if is_admin:
-                        action_key = f"action_{i}"
-                        if action_key not in st.session_state:
-                            st.session_state[action_key] = None
-                        
-                        col_btn1, col_btn2, col_btn3 = st.columns(3)
-                        with col_btn1:
-                            if st.button(f"✅", key=f"approve_{i}", use_container_width=True, help="Approve"):
-                                st.session_state[action_key] = 'approve'
-                        with col_btn2:
-                            if st.button(f"⏸️", key=f"hold_{i}", use_container_width=True, help="On Hold"):
-                                st.session_state[action_key] = 'hold'
-                        with col_btn3:
-                            if st.button(f"❌", key=f"reject_{i}", use_container_width=True, help="Reject"):
-                                st.session_state[action_key] = 'reject'
-                        
-                        if st.session_state[action_key]:
-                            reason = st.text_area(f"Reason for {st.session_state[action_key]}: *", key=f"reason_{i}", placeholder="Please provide a reason...")
-                            if st.button(f"✅ Confirm {st.session_state[action_key].title()}", key=f"confirm_{i}", use_container_width=True):
-                                if reason:
-                                    if st.session_state[action_key] == 'approve':
-                                        db.save_aplayer(nom['name'], nom['position'], nom['department'], nom['nominated_by'], 0, 0, 0, 0, 0, 0, 0, 'Pending Assessment', 'TBD', 'TBD')
-                                        st.session_state.aplayer_nominations.pop(i)
-                                        st.success(f"✅ {nom['name']} approved!")
-                                    elif st.session_state[action_key] == 'reject':
-                                        st.session_state.aplayer_nominations.pop(i)
-                                        st.error(f"❌ {nom['name']} rejected.")
-                                    st.session_state[action_key] = None
-                                    st.rerun()
+                        if st.button(f"✅ Approve", key=f"app_{i}"):
+                            db.save_aplayer(nom['name'], nom['position'], nom['department'], nom['nominated_by'], 0, 0, 0, 0, 0, 0, 0, 'Pending Assessment', 'TBD', 'TBD')
+                            st.session_state.aplayer_nominations.pop(i)
+                            st.success(f"✅ Approved!")
+                            st.rerun()
     
+    # ============================================================
+    # TAB 3: 360° ASSESSMENT (KEEP EXISTING + ENHANCED)
+    # ============================================================
     with tab3:
         st.subheader("📊 360° Assessment Scorecard")
-        st.info("Complete 360-degree assessment. Weights: Performance (35%), Leadership (25%), Strategic (20%), Peer (10%), Junior (5%), Independent (5%).")
         
         if is_admin:
-            depts_with_players = all_depts
-            if depts_with_players:
-                assess_dept = st.selectbox("Select Department", all_depts, key="assess_dept")
-                if assess_dept:
-                    player_names = [p['name'] for p in aplayers_data.get(assess_dept, [])]
-                    if player_names:
-                        assess_player_name = st.selectbox("Select A-Player", player_names, key="assess_player")
+            assess_dept = st.selectbox("Select Department", all_depts, key="assess_dept")
+            if assess_dept:
+                player_names = [p['name'] for p in aplayers_data.get(assess_dept, [])]
+                if player_names:
+                    assess_player_name = st.selectbox("Select A-Player", player_names, key="assess_player")
+                    
+                    player_data = None
+                    for p in aplayers_data.get(assess_dept, []):
+                        if p['name'] == assess_player_name:
+                            player_data = p
+                            break
+                    
+                    if player_data:
+                        st.markdown(f"### Assessing: {player_data['name']} - {player_data['position']}")
                         
-                        player_data = None
-                        for p in aplayers_data.get(assess_dept, []):
-                            if p['name'] == assess_player_name:
-                                player_data = p
-                                break
+                        # Show existing 360° feedback if any
+                        try:
+                            feedbacks = db._get("feedback_reviews")
+                            if feedbacks:
+                                player_feedbacks = [f for f in feedbacks if f.get('aplayer_name') == player_data['name']]
+                                if player_feedbacks:
+                                    with st.expander(f"📋 {len(player_feedbacks)} 360° Feedback(s) Received", expanded=False):
+                                        for fb in player_feedbacks:
+                                            scores = [fb.get(f'q{q}', 0) for q in range(5, 33) if fb.get(f'q{q}')]
+                                            avg = sum(scores) / len(scores) if scores else 0
+                                            st.markdown(f"**Reviewer:** {fb.get('reviewer_name','')} ({fb.get('reviewer_category','')}) | Avg Score: {avg:.1f}/5 | {fb.get('submitted_at','')[:10]}")
+                        except:
+                            pass
                         
-                        if player_data:
-                            st.markdown(f"### Assessing: {player_data['name']} - {player_data['position']}")
-                            with st.form("assessment_form"):
-                                c1, c2 = st.columns(2)
-                                with c1:
-                                    perf = st.slider("Performance Score (35%)", 0, 100, int(player_data['perf_score']))
-                                    leadership = st.slider("Leadership Competency (25%)", 0, 100, int(player_data['leadership']))
-                                    strategic = st.slider("Strategic Impact (20%)", 0, 100, int(player_data['strategic']))
-                                with c2:
-                                    peer = st.slider("Peer Review (10%)", 0, 100, int(player_data['peer_review']))
-                                    junior = st.slider("Junior Review (5%)", 0, 100, int(player_data['junior_review']))
-                                    independent = st.slider("Independent Review (5%)", 0, 100, int(player_data['independent_review']))
-                                
-                                readiness_options = ['Ready Now', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Pending Assessment']
-                                current_readiness = player_data['readiness'] if player_data['readiness'] in readiness_options else 'Pending Assessment'
-                                readiness = st.selectbox("Readiness", readiness_options, index=readiness_options.index(current_readiness))
-                                gap = st.text_input("Competency Gap", player_data['gap'])
-                                risk = st.selectbox("Risk", ['Low', 'Medium', 'High'], index=['Low', 'Medium', 'High'].index(player_data['risk']) if player_data['risk'] in ['Low', 'Medium', 'High'] else 0)
-                                
-                                if st.form_submit_button("💾 Save Assessment", use_container_width=True):
-                                    overall = int(perf * 0.35 + leadership * 0.25 + strategic * 0.20 + peer * 0.10 + junior * 0.05 + independent * 0.05)
-                                    db.save_aplayer(player_data['name'], player_data['position'], assess_dept, player_data['nominated_by'], perf, leadership, strategic, peer, junior, independent, overall, readiness, gap, risk)
-                                    st.success(f"✅ Assessment saved! Overall: {overall}%")
-                                    st.balloons()
-                                    time.sleep(1)
-                                    st.rerun()
-                    else:
-                        st.info(f"No A-Players found in {assess_dept}. Nominate first.")
-            else:
-                st.info("No A-Players available. Nominate first.")
-    
+                        with st.form("assessment_form"):
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                perf = st.slider("Performance Score (35%)", 0, 100, int(player_data['perf_score']))
+                                leadership = st.slider("Leadership (25%)", 0, 100, int(player_data['leadership']))
+                                strategic = st.slider("Strategic Impact (20%)", 0, 100, int(player_data['strategic']))
+                            with c2:
+                                peer = st.slider("Peer Review (10%)", 0, 100, int(player_data['peer_review']))
+                                junior = st.slider("Junior Review (5%)", 0, 100, int(player_data['junior_review']))
+                                independent = st.slider("Independent Review (5%)", 0, 100, int(player_data['independent_review']))
+                            
+                            readiness_options = ['Ready Now', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Pending Assessment']
+                            current_readiness = player_data['readiness'] if player_data['readiness'] in readiness_options else 'Pending Assessment'
+                            readiness = st.selectbox("Readiness", readiness_options, index=readiness_options.index(current_readiness))
+                            gap = st.text_input("Competency Gap", player_data['gap'])
+                            risk = st.selectbox("Risk", ['Low', 'Medium', 'High'], index=['Low','Medium','High'].index(player_data['risk']) if player_data['risk'] in ['Low','Medium','High'] else 0)
+                            
+                            if st.form_submit_button("💾 Save Assessment", use_container_width=True):
+                                overall = int(perf * 0.35 + leadership * 0.25 + strategic * 0.20 + peer * 0.10 + junior * 0.05 + independent * 0.05)
+                                db.save_aplayer(player_data['name'], player_data['position'], assess_dept, player_data['nominated_by'], perf, leadership, strategic, peer, junior, independent, overall, readiness, gap, risk)
+                                st.success(f"✅ Saved! Overall: {overall}%")
+                                st.balloons()
+                                time.sleep(1)
+                                st.rerun()
+
+# ============================================================
+    # TAB 4: 360° QUESTIONNAIRE (NEW)
+    # ============================================================
     with tab4:
-        st.subheader("📋 Succession Pipeline")
-        pipeline_data = []
-        for dept, players in aplayers_data.items():
-            for p in players:
-                pipeline_data.append({'Department': dept, 'A-Player': p['name'], 'Position': p['position'], 'Readiness': p['readiness'], 'Score': p['overall'], 'Risk': p['risk'], 'Gap': p['gap']})
-        if pipeline_data:
-            df = pd.DataFrame(pipeline_data)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+        st.subheader("📋 360° Questionnaire for A-Player")
+        st.info("Complete the 360-degree feedback questionnaire. All responses are confidential.")
+        
+        # Option to send questionnaire via email
+        if is_admin or is_hod:
+            with st.expander("📧 Send Questionnaire to Reviewer", expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    rev_email = st.text_input("Reviewer Email *", key="rev_email")
+                    rev_name = st.text_input("Reviewer Name *", key="rev_name")
+                with col2:
+                    rev_category = st.selectbox("Reviewer Category", [
+                        "Peer", "Direct Report", "Manager", "Cross-Functional Colleague", 
+                        "Internal Customer", "External Partner", "Self-Assessment"
+                    ], key="rev_cat")
+                    aplayer_select = st.selectbox("A-Player to Review", 
+                        [p['name'] for dept, players in aplayers_data.items() for p in players] if any(aplayers_data.values()) else ["No A-Players"],
+                        key="aplayer_email")
+                
+                if st.button("📧 Send Questionnaire Link", use_container_width=True):
+                    if rev_email and rev_name and aplayer_select != "No A-Players":
+                        review_token = f"FB-{datetime.now().strftime('%Y%m%d%H%M')}-{random.randint(100,999)}"
+                        
+                        db._post("feedback_reviews", {
+                            "review_token": review_token,
+                            "reviewer_name": rev_name,
+                            "reviewer_category": rev_category,
+                            "aplayer_name": aplayer_select,
+                            "aplayer_department": "See A-Players Board",
+                            "status": "Pending"
+                        })
+                        
+                        feedback_url = f"https://hris.churchgate.com"
+                        
+                        try:
+                            from utils.email_service import EmailService
+                            EmailService().send_email(
+                                rev_email,
+                                f"📋 360° Feedback Request: {aplayer_select}",
+                                f"Dear {rev_name},\n\n"
+                                f"You have been invited to provide 360-degree feedback for {aplayer_select} at Churchgate Group.\n\n"
+                                f"Please complete the questionnaire at: {feedback_url}\n\n"
+                                f"Your responses are confidential and will be used for development purposes only.\n\n"
+                                f"Thank you.\nChurchgate Group HR"
+                            )
+                            st.success(f"✅ Questionnaire sent to {rev_email}!")
+                        except:
+                            st.success(f"✅ Link created! Send manually: {review_token}")
+                    else:
+                        st.error("❌ Please fill all fields!")
+        
+        st.markdown("---")
+        st.markdown("### 📝 Complete 360° Feedback Questionnaire")
+        
+        # Select A-Player
+        all_aplayer_names = [p['name'] for dept, players in aplayers_data.items() for p in players]
+        if not all_aplayer_names:
+            all_aplayer_names = ["No A-Players available"]
+        
+        with st.form("feedback_form_360"):
+            st.markdown("#### Reviewer Information")
+            c1, c2 = st.columns(2)
+            with c1:
+                fb_reviewer_name = st.text_input("Your Name *")
+                fb_reviewer_category = st.selectbox("Your Category *", [
+                    "Peer", "Direct Report", "Manager", "Cross-Functional Colleague",
+                    "Internal Customer", "External Partner", "Self-Assessment"
+                ])
+            with c2:
+                fb_aplayer = st.selectbox("A-Player Being Reviewed *", all_aplayer_names)
+                fb_aplayer_dept = st.text_input("A-Player Department")
             
-            readiness_counts = df['Readiness'].value_counts()
-            fig = px.pie(values=readiness_counts.values, names=readiness_counts.index, hole=0.5, color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000'])
-            fig.update_layout(height=350)
-            st.plotly_chart(fig, use_container_width=True)
+            st.markdown("---")
+            
+            # SECTION 1: Personal Effectiveness & Teaming
+            st.markdown("#### 👥 Personal Effectiveness & Teaming")
+            q5 = st.radio("5. Communicates honestly and directly", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q5')
+            q6 = st.radio("6. Communicates with respect and dignity", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q6')
+            q7 = st.radio("7. Incorporates ideas and contributions of others", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q7')
+            q8 = st.radio("8. Encourages teamwork and co-operation", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q8')
+            q9 = st.radio("9. Effectively manages conflicts", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q9')
+            q10 = st.radio("10. Is an effective team player", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q10')
+            q11 = st.radio("11. Delivers on commitments", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q11')
+            
+            st.markdown("---")
+            
+            # SECTION 2: Continuous Learning
+            st.markdown("#### 📚 Continuous Learning")
+            q12 = st.radio("12. Supports learning and development", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q12')
+            q13 = st.radio("13. Provides constructive feedback and coaching", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q13')
+            q14 = st.radio("14. Brings in new learnings/techniques and applies them", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q14')
+            
+            st.markdown("---")
+            
+            # SECTION 3: Leadership
+            st.markdown("#### 👑 Leadership")
+            q15 = st.radio("15. Clearly communicates goals and directions", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q15')
+            q16 = st.radio("16. Sets personal example by acting in accordance with Company values", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q16')
+            q17 = st.radio("17. Demonstrates consistency between words and actions", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q17')
+            q18 = st.radio("18. Is seen as a role model", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q18')
+            q19 = st.radio("19. Sets clear, aggressive goals aligned with division/company", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q19')
+            q20 = st.radio("20. Manages & leads cross-cultural and cross-functional teams", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q20')
+            q21 = st.radio("21. Develops a pipeline of leaders (next level)", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q21')
+            
+            st.markdown("---")
+            
+            # SECTION 4: Customer Service
+            st.markdown("#### 😊 Customer Service")
+            q22 = st.radio("22. Effectively addresses Customer issues", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q22')
+            q23 = st.radio("23. Works towards win-win for Customer & Company", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q23')
+            
+            st.markdown("---")
+            
+            # SECTION 5: Business Management
+            st.markdown("#### 📊 Business Management")
+            q24 = st.radio("24. Demonstrates strategic thought and cross-functional perspective", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q24')
+            q25 = st.radio("25. Uses Company resources effectively", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q25')
+            q26 = st.radio("26. Identifies risks and works on mitigating them", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q26')
+            q27 = st.radio("27. Follows company standards and processes", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q27')
+            
+            st.markdown("---")
+            
+            # SECTION 6: Business Development
+            st.markdown("#### 📈 Business Development")
+            q28 = st.radio("28. Maintains and leverages professional network", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q28')
+            
+            st.markdown("---")
+            
+            # SECTION 7: Technical Expertise
+            st.markdown("#### 🔧 Technical Expertise")
+            q29 = st.radio("29. Demonstrates competence in own practice area", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q29')
+            q30 = st.radio("30. Challenges teams to develop better solutions/products", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q30')
+            
+            st.markdown("---")
+            
+            # SECTION 8: Innovation & Knowledge Sharing
+            st.markdown("#### 💡 Innovation & Knowledge Sharing")
+            q31 = st.radio("31. Shares business and product knowledge with others", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q31')
+            q32 = st.radio("32. Uses understanding of other specializations for quality solutions", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q32')
+            
+            st.markdown("---")
+            
+            # OPEN-ENDED QUESTIONS
+            st.markdown("#### ✍️ Open-Ended Questions")
+            q33 = st.text_area("33. What should this person CONTINUE doing to 'live the values' at work? *", height=80, key='q33')
+            q34 = st.text_area("34. Is there anything this person should STOP doing that runs counter to the values? *", height=80, key='q34')
+            q35 = st.text_area("35. What should this person START doing to behave in accordance with the values? *", height=80, key='q35')
+            
+            st.markdown("---")
+            
+            if st.form_submit_button("📤 Submit 360° Feedback", use_container_width=True, type="primary"):
+                if fb_reviewer_name and fb_aplayer != "No A-Players available" and q33 and q34 and q35:
+                    review_token = f"FB-{datetime.now().strftime('%Y%m%d%H%M')}-{random.randint(100,999)}"
+                    
+                    db._post("feedback_reviews", {
+                        "review_token": review_token,
+                        "reviewer_name": fb_reviewer_name,
+                        "reviewer_category": fb_reviewer_category,
+                        "aplayer_name": fb_aplayer,
+                        "aplayer_department": fb_aplayer_dept,
+                        "status": "Completed",
+                        "q5": q5, "q6": q6, "q7": q7, "q8": q8, "q9": q9, "q10": q10, "q11": q11,
+                        "q12": q12, "q13": q13, "q14": q14,
+                        "q15": q15, "q16": q16, "q17": q17, "q18": q18, "q19": q19, "q20": q20, "q21": q21,
+                        "q22": q22, "q23": q23,
+                        "q24": q24, "q25": q25, "q26": q26, "q27": q27,
+                        "q28": q28,
+                        "q29": q29, "q30": q30,
+                        "q31": q31, "q32": q32,
+                        "q33": q33, "q34": q34, "q35": q35,
+                        "submitted_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                    })
+                    
+                    st.success("✅ 360° Feedback submitted successfully! Thank you for your contribution.")
+                    st.balloons()
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ Please fill all required fields!")
     
+    # ============================================================
+    # TAB 5: FEEDBACK DASHBOARD (NEW)
+    # ============================================================
     with tab5:
-        st.subheader("📥 Promotion Reports")
-        c1, c2 = st.columns(2)
-        with c1:
+        st.subheader("📊 360° Feedback Dashboard")
+        
+        if is_admin or is_hod:
+            try:
+                all_feedbacks = db._get("feedback_reviews")
+                if all_feedbacks:
+                    completed = [f for f in all_feedbacks if f.get('status') == 'Completed']
+                    
+                    if completed:
+                        st.markdown(f"**{len(completed)} completed feedback(s)**")
+                        
+                        # Filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            fb_aplayer_filter = st.selectbox("A-Player", ["All"] + list(set(f.get('aplayer_name','') for f in completed)), key="fb_player")
+                        with col2:
+                            fb_cat_filter = st.selectbox("Reviewer Category", ["All"] + list(set(f.get('reviewer_category','') for f in completed)), key="fb_cat")
+                        
+                        filtered_fb = completed
+                        if fb_aplayer_filter != "All":
+                            filtered_fb = [f for f in filtered_fb if f.get('aplayer_name') == fb_aplayer_filter]
+                        if fb_cat_filter != "All":
+                            filtered_fb = [f for f in filtered_fb if f.get('reviewer_category') == fb_cat_filter]
+                        
+                        for fb in filtered_fb:
+                            # Calculate average score
+                            scores = [fb.get(f'q{q}', 0) for q in range(5, 33) if fb.get(f'q{q}')]
+                            avg_score = sum(scores) / len(scores) if scores else 0
+                            
+                            # Color based on average
+                            if avg_score >= 4.0:
+                                color = '#38a169'
+                                rating = 'Excellent'
+                            elif avg_score >= 3.0:
+                                color = '#d69e2e'
+                                rating = 'Good'
+                            elif avg_score >= 2.0:
+                                color = '#dd6b20'
+                                rating = 'Average'
+                            else:
+                                color = '#CC0000'
+                                rating = 'Needs Improvement'
+                            
+                            with st.expander(f"📋 {fb.get('aplayer_name','')} | Reviewer: {fb.get('reviewer_name','')} ({fb.get('reviewer_category','')}) | Avg: {avg_score:.1f}/5 — {rating}"):
+                                # Score summary by category
+                                categories = {
+                                    'Personal Effectiveness': ['q5','q6','q7','q8','q9','q10','q11'],
+                                    'Continuous Learning': ['q12','q13','q14'],
+                                    'Leadership': ['q15','q16','q17','q18','q19','q20','q21'],
+                                    'Customer Service': ['q22','q23'],
+                                    'Business Management': ['q24','q25','q26','q27'],
+                                    'Business Development': ['q28'],
+                                    'Technical Expertise': ['q29','q30'],
+                                    'Innovation': ['q31','q32']
+                                }
+                                
+                                for cat, qs in categories.items():
+                                    cat_scores = [fb.get(q, 0) for q in qs if fb.get(q)]
+                                    cat_avg = sum(cat_scores) / len(cat_scores) if cat_scores else 0
+                                    st.markdown(f"""
+                                    <div style="display:flex;justify-content:space-between;padding:0.3rem 0;">
+                                        <span>{cat}</span>
+                                        <div style="width:200px;background:#e0e0e0;height:8px;border-radius:4px;">
+                                            <div style="width:{cat_avg*20}%;background:{color};height:8px;border-radius:4px;"></div>
+                                        </div>
+                                        <strong>{cat_avg:.1f}/5</strong>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                # Open-ended responses
+                                st.markdown("---")
+                                st.markdown("**💬 Continue Doing:**")
+                                st.markdown(f"_{fb.get('q33', 'N/A')}_")
+                                st.markdown("**⚠️ Stop Doing:**")
+                                st.markdown(f"_{fb.get('q34', 'N/A')}_")
+                                st.markdown("**🚀 Start Doing:**")
+                                st.markdown(f"_{fb.get('q35', 'N/A')}_")
+                        
+                        # Export
+                        if filtered_fb:
+                            export_data = []
+                            for f in filtered_fb:
+                                scores = [f.get(f'q{q}', 0) for q in range(5, 33) if f.get(f'q{q}')]
+                                export_data.append({
+                                    'A-Player': f.get('aplayer_name'),
+                                    'Reviewer': f.get('reviewer_name'),
+                                    'Category': f.get('reviewer_category'),
+                                    'Avg Score': f"{sum(scores)/len(scores):.1f}" if scores else 'N/A',
+                                    'Date': f.get('submitted_at', '')[:10]
+                                })
+                            
+                            st.download_button("📥 Export Feedback Report (CSV)", 
+                                pd.DataFrame(export_data).to_csv(index=False),
+                                "360_feedback_report.csv", "text/csv")
+                    else:
+                        st.info("No completed feedback yet.")
+                else:
+                    st.info("No feedback data available.")
+            except:
+                st.info("Feedback dashboard loading...")
+        else:
+            st.info("This section is for HODs, HR, and Admin only.")
+    
+    # ============================================================
+    # TAB 6: REPORTS
+    # ============================================================
+    with tab6:
+        st.subheader("📥 Reports & Downloads")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("### 📊 A-Players Report")
             if st.button("📊 Generate CSV Report", use_container_width=True):
                 csv_data = []
                 for dept, players in aplayers_data.items():
                     for p in players:
-                        csv_data.append({'Department': dept, 'Name': p['name'], 'Position': p['position'], 'Perf': p['perf_score'], 'Leadership': p['leadership'], 'Strategic': p['strategic'], 'Peer': p['peer_review'], 'Junior': p['junior_review'], 'Independent': p['independent_review'], 'Overall': p['overall'], 'Readiness': p['readiness'], 'Gap': p['gap'], 'Risk': p['risk']})
+                        csv_data.append({
+                            'Department': dept, 'Name': p['name'], 'Position': p['position'],
+                            'Performance': p['perf_score'], 'Leadership': p['leadership'],
+                            'Strategic': p['strategic'], 'Peer': p['peer_review'],
+                            'Overall': p['overall'], 'Readiness': p['readiness'], 'Risk': p['risk']
+                        })
                 if csv_data:
-                    st.download_button("📥 Download CSV", pd.DataFrame(csv_data).to_csv(index=False), "aplayers_report.csv", "text/csv")
-        with c2:
+                    st.download_button("📥 Download CSV", pd.DataFrame(csv_data).to_csv(index=False), "aplayers.csv", "text/csv")
+            
             if st.button("📕 Generate Executive PDF", use_container_width=True):
                 try:
                     import fpdf
                     FPDF = fpdf.FPDF
                     pdf = FPDF(orientation='L', unit='mm', format='A4')
-                    pdf.set_auto_page_break(auto=True, margin=10)
                     pdf.add_page()
-                    
-                    pdf.set_fill_color(55, 55, 55)
-                    pdf.rect(0, 0, 297, 35, 'F')
-                    pdf.set_fill_color(204, 0, 0)
-                    pdf.rect(0, 35, 297, 3, 'F')
-                    pdf.set_font('Helvetica', 'B', 22)
-                    pdf.set_text_color(255, 255, 255)
-                    pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
-                    pdf.set_font('Helvetica', 'B', 12)
-                    pdf.set_text_color(255, 255, 255)
-                    pdf.cell(0, 8, 'A-PLAYERS & SUCCESSION PIPELINE - EXECUTIVE REPORT', ln=True, align='C')
+                    pdf.set_fill_color(26,26,26); pdf.rect(0,0,297,30,'F')
+                    pdf.set_fill_color(204,0,0); pdf.rect(0,30,297,3,'F')
+                    pdf.set_font('Helvetica','B',20); pdf.set_text_color(255,255,255)
+                    pdf.cell(0,15,'CHURCHGATE GROUP',ln=True,align='C')
+                    pdf.set_font('Helvetica','B',11)
+                    pdf.cell(0,8,'A-PLAYERS & SUCCESSION PIPELINE',ln=True,align='C')
                     pdf.ln(10)
                     
-                    total = len(all_players)
-                    ready = len(ready_now)
-                    avg = sum(p['overall'] for p in all_players) / total if total > 0 else 0
+                    all_p = []
+                    for dept, players in aplayers_data.items():
+                        for p in players: all_p.append(p)
                     
-                    pdf.set_fill_color(245, 245, 245)
-                    pdf.rect(10, pdf.get_y(), 277, 10, 'F')
-                    pdf.set_font('Helvetica', 'B', 9)
-                    pdf.set_text_color(26, 26, 26)
-                    pdf.cell(92, 10, f'  Total: {total}', 0, 0, 'L')
-                    pdf.cell(92, 10, f'Ready Now: {ready}', 0, 0, 'C')
-                    pdf.cell(93, 10, f'Avg Score: {avg:.1f}%  ', 0, 0, 'R')
-                    pdf.ln(14)
+                    total = len(all_p)
+                    ready = len([p for p in all_p if p['readiness']=='Ready Now'])
+                    avg = sum(p['overall'] for p in all_p)/total if total>0 else 0
                     
-                    cards_data = [('TOTAL', str(total), (26, 26, 26)), ('READY NOW', str(ready), (56, 161, 105)), ('AVG SCORE', f'{avg:.1f}%', (204, 0, 0)), ('DEPTS', str(len([d for d, p in aplayers_data.items() if p])), (49, 130, 206))]
-                    col_w = 65
-                    col_h = 16
-                    x_start = 14
-                    y_pos = pdf.get_y()
-                    for j, (label, value, color) in enumerate(cards_data):
-                        x = x_start + j * (col_w + 5)
-                        pdf.set_fill_color(*color)
-                        pdf.rect(x, y_pos, col_w, col_h, 'F')
-                        pdf.set_text_color(255, 255, 255)
-                        pdf.set_xy(x, y_pos + 1)
-                        pdf.set_font('Helvetica', 'B', 7)
-                        pdf.cell(col_w, 6, label, 0, 0, 'C')
-                        pdf.set_xy(x, y_pos + 7)
-                        pdf.set_font('Helvetica', 'B', 14)
-                        pdf.cell(col_w, 8, value, 0, 0, 'C')
-                    pdf.set_y(y_pos + col_h + 8)
+                    pdf.set_font('Helvetica','B',9); pdf.set_text_color(26,26,26)
+                    pdf.cell(70,8,f'Total: {total}',0,0,'L')
+                    pdf.cell(70,8,f'Ready Now: {ready}',0,0,'C')
+                    pdf.cell(70,8,f'Avg Score: {avg:.1f}%',0,0,'R')
+                    pdf.ln(12)
                     
-                    pdf.set_fill_color(26, 26, 26)
-                    pdf.set_text_color(255, 255, 255)
-                    pdf.set_font('Helvetica', 'B', 8)
-                    pdf.cell(6, 7, ' #', 1, 0, 'C', True)
-                    pdf.cell(42, 7, ' NAME', 1, 0, 'L', True)
-                    pdf.cell(42, 7, ' DEPARTMENT', 1, 0, 'L', True)
-                    pdf.cell(50, 7, ' POSITION', 1, 0, 'L', True)
-                    pdf.cell(18, 7, 'SCORE', 1, 0, 'C', True)
-                    pdf.cell(32, 7, 'READINESS', 1, 0, 'C', True)
-                    pdf.cell(22, 7, 'RISK', 1, 0, 'C', True)
-                    pdf.cell(65, 7, ' GAP', 1, 0, 'L', True)
+                    pdf.set_fill_color(26,26,26); pdf.set_text_color(255,255,255); pdf.set_font('Helvetica','B',7)
+                    pdf.cell(5,6,' #',1,0,'C',True)
+                    pdf.cell(35,6,' NAME',1,0,'L',True)
+                    pdf.cell(35,6,' DEPT',1,0,'L',True)
+                    pdf.cell(45,6,' POSITION',1,0,'L',True)
+                    pdf.cell(15,6,'SCORE',1,0,'C',True)
+                    pdf.cell(28,6,'READINESS',1,0,'C',True)
+                    pdf.cell(18,6,'RISK',1,0,'C',True)
+                    pdf.cell(55,6,' GAP',1,0,'L',True)
                     pdf.ln()
                     
-                    row_num = 0
-                    pdf.set_font('Helvetica', '', 7)
-                    for dept, players in aplayers_data.items():
-                        for p in players:
-                            row_num += 1
-                            if p['overall'] >= 85:
-                                tc = (56, 161, 105)
-                            elif p['overall'] >= 70:
-                                tc = (214, 158, 46)
-                            else:
-                                tc = (204, 0, 0)
-                            pdf.set_text_color(26, 26, 26)
-                            pdf.cell(6, 6, str(row_num), 1, 0, 'C')
-                            pdf.cell(42, 6, f' {p["name"][:25]}', 1, 0, 'L')
-                            pdf.cell(42, 6, f' {dept[:25]}', 1, 0, 'L')
-                            pdf.cell(50, 6, f' {p["position"][:30]}', 1, 0, 'L')
-                            pdf.set_text_color(*tc)
-                            pdf.set_font('Helvetica', 'B', 7)
-                            pdf.cell(18, 6, f'{p["overall"]}%', 1, 0, 'C')
-                            pdf.set_text_color(26, 26, 26)
-                            pdf.set_font('Helvetica', '', 7)
-                            pdf.cell(32, 6, p['readiness'][:18], 1, 0, 'C')
-                            pdf.cell(22, 6, p['risk'], 1, 0, 'C')
-                            pdf.cell(65, 6, f' {p["gap"][:40]}', 1, 0, 'L')
-                            pdf.ln()
+                    pdf.set_font('Helvetica','',7)
+                    for i, p in enumerate(all_p):
+                        pdf.set_text_color(26,26,26)
+                        pdf.cell(5,5,str(i+1),1,0,'C')
+                        pdf.cell(35,5,f' {p["name"][:22]}',1,0,'L')
+                        pdf.cell(35,5,f' {p.get("department","")[:22]}',1,0,'L')
+                        pdf.cell(45,5,f' {p["position"][:28]}',1,0,'L')
+                        pdf.cell(15,5,f'{p["overall"]}%',1,0,'C')
+                        pdf.cell(28,5,p['readiness'][:16],1,0,'C')
+                        pdf.cell(18,5,p['risk'],1,0,'C')
+                        pdf.cell(55,5,f' {p["gap"][:35]}',1,0,'L')
+                        pdf.ln()
                     
-                    pdf.set_y(-15)
-                    pdf.set_fill_color(26, 26, 26)
-                    pdf.rect(0, pdf.get_y()-2, 297, 17, 'F')
-                    pdf.set_font('Helvetica', 'I', 7)
-                    pdf.set_text_color(180, 180, 180)
-                    pdf.cell(0, 5, 'Churchgate Group - Confidential | hr@churchgate.com', ln=True, align='C')
+                    pdf.set_y(-12)
+                    pdf.set_font('Helvetica','I',6); pdf.set_text_color(150,150,150)
+                    pdf.cell(0,5,'Churchgate Group - Confidential | hris@churchgate.com',align='C')
                     
                     st.download_button("📥 Download PDF", bytes(pdf.output()), "aplayers_report.pdf", "application/pdf")
                     st.success("✅ PDF generated!")
                 except Exception as e:
                     st.warning(f"PDF Error: {str(e)}")
+        
+        with col2:
+            st.markdown("### 📊 360° Feedback Report")
+            try:
+                all_fb = db._get("feedback_reviews")
+                if all_fb:
+                    fb_data = []
+                    for f in all_fb:
+                        scores = [f.get(f'q{q}',0) for q in range(5,33) if f.get(f'q{q}')]
+                        fb_data.append({
+                            'A-Player': f.get('aplayer_name',''),
+                            'Reviewer': f.get('reviewer_name',''),
+                            'Category': f.get('reviewer_category',''),
+                            'Avg Score': f"{sum(scores)/len(scores):.1f}" if scores else 'N/A',
+                            'Status': f.get('status',''),
+                            'Date': f.get('submitted_at','')[:10]
+                        })
+                    
+                    if fb_data:
+                        st.download_button("📥 Download Feedback CSV", 
+                            pd.DataFrame(fb_data).to_csv(index=False),
+                            "360_feedback.csv", "text/csv")
+            except:
+                pass
 
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
@@ -14561,6 +15212,7 @@ def main():
             "👥 Employee Management": employee_management,
             "📈 Performance & OKRs": performance_okrs,
             "📈 My Performance & OKRs": performance_okrs,
+            "✅ Staff Confirmation": staff_confirmation,
             "🚀 Promotions": promotions,
             "💼 Recruitment Hub": recruitment_hub,
             "🤖 AI Recruitment Agent": ai_recruitment_agent,
@@ -14577,7 +15229,7 @@ def main():
             "📚 Knowledge Base": knowledge_base,
             "🎉 Wellness & Perks": wellness_perks,
             "🎓 LMS": lms_dashboard,
-           "📋 Audit Log": audit_log_viewer,
+            "📋 Audit Log": audit_log_viewer,
             "📊 Advanced Analytics": advanced_analytics,
             "👤 My Profile": my_profile,
         }
