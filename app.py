@@ -5386,10 +5386,37 @@ def staff_confirmation():
     with tab1:
         st.subheader("📋 Employees on Probation")
         
+        # Region/Subsidiary/Department Filters (Admin only)
+        if is_admin:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                filter_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="prob_region")
+            with col2:
+                SUBSIDIARY_OPTIONS = {
+                    'Abuja': ['All', 'World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                    'Lagos': ['All', 'First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC'],
+                    'Aba': ['All', 'Aba Textile Mills PLC']
+                }
+                sub_opts = SUBSIDIARY_OPTIONS.get(filter_region, ['All']) if filter_region != 'All' else ['All']
+                filter_subsidiary = st.selectbox("🏢 Subsidiary", sub_opts, key="prob_sub")
+            with col3:
+                all_depts_list = ['All'] + sorted(list(probation_employees['department'].dropna().unique())) if not probation_employees.empty else ['All']
+                filter_dept = st.selectbox("🏭 Department", all_depts_list, key="prob_dept")
+        
         if not probation_employees.empty:
-            st.markdown(f"**{total_probation} employees currently on probation**")
+            # Apply filters
+            filtered_probation = probation_employees.copy()
+            if is_admin:
+                if filter_region != 'All':
+                    filtered_probation = filtered_probation[filtered_probation['region'] == filter_region]
+                if filter_subsidiary != 'All':
+                    filtered_probation = filtered_probation[filtered_probation['subsidiary'] == filter_subsidiary]
+                if filter_dept != 'All':
+                    filtered_probation = filtered_probation[filtered_probation['department'] == filter_dept]
             
-            for _, emp in probation_employees.iterrows():
+            st.markdown(f"**{len(filtered_probation)} employees on probation**")
+            
+            for _, emp in filtered_probation.iterrows():
                 emp_name = f"{emp['first_name']} {emp['last_name']}"
                 emp_id = emp.get('employee_id', '')
                 dept = emp.get('department', '')
@@ -5412,6 +5439,8 @@ def staff_confirmation():
                         st.markdown(f"**ID:** {emp_id}")
                         st.markdown(f"**Position:** {position}")
                         st.markdown(f"**Department:** {dept}")
+                        st.markdown(f"**Region:** {emp.get('region', 'N/A')}")
+                        st.markdown(f"**Subsidiary:** {emp.get('subsidiary', 'N/A')}")
                     with col2:
                         st.markdown(f"**Join Date:** {join_date}")
                         st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
@@ -5420,14 +5449,44 @@ def staff_confirmation():
             st.success("🎉 No employees currently on probation!")
     
     # ============================================================
-    # TAB 2: REVIEW & CONFIRM (ENHANCED DECISION FORM)
+    # TAB 2: REVIEW & CONFIRM (WITH FILTERS)
     # ============================================================
     with tab2:
         st.subheader("🔍 Review & Confirm Employees")
         
         if is_hod or is_admin:
             if not probation_employees.empty:
-                for _, emp in probation_employees.iterrows():
+                # Filters
+                filtered_review = probation_employees.copy()
+                if is_admin:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        rev_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="rev_region")
+                    with col2:
+                        SUBSIDIARY_OPTIONS_REV = {
+                            'Abuja': ['All', 'World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                            'Lagos': ['All', 'First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
+                            'Aba': ['All', 'Aba Textile Mills PLC']
+                        }
+                        sub_opts = SUBSIDIARY_OPTIONS_REV.get(rev_region, ['All']) if rev_region != 'All' else ['All']
+                        rev_sub = st.selectbox("🏢 Subsidiary", sub_opts, key="rev_sub")
+                    with col3:
+                        all_depts_rev = ['All'] + sorted(list(probation_employees['department'].dropna().unique()))
+                        rev_dept = st.selectbox("🏭 Department", all_depts_rev, key="rev_dept")
+                    
+                    if rev_region != 'All':
+                        filtered_review = filtered_review[filtered_review['region'] == rev_region]
+                    if rev_sub != 'All':
+                        filtered_review = filtered_review[filtered_review['subsidiary'] == rev_sub]
+                    if rev_dept != 'All':
+                        filtered_review = filtered_review[filtered_review['department'] == rev_dept]
+                
+                st.markdown(f"**{len(filtered_review)} employees to review**")
+                
+                if len(filtered_review) == 0:
+                    st.info("No employees match the selected filters.")
+                
+                for _, emp in filtered_review.iterrows():
                     emp_name = f"{emp['first_name']} {emp['last_name']}"
                     emp_id = emp.get('employee_id', '')
                     dept = emp.get('department', '')
@@ -5437,55 +5496,93 @@ def staff_confirmation():
                     
                     if not is_admin and dept != user_dept: continue
                     
-                    with st.expander(f"📋 Review: {emp_name} — {position} ({dept})", expanded=False):
+                    days_left = (end_date - now).days if end_date else 0
+                    urgency = "🚨" if days_left < 0 else "⏰" if days_left <= 7 else "📅"
+                    
+                    with st.expander(f"{urgency} Review: {emp_name} — {position} ({dept}) | {'OVERDUE' if days_left < 0 else f'{days_left}d left'}"):
                         st.markdown(f"**Probation Period:** {join_date} to {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                        st.markdown(f"**Region:** {emp.get('region', 'N/A')} | **Subsidiary:** {emp.get('subsidiary', 'N/A')}")
+                        
+                        # Check if already reviewed
+                        try:
+                            existing_review = db._get("confirmation_reviews")
+                            already_reviewed = [r for r in existing_review if r.get('employee_id') == emp_id]
+                            if already_reviewed:
+                                latest = already_reviewed[0]
+                                st.info(f"📋 Already reviewed by {latest.get('hod_name','')} on {latest.get('review_date','')[:10]} — Status: {latest.get('status','')}")
+                        except:
+                            pass
                         
                         # HOD Review - FULL DECISION FORM
                         if is_hod:
                             st.markdown("---")
                             st.markdown("#### 👔 EMPLOYEE CONFIRMATION DECISION FORM")
                             
-                            with st.form(key=f"hod_review_{emp_id}"):
-                                # 1. EMPLOYEE DATA
-                                st.markdown("##### 1. EMPLOYEE DATA")
-                                
-                                # Get employee region/subsidiary
-                                emp_region = ''
-                                emp_subsidiary = ''
-                                try:
-                                    emp_data = db._get("employees", {"employee_id": emp_id})
-                                    if emp_data and len(emp_data) > 0:
-                                        emp_region = emp_data[0].get('region', '')
-                                        emp_subsidiary = emp_data[0].get('subsidiary', '')
-                                except:
-                                    pass
-                                
-                                SUBSIDIARY_OPTIONS = {
-                                    'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
-                                    'Lagos': ['First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
-                                    'Aba': ['Aba Textile Mills PLC']
-                                }
-                                
-                                col1, col2, col3 = st.columns(3)
-                                with col1:
-                                    st.markdown(f"**Name:** {emp_name}")
-                                    st.markdown(f"**Department:** {dept}")
-                                    region_options = ['Abuja', 'Lagos', 'Aba']
-                                    region_idx = region_options.index(emp_region) if emp_region in region_options else 0
-                                    new_region = st.selectbox("Region *", region_options, index=region_idx, key=f"cf_region_{emp_id}")
-                                    sub_opts = SUBSIDIARY_OPTIONS.get(new_region, ['World Trade Center(WTC)'])
-                                    sub_idx = sub_opts.index(emp_subsidiary) if emp_subsidiary in sub_opts else 0
-                                    new_subsidiary = st.selectbox("Subsidiary *", sub_opts, index=sub_idx, key=f"cf_sub_{emp_id}")
+                            # Get employee data
+                            emp_region = emp.get('region', '')
+                            emp_subsidiary = emp.get('subsidiary', '')
+                            
+                            SUBSIDIARY_OPTIONS_FORM = {
+                                'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                                'Lagos': ['First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
+                                'Aba': ['Aba Textile Mills PLC']
+                            }
+                            
+                            # 1. EMPLOYEE DATA
+                            st.markdown("##### 1. EMPLOYEE DATA")
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.markdown(f"**Name:** {emp_name}")
+                                st.markdown(f"**Department:** {dept}")
+                                region_options = ['Abuja', 'Lagos', 'Aba']
+                                region_idx = region_options.index(emp_region) if emp_region in region_options else 0
+                                new_region = st.selectbox("Region *", region_options, index=region_idx, key=f"cf_region_{emp_id}")
+                                sub_opts = SUBSIDIARY_OPTIONS_FORM.get(new_region, ['World Trade Center(WTC)'])
+                                sub_idx = sub_opts.index(emp_subsidiary) if emp_subsidiary in sub_opts else 0
+                                new_subsidiary = st.selectbox("Subsidiary *", sub_opts, index=sub_idx, key=f"cf_sub_{emp_id}")
+                            with col2:
+                                st.markdown(f"**Position:** {position}")
+                                st.markdown(f"**Join Date:** {join_date}")
+                                st.text_input("Highest Qualification", key=f"qual_{emp_id}", placeholder="e.g., B.Sc.")
+                            with col3:
+                                st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                                st.text_input("Confirmation Due Date", value=end_date.strftime('%Y-%m-%d') if end_date else '', key=f"due_{emp_id}")
+                            
+                            st.markdown("---")
+                            
+                            # 3. PERFORMANCE RATING - OUTSIDE FORM FOR REAL-TIME UPDATES
+                            st.markdown("##### 3. PERFORMANCE RATING (0-10 each)")
+                            perf_criteria = [
+                                "Quality and Quantity of work", "Knowledge of work and procedures",
+                                "Requisite/cognate Technical Skills", "Care and Maintenance of Assets",
+                                "Ability to Communicate", "Interpersonal Relationship & Team Spirit",
+                                "Dependability/Discipline", "Initiative and Creativity",
+                                "Leadership", "Potentialities"
+                            ]
+                            perf_scores = {}
+                            
+                            for i, criterion in enumerate(perf_criteria):
+                                col1, col2 = st.columns([3, 1])
+                                with col1: st.markdown(f"**{criterion}**")
                                 with col2:
-                                    st.markdown(f"**Position:** {position}")
-                                    st.markdown(f"**Join Date:** {join_date}")
-                                    st.text_input("Highest Qualification", key=f"qual_{emp_id}", placeholder="e.g., B.Sc.")
-                                with col3:
-                                    st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
-                                    st.text_input("Confirmation Due Date", value=end_date.strftime('%Y-%m-%d') if end_date else '', key=f"due_{emp_id}")
-                                
-                                st.markdown("---")
-                                
+                                    perf_scores[str(i)] = st.number_input("Score", 0, 10, 5, key=f"perf_{i}_{emp_id}")
+                            
+                            total_perf = sum(perf_scores.values())
+                            st.markdown(f"**TOTAL SCORE: {total_perf} / 100**")
+                            
+                            if total_perf >= 90: perf_rating = "Outstanding"; perf_color = "#38a169"
+                            elif total_perf >= 70: perf_rating = "Satisfactory"; perf_color = "#3182ce"
+                            elif total_perf >= 50: perf_rating = "Average"; perf_color = "#d69e2e"
+                            elif total_perf >= 30: perf_rating = "Unsatisfactory"; perf_color = "#dd6b20"
+                            else: perf_rating = "Poor"; perf_color = "#CC0000"
+                            
+                            st.markdown(f"""<div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#888;margin-top:0.3rem;"><span>10-29: Poor</span><span>30-49: Unsatisfactory</span><span>50-69: Average</span><span>70-89: Satisfactory</span><span>90-100: Outstanding</span></div>
+                            <div style="margin-top:0.5rem;padding:0.5rem;background:{perf_color}15;border-radius:6px;border-left:4px solid {perf_color};"><strong>Rating: <span style="color:{perf_color};">{perf_rating}</span></strong></div>""", unsafe_allow_html=True)
+                            
+                            st.markdown("---")
+                            
+                            # REST IN FORM
+                            with st.form(key=f"hod_review_{emp_id}"):
                                 # 2. STRENGTHS / WEAKNESSES
                                 st.markdown("##### 2. EMPLOYEE STRENGTHS / WEAKNESSES")
                                 col1, col2 = st.columns(2)
@@ -5493,37 +5590,6 @@ def staff_confirmation():
                                     strengths = st.text_area("AREA OF STRENGTHS *", key=f"strengths_{emp_id}", height=100, placeholder="Key strengths and achievements...")
                                 with col2:
                                     weaknesses = st.text_area("AREA OF WEAKNESSES *", key=f"weaknesses_{emp_id}", height=100, placeholder="Areas needing improvement...")
-                                
-                                st.markdown("---")
-                                
-                                # 3. PERFORMANCE RATING
-                                st.markdown("##### 3. PERFORMANCE RATING (0-10 each)")
-                                perf_criteria = [
-                                    "Quality and Quantity of work", "Knowledge of work and procedures",
-                                    "Requisite/cognate Technical Skills", "Care and Maintenance of Assets",
-                                    "Ability to Communicate", "Interpersonal Relationship & Team Spirit",
-                                    "Dependability/Discipline", "Initiative and Creativity",
-                                    "Leadership", "Potentialities"
-                                ]
-                                perf_scores = {}; total_perf = 0
-                                
-                                for i, criterion in enumerate(perf_criteria):
-                                    col1, col2 = st.columns([3, 1])
-                                    with col1: st.markdown(f"**{criterion}**")
-                                    with col2:
-                                        score = st.number_input("Score", 0, 10, 5, key=f"perf_{i}_{emp_id}")
-                                        perf_scores[str(i)] = score; total_perf += score
-                                
-                                st.markdown(f"**TOTAL SCORE: {total_perf} / 100**")
-                                
-                                if total_perf >= 90: perf_rating = "Outstanding"; perf_color = "#38a169"
-                                elif total_perf >= 70: perf_rating = "Satisfactory"; perf_color = "#3182ce"
-                                elif total_perf >= 50: perf_rating = "Average"; perf_color = "#d69e2e"
-                                elif total_perf >= 30: perf_rating = "Unsatisfactory"; perf_color = "#dd6b20"
-                                else: perf_rating = "Poor"; perf_color = "#CC0000"
-                                
-                                st.markdown(f"""<div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#888;margin-top:0.3rem;"><span>10-29: Poor</span><span>30-49: Unsatisfactory</span><span>50-69: Average</span><span>70-89: Satisfactory</span><span>90-100: Outstanding</span></div>
-                                <div style="margin-top:0.5rem;padding:0.5rem;background:{perf_color}15;border-radius:6px;border-left:4px solid {perf_color};"><strong>Rating: <span style="color:{perf_color};">{perf_rating}</span></strong></div>""", unsafe_allow_html=True)
                                 
                                 st.markdown("---")
                                 
@@ -5608,8 +5674,8 @@ def staff_confirmation():
                                                 db._patch("confirmation_reviews", {"status":"Approved by COO","coo_decision":"Approved","coo_name":user_name,"approved_date":now.strftime('%Y-%m-%d %H:%M')}, {"id":r.get('id')})
                                                 db._patch("employees", {"status":"Active"}, {"employee_id":emp_id})
                                                 confirmation_date = now
-                                                letter_bytes = generate_confirmation_letter(emp_name, position, dept, emp_id, join_date, confirmation_date)
-                                                send_confirmation_email("asakote@churchgate.com", f"✅ Confirmation Approved: {emp_name}", f"HR Team,\n\nCOO approved {emp_name}. Please process confirmation letter.")
+                                                generate_confirmation_letter(emp_name, position, dept, emp_id, join_date, confirmation_date)
+                                                send_confirmation_email("asakote@churchgate.com", f"✅ Confirmation Approved: {emp_name}", f"HR Team,\n\nCOO approved {emp_name}. Please process.")
                                                 send_confirmation_email(emp.get('email',''), f"🎉 Confirmation Approved!", f"Dear {emp_name},\n\nCongratulations! Your employment has been confirmed.\n\nChurchgate Group HR")
                                                 st.success("✅ Confirmed!"); st.balloons(); st.rerun()
                                         with col2:
@@ -5617,9 +5683,8 @@ def staff_confirmation():
                                                 db._patch("confirmation_reviews", {"status":"Returned to HOD","coo_decision":"Returned"}, {"id":r.get('id')})
                                                 st.warning("🔄 Returned to HOD"); st.rerun()
                                         with col3:
-                                            coo_comment = st.text_input("Comment", key=f"coo_cmt_{emp_id}")
                                             if st.button(f"❌ Reject", key=f"coo_rej_{emp_id}", use_container_width=True):
-                                                db._patch("confirmation_reviews", {"status":"Rejected by COO","coo_decision":"Rejected","coo_name":user_name}, {"id":r.get('id')})
+                                                db._patch("confirmation_reviews", {"status":"Rejected by COO","coo_decision":"Rejected"}, {"id":r.get('id')})
                                                 st.error("❌ Rejected"); st.rerun()
                                         break
                             except: pass
@@ -5629,21 +5694,83 @@ def staff_confirmation():
             st.info("This section is for HODs and Admin only.")
     
     # ============================================================
-    # TAB 3: CONFIRMED STAFF
+    # TAB 3: CONFIRMED STAFF (WITH FILTERS)
     # ============================================================
     with tab3:
         st.subheader("✅ Confirmed Staff Records")
+        
         try:
             reviews = db._get("confirmation_reviews")
             if reviews:
                 confirmed = [r for r in reviews if r.get('status') == 'Approved by COO']
+                
+                if confirmed and is_admin:
+                    st.markdown("---")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        conf_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="conf_region")
+                    with col2:
+                        SUBS_OPT = {
+                            'Abuja': ['All', 'World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                            'Lagos': ['All', 'First Continental Properties Limited', 'Churchgate Nigeria Limited'],
+                            'Aba': ['All', 'Aba Textile Mills PLC']
+                        }
+                        sub_opts = SUBS_OPT.get(conf_region, ['All']) if conf_region != 'All' else ['All']
+                        conf_sub = st.selectbox("🏢 Subsidiary", sub_opts, key="conf_sub")
+                    with col3:
+                        all_depts_conf = ['All'] + sorted(list(set(r.get('department','') for r in confirmed)))
+                        conf_dept = st.selectbox("🏭 Department", all_depts_conf, key="conf_dept")
+                    
+                    if conf_region != 'All':
+                        confirmed = [r for r in confirmed if r.get('region','') == conf_region]
+                    if conf_sub != 'All':
+                        confirmed = [r for r in confirmed if r.get('subsidiary','') == conf_sub]
+                    if conf_dept != 'All':
+                        confirmed = [r for r in confirmed if r.get('department','') == conf_dept]
+                
                 if confirmed:
                     st.markdown(f"**{len(confirmed)} confirmed employees**")
+                    
+                    # Summary stats
+                    if confirmed:
+                        avg_score = sum(float(r.get('total_performance_score', 0)) for r in confirmed) / len(confirmed)
+                        outstanding = len([r for r in confirmed if r.get('performance_rating') == 'Outstanding'])
+                        
+                        c1, c2, c3 = st.columns(3)
+                        c1.metric("📊 Avg Score", f"{avg_score:.0f}/100")
+                        c2.metric("🌟 Outstanding", outstanding)
+                        c3.metric("✅ Total Confirmed", len(confirmed))
+                    
+                    st.markdown("---")
+                    
                     for r in confirmed:
-                        st.markdown(f"""<div style="background:white;padding:0.8rem;border-radius:8px;margin:0.3rem 0;border-left:4px solid #38a169;"><strong>{r.get('employee_name','')}</strong> — {r.get('position','')} ({r.get('department','')})<br><small>Score: {r.get('total_performance_score','')}/100 ({r.get('performance_rating','')}) | Confirmed: {r.get('approved_date','')[:10]}</small></div>""", unsafe_allow_html=True)
-                else: st.info("No confirmed staff yet.")
-            else: st.info("No confirmation reviews found.")
-        except: st.info("Data loading...")
+                        score = r.get('total_performance_score', 'N/A')
+                        rating = r.get('performance_rating', 'N/A')
+                        rating_color = '#38a169' if rating == 'Outstanding' else '#3182ce' if rating == 'Satisfactory' else '#d69e2e'
+                        
+                        with st.expander(f"✅ {r.get('employee_name','')} — {r.get('position','')} | Score: {score}/100 ({rating})"):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown(f"**Employee:** {r.get('employee_name','')}")
+                                st.markdown(f"**Position:** {r.get('position','')}")
+                                st.markdown(f"**Department:** {r.get('department','')}")
+                                st.markdown(f"**Region:** {r.get('region','N/A')} | **Subsidiary:** {r.get('subsidiary','N/A')}")
+                            with col2:
+                                st.markdown(f"**HOD:** {r.get('hod_name','')}")
+                                st.markdown(f"**Confirmed:** {r.get('approved_date','')[:10]}")
+                                st.markdown(f"**Score:** {score}/100")
+                                st.markdown(f"**Rating:** <span style='color:{rating_color};font-weight:700;'>{rating}</span>", unsafe_allow_html=True)
+                            
+                            if r.get('strengths'):
+                                st.markdown("**💪 Strengths:** " + r.get('strengths','')[:200])
+                            if r.get('weaknesses'):
+                                st.markdown("**📈 Areas for Development:** " + r.get('weaknesses','')[:200])
+                else:
+                    st.info("No confirmed staff match the selected filters.")
+            else:
+                st.info("No confirmation reviews found.")
+        except:
+            st.info("Data loading...")
     
     # ============================================================
     # TAB 4: DASHBOARD
