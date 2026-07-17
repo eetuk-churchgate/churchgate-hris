@@ -27,3 +27,4 @@ streamlit-quill
 markdown-it-py>=3.0.0
 openai
 sendgrid
+pyzk
