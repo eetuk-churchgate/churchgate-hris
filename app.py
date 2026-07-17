@@ -2091,6 +2091,16 @@ def employee_management():
                                 status_idx = status_options.index(current_status) if current_status in status_options else 0
                                 new_status = st.selectbox("Status", status_options, index=status_idx, key=f"sts_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
+                                current_join_date = emp.get('join_date', '')
+                                if current_join_date and str(current_join_date) != 'None' and str(current_join_date) != 'nan':
+                                    try:
+                                        current_join_date_val = pd.to_datetime(current_join_date).date()
+                                    except:
+                                        current_join_date_val = date.today()
+                                else:
+                                    current_join_date_val = date.today()
+                                new_join_date = st.date_input("Join Date", value=current_join_date_val, key=f"join_{emp['employee_id']}_{st.session_state.dir_page}")
+                                
                                 current_gender = str(emp.get('gender', 'Male'))
                                 gender_options = ['Male', 'Female']
                                 gender_idx = 0 if current_gender == 'Male' else 1
@@ -2118,6 +2128,7 @@ def employee_management():
                                         "email": new_email, "gender": new_gender,
                                         "leave_balance": new_leave,
                                         "date_of_birth": new_dob.strftime('%Y-%m-%d'),
+                                        "join_date": new_join_date.strftime('%Y-%m-%d'),
                                         "region": new_region, "subsidiary": new_subsidiary,
                                         "reports_to": new_reports_to if new_reports_to != 'None' else ''
                                     }, {"employee_id": emp['employee_id']})
@@ -5437,11 +5448,34 @@ def staff_confirmation():
                             with st.form(key=f"hod_review_{emp_id}"):
                                 # 1. EMPLOYEE DATA
                                 st.markdown("##### 1. EMPLOYEE DATA")
+                                
+                                # Get employee region/subsidiary
+                                emp_region = ''
+                                emp_subsidiary = ''
+                                try:
+                                    emp_data = db._get("employees", {"employee_id": emp_id})
+                                    if emp_data and len(emp_data) > 0:
+                                        emp_region = emp_data[0].get('region', '')
+                                        emp_subsidiary = emp_data[0].get('subsidiary', '')
+                                except:
+                                    pass
+                                
+                                SUBSIDIARY_OPTIONS = {
+                                    'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                                    'Lagos': ['First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
+                                    'Aba': ['Aba Textile Mills PLC']
+                                }
+                                
                                 col1, col2, col3 = st.columns(3)
                                 with col1:
                                     st.markdown(f"**Name:** {emp_name}")
                                     st.markdown(f"**Department:** {dept}")
-                                    st.text_input("Company/Unit", value="Churchgate Group", key=f"unit_{emp_id}")
+                                    region_options = ['Abuja', 'Lagos', 'Aba']
+                                    region_idx = region_options.index(emp_region) if emp_region in region_options else 0
+                                    new_region = st.selectbox("Region *", region_options, index=region_idx, key=f"cf_region_{emp_id}")
+                                    sub_opts = SUBSIDIARY_OPTIONS.get(new_region, ['World Trade Center(WTC)'])
+                                    sub_idx = sub_opts.index(emp_subsidiary) if emp_subsidiary in sub_opts else 0
+                                    new_subsidiary = st.selectbox("Subsidiary *", sub_opts, index=sub_idx, key=f"cf_sub_{emp_id}")
                                 with col2:
                                     st.markdown(f"**Position:** {position}")
                                     st.markdown(f"**Join Date:** {join_date}")
@@ -5526,6 +5560,7 @@ def staff_confirmation():
                                             db._post("confirmation_reviews", {
                                                 "employee_id": emp_id, "employee_name": emp_name,
                                                 "department": dept, "position": position,
+                                                "region": new_region, "subsidiary": new_subsidiary,
                                                 "join_date": str(join_date), "probation_end": end_date.strftime('%Y-%m-%d') if end_date else '',
                                                 "hod_name": user_name, "supervisor_name": supervisor_name,
                                                 "line_manager_name": line_manager,
