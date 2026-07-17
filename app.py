@@ -11914,74 +11914,48 @@ def requests_hub():
         
         # Day headers
         day_names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-        header_html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">'
-        for d in day_names:
-            header_html += f'<div style="text-align:center;font-weight:700;font-size:0.8rem;padding:0.5rem;background:#1a1a1a;color:#D4AF37;border-radius:4px;">{d}</div>'
-        header_html += '</div>'
-        st.markdown(header_html, unsafe_allow_html=True)
+        cols = st.columns(7)
+        for i, d in enumerate(day_names):
+            with cols[i]:
+                st.markdown(f'<div style="text-align:center;font-weight:700;font-size:0.7rem;padding:0.3rem;background:#1a1a1a;color:#D4AF37;border-radius:4px;">{d}</div>', unsafe_allow_html=True)
         
-        # Calendar grid
         today = datetime.now().date()
         
+        # Calendar grid using st.columns
         for week in month_days:
-            week_html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">'
-            
-            for day in week:
-                if day == 0:
-                    week_html += '<div style="min-height:80px;background:#faf9f6;border-radius:6px;"></div>'
-                else:
-                    date_str = f"{cal_year}-{cal_month_num:02d}-{day:02d}"
-                    is_today = (date_str == today.strftime('%Y-%m-%d'))
-                    
-                    # Check if holiday
-                    is_holiday = date_str in holidays
-                    
-                    # Check if anyone on leave
-                    on_leave = [l for l in leave_data if l.get('from_date', '') <= date_str <= l.get('to_date', '')]
-                    
-                    # Determine cell style
-                    if is_holiday:
-                        bg_color = '#ffe6e6'
-                        border_color = '#CC0000'
-                        badge = '🔴'
-                    elif on_leave:
-                        approved_count = len([l for l in on_leave if l.get('status') == 'Approved'])
-                        if approved_count > 0:
-                            bg_color = '#e6f9e6'
-                            border_color = '#38a169'
-                            badge = f'{len(on_leave)}'
-                        else:
-                            bg_color = '#e6f2ff'
-                            border_color = '#3182ce'
-                            badge = f'{len(on_leave)}'
+            cols = st.columns(7)
+            for i, day in enumerate(week):
+                with cols[i]:
+                    if day == 0:
+                        st.markdown('<div style="min-height:55px;background:#faf9f6;border-radius:6px;"></div>', unsafe_allow_html=True)
                     else:
-                        bg_color = '#ffffff'
-                        border_color = '#e0e0e0'
-                        badge = ''
-                    
-                    today_border = '3px solid #D4AF37' if is_today else f'1px solid {border_color}'
-                    
-                    # Build tooltip
-                    tooltip_parts = []
-                    if is_holiday:
-                        tooltip_parts.append(f"🎌 {holidays.get(date_str, 'Holiday')}")
-                    for l in on_leave[:5]:
-                        status_icon = '✅' if l.get('status') == 'Approved' else '📝'
-                        tooltip_parts.append(f"{status_icon} {l.get('employee_name', '')} - {l.get('leave_type', '')}")
-                    
-                    tooltip = '\n'.join(tooltip_parts) if tooltip_parts else ''
-                    
-                    week_html += f"""
-                    <div style="min-height:80px;background:{bg_color};border-radius:6px;border:{today_border};padding:4px;position:relative;{'font-weight:700;' if is_today else ''}">
-                        <div style="font-size:0.9rem;color:{'#D4AF37' if is_today else '#1a1a1a'};margin-bottom:2px;">{day}</div>
-                        {f'<div style="font-size:0.6rem;color:#CC0000;font-weight:600;">{holidays.get(date_str, "")}</div>' if is_holiday else ''}
-                        {f'<div style="display:flex;flex-wrap:wrap;gap:1px;margin-top:2px;">' + ''.join([f'<span style="width:6px;height:6px;border-radius:50%;background:{"#38a169" if l.get("status")=="Approved" else "#3182ce"};display:inline-block;" title="{l.get("employee_name","")}"></span>' for l in on_leave[:10]]) + '</div>' if on_leave else ''}
-                        {f'<div style="position:absolute;bottom:2px;right:4px;font-size:0.6rem;font-weight:700;color:{border_color};">{badge}</div>' if badge else ''}
-                    </div>
-                    """
-            
-            week_html += '</div>'
-            st.markdown(week_html, unsafe_allow_html=True)
+                        date_str = f"{cal_year}-{cal_month_num:02d}-{day:02d}"
+                        is_today = (date_str == today.strftime('%Y-%m-%d'))
+                        is_holiday = date_str in holidays
+                        on_leave = [l for l in leave_data if l.get('from_date', '') <= date_str <= l.get('to_date', '')]
+                        
+                        if is_holiday:
+                            bg = '#ffe6e6'
+                            border = '#CC0000'
+                        elif on_leave:
+                            has_approved = any(l.get('status') == 'Approved' for l in on_leave)
+                            bg = '#e6f9e6' if has_approved else '#e6f2ff'
+                            border = '#38a169' if has_approved else '#3182ce'
+                        else:
+                            bg = '#ffffff'
+                            border = '#e0e0e0'
+                        
+                        today_border = '2px solid #D4AF37' if is_today else f'1px solid {border}'
+                        font_weight = 'font-weight:700;' if is_today else ''
+                        
+                        holiday_text = f'<br><small style="color:#CC0000;">🎌 {holidays.get(date_str, "")}</small>' if is_holiday else ''
+                        leave_text = f'<br><small style="color:{border};">👥 {len(on_leave)} on leave</small>' if on_leave else ''
+                        
+                        st.markdown(f"""
+                        <div style="min-height:55px;background:{bg};border-radius:6px;border:{today_border};padding:3px;text-align:center;font-size:0.75rem;{font_weight}">
+                            {day}{holiday_text}{leave_text}
+                        </div>
+                        """, unsafe_allow_html=True)
         
         # Leave details below calendar
         st.markdown("---")
