@@ -5655,43 +5655,117 @@ def staff_confirmation():
                                     else:
                                         st.error("❌ Strengths, Weaknesses, and Comments required!")
                         
-                        # COO Approval
+                        # COO Approval - FULL PREVIEW
                         if is_coo:
                             try:
                                 reviews = db._get("confirmation_reviews")
                                 for r in reviews:
                                     if r.get('employee_id') == emp_id and r.get('status') == 'Pending COO Approval':
                                         st.markdown("---")
-                                        st.markdown("#### 🏢 COO Final Approval")
-                                        st.markdown(f"**HOD:** {r.get('hod_name','')} | **Score:** {r.get('total_performance_score','')}/100 ({r.get('performance_rating','')})")
-                                        st.markdown(f"**Strengths:** {r.get('strengths','')}")
-                                        st.markdown(f"**Weaknesses:** {r.get('weaknesses','')}")
-                                        st.markdown(f"**Comments:** {r.get('hod_comments','')}")
+                                        st.markdown("#### 🏢 COO Final Approval - Full Review")
                                         
+                                        # FULL FORM PREVIEW
+                                        st.markdown("##### 1. EMPLOYEE DATA")
                                         col1, col2, col3 = st.columns(3)
                                         with col1:
-                                            if st.button(f"✅ Approve", key=f"coo_app_{emp_id}", use_container_width=True, type="primary"):
-                                                db._patch("confirmation_reviews", {"status":"Approved by COO","coo_decision":"Approved","coo_name":user_name,"approved_date":now.strftime('%Y-%m-%d %H:%M')}, {"id":r.get('id')})
+                                            st.markdown(f"**Name:** {r.get('employee_name','')}")
+                                            st.markdown(f"**Department:** {r.get('department','')}")
+                                            st.markdown(f"**Region:** {r.get('region','N/A')}")
+                                        with col2:
+                                            st.markdown(f"**Position:** {r.get('position','')}")
+                                            st.markdown(f"**Join Date:** {r.get('join_date','')}")
+                                            st.markdown(f"**Subsidiary:** {r.get('subsidiary','N/A')}")
+                                        with col3:
+                                            st.markdown(f"**Probation End:** {r.get('probation_end','')}")
+                                        
+                                        st.markdown("---")
+                                        st.markdown("##### 2. STRENGTHS & WEAKNESSES")
+                                        col1, col2 = st.columns(2)
+                                        with col1:
+                                            st.markdown(f"**💪 Strengths:**\n{r.get('strengths','N/A')}")
+                                        with col2:
+                                            st.markdown(f"**📈 Areas for Development:**\n{r.get('weaknesses','N/A')}")
+                                        
+                                        st.markdown("---")
+                                        st.markdown("##### 3. PERFORMANCE RATING")
+                                        try:
+                                            scores = json.loads(r.get('performance_scores', '{}'))
+                                            perf_criteria = [
+                                                "Quality and Quantity of work", "Knowledge of work and procedures",
+                                                "Requisite/cognate Technical Skills", "Care and Maintenance of Assets",
+                                                "Ability to Communicate", "Interpersonal Relationship & Team Spirit",
+                                                "Dependability/Discipline", "Initiative and Creativity",
+                                                "Leadership", "Potentialities"
+                                            ]
+                                            for i, criterion in enumerate(perf_criteria):
+                                                score = scores.get(str(i), 0)
+                                                st.markdown(f"**{criterion}:** {score}/10")
+                                        except:
+                                            pass
+                                        
+                                        total_score = r.get('total_performance_score', 'N/A')
+                                        rating = r.get('performance_rating', 'N/A')
+                                        rating_color = '#38a169' if rating == 'Outstanding' else '#3182ce' if rating == 'Satisfactory' else '#d69e2e' if rating == 'Average' else '#dd6b20'
+                                        
+                                        st.markdown(f"**TOTAL SCORE: {total_score}/100 — <span style='color:{rating_color};font-weight:700;'>{rating}</span>**", unsafe_allow_html=True)
+                                        
+                                        st.markdown("---")
+                                        st.markdown("##### 4. DISCIPLINARY STATUS")
+                                        st.markdown(f"**Action:** {r.get('disciplinary_action','None')} | **Reason:** {r.get('disciplinary_reason','N/A')} | **Remark:** {r.get('disciplinary_remark','N/A')}")
+                                        
+                                        st.markdown("---")
+                                        st.markdown("##### 5. RECOMMENDATIONS")
+                                        st.markdown(f"**Decision:** {r.get('hod_decision','')}")
+                                        st.markdown(f"**HOD Comment:** {r.get('hod_comments','')}")
+                                        st.markdown(f"**Immediate Supervisor:** {r.get('supervisor_name','')} | **Line Manager:** {r.get('line_manager_name','')}")
+                                        st.markdown(f"**Reviewed by HOD:** {r.get('hod_name','')} on {r.get('review_date','')[:10]}")
+                                        
+                                        st.markdown("---")
+                                        
+                                        # Approval buttons
+                                        col1, col2, col3 = st.columns(3)
+                                        with col1:
+                                            if st.button(f"✅ Approve Confirmation", key=f"coo_app_{emp_id}", use_container_width=True, type="primary"):
+                                                db._patch("confirmation_reviews", {
+                                                    "status":"Approved by COO","coo_decision":"Approved",
+                                                    "coo_name":user_name,"approved_date":now.strftime('%Y-%m-%d %H:%M')
+                                                }, {"id":r.get('id')})
                                                 db._patch("employees", {"status":"Active"}, {"employee_id":emp_id})
-                                                confirmation_date = now
-                                                generate_confirmation_letter(emp_name, position, dept, emp_id, join_date, confirmation_date)
-                                                send_confirmation_email("asakote@churchgate.com", f"✅ Confirmation Approved: {emp_name}", f"HR Team,\n\nCOO approved {emp_name}. Please process.")
-                                                send_confirmation_email(emp.get('email',''), f"🎉 Confirmation Approved!", f"Dear {emp_name},\n\nCongratulations! Your employment has been confirmed.\n\nChurchgate Group HR")
+                                                
+                                                # Generate confirmation letter
+                                                try:
+                                                    jd = r.get('join_date','')
+                                                    if isinstance(jd, str): jd = datetime.strptime(jd, '%Y-%m-%d')
+                                                    generate_confirmation_letter(emp_name, position, dept, emp_id, jd, now)
+                                                except: pass
+                                                
+                                                send_confirmation_email("asakote@churchgate.com", 
+                                                    f"✅ Confirmation Approved: {emp_name}", 
+                                                    f"HR Team,\n\nCOO approved {emp_name}.\nScore: {total_score}/100 ({rating})\n\nPlease process confirmation letter.")
+                                                send_confirmation_email(emp.get('email',''), 
+                                                    f"🎉 Confirmation Approved!", 
+                                                    f"Dear {emp_name},\n\nCongratulations! Your employment has been confirmed.\n\nChurchgate Group HR")
                                                 st.success("✅ Confirmed!"); st.balloons(); st.rerun()
                                         with col2:
-                                            if st.button(f"🔄 Return", key=f"coo_ret_{emp_id}", use_container_width=True):
-                                                db._patch("confirmation_reviews", {"status":"Returned to HOD","coo_decision":"Returned"}, {"id":r.get('id')})
+                                            if st.button(f"🔄 Return to HOD", key=f"coo_ret_{emp_id}", use_container_width=True):
+                                                db._patch("confirmation_reviews", {
+                                                    "status":"Returned to HOD","coo_decision":"Returned"
+                                                }, {"id":r.get('id')})
+                                                send_confirmation_email("asakote@churchgate.com",
+                                                    f"🔄 Confirmation Returned: {emp_name}",
+                                                    f"HR Team,\n\nCOO returned {emp_name}'s confirmation to HOD for revision.")
                                                 st.warning("🔄 Returned to HOD"); st.rerun()
                                         with col3:
                                             if st.button(f"❌ Reject", key=f"coo_rej_{emp_id}", use_container_width=True):
-                                                db._patch("confirmation_reviews", {"status":"Rejected by COO","coo_decision":"Rejected"}, {"id":r.get('id')})
+                                                db._patch("confirmation_reviews", {
+                                                    "status":"Rejected by COO","coo_decision":"Rejected"
+                                                }, {"id":r.get('id')})
+                                                send_confirmation_email("asakote@churchgate.com",
+                                                    f"❌ Confirmation Rejected: {emp_name}",
+                                                    f"HR Team,\n\nCOO rejected {emp_name}'s confirmation.")
                                                 st.error("❌ Rejected"); st.rerun()
                                         break
                             except: pass
-            else:
-                st.info("No employees on probation.")
-        else:
-            st.info("This section is for HODs and Admin only.")
     
     # ============================================================
     # TAB 3: CONFIRMED STAFF (UPGRADED)
@@ -5925,7 +5999,7 @@ def staff_confirmation():
                 
                 st.markdown("---")
                 
-                # Charts - Compact
+                # Charts - Compact with proper margins
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -5942,7 +6016,8 @@ def staff_confirmation():
                     if status_data:
                         fig1 = px.pie(values=list(status_data.values()), names=list(status_data.keys()), hole=0.6,
                                     color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000', '#dd6b20'])
-                        fig1.update_layout(height=300, margin=dict(t=10, b=0, l=0, r=0), title="Status Distribution", title_font_size=12)
+                        fig1.update_layout(height=350, margin=dict(t=40, b=20, l=20, r=20), title="Status Distribution", title_font_size=13)
+                        fig1.update_traces(textposition='inside', textinfo='percent+label', textfont_size=10)
                         st.plotly_chart(fig1, use_container_width=True)
                 
                 with col2:
@@ -5961,7 +6036,9 @@ def staff_confirmation():
                         dept_df = pd.DataFrame([{'Department': d, **s} for d, s in dept_confirm_data.items()])
                         fig2 = px.bar(dept_df, x='Department', y=['Confirmed', 'Pending', 'Extended'],
                                     barmode='stack', color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce'])
-                        fig2.update_layout(height=300, margin=dict(t=10, b=0, l=0, r=0), title="By Department", title_font_size=12, legend_font_size=9)
+                        fig2.update_layout(height=350, margin=dict(t=40, b=80, l=20, r=20), title="By Department", 
+                                          title_font_size=13, legend=dict(font=dict(size=9), orientation="h", yanchor="bottom", y=1.02),
+                                          xaxis_tickangle=-45, xaxis_tickfont=dict(size=9))
                         st.plotly_chart(fig2, use_container_width=True)
                 
                 st.markdown("---")
@@ -5981,7 +6058,8 @@ def staff_confirmation():
                         region_df = pd.DataFrame([{'Region': r, **s} for r, s in region_data.items()])
                         fig3 = px.bar(region_df, x='Region', y=['Confirmed', 'Pending'], barmode='group',
                                     color_discrete_sequence=['#38a169', '#d69e2e'])
-                        fig3.update_layout(height=300, margin=dict(t=10, b=0, l=0, r=0), title="By Region", title_font_size=12)
+                        fig3.update_layout(height=350, margin=dict(t=40, b=40, l=20, r=20), title="By Region",
+                                          title_font_size=13, legend=dict(font=dict(size=9), orientation="h", yanchor="bottom", y=1.02))
                         st.plotly_chart(fig3, use_container_width=True)
                 
                 with col4:
@@ -5996,8 +6074,9 @@ def staff_confirmation():
                         rating_values = [rating_data.get(r, 0) for r in rating_order]
                         fig4 = px.bar(x=rating_order, y=rating_values, color=rating_order,
                                     color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#dd6b20', '#CC0000'])
-                        fig4.update_layout(height=300, showlegend=False, margin=dict(t=10, b=0, l=0, r=0),
-                                        title="Performance Ratings", title_font_size=12)
+                        fig4.update_layout(height=350, showlegend=False, margin=dict(t=40, b=60, l=20, r=20),
+                                        title="Performance Ratings", title_font_size=13,
+                                        xaxis_tickangle=-30, xaxis_tickfont=dict(size=10))
                         st.plotly_chart(fig4, use_container_width=True)
                 
                 st.markdown("---")
