@@ -11313,11 +11313,13 @@ def requests_hub():
         try:
             from zk import ZK
             
-            zk = ZK(device_ip, port=port, timeout=5)
+            zk = ZK(device_ip, port=port, timeout=15)
             conn = zk.connect()
             
             if conn:
+                print(f"✅ Connected to device at {device_ip}:{port}")
                 attendance_logs = conn.get_attendance()
+                print(f"📊 Found {len(attendance_logs)} attendance records")
                 
                 synced_count = 0
                 for log in attendance_logs:
@@ -11330,17 +11332,15 @@ def requests_hub():
                     if not existing or len(existing) == 0:
                         # Get employee name from biometric_id mapping
                         emp_name = f"User {log.user_id}"
+                        emp_id = str(log.user_id)
                         try:
                             emp = db._get("employees", {"biometric_id": str(log.user_id)})
                             if emp and len(emp) > 0:
                                 emp_name = f"{emp[0].get('first_name', '')} {emp[0].get('last_name', '')}"
                                 emp_id = emp[0].get('employee_id', str(log.user_id))
-                            else:
-                                emp_id = str(log.user_id)
                         except:
-                            emp_id = str(log.user_id)
+                            pass
                         
-                        hour = log.timestamp.hour
                         time_str = log.timestamp.strftime('%H:%M')
                         
                         today_records = db._get("attendance", {
@@ -11948,31 +11948,94 @@ def requests_hub():
                     else:
                         st.error("❌ In Time and Out Time required!")
         
-        # ----- My Attendance -----
+         # ----- My Attendance -----
         with att_tabs[1]:
             st.markdown("### 📊 My Attendance Records")
             
             try:
-                att_data = db._get("attendance", {"employee_id": user_id})
+                att_data = db._get("attendance")
                 if att_data:
-                    att_df = pd.DataFrame([{
-                        'Date': a.get('sync_date', ''),
-                        'In': a.get('in_time', ''),
-                        'Out': a.get('out_time', ''),
-                        'Hours': a.get('work_hours', 0),
-                        'Source': a.get('source', 'Manual'),
-                        'Status': a.get('status', 'Present')
-                    } for a in att_data[-30:]])
+                    filtered = [a for a in att_data if a.get('employee_id', '').replace(' ', '').replace('-', '') == user_id.replace(' ', '').replace('-', '')]
                     
-                    st.dataframe(att_df, use_container_width=True, hide_index=True)
-                    
-                    # Summary
-                    total_hours = sum(float(a.get('work_hours', 0)) for a in att_data[-30:])
-                    st.metric("📊 Hours This Month", f"{total_hours:.1f}")
+                    if filtered:
+                        att_df = pd.DataFrame([{
+                            'Employee': a.get('employee_name', user_name),
+                            'ID': a.get('employee_id', ''),
+                            'Date': a.get('sync_date', ''),
+                            'In': a.get('in_time', ''),
+                            'Out': a.get('out_time', ''),
+                            'Hours': a.get('work_hours', 0),
+                            'Source': a.get('source', 'Manual'),
+                            'Status': a.get('status', 'Present')
+                        } for a in filtered[-30:]])
+                        
+                        st.dataframe(att_df, use_container_width=True, hide_index=True)
+                        
+                        total_hours = sum(float(a.get('work_hours', 0) or 0) for a in filtered[-30:])
+                        days_present = len(set(a.get('sync_date', '') for a in filtered[-30:]))
+                        st.metric("📊 Hours This Month", f"{total_hours:.1f}")
+                        st.metric("📅 Days Present", days_present)
+                    else:
+                        st.info("No attendance records yet.")
                 else:
                     st.info("No attendance records yet.")
-            except:
+            except Exception as e:
                 st.info("Attendance data loading...")
+        
+        # ----- Admin Attendance Dashboard -----
+        if is_admin or user_role in ['HR Director']:
+            st.markdown("---")
+            st.markdown("### 👥 All Employee Attendance (Admin/HR)")
+            
+            try:
+                all_att = db._get("attendance")
+                if all_att:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        att_region = st.selectbox("Region", ["All", "Abuja", "Lagos", "Aba"], key="att_region")
+                    with col2:
+                        att_date_filter = st.date_input("Date", value=datetime.now(), key="att_date")
+                    with col3:
+                        att_source = st.selectbox("Source", ["All", "Biometric", "Manual"], key="att_source")
+                    
+                    display_att = all_att
+                    if att_source != "All":
+                        display_att = [a for a in display_att if a.get('source') == att_source]
+                    
+                    date_str = att_date_filter.strftime('%Y-%m-%d')
+                    display_att = [a for a in display_att if a.get('sync_date') == date_str]
+                    
+                    if display_att:
+                        st.markdown(f"**{len(display_att)} records for {date_str}**")
+                        
+                        df_all = pd.DataFrame([{
+                            'Employee': a.get('employee_name', ''),
+                            'ID': a.get('employee_id', ''),
+                            'Date': a.get('sync_date', ''),
+                            'In': a.get('in_time', ''),
+                            'Out': a.get('out_time', ''),
+                            'Hours': a.get('work_hours', 0),
+                            'Source': a.get('source', 'Manual'),
+                            'Status': a.get('status', 'Present')
+                        } for a in display_att])
+                        
+                        st.dataframe(df_all, use_container_width=True, hide_index=True)
+                        
+                        present = len(df_all)
+                        on_time = len(df_all[df_all['In'].notna()])
+                        
+                        c1, c2, c3 = st.columns(3)
+                        c1.metric("👥 Present Today", present)
+                        c2.metric("✅ Clocked In", on_time)
+                        c3.metric("📊 Avg Hours", f"{df_all['Hours'].mean():.1f}" if df_all['Hours'].sum() > 0 else "N/A")
+                        
+                        st.download_button("📥 Download Attendance CSV", df_all.to_csv(index=False), f"attendance_{date_str}.csv", "text/csv")
+                    else:
+                        st.info(f"No records for {date_str}")
+                else:
+                    st.info("No attendance data available.")
+            except Exception as e:
+                st.info("Attendance dashboard loading...")
         
         # ----- Biometric Sync -----
         with att_tabs[2]:
