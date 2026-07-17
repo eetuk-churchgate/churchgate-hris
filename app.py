@@ -5878,34 +5878,26 @@ def staff_confirmation():
             st.info("Data loading...")
     
     # ============================================================
-    # TAB 4: DASHBOARD - MASSIVE FORTUNE 500 ANALYTICS
+    # TAB 4: DASHBOARD - FORTUNE 500 ANALYTICS
     # ============================================================
     with tab4:
-        st.subheader("📊 Confirmation & Probation Analytics Dashboard")
-        st.markdown("*Fortune 500 Grade — Full HR Intelligence*")
+        st.subheader("📊 Confirmation & Probation Analytics")
         
         try:
             reviews = db._get("confirmation_reviews")
             all_employees = db.get_all_employees()
             
             if reviews or not all_employees.empty:
-                # ============================================================
-                # TOP KPI ROW
-                # ============================================================
                 total_employees = len(all_employees) if not all_employees.empty else 0
                 total_probation = len(all_employees[all_employees['status'] == 'Probation']) if not all_employees.empty else 0
                 total_confirmed = len([r for r in reviews if r.get('status') == 'Approved by COO']) if reviews else 0
                 total_pending = len([r for r in reviews if r.get('status') in ['Pending COO Approval', 'Pending']]) if reviews else 0
                 total_extended = len([r for r in reviews if 'Extension' in str(r.get('status', ''))]) if reviews else 0
-                
-                # Confirmation rate
                 confirmation_rate = (total_confirmed / max(total_probation + total_confirmed, 1)) * 100
                 
-                # Average performance score
                 confirmed_reviews = [r for r in reviews if r.get('status') == 'Approved by COO'] if reviews else []
                 avg_perf_score = sum(float(r.get('total_performance_score', 0)) for r in confirmed_reviews) / max(len(confirmed_reviews), 1)
                 
-                # Average processing time (submission to approval)
                 processing_times = []
                 for r in confirmed_reviews:
                     if r.get('review_date') and r.get('approved_date'):
@@ -5913,116 +5905,86 @@ def staff_confirmation():
                             sub = datetime.strptime(r['review_date'][:10], '%Y-%m-%d')
                             app = datetime.strptime(r['approved_date'][:10], '%Y-%m-%d')
                             processing_times.append((app - sub).days)
-                        except:
-                            pass
+                        except: pass
                 avg_processing = sum(processing_times) / max(len(processing_times), 1) if processing_times else 0
                 
-                st.markdown("### 🎯 Key Performance Indicators")
+                # KPIs - Compact
                 m1, m2, m3, m4, m5, m6 = st.columns(6)
-                m1.metric("👥 Total Employees", total_employees)
-                m2.metric("📋 On Probation", total_probation)
+                m1.metric("👥 Total", total_employees)
+                m2.metric("📋 Probation", total_probation)
                 m3.metric("✅ Confirmed", total_confirmed)
                 m4.metric("⏳ Pending COO", total_pending)
                 m5.metric("🔄 Extended", total_extended)
-                m6.metric("📊 Confirm Rate", f"{confirmation_rate:.0f}%")
+                m6.metric("📊 Rate", f"{confirmation_rate:.0f}%")
                 
                 m1b, m2b, m3b, m4b = st.columns(4)
-                m1b.metric("📊 Avg Perf Score", f"{avg_perf_score:.0f}/100")
-                m2b.metric("⏱️ Avg Processing", f"{avg_processing:.1f} days")
+                m1b.metric("📊 Avg Score", f"{avg_perf_score:.0f}/100")
+                m2b.metric("⏱️ Avg Process", f"{avg_processing:.1f}d")
                 m3b.metric("🌟 Outstanding", len([r for r in confirmed_reviews if r.get('performance_rating') == 'Outstanding']))
                 m4b.metric("⚠️ At Risk", len([r for r in confirmed_reviews if r.get('performance_rating') in ['Poor', 'Unsatisfactory']]))
                 
                 st.markdown("---")
                 
-                # ============================================================
-                # CHARTS ROW 1
-                # ============================================================
+                # Charts - Compact
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.markdown("### 📊 Probation Status Distribution")
-                    
-                    # Get all employees by status
                     status_data = {}
                     if not all_employees.empty:
-                        for status in ['Active', 'Probation', 'On Leave', 'Terminated', 'Archived']:
+                        for status in ['Active', 'Probation']:
                             count = len(all_employees[all_employees['status'] == status])
-                            if count > 0:
-                                status_data[status] = count
-                    
-                    # Add confirmation statuses
+                            if count > 0: status_data[status] = count
                     if reviews:
                         status_data['Confirmed'] = total_confirmed
-                        status_data['Pending Review'] = total_pending
+                        status_data['Pending'] = total_pending
                         status_data['Extended'] = total_extended
                     
                     if status_data:
                         fig1 = px.pie(values=list(status_data.values()), names=list(status_data.keys()), hole=0.6,
-                                    color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000', '#a0aec0', '#dd6b20', '#805ad5'])
-                        fig1.update_layout(height=380, margin=dict(t=30, b=0, l=0, r=0))
+                                    color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000', '#dd6b20'])
+                        fig1.update_layout(height=300, margin=dict(t=10, b=0, l=0, r=0), title="Status Distribution", title_font_size=12)
                         st.plotly_chart(fig1, use_container_width=True)
                 
                 with col2:
-                    st.markdown("### 🏢 Confirmation by Department")
-                    
                     dept_confirm_data = {}
                     if reviews:
                         for r in reviews:
                             dept = r.get('department', 'Unknown')
                             status = r.get('status', 'Pending')
                             if dept not in dept_confirm_data:
-                                dept_confirm_data[dept] = {'Confirmed': 0, 'Pending': 0, 'Extended': 0, 'Rejected': 0}
-                            if status == 'Approved by COO':
-                                dept_confirm_data[dept]['Confirmed'] += 1
-                            elif 'Extension' in str(status):
-                                dept_confirm_data[dept]['Extended'] += 1
-                            elif status == 'Rejected by COO':
-                                dept_confirm_data[dept]['Rejected'] += 1
-                            else:
-                                dept_confirm_data[dept]['Pending'] += 1
+                                dept_confirm_data[dept] = {'Confirmed': 0, 'Pending': 0, 'Extended': 0}
+                            if status == 'Approved by COO': dept_confirm_data[dept]['Confirmed'] += 1
+                            elif 'Extension' in str(status): dept_confirm_data[dept]['Extended'] += 1
+                            else: dept_confirm_data[dept]['Pending'] += 1
                     
                     if dept_confirm_data:
-                        dept_df = pd.DataFrame([
-                            {'Department': d, **s} for d, s in dept_confirm_data.items()
-                        ])
-                        fig2 = px.bar(dept_df, x='Department', y=['Confirmed', 'Pending', 'Extended', 'Rejected'],
-                                    barmode='stack', color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000'])
-                        fig2.update_layout(height=380, margin=dict(t=30, b=0, l=0, r=0))
+                        dept_df = pd.DataFrame([{'Department': d, **s} for d, s in dept_confirm_data.items()])
+                        fig2 = px.bar(dept_df, x='Department', y=['Confirmed', 'Pending', 'Extended'],
+                                    barmode='stack', color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce'])
+                        fig2.update_layout(height=300, margin=dict(t=10, b=0, l=0, r=0), title="By Department", title_font_size=12, legend_font_size=9)
                         st.plotly_chart(fig2, use_container_width=True)
                 
                 st.markdown("---")
                 
-                # ============================================================
-                # CHARTS ROW 2
-                # ============================================================
                 col3, col4 = st.columns(2)
                 
                 with col3:
-                    st.markdown("### 🌍 Confirmation by Region")
-                    
                     region_data = {}
                     if reviews:
                         for r in reviews:
                             region = r.get('region', 'Unknown')
-                            if region not in region_data:
-                                region_data[region] = {'Confirmed': 0, 'Pending': 0}
-                            if r.get('status') == 'Approved by COO':
-                                region_data[region]['Confirmed'] += 1
-                            else:
-                                region_data[region]['Pending'] += 1
+                            if region not in region_data: region_data[region] = {'Confirmed': 0, 'Pending': 0}
+                            if r.get('status') == 'Approved by COO': region_data[region]['Confirmed'] += 1
+                            else: region_data[region]['Pending'] += 1
                     
                     if region_data:
-                        region_df = pd.DataFrame([
-                            {'Region': r, **s} for r, s in region_data.items()
-                        ])
-                        fig3 = px.bar(region_df, x='Region', y=['Confirmed', 'Pending'],
-                                    barmode='group', color_discrete_sequence=['#38a169', '#d69e2e'])
-                        fig3.update_layout(height=350, margin=dict(t=30, b=0, l=0, r=0))
+                        region_df = pd.DataFrame([{'Region': r, **s} for r, s in region_data.items()])
+                        fig3 = px.bar(region_df, x='Region', y=['Confirmed', 'Pending'], barmode='group',
+                                    color_discrete_sequence=['#38a169', '#d69e2e'])
+                        fig3.update_layout(height=300, margin=dict(t=10, b=0, l=0, r=0), title="By Region", title_font_size=12)
                         st.plotly_chart(fig3, use_container_width=True)
                 
                 with col4:
-                    st.markdown("### ⭐ Performance Rating Distribution")
-                    
                     rating_data = {}
                     if confirmed_reviews:
                         for r in confirmed_reviews:
@@ -6032,141 +5994,68 @@ def staff_confirmation():
                     if rating_data:
                         rating_order = ['Outstanding', 'Satisfactory', 'Average', 'Unsatisfactory', 'Poor']
                         rating_values = [rating_data.get(r, 0) for r in rating_order]
-                        rating_colors = ['#38a169', '#3182ce', '#d69e2e', '#dd6b20', '#CC0000']
-                        
                         fig4 = px.bar(x=rating_order, y=rating_values, color=rating_order,
-                                    color_discrete_sequence=rating_colors)
-                        fig4.update_layout(height=350, showlegend=False, margin=dict(t=30, b=0, l=0, r=0),
-                                        xaxis_title="Rating", yaxis_title="Employees")
+                                    color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#dd6b20', '#CC0000'])
+                        fig4.update_layout(height=300, showlegend=False, margin=dict(t=10, b=0, l=0, r=0),
+                                        title="Performance Ratings", title_font_size=12)
                         st.plotly_chart(fig4, use_container_width=True)
                 
                 st.markdown("---")
                 
-                # ============================================================
-                # AI-POWERED INSIGHTS
-                # ============================================================
-                st.markdown("### 🤖 AI-Powered HR Insights")
+                # AI Insights
+                with st.expander("🤖 AI-Powered Insights", expanded=False):
+                    if st.button("🧠 Generate Insights", use_container_width=True):
+                        with st.spinner("Analyzing..."):
+                            try:
+                                insights_context = f"""
+                                Churchgate Group Staff Confirmation Data:
+                                Total: {total_employees} | Probation: {total_probation} | Confirmed: {total_confirmed}
+                                Rate: {confirmation_rate:.0f}% | Avg Score: {avg_perf_score:.0f}/100 | Avg Process: {avg_processing:.1f}d
+                                Ending Soon: {ending_soon} | Overdue: {overdue}
+                                """
+                                
+                                openai_key = os.environ.get("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", ""))
+                                if openai_key:
+                                    import openai
+                                    client = openai.OpenAI(api_key=openai_key)
+                                    response = client.chat.completions.create(
+                                        model="gpt-3.5-turbo",
+                                        messages=[{"role": "system", "content": "You are an HR Analytics expert. Provide 3 key findings and 3 recommendations based on staff confirmation data. Be concise."},
+                                                  {"role": "user", "content": insights_context}],
+                                        temperature=0.5, max_tokens=400
+                                    )
+                                    st.success("Analysis complete!")
+                                    st.markdown(response.choices[0].message.content)
+                                else:
+                                    st.info("OpenAI key not configured. Manual insights: Monitor overdue confirmations, track department performance, fast-track outstanding employees.")
+                            except:
+                                st.info("AI insights unavailable. Check OpenAI configuration.")
                 
-                if st.button("🧠 Generate AI Insights", use_container_width=True, type="primary"):
-                    with st.spinner("Analyzing confirmation data with AI..."):
-                        try:
-                            # Build context for AI
-                            insights_context = f"""
-                            Churchgate Group - Staff Confirmation Analytics:
-                            
-                            Total Employees: {total_employees}
-                            On Probation: {total_probation}
-                            Confirmed: {total_confirmed}
-                            Confirmation Rate: {confirmation_rate:.0f}%
-                            Average Performance Score: {avg_perf_score:.0f}/100
-                            Average Processing Time: {avg_processing:.1f} days
-                            
-                            Department Breakdown:
-                            {dept_df.to_string() if 'dept_df' in dir() else 'No data'}
-                            
-                            Region Breakdown:
-                            {region_df.to_string() if 'region_df' in dir() else 'No data'}
-                            
-                            Rating Distribution:
-                            {rating_data if rating_data else 'No data'}
-                            
-                            Probation employees ending within 14 days: {ending_soon}
-                            Overdue confirmations: {overdue}
-                            """
-                            
-                            openai_key = os.environ.get("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", ""))
-                            if openai_key:
-                                import openai
-                                client = openai.OpenAI(api_key=openai_key)
-                                response = client.chat.completions.create(
-                                    model="gpt-3.5-turbo",
-                                    messages=[
-                                        {"role": "system", "content": "You are a Fortune 500 HR Analytics Director. Analyze staff confirmation data and provide strategic insights."},
-                                        {"role": "user", "content": f"Analyze this HR data and provide: 1) Top 3 key findings 2) Department/Region performance comparison 3) Risk areas (overdue confirmations, low scores) 4) 3 strategic recommendations for management 5) Predicted trends. Be specific and data-driven.\n\n{insights_context}"}
-                                    ],
-                                    temperature=0.5, max_tokens=600
-                                )
-                                st.markdown("### 🤖 AI-Generated Insights")
-                                st.success("Analysis complete!")
-                                st.markdown(response.choices[0].message.content)
-                            else:
-                                st.info("OpenAI API key not configured.")
-                        except Exception as e:
-                            st.warning(f"AI insights unavailable: {str(e)}")
-                            st.markdown("""
-                            ### 📊 Manual Analysis
-                            
-                            **Key Findings:**
-                            1. Monitor overdue confirmations to ensure timely processing
-                            2. Departments with low confirmation rates need attention
-                            3. Average performance scores indicate training needs
-                            
-                            **Recommendations:**
-                            1. Implement 14-day SLA for confirmation processing
-                            2. Provide additional support for departments with extended probations
-                            3. Fast-track outstanding performers for leadership development
-                            """)
-                
+                # Recent Activity
                 st.markdown("---")
-                
-                # ============================================================
-                # RECENT ACTIVITY & TIMELINE
-                # ============================================================
-                st.markdown("### 📅 Recent Confirmation Activity")
-                
+                st.markdown("#### 📅 Recent Activity")
                 if reviews:
-                    recent = sorted(reviews, key=lambda x: x.get('review_date', ''), reverse=True)[:10]
-                    
+                    recent = sorted(reviews, key=lambda x: x.get('review_date', ''), reverse=True)[:5]
                     for r in recent:
                         status = r.get('status', 'Pending')
-                        status_icon = '✅' if status == 'Approved by COO' else '⏳' if 'Pending' in str(status) else '🔄' if 'Extension' in str(status) else '❌'
-                        status_color = '#38a169' if status == 'Approved by COO' else '#d69e2e' if 'Pending' in str(status) else '#3182ce' if 'Extension' in str(status) else '#CC0000'
-                        
-                        st.markdown(f"""
-                        <div style="padding:0.5rem;margin:0.2rem 0;border-left:4px solid {status_color};background:white;border-radius:4px;">
-                            <strong>{status_icon} {r.get('employee_name','')}</strong> — {r.get('position','')} ({r.get('department','')})
-                            <br><small>Status: {status} | Date: {r.get('review_date','')[:10]} | HOD: {r.get('hod_name','')}</small>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        icon = '✅' if 'Approved' in str(status) else '⏳' if 'Pending' in str(status) else '🔄' if 'Extension' in str(status) else '❌'
+                        color = '#38a169' if 'Approved' in str(status) else '#d69e2e' if 'Pending' in str(status) else '#3182ce'
+                        st.markdown(f"""<div style="padding:0.3rem 0.6rem;margin:0.15rem 0;border-left:3px solid {color};background:white;border-radius:3px;font-size:0.8rem;"><strong>{icon} {r.get('employee_name','')}</strong> — {r.get('position','')} | {status} | {r.get('review_date','')[:10]}</div>""", unsafe_allow_html=True)
                 
-                # ============================================================
-                # EXPORT
-                # ============================================================
+                # Export
                 st.markdown("---")
-                st.markdown("### 📥 Export Analytics")
-                
-                col1, col2, col3 = st.columns(3)
+                col1, col2 = st.columns(2)
                 with col1:
                     if reviews:
-                        full_data = pd.DataFrame([{
-                            'Employee': r.get('employee_name'), 'Position': r.get('position'),
-                            'Department': r.get('department'), 'Region': r.get('region',''),
-                            'Subsidiary': r.get('subsidiary',''), 'Status': r.get('status'),
-                            'Score': r.get('total_performance_score'), 'Rating': r.get('performance_rating'),
-                            'HOD': r.get('hod_name'), 'Review Date': r.get('review_date','')[:10],
-                            'Approved Date': r.get('approved_date','')[:10]
-                        } for r in reviews])
-                        st.download_button("📥 Full Analytics CSV", full_data.to_csv(index=False), "confirmation_analytics.csv", "text/csv", use_container_width=True)
-                
+                        full_data = pd.DataFrame([{'Employee': r.get('employee_name'), 'Position': r.get('position'), 'Department': r.get('department'), 'Status': r.get('status'), 'Score': r.get('total_performance_score'), 'Rating': r.get('performance_rating'), 'Date': r.get('review_date','')[:10]} for r in reviews])
+                        st.download_button("📥 Export CSV", full_data.to_csv(index=False), "confirmation_data.csv", "text/csv", use_container_width=True)
                 with col2:
-                    summary_data = pd.DataFrame([
-                        {'Metric': 'Total Employees', 'Value': total_employees},
-                        {'Metric': 'On Probation', 'Value': total_probation},
-                        {'Metric': 'Confirmed', 'Value': total_confirmed},
-                        {'Metric': 'Confirmation Rate', 'Value': f"{confirmation_rate:.0f}%"},
-                        {'Metric': 'Avg Performance Score', 'Value': f"{avg_perf_score:.0f}/100"},
-                        {'Metric': 'Avg Processing Days', 'Value': f"{avg_processing:.1f}"},
-                    ])
-                    st.download_button("📥 Summary Report CSV", summary_data.to_csv(index=False), "confirmation_summary.csv", "text/csv", use_container_width=True)
-                
-                with col3:
-                    st.download_button("📥 Department Breakdown CSV", 
-                        dept_df.to_csv(index=False) if 'dept_df' in dir() else "No data",
-                        "dept_breakdown.csv", "text/csv", use_container_width=True)
+                    summary = pd.DataFrame([{'Metric': 'Total', 'Value': total_employees}, {'Metric': 'Probation', 'Value': total_probation}, {'Metric': 'Confirmed', 'Value': total_confirmed}, {'Metric': 'Rate', 'Value': f"{confirmation_rate:.0f}%"}])
+                    st.download_button("📥 Summary CSV", summary.to_csv(index=False), "summary.csv", "text/csv", use_container_width=True)
             else:
-                st.info("No confirmation data available yet. Data will appear once reviews are submitted.")
-        except Exception as e:
-            st.info(f"Dashboard loading...")
+                st.info("No confirmation data yet.")
+        except:
+            st.info("Dashboard loading...")
 
 
 
