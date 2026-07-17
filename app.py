@@ -11819,86 +11819,200 @@ def requests_hub():
             st.info("No requests in outbox.")
     
     # ============================================================
-    # TAB 5: LEAVE CALENDAR
+    # TAB 5: LEAVE CALENDAR - MASSIVE UPGRADE
     # ============================================================
     with tab5:
         st.subheader("📅 Leave Calendar")
+        st.markdown("*Interactive team leave visualization — color-coded by status*")
+        
+        # Legend
+        st.markdown("""
+        <div style="display:flex;gap:1.5rem;margin:1rem 0;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#3182ce;"></div><span style="font-size:0.85rem;">Submitted</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#38a169;"></div><span style="font-size:0.85rem;">Approved</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#805ad5;"></div><span style="font-size:0.85rem;">Processed</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#CC0000;"></div><span style="font-size:0.85rem;">Holiday</span></div>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Filters
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
-            cal_region = st.selectbox("Region", ["All", "Abuja", "Lagos", "Aba"], key="cal_region")
+            cal_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="cal_region")
         with col2:
-            cal_dept = st.selectbox("Department", ["All"] + list(set([r.get('department', '') for r in all_requests])), key="cal_dept")
+            # Get unique departments
+            all_depts_cal = ["All"]
+            try:
+                lr_data = db._get("leave_requests")
+                if lr_data:
+                    all_depts_cal += sorted(list(set([r.get('department', '') for r in lr_data if r.get('department')])))
+            except:
+                pass
+            cal_dept = st.selectbox("🏢 Department", all_depts_cal, key="cal_dept")
         with col3:
-            cal_month = st.selectbox("Month", list(range(1, 13)), index=datetime.now().month - 1, key="cal_month")
+            import calendar as cal_module
+            current_month = datetime.now().month
+            current_year = datetime.now().year
+            month_names = list(cal_module.month_name)[1:]
+            cal_month = st.selectbox("📅 Month", month_names, index=current_month - 1, key="cal_month_name")
+            cal_month_num = month_names.index(cal_month) + 1
+        with col4:
+            cal_year = st.selectbox("📆 Year", list(range(current_year - 1, current_year + 2)), index=1, key="cal_year")
         
-        # Get leave data for calendar
+        # Get leave data
         leave_data = []
         try:
             lr = db._get("leave_requests")
             if lr:
                 for r in lr:
                     if r.get('status') in ['Submitted', 'Approved', 'Completed']:
+                        # Region/Dept filter
+                        if cal_region != "All":
+                            emp_region = "Lagos"
+                            try:
+                                emp = db._get("employees", {"employee_id": r.get('employee_id', '')})
+                                if emp and len(emp) > 0:
+                                    sub = emp[0].get('subsidiary', '')
+                                    emp_region = get_region(sub) if 'get_region' in dir() else "Lagos"
+                            except:
+                                pass
+                            if emp_region != cal_region:
+                                continue
+                        
+                        if cal_dept != "All" and r.get('department', '') != cal_dept:
+                            continue
+                        
                         leave_data.append(r)
         except:
             pass
         
-        # Legend
-        st.markdown("""
-        <div style="display:flex;gap:1rem;margin:1rem 0;">
-            <span style="background:#3182ce;color:white;padding:0.3rem 0.8rem;border-radius:4px;font-size:0.8rem;">Submitted</span>
-            <span style="background:#38a169;color:white;padding:0.3rem 0.8rem;border-radius:4px;font-size:0.8rem;">Approved</span>
-            <span style="background:#805ad5;color:white;padding:0.3rem 0.8rem;border-radius:4px;font-size:0.8rem;">Processed</span>
-            <span style="background:#CC0000;color:white;padding:0.3rem 0.8rem;border-radius:4px;font-size:0.8rem;">Holiday</span>
-        </div>
+        # Nigerian public holidays 2026
+        holidays = {
+            f"{cal_year}-01-01": "New Year's Day",
+            f"{cal_year}-01-02": "New Year Holiday",
+            f"{cal_year}-04-03": "Good Friday",
+            f"{cal_year}-04-05": "Easter Sunday",
+            f"{cal_year}-04-06": "Easter Monday",
+            f"{cal_year}-05-01": "Workers' Day",
+            f"{cal_year}-05-27": "Children's Day",
+            f"{cal_year}-06-12": "Democracy Day",
+            f"{cal_year}-10-01": "Independence Day",
+            f"{cal_year}-12-25": "Christmas Day",
+            f"{cal_year}-12-26": "Boxing Day",
+        }
+        
+        # Generate calendar
+        cal = cal_module.TextCalendar(cal_module.SUNDAY)
+        month_days = cal.monthdayscalendar(cal_year, cal_month_num)
+        
+        # Calendar header
+        st.markdown(f"""
+        <h3 style="text-align:center;color:#1a1a1a;margin:1rem 0;">
+            {cal_module.month_name[cal_month_num]} {cal_year}
+        </h3>
         """, unsafe_allow_html=True)
         
-        if leave_data:
-            # Build calendar grid
-            cal_html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">'
-            days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-            for d in days:
-                cal_html += f'<div style="text-align:center;font-weight:700;font-size:0.8rem;padding:0.3rem;">{d}</div>'
+        # Day headers
+        day_names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        header_html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">'
+        for d in day_names:
+            header_html += f'<div style="text-align:center;font-weight:700;font-size:0.8rem;padding:0.5rem;background:#1a1a1a;color:#D4AF37;border-radius:4px;">{d}</div>'
+        header_html += '</div>'
+        st.markdown(header_html, unsafe_allow_html=True)
+        
+        # Calendar grid
+        today = datetime.now().date()
+        
+        for week in month_days:
+            week_html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">'
             
-            # Generate days for selected month
-            import calendar
-            year = datetime.now().year
-            month_days = calendar.monthcalendar(year, cal_month)
-            
-            for week in month_days:
-                for day in week:
-                    if day == 0:
-                        cal_html += '<div></div>'
-                    else:
-                        # Check if anyone on leave this day
-                        date_str = f"{year}-{cal_month:02d}-{day:02d}"
-                        on_leave = [l for l in leave_data if l.get('from_date', '') <= date_str <= l.get('to_date', '')]
-                        
-                        if on_leave:
-                            initials = ', '.join([l.get('employee_name', '').split()[0][:2] for l in on_leave[:3]])
-                            color = '#38a169' if any(l.get('status') == 'Approved' for l in on_leave) else '#3182ce'
-                            cal_html += f'<div style="background:{color};color:white;padding:0.2rem;text-align:center;border-radius:3px;font-size:0.7rem;" title="{initials}">{day}<br><small>{len(on_leave)}</small></div>'
+            for day in week:
+                if day == 0:
+                    week_html += '<div style="min-height:80px;background:#faf9f6;border-radius:6px;"></div>'
+                else:
+                    date_str = f"{cal_year}-{cal_month_num:02d}-{day:02d}"
+                    is_today = (date_str == today.strftime('%Y-%m-%d'))
+                    
+                    # Check if holiday
+                    is_holiday = date_str in holidays
+                    
+                    # Check if anyone on leave
+                    on_leave = [l for l in leave_data if l.get('from_date', '') <= date_str <= l.get('to_date', '')]
+                    
+                    # Determine cell style
+                    if is_holiday:
+                        bg_color = '#ffe6e6'
+                        border_color = '#CC0000'
+                        badge = '🔴'
+                    elif on_leave:
+                        approved_count = len([l for l in on_leave if l.get('status') == 'Approved'])
+                        if approved_count > 0:
+                            bg_color = '#e6f9e6'
+                            border_color = '#38a169'
+                            badge = f'{len(on_leave)}'
                         else:
-                            cal_html += f'<div style="background:#f0f0f0;padding:0.2rem;text-align:center;border-radius:3px;font-size:0.8rem;">{day}</div>'
+                            bg_color = '#e6f2ff'
+                            border_color = '#3182ce'
+                            badge = f'{len(on_leave)}'
+                    else:
+                        bg_color = '#ffffff'
+                        border_color = '#e0e0e0'
+                        badge = ''
+                    
+                    today_border = '3px solid #D4AF37' if is_today else f'1px solid {border_color}'
+                    
+                    # Build tooltip
+                    tooltip_parts = []
+                    if is_holiday:
+                        tooltip_parts.append(f"🎌 {holidays.get(date_str, 'Holiday')}")
+                    for l in on_leave[:5]:
+                        status_icon = '✅' if l.get('status') == 'Approved' else '📝'
+                        tooltip_parts.append(f"{status_icon} {l.get('employee_name', '')} - {l.get('leave_type', '')}")
+                    
+                    tooltip = '\n'.join(tooltip_parts) if tooltip_parts else ''
+                    
+                    week_html += f"""
+                    <div style="min-height:80px;background:{bg_color};border-radius:6px;border:{today_border};padding:4px;position:relative;{'font-weight:700;' if is_today else ''}">
+                        <div style="font-size:0.9rem;color:{'#D4AF37' if is_today else '#1a1a1a'};margin-bottom:2px;">{day}</div>
+                        {f'<div style="font-size:0.6rem;color:#CC0000;font-weight:600;">{holidays.get(date_str, "")}</div>' if is_holiday else ''}
+                        {f'<div style="display:flex;flex-wrap:wrap;gap:1px;margin-top:2px;">' + ''.join([f'<span style="width:6px;height:6px;border-radius:50%;background:{"#38a169" if l.get("status")=="Approved" else "#3182ce"};display:inline-block;" title="{l.get("employee_name","")}"></span>' for l in on_leave[:10]]) + '</div>' if on_leave else ''}
+                        {f'<div style="position:absolute;bottom:2px;right:4px;font-size:0.6rem;font-weight:700;color:{border_color};">{badge}</div>' if badge else ''}
+                    </div>
+                    """
             
-            cal_html += '</div>'
-            st.markdown(cal_html, unsafe_allow_html=True)
+            week_html += '</div>'
+            st.markdown(week_html, unsafe_allow_html=True)
+        
+        # Leave details below calendar
+        st.markdown("---")
+        
+        if leave_data:
+            st.markdown(f"### 👥 {len(leave_data)} Leave Record(s) for {cal_module.month_name[cal_month_num]} {cal_year}")
             
-            # List employees on leave
-            st.markdown("---")
-            st.markdown("### 👥 Employees on Leave")
-            for leave in leave_data[:20]:
-                color = '#38a169' if leave.get('status') == 'Approved' else '#3182ce'
-                st.markdown(f"""
-                <div style="padding:0.4rem;margin:0.2rem 0;border-left:4px solid {color};background:white;border-radius:4px;">
-                    <strong>{leave.get('employee_name', '')}</strong> — {leave.get('leave_type', '')} | 
-                    {leave.get('from_date', '')} to {leave.get('to_date', '')} ({leave.get('no_of_days', 0)} days) | 
-                    <span style="color:{color};">{leave.get('status', '')}</span>
-                </div>
-                """, unsafe_allow_html=True)
+            # Group by status
+            for status, status_label, status_color in [
+                ('Approved', '✅ Approved Leaves', '#38a169'),
+                ('Submitted', '📝 Pending Leaves', '#3182ce'),
+                ('Completed', '✅ Completed Leaves', '#805ad5')
+            ]:
+                status_leaves = [l for l in leave_data if l.get('status') == status]
+                if status_leaves:
+                    st.markdown(f"#### {status_label} ({len(status_leaves)})")
+                    
+                    for leave in status_leaves[:10]:
+                        st.markdown(f"""
+                        <div style="padding:0.5rem;margin:0.2rem 0;border-left:4px solid {status_color};background:white;border-radius:4px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <div>
+                                    <strong>{leave.get('employee_name', '')}</strong> — {leave.get('leave_type', '')}
+                                    <br><small>{leave.get('from_date', '')} to {leave.get('to_date', '')} ({leave.get('no_of_days', 0)} days)</small>
+                                </div>
+                                <span style="color:{status_color};font-weight:600;">{leave.get('status', '')}</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
         else:
-            st.info("No leave data for the selected month.")
+            st.info(f"🎯 No leave records for {cal_module.month_name[cal_month_num]} {cal_year}.")
     
     # ============================================================
     # TAB 6: ATTENDANCE
@@ -12046,7 +12160,14 @@ def requests_hub():
             
             col1, col2 = st.columns(2)
             with col1:
-                device_ip = st.text_input("Device IP Address", value="192.168.100.240")
+                device_ip = st.selectbox("Select Device", [
+                    "192.168.100.240 (Main Entrance)",
+                    "192.168.100.242 (Device 2)",
+                    "192.168.100.243 (Device 3)"
+                ])
+                # Extract IP
+                device_ip_clean = device_ip.split(" ")[0] if device_ip else "192.168.100.240"
+                device_name = device_ip.split("(", 1)[1].replace(")", "") if "(" in device_ip else "Main Entrance"
                 device_port = st.text_input("Port", value="4370")
             with col2:
                 device_type = st.selectbox("Device Type", ["ZKTeco", "Suprema", "HID", "Other"])
@@ -12058,10 +12179,10 @@ def requests_hub():
                     with st.spinner("Testing connection..."):
                         try:
                             from zk import ZK
-                            zk = ZK(device_ip, port=int(device_port), timeout=5)
+                            zk = ZK(device_ip_clean, port=int(device_port), timeout=5)
                             conn = zk.connect()
                             if conn:
-                                st.success(f"✅ Connected to {device_type} at {device_ip}:{device_port}")
+                                st.success(f"✅ Connected to {device_type} at {device_ip_clean}:{device_port}")
                                 device_info = conn.get_device_info()
                                 if device_info:
                                     st.info(f"Device: {device_info}")
@@ -12074,7 +12195,7 @@ def requests_hub():
             with c2:
                 if st.button("🔄 Sync Now", use_container_width=True, type="primary"):
                     with st.spinner("Syncing attendance data..."):
-                        synced, msg = sync_zkteco_attendance(device_ip, int(device_port))
+                        synced, msg = sync_zkteco_attendance(device_ip_clean, int(device_port))
                         if synced > 0:
                             st.success(msg)
                             st.balloons()
