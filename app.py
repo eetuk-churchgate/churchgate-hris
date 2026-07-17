@@ -11308,20 +11308,81 @@ def requests_hub():
             pass
         return []
     
+    def sync_zkteco_attendance(device_ip, port=4370):
+        """Sync attendance data from ZKTeco biometric device"""
+        try:
+            from zk import ZK
+            
+            zk = ZK(device_ip, port=port, timeout=5)
+            conn = zk.connect()
+            
+            if conn:
+                attendance_logs = conn.get_attendance()
+                
+                synced_count = 0
+                for log in attendance_logs:
+                    # Check if already synced
+                    existing = db._get("attendance", {
+                        "employee_id": str(log.user_id),
+                        "sync_date": log.timestamp.strftime('%Y-%m-%d')
+                    })
+                    
+                    if not existing or len(existing) == 0:
+                        # Get employee name from biometric_id mapping
+                        emp_name = f"User {log.user_id}"
+                        try:
+                            emp = db._get("employees", {"biometric_id": str(log.user_id)})
+                            if emp and len(emp) > 0:
+                                emp_name = f"{emp[0].get('first_name', '')} {emp[0].get('last_name', '')}"
+                                emp_id = emp[0].get('employee_id', str(log.user_id))
+                            else:
+                                emp_id = str(log.user_id)
+                        except:
+                            emp_id = str(log.user_id)
+                        
+                        hour = log.timestamp.hour
+                        time_str = log.timestamp.strftime('%H:%M')
+                        
+                        today_records = db._get("attendance", {
+                            "employee_id": emp_id,
+                            "sync_date": log.timestamp.strftime('%Y-%m-%d')
+                        })
+                        
+                        if today_records and len(today_records) > 0:
+                            db._patch("attendance", {
+                                "out_time": time_str,
+                                "work_hours": 8.0
+                            }, {"id": today_records[0]['id']})
+                        else:
+                            db._post("attendance", {
+                                "employee_id": emp_id,
+                                "employee_name": emp_name,
+                                "sync_date": log.timestamp.strftime('%Y-%m-%d'),
+                                "in_time": time_str,
+                                "out_time": "",
+                                "source": "Biometric",
+                                "status": "Present"
+                            })
+                        synced_count += 1
+                
+                conn.disconnect()
+                return synced_count, f"✅ Synced {synced_count} new attendance records"
+            return 0, "❌ Could not connect to device"
+        except Exception as e:
+            return 0, f"❌ Error: {str(e)}"
+    
     def get_approver_chain(emp_id):
         """Get the approval chain for an employee based on reports_to"""
         chain = {'team_lead': '', 'hod': '', 'hr': 'asakote@churchgate.com'}
         try:
             emp = db._get("employees", {"employee_id": emp_id})
             if emp and len(emp) > 0:
-                # Find Team Lead (reports_to)
                 reports_to_name = emp[0].get('reports_to', '')
                 if reports_to_name:
                     tl = db._get("employees", {"first_name": reports_to_name.split()[0] if ' ' in reports_to_name else reports_to_name})
                     if tl and len(tl) > 0:
                         chain['team_lead'] = tl[0].get('email', '')
                 
-                # Find HOD of department
                 dept = emp[0].get('department', '')
                 hod = db._get("employees", {"department": dept})
                 if hod:
@@ -11915,17 +11976,104 @@ def requests_hub():
         
         # ----- Biometric Sync -----
         with att_tabs[2]:
-            st.subheader("🔌 Biometric Integration")
-            st.info("Configure biometric device connection to auto-sync attendance data.")
+            st.subheader("🔌 Biometric Integration - ZKTeco")
             
-            with st.form("biometric_config"):
-                device_ip = st.text_input("Device IP Address", placeholder="e.g., 192.168.1.100")
+            # Device status
+            st.markdown("### 📡 Device Status")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                device_ip = st.text_input("Device IP Address", value="192.168.100.240")
                 device_port = st.text_input("Port", value="4370")
+            with col2:
                 device_type = st.selectbox("Device Type", ["ZKTeco", "Suprema", "HID", "Other"])
-                
-                if st.form_submit_button("🔌 Test Connection & Sync", use_container_width=True):
-                    st.info("🔌 Biometric integration ready for configuration.")
-                    st.success("📡 Device connection structure in place. Contact IT to complete physical setup.")
+                sync_frequency = st.selectbox("Sync Frequency", ["Manual", "Every Hour", "Every 30 Minutes", "Every 15 Minutes"])
+            
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                if st.button("🔌 Test Connection", use_container_width=True):
+                    with st.spinner("Testing connection..."):
+                        try:
+                            from zk import ZK
+                            zk = ZK(device_ip, port=int(device_port), timeout=5)
+                            conn = zk.connect()
+                            if conn:
+                                st.success(f"✅ Connected to {device_type} at {device_ip}:{device_port}")
+                                device_info = conn.get_device_info()
+                                if device_info:
+                                    st.info(f"Device: {device_info}")
+                                conn.disconnect()
+                            else:
+                                st.error("❌ Could not connect")
+                        except Exception as e:
+                            st.error(f"❌ Connection failed: {str(e)}")
+            
+            with c2:
+                if st.button("🔄 Sync Now", use_container_width=True, type="primary"):
+                    with st.spinner("Syncing attendance data..."):
+                        synced, msg = sync_zkteco_attendance(device_ip, int(device_port))
+                        if synced > 0:
+                            st.success(msg)
+                            st.balloons()
+                        else:
+                            st.warning(msg)
+            
+            with c3:
+                if st.button("📊 View Synced Records", use_container_width=True):
+                    try:
+                        synced = db._get("attendance", {"source": "Biometric"})
+                        if synced:
+                            st.markdown(f"**{len(synced)} biometric records synced**")
+                            df = pd.DataFrame([{
+                                'Date': s.get('sync_date', ''),
+                                'Employee': s.get('employee_name', ''),
+                                'Time': s.get('in_time', '') or s.get('out_time', ''),
+                                'Type': 'In' if s.get('in_time') else 'Out'
+                            } for s in synced[-20:]])
+                            st.dataframe(df, use_container_width=True, hide_index=True)
+                        else:
+                            st.info("No synced records yet.")
+                    except:
+                        st.info("No records found.")
+            
+            st.markdown("---")
+            st.markdown("### 📋 Employee Biometric Mapping")
+            st.info("Map employee IDs to biometric device user IDs")
+            
+            try:
+                all_emp = db.get_all_employees()
+                if not all_emp.empty:
+                    mapping_data = []
+                    for _, emp in all_emp.iterrows():
+                        mapping_data.append({
+                            'Employee': f"{emp['first_name']} {emp['last_name']}",
+                            'HRIS ID': emp.get('employee_id', ''),
+                            'Biometric ID': emp.get('biometric_id', 'Not Mapped'),
+                            'Department': emp.get('department', '')
+                        })
+                    
+                    if mapping_data:
+                        df_map = pd.DataFrame(mapping_data)
+                        st.dataframe(df_map, use_container_width=True, hide_index=True)
+                        
+                        st.markdown("---")
+                        st.markdown("### 🔧 Update Biometric ID Mapping")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            map_emp = st.selectbox("Select Employee", [f"{e['Employee']} ({e['HRIS ID']})" for e in mapping_data])
+                        with col2:
+                            map_bio_id = st.text_input("Biometric Device User ID")
+                        
+                        if st.button("💾 Save Mapping", use_container_width=True):
+                            emp_id = map_emp.split('(')[-1].replace(')', '')
+                            # You need to add biometric_id column to employees table
+                            try:
+                                db._patch("employees", {"biometric_id": map_bio_id}, {"employee_id": emp_id})
+                                st.success("✅ Mapping saved!")
+                            except:
+                                st.error("Run: ALTER TABLE employees ADD COLUMN biometric_id TEXT;")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
 
 
 # ============================================================
