@@ -1047,7 +1047,8 @@ def employee_dashboard():
             st.rerun()
     with qc4:
         if st.button("🏖️ Request Leave", use_container_width=True):
-            st.success("Leave request feature coming soon!")
+            st.session_state['navigate_to'] = "🔄 Requests Hub"
+            st.rerun()
     with qc5:
         if st.button("📚 Training", use_container_width=True):
             st.session_state['navigate_to'] = "🎓 Training & Development"
