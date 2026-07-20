@@ -810,7 +810,6 @@ def sidebar_navigation():
         st.markdown("""<div style="text-align: center; padding: 0.8rem 0; background: #4a4a4a; border-radius: 6px; margin-bottom: 1rem; border: 1px solid #666666;"><h3 style="color: #ffffff; margin: 0; font-size: 1.1rem; font-weight: 700;">CHURCHGATE GROUP</h3><p style="color: #cccccc; font-size: 0.7rem; margin: 0;">HRIS v5.0</p></div>""", unsafe_allow_html=True)
         if st.session_state.user:
             user = st.session_state.user
-            # Load real data from employees table
             emp_id = user.get('employee_id', '')
             try:
                 emp_result = db._get("employees", {"employee_id": emp_id})
@@ -830,37 +829,70 @@ def sidebar_navigation():
                 profile_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">'
             else:
                 profile_html = f'<div style="width: 40px; height: 40px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: white;">{initials}</div>'
+            
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
+        
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
             menu_options = [
                 "🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", 
                 "📈 Performance & OKRs", "✅ Staff Confirmation", "🚀 Promotions", 
-                "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", 
-                "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", 
-                "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", 
-                "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", 
-                "🎉 Wellness & Perks", "🎓 LMS", "📋 Audit Log", 
-                "📊 Advanced Analytics", "👤 My Profile"
+                "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "🔄 Requests Hub",
+                "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", 
+                "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", 
+                "🎯 My Goals", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", 
+                "🎓 LMS", "📋 Audit Log", "📊 Advanced Analytics", "👤 My Profile"
+            ]
+            all_icons = [
+                "house-fill", "speedometer2", "people-fill", "graph-up-arrow", 
+                "check-circle-fill", "trophy-fill", "briefcase-fill", "robot", 
+                "inbox-fill", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", 
+                "bell-fill", "folder-fill", "lightbulb-fill", "calendar-fill", 
+                "bullseye", "globe", "book-half", "heart-fill", 
+                "mortarboard-fill", "shield-fill", "graph-up", "person-circle"
             ]
         elif user_role == 'Manager':
             menu_options = [
                 "🏠 Employee Dashboard", "✅ Staff Confirmation", "💼 Recruitment Hub", 
-                "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", 
-                "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", 
-                "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", 
+                "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "🔄 Requests Hub",
+                "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", 
+                "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🌐 Directory", 
                 "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"
+            ]
+            all_icons = [
+                "house-fill", "check-circle-fill", "briefcase-fill", "robot", 
+                "graph-up-arrow", "inbox-fill", "chat-dots-fill", "book-fill", 
+                "folder-fill", "lightbulb-fill", "calendar-fill", "bullseye", 
+                "globe", "book-half", "heart-fill", "mortarboard-fill", "person-circle"
             ]
         else:
             menu_options = [
-                "🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", 
-                "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", 
-                "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", 
+                "🏠 Employee Dashboard", "📈 My Performance & OKRs", "🔄 Requests Hub",
+                "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", 
+                "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🌐 Directory", 
                 "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"
             ]
-
-        all_icons = ["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "folder-fill", "lightbulb-fill", "calendar-fill", "bullseye", "inbox-fill", "person-lines-fill", "book-half", "heart-fill", "mortarboard-fill", "shield-fill", "graph-up", "person-circle"]
-        selected = option_menu(menu_title=None, options=menu_options, icons=all_icons[:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
+            all_icons = [
+                "house-fill", "graph-up-arrow", "inbox-fill", "chat-dots-fill", 
+                "book-fill", "folder-fill", "lightbulb-fill", "calendar-fill", 
+                "bullseye", "globe", "book-half", "heart-fill", 
+                "mortarboard-fill", "person-circle"
+            ]
+        
+        selected = option_menu(
+            menu_title=None, 
+            options=menu_options, 
+            icons=all_icons, 
+            menu_icon="cast", 
+            default_index=0, 
+            styles={
+                "container": {"padding": "0!important", "background-color": "transparent"}, 
+                "icon": {"color": "#CC0000", "font-size": "16px"}, 
+                "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, 
+                "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}
+            }
+        )
+        
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
             st.markdown("<p style='color: #CC0000; font-size: 0.75rem; margin-bottom: 0.5rem;'>⚡ QUICK ACTIONS</p>", unsafe_allow_html=True)
@@ -15715,6 +15747,7 @@ def main():
             "🚀 Promotions": promotions,
             "💼 Recruitment Hub": recruitment_hub,
             "🤖 AI Recruitment Agent": ai_recruitment_agent,
+            "🔄 Requests Hub": requests_hub,
             "📊 Reports & Analytics": reports_analytics,
             "💬 Chat & Communications": chat_communications,
             "🎓 Training & Development": training_development,
@@ -15723,7 +15756,6 @@ def main():
             "💡 Ideas Box": ideas_box,
             "📅 Calendar": company_calendar,
             "🎯 My Goals": personal_goals,
-            "🔄 Requests Hub": requests_hub,
             "🌐 Directory": employee_directory_readonly,
             "📚 Knowledge Base": knowledge_base,
             "🎉 Wellness & Perks": wellness_perks,
