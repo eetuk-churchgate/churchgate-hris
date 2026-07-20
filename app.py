@@ -12671,27 +12671,30 @@ def requests_hub():
         # Leave Request Form
         st.markdown("### 📝 Submit Leave Request")
         
+        # Session selectors OUTSIDE form for real-time calculation
+        col1, col2 = st.columns(2)
+        with col1:
+            leave_type = st.selectbox("Leave Type *", list(LEAVE_TYPES.keys()), key="leave_type_out")
+            from_date = st.date_input("From Date *", key="from_date_out")
+            from_session = st.selectbox("From Session", ["First Session", "Second Session"], key="from_session_out")
+        with col2:
+            to_date = st.date_input("To Date *", key="to_date_out")
+            to_session = st.selectbox("To Session", ["First Session", "Second Session"], key="to_session_out")
+        
+        # Calculate days in real-time
+        if from_date and to_date:
+            no_of_days = (to_date - from_date).days + 1
+            if from_session == "Second Session":
+                no_of_days -= 0.5
+            if to_session == "First Session":
+                no_of_days -= 0.5
+            st.metric("📅 Number of Days", f"{no_of_days:.1f}")
+        else:
+            no_of_days = 0
+        
+        st.markdown("---")
+        
         with st.form("leave_request_form"):
-            c1, c2 = st.columns(2)
-            with c1:
-                leave_type = st.selectbox("Leave Type *", list(LEAVE_TYPES.keys()))
-                from_date = st.date_input("From Date *")
-                from_session = st.selectbox("From Session", ["First Session", "Second Session"])
-            with c2:
-                to_date = st.date_input("To Date *")
-                to_session = st.selectbox("To Session", ["First Session", "Second Session"])
-            
-            # Calculate days
-            if from_date and to_date:
-                no_of_days = (to_date - from_date).days + 1
-                if from_session == "Second Session":
-                    no_of_days -= 0.5
-                if to_session == "First Session":
-                    no_of_days -= 0.5
-                st.metric("📅 Number of Days", f"{no_of_days:.1f}")
-            else:
-                no_of_days = 0
-            
             reason = st.text_area("Reason *", height=100, placeholder="Describe the reason for your leave...")
             
             # Balance check
