@@ -1979,11 +1979,58 @@ def employee_management():
         
         st.markdown("---")
         st.markdown("### 🎂 Birthdays & Anniversaries This Month")
+        
+        current_month = datetime.now().month
+        birthdays_this_month = []
+        anniversaries_this_month = []
+        
+        if not employees_df.empty:
+            for _, emp in employees_df.iterrows():
+                # Check birthdays
+                dob = emp.get('date_of_birth', '')
+                if dob and pd.notna(dob):
+                    try:
+                        if isinstance(dob, str):
+                            dob_date = datetime.strptime(str(dob)[:10], '%Y-%m-%d')
+                        else:
+                            dob_date = pd.to_datetime(dob)
+                        if dob_date.month == current_month:
+                            name = f"{emp['first_name']} {emp['last_name']}"
+                            day = dob_date.day
+                            birthdays_this_month.append((name, day))
+                    except:
+                        pass
+                
+                # Check work anniversaries
+                join_date = emp.get('join_date', '')
+                if join_date and pd.notna(join_date):
+                    try:
+                        if isinstance(join_date, str):
+                            jd = datetime.strptime(str(join_date)[:10], '%Y-%m-%d')
+                        else:
+                            jd = pd.to_datetime(join_date)
+                        if jd.month == current_month:
+                            name = f"{emp['first_name']} {emp['last_name']}"
+                            years = datetime.now().year - jd.year
+                            if years > 0:
+                                anniversaries_this_month.append((name, years))
+                    except:
+                        pass
+        
         bday_col1, bday_col2 = st.columns(2)
         with bday_col1:
-            st.markdown("**🎂 Birthdays:** Chika Ikwuegbu (May 13), Francis Asuquo (May 19), Rhoda Ajibola (May 25), Alice Agbo (May 28)")
+            if birthdays_this_month:
+                bday_list = ', '.join([f"{name} ({day})" for name, day in sorted(birthdays_this_month, key=lambda x: x[1])])
+                st.markdown(f"**🎂 Birthdays:** {bday_list}")
+            else:
+                st.markdown("**🎂 Birthdays:** None this month")
+        
         with bday_col2:
-            st.markdown("**⭐ Anniversaries:** Augustine Oleh (4 yrs), Shem Waziri (3 yrs), Charles Okere (7 yrs), Chika Ikwuegbu (3 yrs)")
+            if anniversaries_this_month:
+                anniv_list = ', '.join([f"{name} ({yrs} yrs)" for name, yrs in sorted(anniversaries_this_month, key=lambda x: x[1], reverse=True)])
+                st.markdown(f"**⭐ Anniversaries:** {anniv_list}")
+            else:
+                st.markdown("**⭐ Anniversaries:** None this month")
         
         st.markdown("---")
         
@@ -2045,6 +2092,9 @@ def employee_management():
             
             start_idx = (st.session_state.dir_page - 1) * items_per_page
             end_idx = min(start_idx + items_per_page, len(filtered_df))
+            
+            # Sort alphabetically by first name
+            filtered_df = filtered_df.sort_values('first_name', ascending=True)
             
             for _, emp in filtered_df.iloc[start_idx:end_idx].iterrows():
                 initials = generate_initials(f"{emp['first_name']} {emp['last_name']}")
