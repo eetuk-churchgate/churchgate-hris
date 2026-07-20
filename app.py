@@ -12676,17 +12676,17 @@ def requests_hub():
             with c1:
                 leave_type = st.selectbox("Leave Type *", list(LEAVE_TYPES.keys()))
                 from_date = st.date_input("From Date *")
-                from_session = st.selectbox("From Session", ["First Session (AM)", "Second Session (PM)"])
+                from_session = st.selectbox("From Session", ["First Session", "Second Session"])
             with c2:
                 to_date = st.date_input("To Date *")
-                to_session = st.selectbox("To Session", ["First Session (AM)", "Second Session (PM)"])
+                to_session = st.selectbox("To Session", ["First Session", "Second Session"])
             
             # Calculate days
             if from_date and to_date:
                 no_of_days = (to_date - from_date).days + 1
-                if from_session == "Second Session (PM)":
+                if from_session == "Second Session":
                     no_of_days -= 0.5
-                if to_session == "First Session (AM)":
+                if to_session == "First Session":
                     no_of_days -= 0.5
                 st.metric("📅 Number of Days", f"{no_of_days:.1f}")
             else:
@@ -13072,12 +13072,16 @@ def requests_hub():
         holidays = {
             f"{cal_year}-01-01": "New Year's Day",
             f"{cal_year}-01-02": "New Year Holiday",
+            f"{cal_year}-03-08": "International Women's Day",
             f"{cal_year}-04-03": "Good Friday",
             f"{cal_year}-04-05": "Easter Sunday",
             f"{cal_year}-04-06": "Easter Monday",
             f"{cal_year}-05-01": "Workers' Day",
             f"{cal_year}-05-27": "Children's Day",
             f"{cal_year}-06-12": "Democracy Day",
+            f"{cal_year}-06-16": "Eid al-Adha (Estimated)",
+            f"{cal_year}-07-07": "Islamic New Year (Estimated)",
+            f"{cal_year}-09-15": "Eid el-Maulud (Estimated)",
             f"{cal_year}-10-01": "Independence Day",
             f"{cal_year}-12-25": "Christmas Day",
             f"{cal_year}-12-26": "Boxing Day",
