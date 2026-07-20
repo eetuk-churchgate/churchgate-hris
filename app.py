@@ -12671,7 +12671,7 @@ def requests_hub():
         # Leave Request Form
         st.markdown("### 📝 Submit Leave Request")
         
-        # Session selectors OUTSIDE form for real-time calculation
+        # ALL inputs OUTSIDE form for real-time calculation
         col1, col2 = st.columns(2)
         with col1:
             leave_type = st.selectbox("Leave Type *", list(LEAVE_TYPES.keys()), key="leave_type_out")
@@ -12692,18 +12692,19 @@ def requests_hub():
         else:
             no_of_days = 0
         
+        # Balance check in real-time
+        if leave_type and no_of_days > 0:
+            has_balance, available = check_leave_balance(user_id, leave_type, no_of_days)
+            if has_balance:
+                st.success(f"✅ You have sufficient balance ({available:.0f} days available)")
+            else:
+                st.error(f"❌ Insufficient balance! You only have {available:.0f} days. Requested: {no_of_days:.1f} days")
+        
         st.markdown("---")
         
+        # Form with just reason and submit
         with st.form("leave_request_form"):
             reason = st.text_area("Reason *", height=100, placeholder="Describe the reason for your leave...")
-            
-            # Balance check
-            if leave_type and no_of_days > 0:
-                has_balance, available = check_leave_balance(user_id, leave_type, no_of_days)
-                if has_balance:
-                    st.success(f"✅ You have sufficient balance ({available:.0f} days available)")
-                else:
-                    st.error(f"❌ Insufficient balance! You only have {available:.0f} days. Requested: {no_of_days:.1f} days")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -12716,6 +12717,7 @@ def requests_hub():
                     req_id = generate_request_id()
                     status = "Submitted" if submit_leave else "Draft"
                     
+                    # Save to leave_requests table
                     db._post("leave_requests", {
                         "request_id": req_id,
                         "employee_id": user_id,
@@ -12733,13 +12735,30 @@ def requests_hub():
                         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M')
                     })
                     
+                    # Also save to employee_requests for the general approval workflow
+                    db._post("employee_requests", {
+                        "request_id": req_id,
+                        "employee_id": user_id,
+                        "employee_name": user_name,
+                        "department": user_dept,
+                        "request_type": "🏖️ Leave Request",
+                        "title": f"{leave_type} - {no_of_days:.1f} days",
+                        "description": f"Leave Type: {leave_type}\nDates: {from_date} to {to_date}\nSession: {from_session} to {to_session}\nDays: {no_of_days}\n\nReason: {reason}",
+                        "status": status,
+                        "priority": "Medium",
+                        "submitted_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                    })
+                    
                     if submit_leave:
-                        # Notify approvers
+                        # Notify Team Lead for recommendation
                         chain = get_approver_chain(user_id)
                         if chain['team_lead']:
-                            send_status_email(chain['team_lead'], f"🔔 Leave Request: {user_name}", f"A leave request from {user_name} requires your approval.\n\nType: {leave_type}\nDates: {from_date} to {to_date}\nDays: {no_of_days}\n\nApprove at: https://hris.churchgate.com")
+                            send_status_email(chain['team_lead'], 
+                                f"🔔 Leave Request: {user_name}",
+                                f"{user_name} has submitted a leave request.\n\nType: {leave_type}\nDates: {from_date} to {to_date}\nDays: {no_of_days}\n\nPlease review at: https://hris.churchgate.com")
                         
-                        st.success(f"✅ Leave request {req_id} submitted!")
+                        st.success(f"✅ Leave request {req_id} submitted for approval!")
                         st.balloons()
                     else:
                         st.success(f"✅ Draft saved! (ID: {req_id})")
