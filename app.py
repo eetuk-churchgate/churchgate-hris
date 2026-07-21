@@ -63,6 +63,8 @@ from utils.linkedin_parser import LinkedInParser
 from utils.email_service import EmailService
 from utils.chat_service import ChatService
 from utils.training_service import TrainingService
+import utils.recruitment_agent_client as rac
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from streamlit_quill import st_quill
 
 # ============================================================
@@ -372,10 +374,13 @@ def save_uploaded_file(uploaded_file):
             return text
         elif uploaded_file.type == "text/plain":
             return uploaded_file.read().decode('utf-8')
-        elif "word" in uploaded_file.type or "docx" in uploaded_file.type:
+        elif "wordprocessingml" in uploaded_file.type or uploaded_file.name.lower().endswith(".docx"):
+            # Modern Word (.docx) only — python-docx cannot read legacy binary .doc.
             import docx
             doc = docx.Document(uploaded_file)
             return "\n".join([p.text for p in doc.paragraphs])
+        elif uploaded_file.type == "application/msword" or uploaded_file.name.lower().endswith(".doc"):
+            return "[Error: Legacy .doc not supported — please re-save as PDF or DOCX and re-upload.]"
         else:
             return uploaded_file.read().decode('utf-8', errors='ignore')
     except Exception as e:
@@ -8973,7 +8978,7 @@ APPLY NOW: {public_url}
 def ai_recruitment_agent():
     st.markdown("""<div class="churchgate-header"><h1>🤖 AI Recruitment Agent</h1><p>AI-Powered CV-JD Matching | Verbatim Detection | Inconsistency Flags | Skills Gap Matrix | Bias Detection | Interview Generator | Executive Reports</p></div>""", unsafe_allow_html=True)
     
-    options = ["📥 Load Applications", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results", "💬 AI Assistant"]
+    options = ["📥 Load Applications", "📥 Bulk CV Shortlisting", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results", "💬 AI Assistant"]
     
     if 'ai_section' not in st.session_state:
         st.session_state.ai_section = "📥 Load Applications"
@@ -8987,6 +8992,155 @@ def ai_recruitment_agent():
     ai_section = st.radio("Select Function:", options, index=default_index, horizontal=True)
     st.session_state.ai_section = ai_section
     
+    # ============ BULK CV SHORTLISTING ============
+    if ai_section == "📥 Bulk CV Shortlisting":
+        st.subheader("📥 Bulk CV Shortlisting")
+        st.caption("Upload many CVs for a role — the recruitment agent screens each one and proposes a shortlist with reasons.")
+
+        try:
+            all_reqs = db.get_all_job_requisitions()
+        except Exception as e:
+            all_reqs = []
+            st.error(f"Could not load job requisitions: {e}")
+
+        if not all_reqs:
+            st.warning("No job requisitions found. Create one first.")
+        else:
+            req_by_title = {f"{r.get('title','(untitled)')} ({r.get('req_id','')})": r for r in all_reqs}
+            selected_label = st.selectbox("Select the role to screen candidates against:", list(req_by_title.keys()))
+            selected_req = req_by_title[selected_label]
+            job_id = selected_req.get('req_id', '')
+            jd_text = selected_req.get('jd', '') or ''
+
+            if not jd_text:
+                st.warning("This requisition has no job description text — the agent needs a JD to screen against.")
+            else:
+                with st.expander("Job description used for screening"):
+                    st.write(jd_text)
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    shortlist_rule = st.radio("Shortlist rule", ["Tier 1 & 2 (score ≥ 70)", "Top N"], horizontal=True)
+                with col2:
+                    top_n = st.number_input("N", min_value=1, max_value=50, value=5, disabled=(shortlist_rule != "Top N"))
+
+                uploaded_files = st.file_uploader(
+                    "Upload CVs (PDF or DOCX — legacy .doc is not supported, please re-save as PDF/DOCX)",
+                    type=['pdf', 'docx', 'doc', 'txt'],
+                    accept_multiple_files=True,
+                )
+
+                if uploaded_files and len(uploaded_files) > 50:
+                    st.warning(f"{len(uploaded_files)} files selected — batches above ~50 will take a while and may hit request limits. Consider splitting into smaller batches.")
+
+                if uploaded_files and st.button(f"🤖 Screen {len(uploaded_files)} CVs", type="primary", use_container_width=True):
+                    # Extract text first; files that fail extraction never reach the agent.
+                    to_screen = []
+                    failures = []
+                    for f in uploaded_files:
+                        cv_text = save_uploaded_file(f)
+                        if not cv_text or cv_text.startswith("[Error:"):
+                            failures.append((f.name, cv_text or "No text could be extracted."))
+                        else:
+                            to_screen.append((f, cv_text))
+
+                    results = []
+                    if to_screen:
+                        progress = st.progress(0.0, text=f"Screening 0/{len(to_screen)}…")
+                        done_count = 0
+
+                        def _screen_one(item):
+                            f, cv_text = item
+                            last_err = None
+                            for attempt in range(2):  # one retry
+                                try:
+                                    screening = rac.screen_cv(cv_text=cv_text, jd_text=jd_text, candidate_name=f.name)
+                                    return (f, cv_text, screening, None)
+                                except Exception as e:
+                                    last_err = e
+                            return (f, cv_text, None, str(last_err))
+
+                        with ThreadPoolExecutor(max_workers=5) as executor:
+                            futures = [executor.submit(_screen_one, item) for item in to_screen]
+                            for future in as_completed(futures):
+                                f, cv_text, screening, err = future.result()
+                                done_count += 1
+                                progress.progress(done_count / len(to_screen), text=f"Screening {done_count}/{len(to_screen)}…")
+                                if err:
+                                    failures.append((f.name, err))
+                                else:
+                                    results.append((f, cv_text, screening))
+
+                        progress.empty()
+
+                    if results:
+                        results.sort(key=lambda r: r[2].get('overall_score', 0), reverse=True)
+
+                        if shortlist_rule == "Top N":
+                            shortlisted_names = {r[0].name for r in results[:int(top_n)]}
+                        else:
+                            shortlisted_names = {r[0].name for r in results if r[2].get('overall_score', 0) >= 70}
+
+                        st.success(f"✅ Screened {len(results)} candidates — {len(shortlisted_names)} shortlisted.")
+
+                        # Persist ALL screened candidates.
+                        saved = 0
+                        for i, (f, cv_text, screening) in enumerate(results):
+                            try:
+                                candidate_ref = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}-{i}"
+                                is_shortlisted = f.name in shortlisted_names
+                                cv_url = ""
+                                try:
+                                    f.seek(0)
+                                    cv_url = db.upload_file("cvs", f"{candidate_ref}_{f.name}", f.read(), f.type)
+                                except Exception:
+                                    pass
+
+                                full_name = screening.get('candidate_name') or f.name
+                                name_parts = full_name.split(None, 1)
+                                first_name = name_parts[0] if name_parts else f.name
+                                last_name = name_parts[1] if len(name_parts) > 1 else ""
+
+                                db._post("candidates", {
+                                    "candidate_ref": candidate_ref,
+                                    "first_name": first_name, "last_name": last_name,
+                                    "email": screening.get('candidate_email') or "",
+                                    "phone": screening.get('candidate_phone') or "",
+                                    "resume_filename": f.name,
+                                    "resume_text": cv_text[:10000],
+                                    "cv_url": cv_url,
+                                    "job_id": job_id,
+                                    "source": "Bulk Upload",
+                                    "status": "Shortlisted" if is_shortlisted else "Screened",
+                                    "ai_score": int(screening.get('overall_score', 0)),
+                                    "ai_tier": screening.get('tier', 'Pending'),
+                                    "ai_screening": json.dumps(screening),
+                                })
+                                saved += 1
+                            except Exception as e:
+                                st.warning(f"Could not save {f.name}: {e}")
+                        st.info(f"💾 Saved {saved}/{len(results)} candidates to the pipeline for {selected_req.get('title','this role')}.")
+
+                        # Ranked table with reasons.
+                        table_rows = []
+                        for rank, (f, cv_text, screening) in enumerate(results, start=1):
+                            table_rows.append({
+                                "Rank": rank,
+                                "Shortlisted": "⭐" if f.name in shortlisted_names else "",
+                                "Candidate": screening.get('candidate_name') or f.name,
+                                "Score": screening.get('overall_score', 0),
+                                "Tier": screening.get('tier', ''),
+                                "Top Strengths": "; ".join((screening.get('strengths') or [])[:2]),
+                                "Gaps": "; ".join((screening.get('gaps') or [])[:2]),
+                                "Recommendation": screening.get('recommendation', ''),
+                            })
+                        st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
+
+                    if failures:
+                        with st.expander(f"⚠️ {len(failures)} file(s) could not be screened"):
+                            for name, reason in failures:
+                                st.write(f"**{name}**: {reason}")
+
     # ============ LOAD APPLICATIONS ============
     if ai_section == "📥 Load Applications":
         st.subheader("🚀 Recruitment Pipeline & Bulk Screening")
