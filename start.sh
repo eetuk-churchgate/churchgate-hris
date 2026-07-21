@@ -67,3 +67,4 @@ done
 python scripts/patch_streamlit_meta.py || true
 
 exec streamlit run app.py --server.port "${PORT:-8501}" --server.address 0.0.0.0
+exec streamlit run app.py --server.port "${PORT:-8501}" --server.address 0.0.0.0 --server.enableStaticServing=true
