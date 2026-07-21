@@ -40,6 +40,33 @@ def screen_candidate(candidate_ref: str, job_id: str, timeout: int = 120) -> dic
     return data
 
 
+def screen_cv(cv_text: str, jd_text: str = None, job_id: str = None,
+              candidate_name: str = None, timeout: int = 120) -> dict:
+    """
+    Screens one raw CV against a role via the agent's /api/screen-cv endpoint.
+    Provide the role as raw jd_text (recommended) or a job_id to fetch. cv_text is the
+    extracted CV text.
+
+    Returns the structured screening dict: overall_score, tier, recommendation,
+    scores_breakdown, strengths, gaps, questions, rationale, and candidate_name/email/phone
+    extracted from the CV.
+    Raises requests.RequestException on connection failure, RuntimeError on an error status.
+    """
+    payload = {"cv_text": cv_text}
+    if jd_text:
+        payload["jd_text"] = jd_text
+    if job_id:
+        payload["job_id"] = job_id
+    if candidate_name:
+        payload["candidate_name"] = candidate_name
+    resp = requests.post(f"{AGENT_URL}/api/screen-cv", json=payload, timeout=timeout)
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get("status") != "success":
+        raise RuntimeError("Recruitment agent returned an error for screen-cv.")
+    return data["screening"]
+
+
 def stream_chat(message: str, session_id: str):
     """
     Generator that yields text chunks from the recruitment agent SSE stream.
