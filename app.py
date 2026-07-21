@@ -27,19 +27,14 @@ sys.path.append(str(Path(__file__).parent))
 # =============================================
 # FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
 # =============================================
-# This wraps st.secrets to also check environment variables
 class HuggingFaceSecrets:
     def __getitem__(self, key):
-        # Try st.secrets first
         try:
-            # Check if st.secrets has the key
             if hasattr(st, 'secrets') and hasattr(st.secrets, '_secrets'):
                 if key in st.secrets._secrets:
                     return st.secrets._secrets[key]
         except:
             pass
-        
-        # Fallback to environment variables
         return os.environ.get(key)
     
     def get(self, key, default=None):
@@ -55,12 +50,10 @@ class HuggingFaceSecrets:
         except:
             return False
 
-# Backup the original secrets if it exists
 _original_secrets = None
 if hasattr(st, 'secrets') and st.secrets:
     _original_secrets = st.secrets
 
-# Replace st.secrets with our wrapper
 st.secrets = HuggingFaceSecrets()
 # =============================================
 
@@ -71,16 +64,62 @@ from utils.email_service import EmailService
 from utils.chat_service import ChatService
 from utils.training_service import TrainingService
 from streamlit_quill import st_quill
+
 # ============================================================
-# SECTION 4: REST OF YOUR CODE (logo, page config, etc)
+# PAGE CONFIG
 # ============================================================
 logo_icon = Path(__file__).parent / "churchgate-logo.jpeg"
 
-logo_icon = Path(__file__).parent / "churchgate-logo.jpeg"
 if logo_icon.exists():
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon=str(logo_icon), layout="wide", initial_sidebar_state="expanded")
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
+
+# ============================================================
+# PWA - Service Worker & Install Prompt
+# ============================================================
+st.markdown("""
+<script>
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js')
+        .then(reg => console.log('HRIS PWA: Service Worker registered'))
+        .catch(err => console.log('HRIS PWA: Service Worker failed', err));
+}
+
+// Install Prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    const btn = document.createElement('button');
+    btn.textContent = '📱 Install Churchgate HRIS';
+    btn.style.cssText = 'position:fixed;bottom:20px;right:20px;background:linear-gradient(135deg,#CC0000,#aa0000);color:white;border:none;padding:14px 24px;border-radius:10px;font-weight:700;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(204,0,0,0.5);font-family:Inter,sans-serif;font-size:14px;animation:pulse 2s infinite;';
+    btn.onclick = async () => {
+        deferredPrompt.prompt();
+        const result = await deferredPrompt.userChoice;
+        if (result.outcome === 'accepted') {
+            console.log('HRIS installed!');
+            btn.remove();
+        }
+        deferredPrompt = null;
+    };
+    document.body.appendChild(btn);
+});
+
+// Hide Streamlit header on mobile
+window.addEventListener('load', () => {
+    const header = document.querySelector('header[data-testid="stHeader"]');
+    if (header) header.style.display = 'none';
+});
+
+// Add PWA animation
+const style = document.createElement('style');
+style.textContent = '@keyframes pulse { 0%,100% { box-shadow:0 4px 20px rgba(204,0,0,0.5); } 50% { box-shadow:0 4px 30px rgba(204,0,0,0.8); } }';
+document.head.appendChild(style);
+</script>
+""", unsafe_allow_html=True)
 
 # Browser Notification Setup
 st.markdown("""
@@ -94,8 +133,8 @@ function showNotification(title, body) {
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(title, {
             body: body,
-            icon: 'https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png',
-            badge: 'https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png',
+            icon: '/static/churchgate-logo-192.png',
+            badge: '/static/churchgate-logo-192.png',
             vibrate: [200, 100, 200]
         });
     }
