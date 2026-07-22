@@ -80,11 +80,28 @@ else:
 # ============================================================
 st.markdown("""
 <script>
-// Register Service Worker
+// Register Service Worker (inline - no static file needed)
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/sw.js')
-        .then(reg => console.log('HRIS PWA: Service Worker registered'))
-        .catch(err => console.log('HRIS PWA: Service Worker failed', err));
+    const swCode = `
+self.addEventListener('install', (e) => {
+    console.log('HRIS PWA: Installed');
+    self.skipWaiting();
+});
+self.addEventListener('activate', (e) => {
+    console.log('HRIS PWA: Activated');
+    clients.claim();
+});
+self.addEventListener('fetch', (e) => {
+    e.respondWith(
+        caches.match(e.request).then(r => r || fetch(e.request))
+    );
+});
+    `;
+    const blob = new Blob([swCode], {type: 'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl)
+        .then(reg => console.log('HRIS PWA: SW registered'))
+        .catch(err => console.log('HRIS PWA: SW failed', err));
 }
 
 // Install Prompt
@@ -119,6 +136,8 @@ const style = document.createElement('style');
 style.textContent = '@keyframes pulse { 0%,100% { box-shadow:0 4px 20px rgba(204,0,0,0.5); } 50% { box-shadow:0 4px 30px rgba(204,0,0,0.8); } }';
 document.head.appendChild(style);
 </script>
+
+<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkNodXJjaGdhdGUgR3JvdXAgSFJJUyIsCiAgInNob3J0X25hbWUiOiAiQ2h1cmNoZ2F0ZSBIUklTIiwKICAiZGVzY3JpcHRpb24iOiAiRW50ZXJwcmlzZSBIdW1hbiBSZXNvdXJjZSBJbmZvcm1hdGlvbiBTeXN0ZW0gLSBDaHVyY2hnYXRlIEdyb3VwIiwKICAic3RhcnRfdXJsIjogImh0dHBzOi8vaHJpcy5jaHVyY2hnYXRlLmNvbSIsCiAgInNjb3BlIjogImh0dHBzOi8vaHJpcy5jaHVyY2hnYXRlLmNvbSIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzFhMWExYSIsCiAgInRoZW1lX2NvbG9yIjogIiNDQzAwMDAiLAogICJvcmllbnRhdGlvbiI6ICJwb3J0cmFpdC1wcmltYXJ5IiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9ocmlzLmNodXJjaGdhdGUuY29tL3N0YXRpYy9jaHVyY2hnYXRlLWxvZ28tMTkyLnBuZyIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfSwKICAgIHsKICAgICAgInNyYyI6ICJodHRwczovL2hyaXMuY2h1cmNoZ2F0ZS5jb20vc3RhdGljL2NodXJjaGdhdGUtbG9nby01MTIucG5nIiwKICAgICAgInNpemVzIjogIjUxMng1MTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciLAogICAgICAicHVycG9zZSI6ICJhbnkgbWFza2FibGUiCiAgICB9CiAgXSwKICAiY2F0ZWdvcmllcyI6IFsiYnVzaW5lc3MiLCAicHJvZHVjdGl2aXR5IiwgImh1bWFuIHJlc291cmNlcyJdLAogICJsYW5nIjogImVuLU5HIiwKICAiZGlyIjogImx0ciIsCiAgInByZWZlcl9yZWxhdGVkX2FwcGxpY2F0aW9ucyI6IGZhbHNlLAogICJyZWxhdGVkX2FwcGxpY2F0aW9ucyI6IFtdCn0=">
 """, unsafe_allow_html=True)
 
 # Browser Notification Setup
