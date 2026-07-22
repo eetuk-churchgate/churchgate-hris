@@ -8993,23 +8993,78 @@ def ai_recruitment_agent():
         st.subheader("📥 Bulk CV Shortlisting")
         st.caption("Upload many CVs for a role — the recruitment agent screens each one and proposes a shortlist with reasons.")
 
-        try:
-            all_reqs = db.get_all_job_requisitions()
-        except Exception as e:
-            all_reqs = []
-            st.error(f"Could not load job requisitions: {e}")
+        bulk_user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
 
-        if not all_reqs:
-            st.warning("No job requisitions found. Create one first.")
+        if 'bulk_screen_active_role' not in st.session_state:
+            st.session_state.bulk_screen_active_role = None
+
+        role_source = st.radio(
+            "Role",
+            ["Select an existing requisition", "➕ Add a new role (screening only — not submitted for approval)"],
+            horizontal=True,
+        )
+
+        if role_source == "Select an existing requisition":
+            try:
+                all_reqs = db.get_all_job_requisitions()
+            except Exception as e:
+                all_reqs = []
+                st.error(f"Could not load job requisitions: {e}")
+
+            if not all_reqs:
+                st.warning("No job requisitions found yet. Use '➕ Add a new role' below to screen candidates without creating a full requisition.")
+            else:
+                req_by_title = {
+                    f"{r.get('title','(untitled)')} ({r.get('req_id','')}) — {r.get('status','')}": r
+                    for r in all_reqs
+                }
+                selected_label = st.selectbox("Select the role to screen candidates against:", list(req_by_title.keys()))
+                selected_req = req_by_title[selected_label]
+                st.session_state.bulk_screen_active_role = {
+                    'job_id': selected_req.get('req_id', ''),
+                    'title': selected_req.get('title', '(untitled)'),
+                    'jd': selected_req.get('jd', '') or '',
+                }
         else:
-            req_by_title = {f"{r.get('title','(untitled)')} ({r.get('req_id','')})": r for r in all_reqs}
-            selected_label = st.selectbox("Select the role to screen candidates against:", list(req_by_title.keys()))
-            selected_req = req_by_title[selected_label]
-            job_id = selected_req.get('req_id', '')
-            jd_text = selected_req.get('jd', '') or ''
+            st.info("This creates a lightweight, unapproved role for screening only. It will **not** appear on the public careers page and does **not** enter the LM → Admin → COO approval chain.")
+            with st.form("bulk_screen_new_role_form"):
+                new_title = st.text_input("Role title *", placeholder="e.g., Facilities Officer")
+                col1, col2 = st.columns(2)
+                with col1:
+                    new_department = st.text_input("Department (optional)")
+                with col2:
+                    new_location = st.text_input("Location (optional)")
+                new_jd = st.text_area("Job description *", height=200, placeholder="Paste or write the JD to screen candidates against…")
+                create_role = st.form_submit_button("Use this role for screening", use_container_width=True)
+
+            if create_role:
+                if not new_title or not new_jd:
+                    st.error("Role title and job description are required.")
+                else:
+                    screen_ref = f"SCR-{datetime.now().strftime('%Y%m%d%H%M')}-{random.randint(100,999)}"
+                    try:
+                        db.save_job_requisition(
+                            screen_ref, new_title, new_department, new_location,
+                            None, None, None, None, None,
+                            new_jd, [], {}, "Screening Only — Not Submitted",
+                            bulk_user_name, datetime.now().strftime('%Y-%m-%d %H:%M'),
+                            '', '', ''
+                        )
+                        st.session_state.bulk_screen_active_role = {
+                            'job_id': screen_ref, 'title': new_title, 'jd': new_jd,
+                        }
+                        st.success(f"✅ Ready to screen against **{new_title}** ({screen_ref}). Not submitted for approval.")
+                    except Exception as e:
+                        st.error(f"Could not save the draft role: {e}")
+
+        active_role = st.session_state.bulk_screen_active_role
+        if active_role:
+            job_id = active_role['job_id']
+            jd_text = active_role['jd']
+            role_title = active_role['title']
 
             if not jd_text:
-                st.warning("This requisition has no job description text — the agent needs a JD to screen against.")
+                st.warning("This role has no job description text — the agent needs a JD to screen against.")
             else:
                 with st.expander("Job description used for screening"):
                     st.write(jd_text)
@@ -9115,7 +9170,7 @@ def ai_recruitment_agent():
                                 saved += 1
                             except Exception as e:
                                 st.warning(f"Could not save {f.name}: {e}")
-                        st.info(f"💾 Saved {saved}/{len(results)} candidates to the pipeline for {selected_req.get('title','this role')}.")
+                        st.info(f"💾 Saved {saved}/{len(results)} candidates to the pipeline for {role_title}.")
 
                         # Ranked table with reasons.
                         table_rows = []
