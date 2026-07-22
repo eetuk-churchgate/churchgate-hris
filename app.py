@@ -27,77 +27,35 @@ sys.path.append(str(Path(__file__).parent))
 # =============================================
 # FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
 # =============================================
-# This wraps st.secrets to also check environment variables
 class HuggingFaceSecrets:
     def __getitem__(self, key):
-        # Try file-based Streamlit secrets first (.streamlit/secrets.toml,
-        # captured in _original_secrets before we replaced st.secrets)...
         try:
-            if _original_secrets is not None and key in _original_secrets:
-                return _original_secrets[key]
+            if hasattr(st, 'secrets') and hasattr(st.secrets, '_secrets'):
+                if key in st.secrets._secrets:
+                    return st.secrets._secrets[key]
         except:
             pass
-
-        # ...then fall back to environment variables (Hugging Face / Railway).
         return os.environ.get(key)
-
+    
     def get(self, key, default=None):
         try:
             val = self.__getitem__(key)
             return val if val is not None else default
         except:
             return default
-
+    
     def __contains__(self, key):
         try:
             return self.__getitem__(key) is not None
         except:
             return False
 
-# Backup the original secrets if it exists
 _original_secrets = None
 if hasattr(st, 'secrets') and st.secrets:
     _original_secrets = st.secrets
 
-# Replace st.secrets with our wrapper
 st.secrets = HuggingFaceSecrets()
 # =============================================
-
-# ============================================================================
-# ORG STRUCTURE CONFIG — single source of truth
-# ----------------------------------------------------------------------------
-# Subsidiaries and region (Abuja/Lagos) are INDEPENDENT dimensions — a subsidiary
-# can have employees in either region. Edit CHURCHGATE_BUSINESSES here and the
-# names flow to every selectbox and filter automatically.
-# ============================================================================
-CHURCHGATE_BUSINESSES = [
-    "Aba Textile Mills PLC",
-    "Agroline Ventures Limited",
-    "Associated Textile Manufacturing Company Limited",
-    "Churchgate Nigeria Limited",
-    "Food & Confectionery Products (Nig.) Limited",
-    "First Continental Properties Limited – WTC",
-    "First Continental Properties Limited",
-    "First Spinners PLC",
-    "HotelInvest & Resorts Limited",
-    "International Textile Industries (Nig.) Limited",
-    "Intercott Limited",
-    "Ocean Fisheries (Nig.) Limited",
-    "Platinum Travel Limited",
-    "R. B Properties Limited",
-    "Reliance Mills Limited",
-    "Vineyard Designs Nig. Limited",
-]
-
-# Canonical department list (consolidates the previously-divergent hardcoded lists).
-DEPARTMENTS = [
-    'Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
-    'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal',
-    'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services'
-]
-# Filter variants (with an "All" sentinel) for dashboards/filters.
-DEPARTMENTS_WITH_ALL = ['All'] + DEPARTMENTS
-BUSINESSES_WITH_ALL = ['All'] + CHURCHGATE_BUSINESSES
 
 from utils.database import DatabaseManager
 from utils.ai_agent import AIRecruitmentAgent
@@ -108,16 +66,81 @@ from utils.training_service import TrainingService
 import utils.recruitment_agent_client as rac
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from streamlit_quill import st_quill
+
 # ============================================================
-# SECTION 4: REST OF YOUR CODE (logo, page config, etc)
+# PAGE CONFIG
 # ============================================================
 logo_icon = Path(__file__).parent / "churchgate-logo.jpeg"
 
-logo_icon = Path(__file__).parent / "churchgate-logo.jpeg"
 if logo_icon.exists():
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon=str(logo_icon), layout="wide", initial_sidebar_state="expanded")
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
+
+# ============================================================
+# PWA - Service Worker & Install Prompt
+# ============================================================
+st.markdown("""
+<script>
+// Register Service Worker (inline - no static file needed)
+if ('serviceWorker' in navigator) {
+    const swCode = `
+self.addEventListener('install', (e) => {
+    console.log('HRIS PWA: Installed');
+    self.skipWaiting();
+});
+self.addEventListener('activate', (e) => {
+    console.log('HRIS PWA: Activated');
+    clients.claim();
+});
+self.addEventListener('fetch', (e) => {
+    e.respondWith(
+        caches.match(e.request).then(r => r || fetch(e.request))
+    );
+});
+    `;
+    const blob = new Blob([swCode], {type: 'application/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl)
+        .then(reg => console.log('HRIS PWA: SW registered'))
+        .catch(err => console.log('HRIS PWA: SW failed', err));
+}
+
+// Install Prompt
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    const btn = document.createElement('button');
+    btn.textContent = '📱 Install Churchgate HRIS';
+    btn.style.cssText = 'position:fixed;bottom:20px;right:20px;background:linear-gradient(135deg,#CC0000,#aa0000);color:white;border:none;padding:14px 24px;border-radius:10px;font-weight:700;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(204,0,0,0.5);font-family:Inter,sans-serif;font-size:14px;animation:pulse 2s infinite;';
+    btn.onclick = async () => {
+        deferredPrompt.prompt();
+        const result = await deferredPrompt.userChoice;
+        if (result.outcome === 'accepted') {
+            console.log('HRIS installed!');
+            btn.remove();
+        }
+        deferredPrompt = null;
+    };
+    document.body.appendChild(btn);
+});
+
+// Hide Streamlit header on mobile
+window.addEventListener('load', () => {
+    const header = document.querySelector('header[data-testid="stHeader"]');
+    if (header) header.style.display = 'none';
+});
+
+// Add PWA animation
+const style = document.createElement('style');
+style.textContent = '@keyframes pulse { 0%,100% { box-shadow:0 4px 20px rgba(204,0,0,0.5); } 50% { box-shadow:0 4px 30px rgba(204,0,0,0.8); } }';
+document.head.appendChild(style);
+</script>
+
+<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkNodXJjaGdhdGUgR3JvdXAgSFJJUyIsCiAgInNob3J0X25hbWUiOiAiQ2h1cmNoZ2F0ZSBIUklTIiwKICAiZGVzY3JpcHRpb24iOiAiRW50ZXJwcmlzZSBIdW1hbiBSZXNvdXJjZSBJbmZvcm1hdGlvbiBTeXN0ZW0gLSBDaHVyY2hnYXRlIEdyb3VwIiwKICAic3RhcnRfdXJsIjogImh0dHBzOi8vaHJpcy5jaHVyY2hnYXRlLmNvbSIsCiAgInNjb3BlIjogImh0dHBzOi8vaHJpcy5jaHVyY2hnYXRlLmNvbSIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzFhMWExYSIsCiAgInRoZW1lX2NvbG9yIjogIiNDQzAwMDAiLAogICJvcmllbnRhdGlvbiI6ICJwb3J0cmFpdC1wcmltYXJ5IiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9ocmlzLmNodXJjaGdhdGUuY29tL3N0YXRpYy9jaHVyY2hnYXRlLWxvZ28tMTkyLnBuZyIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfSwKICAgIHsKICAgICAgInNyYyI6ICJodHRwczovL2hyaXMuY2h1cmNoZ2F0ZS5jb20vc3RhdGljL2NodXJjaGdhdGUtbG9nby01MTIucG5nIiwKICAgICAgInNpemVzIjogIjUxMng1MTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciLAogICAgICAicHVycG9zZSI6ICJhbnkgbWFza2FibGUiCiAgICB9CiAgXSwKICAiY2F0ZWdvcmllcyI6IFsiYnVzaW5lc3MiLCAicHJvZHVjdGl2aXR5IiwgImh1bWFuIHJlc291cmNlcyJdLAogICJsYW5nIjogImVuLU5HIiwKICAiZGlyIjogImx0ciIsCiAgInByZWZlcl9yZWxhdGVkX2FwcGxpY2F0aW9ucyI6IGZhbHNlLAogICJyZWxhdGVkX2FwcGxpY2F0aW9ucyI6IFtdCn0=">
+""", unsafe_allow_html=True)
 
 # Browser Notification Setup
 st.markdown("""
@@ -131,8 +154,8 @@ function showNotification(title, body) {
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(title, {
             body: body,
-            icon: 'https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png',
-            badge: 'https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png',
+            icon: '/static/churchgate-logo-192.png',
+            badge: '/static/churchgate-logo-192.png',
             vibrate: [200, 100, 200]
         });
     }
@@ -850,7 +873,6 @@ def sidebar_navigation():
         st.markdown("""<div style="text-align: center; padding: 0.8rem 0; background: #4a4a4a; border-radius: 6px; margin-bottom: 1rem; border: 1px solid #666666;"><h3 style="color: #ffffff; margin: 0; font-size: 1.1rem; font-weight: 700;">CHURCHGATE GROUP</h3><p style="color: #cccccc; font-size: 0.7rem; margin: 0;">HRIS v5.0</p></div>""", unsafe_allow_html=True)
         if st.session_state.user:
             user = st.session_state.user
-            # Load real data from employees table
             emp_id = user.get('employee_id', '')
             try:
                 emp_result = db._get("employees", {"employee_id": emp_id})
@@ -870,17 +892,70 @@ def sidebar_navigation():
                 profile_html = f'<img src="data:image/png;base64,{base64.b64encode(db_pic).decode()}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">'
             else:
                 profile_html = f'<div style="width: 40px; height: 40px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; color: white;">{initials}</div>'
+            
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
+        
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
-            menu_options = ["🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", "📈 Performance & OKRs", "🚀 Promotions", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "📋 Audit Log", "📊 Advanced Analytics", "👤 My Profile"]
+            menu_options = [
+                "🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", 
+                "📈 Performance & OKRs", "✅ Staff Confirmation", "🚀 Promotions", 
+                "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "🔄 Requests Hub",
+                "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", 
+                "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", 
+                "🎯 My Goals", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", 
+                "🎓 LMS", "📋 Audit Log", "📊 Advanced Analytics", "👤 My Profile"
+            ]
+            all_icons = [
+                "house-fill", "speedometer2", "people-fill", "graph-up-arrow", 
+                "check-circle-fill", "trophy-fill", "briefcase-fill", "robot", 
+                "inbox-fill", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", 
+                "bell-fill", "folder-fill", "lightbulb-fill", "calendar-fill", 
+                "bullseye", "globe", "book-half", "heart-fill", 
+                "mortarboard-fill", "shield-fill", "graph-up", "person-circle"
+            ]
         elif user_role == 'Manager':
-            menu_options = ["🏠 Employee Dashboard", "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
+            menu_options = [
+                "🏠 Employee Dashboard", "✅ Staff Confirmation", "💼 Recruitment Hub", 
+                "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "🔄 Requests Hub",
+                "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", 
+                "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🌐 Directory", 
+                "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"
+            ]
+            all_icons = [
+                "house-fill", "check-circle-fill", "briefcase-fill", "robot", 
+                "graph-up-arrow", "inbox-fill", "chat-dots-fill", "book-fill", 
+                "folder-fill", "lightbulb-fill", "calendar-fill", "bullseye", 
+                "globe", "book-half", "heart-fill", "mortarboard-fill", "person-circle"
+            ]
         else:
-            menu_options = ["🏠 Employee Dashboard", "📈 My Performance & OKRs", "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🔄 Requests Hub", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"]
-
-        all_icons = ["house-fill", "speedometer2", "people-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill", "robot", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", "bell-fill", "folder-fill", "lightbulb-fill", "calendar-fill", "bullseye", "inbox-fill", "person-lines-fill", "book-half", "heart-fill", "mortarboard-fill", "shield-fill", "graph-up", "person-circle"]
-        selected = option_menu(menu_title=None, options=menu_options, icons=all_icons[:len(menu_options)], menu_icon="cast", default_index=0, styles={"container": {"padding": "0!important", "background-color": "transparent"}, "icon": {"color": "#CC0000", "font-size": "16px"}, "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}})
+            menu_options = [
+                "🏠 Employee Dashboard", "📈 My Performance & OKRs", "🔄 Requests Hub",
+                "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", 
+                "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🌐 Directory", 
+                "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"
+            ]
+            all_icons = [
+                "house-fill", "graph-up-arrow", "inbox-fill", "chat-dots-fill", 
+                "book-fill", "folder-fill", "lightbulb-fill", "calendar-fill", 
+                "bullseye", "globe", "book-half", "heart-fill", 
+                "mortarboard-fill", "person-circle"
+            ]
+        
+        selected = option_menu(
+            menu_title=None, 
+            options=menu_options, 
+            icons=all_icons, 
+            menu_icon="cast", 
+            default_index=0, 
+            styles={
+                "container": {"padding": "0!important", "background-color": "transparent"}, 
+                "icon": {"color": "#CC0000", "font-size": "16px"}, 
+                "nav-link": {"font-size": "13px", "text-align": "left", "margin": "3px 0", "color": "#333333", "--hover-color": "rgba(204, 0, 0, 0.1)", "border-radius": "6px"}, 
+                "nav-link-selected": {"background-color": "rgba(204, 0, 0, 0.15)", "color": "#CC0000", "border-left": "3px solid #CC0000", "font-weight": "700"}
+            }
+        )
+        
         st.markdown("---")
         if user_role in ['Admin', 'HR Director', 'Manager']:
             st.markdown("<p style='color: #CC0000; font-size: 0.75rem; margin-bottom: 0.5rem;'>⚡ QUICK ACTIONS</p>", unsafe_allow_html=True)
@@ -1035,7 +1110,8 @@ def employee_dashboard():
             st.rerun()
     with qc4:
         if st.button("🏖️ Request Leave", use_container_width=True):
-            st.success("Leave request feature coming soon!")
+            st.session_state['navigate_to'] = "🔄 Requests Hub"
+            st.rerun()
     with qc5:
         if st.button("📚 Training", use_container_width=True):
             st.session_state['navigate_to'] = "🎓 Training & Development"
@@ -1417,20 +1493,17 @@ def executive_dashboard():
     total_employees = 0
     active_employees = 0
     departments = 0
-    businesses = 0
     open_positions = 0
     male_count = 0
     female_count = 0
     emp_df = pd.DataFrame()
-
+    
     try:
         emp_df = db.get_all_employees()
         if not emp_df.empty:
             total_employees = len(emp_df)
             active_employees = len(emp_df[emp_df['status'] == 'Active'])
             departments = len(emp_df['department'].unique())
-            if 'subsidiary' in emp_df.columns:
-                businesses = emp_df['subsidiary'].dropna().nunique()
             if 'gender' in emp_df.columns:
                 male_count = len(emp_df[emp_df['gender'].str.lower() == 'male'])
                 female_count = len(emp_df[emp_df['gender'].str.lower() == 'female'])
@@ -1509,7 +1582,7 @@ def executive_dashboard():
     with c1:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Total Employees</div><div class="metric-value">{total_employees}</div><small style="color:#38a169;">{active_employees} active</small></div>""", unsafe_allow_html=True)
     with c2:
-        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏢 Departments</div><div class="metric-value">{departments}</div><small style="color:#38a169;">{businesses} subsidiaries</small></div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div class="metric-card"><div class="metric-label">🏢 Departments</div><div class="metric-value">{departments}</div><small style="color:#38a169;">2 regions</small></div>""", unsafe_allow_html=True)
     with c3:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">📋 Open Positions</div><div class="metric-value">{open_positions}</div><small style="color:#CC0000;">Active hiring</small></div>""", unsafe_allow_html=True)
     with c4:
@@ -1891,16 +1964,38 @@ def employee_management():
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     
+    # Subsidiary options by region
+    SUBSIDIARY_OPTIONS = {
+        'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
+        'Lagos': [
+            'First Continental Properties Limited', 'R. B Properties Limited', 
+            'Churchgate Nigeria Limited', 'Aba Textile Mills PLC',
+            'Associated Textile Manufacturing Company Limited',
+            'Food & Confectionery Products (Nig.) Limited',
+            'First Spinners PLC', 'HotelInvest & Resorts Limited',
+            'International Textile Industries (Nig.) Limited',
+            'Intercott Limited', 'Ocean Fisheries (Nig.) Limited',
+            'Platinum Travel Limited', 'Reliance Mills Limited',
+            'Vineyard Designs Nig. Limited'
+        ],
+        'Aba': ['Aba Textile Mills PLC']
+    }
+    
     def load_employees():
         try:
             df = db.get_all_employees()
             if df is None or df.empty:
-                df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'region', 'subsidiary', 'position', 'grade', 'employment_type', 'join_date', 'status'])
+                df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'status', 'region', 'subsidiary', 'reports_to'])
             return df
         except:
-            return pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'region', 'subsidiary', 'position', 'grade', 'employment_type', 'join_date', 'status'])
+            return pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'status', 'region', 'subsidiary', 'reports_to'])
     
     employees_df = load_employees()
+    
+    # Build list of all employee names for Reports To dropdown
+    all_employee_names = []
+    if not employees_df.empty:
+        all_employee_names = sorted(list((employees_df['first_name'].astype(str) + ' ' + employees_df['last_name'].astype(str)).unique()))
     
     dept_colors = {
         'Senior Management': '#CC0000', 'Technology Group': '#3182ce', 'Facility Management': '#38a169',
@@ -1923,49 +2018,99 @@ def employee_management():
         new_this_month = 0
         try:
             current_month = datetime.now().month
+            current_year = datetime.now().year
             for _, emp in employees_df.iterrows():
                 jd = emp.get('join_date')
                 if jd and pd.notna(jd):
-                    if hasattr(jd, 'month') and jd.month == current_month:
-                        new_this_month += 1
+                    try:
+                        if isinstance(jd, str):
+                            jd_date = datetime.strptime(str(jd)[:10], '%Y-%m-%d')
+                        else:
+                            jd_date = pd.to_datetime(jd)
+                        if jd_date.month == current_month and jd_date.year == current_year:
+                            new_this_month += 1
+                    except:
+                        pass
         except:
             pass
         
         c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            st.metric("👥 Total", total_emp)
-        with c2:
-            st.metric("✅ Active", active_emp)
-        with c3:
-            st.metric("🏢 Departments", len(employees_df['department'].unique()) if not employees_df.empty else 0)
-        with c4:
-            st.metric("🆕 New This Month", new_this_month)
+        with c1: st.metric("👥 Total", total_emp)
+        with c2: st.metric("✅ Active", active_emp)
+        with c3: st.metric("🏢 Departments", len(employees_df['department'].unique()) if not employees_df.empty else 0)
+        with c4: st.metric("🆕 New This Month", new_this_month)
         
-        # Birthdays this month
         st.markdown("---")
         st.markdown("### 🎂 Birthdays & Anniversaries This Month")
+        
+        current_month = datetime.now().month
+        birthdays_this_month = []
+        anniversaries_this_month = []
+        
+        if not employees_df.empty:
+            for _, emp in employees_df.iterrows():
+                # Check birthdays
+                dob = emp.get('date_of_birth', '')
+                if dob and pd.notna(dob):
+                    try:
+                        if isinstance(dob, str):
+                            dob_date = datetime.strptime(str(dob)[:10], '%Y-%m-%d')
+                        else:
+                            dob_date = pd.to_datetime(dob)
+                        if dob_date.month == current_month:
+                            name = f"{emp['first_name']} {emp['last_name']}"
+                            day = dob_date.day
+                            birthdays_this_month.append((name, day))
+                    except:
+                        pass
+                
+                # Check work anniversaries
+                join_date = emp.get('join_date', '')
+                if join_date and pd.notna(join_date):
+                    try:
+                        if isinstance(join_date, str):
+                            jd = datetime.strptime(str(join_date)[:10], '%Y-%m-%d')
+                        else:
+                            jd = pd.to_datetime(join_date)
+                        if jd.month == current_month:
+                            name = f"{emp['first_name']} {emp['last_name']}"
+                            years = datetime.now().year - jd.year
+                            if years > 0:
+                                anniversaries_this_month.append((name, years))
+                    except:
+                        pass
+        
         bday_col1, bday_col2 = st.columns(2)
         with bday_col1:
-            st.markdown("**🎂 Birthdays:** Chika Ikwuegbu (May 13), Francis Asuquo (May 19), Rhoda Ajibola (May 25), Alice Agbo (May 28)")
+            if birthdays_this_month:
+                bday_list = ', '.join([f"{name} ({day})" for name, day in sorted(birthdays_this_month, key=lambda x: x[1])])
+                st.markdown(f"**🎂 Birthdays:** {bday_list}")
+            else:
+                st.markdown("**🎂 Birthdays:** None this month")
+        
         with bday_col2:
-            st.markdown("**⭐ Anniversaries:** Augustine Oleh (4 yrs), Shem Waziri (3 yrs), Charles Okere (7 yrs), Chika Ikwuegbu (3 yrs)")
+            if anniversaries_this_month:
+                anniv_list = ', '.join([f"{name} ({yrs} yrs)" for name, yrs in sorted(anniversaries_this_month, key=lambda x: x[1], reverse=True)])
+                st.markdown(f"**⭐ Anniversaries:** {anniv_list}")
+            else:
+                st.markdown("**⭐ Anniversaries:** None this month")
         
         st.markdown("---")
         
         # Search & Filters
-        c1, c2, c5, c3, c4 = st.columns([2, 1, 1, 1, 1])
+        c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1])
         with c1:
             search = st.text_input("🔍 Search", placeholder="Name, ID, email, department, position...")
         with c2:
             all_depts = ['All'] + sorted(list(employees_df['department'].dropna().unique())) if not employees_df.empty else ['All']
             dept_filter = st.selectbox("Department", all_depts)
-        with c5:
-            all_biz = ['All'] + sorted(list(employees_df['subsidiary'].dropna().unique())) if (not employees_df.empty and 'subsidiary' in employees_df.columns) else ['All']
-            business_filter = st.selectbox("Subsidiary", all_biz)
         with c3:
+            all_regions = ['All'] + sorted(list(employees_df['region'].dropna().unique())) if not employees_df.empty and 'region' in employees_df.columns else ['All']
+            region_filter = st.selectbox("Region", all_regions)
+        with c4:
             all_grades = ['All'] + sorted(list(employees_df['grade'].dropna().unique())) if not employees_df.empty else ['All']
             grade_filter = st.selectbox("Grade", all_grades)
-        with c4:
+        with c5:
             status_filter = st.selectbox("Status", ["All", "Active", "On Leave", "Probation", "Terminated", "Archived", "Inactive"])
         
         filtered_df = employees_df.copy()
@@ -1982,8 +2127,8 @@ def employee_management():
                 ]
             if dept_filter != 'All':
                 filtered_df = filtered_df[filtered_df['department'] == dept_filter]
-            if business_filter != 'All' and 'subsidiary' in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df['subsidiary'] == business_filter]
+            if region_filter != 'All' and 'region' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['region'] == region_filter]
             if grade_filter != 'All':
                 filtered_df = filtered_df[filtered_df['grade'] == grade_filter]
             if status_filter != 'All':
@@ -2001,17 +2146,18 @@ def employee_management():
             pg_col1, pg_col2, pg_col3 = st.columns([1, 2, 1])
             with pg_col1:
                 if st.button("⬅️ Previous", disabled=st.session_state.dir_page <= 1, use_container_width=True):
-                    st.session_state.dir_page -= 1
-                    st.rerun()
+                    st.session_state.dir_page -= 1; st.rerun()
             with pg_col2:
                 st.markdown(f"<p style='text-align:center;color:#666;'>Page <strong>{st.session_state.dir_page}</strong> of <strong>{total_pages}</strong></p>", unsafe_allow_html=True)
             with pg_col3:
                 if st.button("Next ➡️", disabled=st.session_state.dir_page >= total_pages, use_container_width=True):
-                    st.session_state.dir_page += 1
-                    st.rerun()
+                    st.session_state.dir_page += 1; st.rerun()
             
             start_idx = (st.session_state.dir_page - 1) * items_per_page
             end_idx = min(start_idx + items_per_page, len(filtered_df))
+            
+            # Sort alphabetically by first name
+            filtered_df = filtered_df.sort_values('first_name', ascending=True)
             
             for _, emp in filtered_df.iloc[start_idx:end_idx].iterrows():
                 initials = generate_initials(f"{emp['first_name']} {emp['last_name']}")
@@ -2022,49 +2168,60 @@ def employee_management():
                 with st.expander(f"👤 {emp['first_name']} {emp['last_name']} • {emp.get('position', 'N/A')}", expanded=False):
                     col1, col2, col3 = st.columns([1, 3, 1])
                     with col1:
-                        st.markdown(f"""
-                        <div style="width:55px;height:55px;border-radius:50%;background:linear-gradient(135deg,{border_color},#e53e3e);
-                                    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;color:white;">
-                            {initials}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f"""<div style="width:55px;height:55px;border-radius:50%;background:linear-gradient(135deg,{border_color},#e53e3e);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;color:white;">{initials}</div>""", unsafe_allow_html=True)
                     with col2:
-                        st.markdown(f"""
-                        <div style="line-height:1.6;">
-                            <strong style="font-size:1.1rem;">{emp['first_name']} {emp['last_name']}</strong><br>
-                            <span style="color:#666;">💼 {emp.get('position', 'N/A')}</span><br>
-                            <span style="color:#888;font-size:0.85rem;">🏢 {emp.get('department', 'N/A')} • 🆔 {emp.get('employee_id', 'N/A')}</span>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        region_str = f" • 🌍 {emp.get('region', 'N/A')}" if emp.get('region') else ""
+                        subsidiary_str = f" • 🏢 {emp.get('subsidiary', '')}" if emp.get('subsidiary') else ""
+                        reports_to_str = f" • 👔 Reports to: {emp.get('reports_to', 'N/A')}" if emp.get('reports_to') else ""
+                        st.markdown(f"""<div style="line-height:1.6;"><strong style="font-size:1.1rem;">{emp['first_name']} {emp['last_name']}</strong><br><span style="color:#666;">💼 {emp.get('position', 'N/A')}</span><br><span style="color:#888;font-size:0.85rem;">🏢 {emp.get('department', 'N/A')}{region_str}{subsidiary_str}{reports_to_str} • 🆔 {emp.get('employee_id', 'N/A')}</span></div>""", unsafe_allow_html=True)
                     with col3:
-                        st.markdown(f"""
-                        <div style="text-align:right;">
-                            <span style="background:{status_bg};color:{status_color};padding:0.3rem 0.8rem;border-radius:20px;font-size:0.8rem;font-weight:600;border:1px solid {status_color};">
-                                {emp.get('status', 'Active')}
-                            </span>
-                            <br><small style="color:#888;">📅 {emp.get('join_date', 'N/A')}</small>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f"""<div style="text-align:right;"><span style="background:{status_bg};color:{status_color};padding:0.3rem 0.8rem;border-radius:20px;font-size:0.8rem;font-weight:600;border:1px solid {status_color};">{emp.get('status', 'Active')}</span><br><small style="color:#888;">📅 {emp.get('join_date', 'N/A')}</small></div>""", unsafe_allow_html=True)
                     
                     st.markdown("---")
                     c1, c2, c3, c4 = st.columns(4)
-                    with c1:
-                        st.markdown(f"📧 <small>{emp.get('email', 'N/A')}</small>", unsafe_allow_html=True)
-                    with c2:
-                        st.markdown(f"📱 <small>{emp.get('phone', 'N/A')}</small>", unsafe_allow_html=True)
-                    with c3:
-                        st.markdown(f"📊 <small>Grade: {emp.get('grade', 'N/A')}</small>", unsafe_allow_html=True)
-                    with c4:
-                        st.markdown(f"💼 <small>{emp.get('employment_type', 'N/A')}</small>", unsafe_allow_html=True)
+                    with c1: st.markdown(f"📧 <small>{emp.get('email', 'N/A')}</small>", unsafe_allow_html=True)
+                    with c2: st.markdown(f"📱 <small>{emp.get('phone', 'N/A')}</small>", unsafe_allow_html=True)
+                    with c3: st.markdown(f"📊 <small>Grade: {emp.get('grade', 'N/A')}</small>", unsafe_allow_html=True)
+                    with c4: st.markdown(f"💼 <small>{emp.get('employment_type', 'N/A')}</small>", unsafe_allow_html=True)
                     
                     if is_admin:
                         st.markdown("---")
+                        
+                        # GET CURRENT VALUES
+                        current_region = str(emp.get('region', 'Lagos'))
+                        current_subsidiary = str(emp.get('subsidiary', ''))
+                        current_reports_to = str(emp.get('reports_to', ''))
+                        
+                        # Auto-detect region from subsidiary
+                        for reg, subs in SUBSIDIARY_OPTIONS.items():
+                            if current_subsidiary in subs:
+                                current_region = reg
+                                break
+                        
+                        # REGION & SUBSIDIARY & REPORTS TO OUTSIDE FORM
+                        region_options = ['Abuja', 'Lagos', 'Aba']
+                        region_idx = region_options.index(current_region) if current_region in region_options else 1
+                        
+                        st.markdown("#### ✏️ Quick Edit")
+                        pre_col1, pre_col2, pre_col3 = st.columns(3)
+                        with pre_col1:
+                            new_region = st.selectbox("Region", region_options, index=region_idx, key=f"reg_out_{emp['employee_id']}_{st.session_state.dir_page}")
+                        with pre_col2:
+                            sub_opts = SUBSIDIARY_OPTIONS.get(new_region, SUBSIDIARY_OPTIONS.get('Lagos', []))
+                            sub_idx = sub_opts.index(current_subsidiary) if current_subsidiary in sub_opts else 0
+                            new_subsidiary = st.selectbox("Subsidiary", sub_opts, index=sub_idx, key=f"sub_out_{emp['employee_id']}_{st.session_state.dir_page}")
+                        with pre_col3:
+                            report_options = ['None'] + all_employee_names
+                            report_idx = report_options.index(current_reports_to) if current_reports_to in report_options else 0
+                            new_reports_to = st.selectbox("Reports To", report_options, index=report_idx, key=f"rpt_out_{emp['employee_id']}_{st.session_state.dir_page}")
+                        
+                        st.markdown("---")
+                        
                         with st.form(f"edit_{emp['employee_id']}"):
-                            st.markdown("#### ✏️ Quick Edit")
                             ec1, ec2, ec3 = st.columns(3)
                             with ec1:
                                 current_dept = str(emp.get('department', 'Technology Group'))
-                                dept_options = DEPARTMENTS
+                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
                                 dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 1
                                 new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -2080,13 +2237,22 @@ def employee_management():
                                 status_idx = status_options.index(current_status) if current_status in status_options else 0
                                 new_status = st.selectbox("Status", status_options, index=status_idx, key=f"sts_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
+                                current_join_date = emp.get('join_date', '')
+                                if current_join_date and str(current_join_date) != 'None' and str(current_join_date) != 'nan':
+                                    try:
+                                        current_join_date_val = pd.to_datetime(current_join_date).date()
+                                    except:
+                                        current_join_date_val = date.today()
+                                else:
+                                    current_join_date_val = date.today()
+                                new_join_date = st.date_input("Join Date", value=current_join_date_val, key=f"join_{emp['employee_id']}_{st.session_state.dir_page}")
+                                
                                 current_gender = str(emp.get('gender', 'Male'))
                                 gender_options = ['Male', 'Female']
                                 gender_idx = 0 if current_gender == 'Male' else 1
                                 new_gender = st.selectbox("Gender", gender_options, index=gender_idx, key=f"gen_{emp['employee_id']}_{st.session_state.dir_page}")
                             with ec3:
-                                new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'],
-                                    key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
+                                new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_leave = st.number_input("Leave Days", value=int(emp.get('leave_balance', 20) or 20), min_value=0, max_value=365, key=f"leave_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -2096,10 +2262,8 @@ def employee_management():
                                         current_dob_date = pd.to_datetime(current_dob).date()
                                         if current_dob_date < date(1920, 1, 1) or current_dob_date > date(2020, 12, 31):
                                             current_dob_date = date(1990, 1, 1)
-                                    except:
-                                        current_dob_date = date(1990, 1, 1)
-                                else:
-                                    current_dob_date = date(1990, 1, 1)
+                                    except: current_dob_date = date(1990, 1, 1)
+                                else: current_dob_date = date(1990, 1, 1)
                                 new_dob = st.date_input("Date of Birth", value=current_dob_date, min_value=date(1920, 1, 1), max_value=date(2026, 12, 31), key=f"dob_{emp['employee_id']}_{st.session_state.dir_page}")
                             
                             if st.form_submit_button("💾 Save Changes", use_container_width=True):
@@ -2109,14 +2273,14 @@ def employee_management():
                                         "position": new_position, "status": new_status,
                                         "email": new_email, "gender": new_gender,
                                         "leave_balance": new_leave,
-                                        "date_of_birth": new_dob.strftime('%Y-%m-%d')
+                                        "date_of_birth": new_dob.strftime('%Y-%m-%d'),
+                                        "join_date": new_join_date.strftime('%Y-%m-%d'),
+                                        "region": new_region, "subsidiary": new_subsidiary,
+                                        "reports_to": new_reports_to if new_reports_to != 'None' else ''
                                     }, {"employee_id": emp['employee_id']})
-                                    # Also update users table role
                                     db._patch("users", {"role": new_role, "department": new_dept, "name": f"{emp['first_name']} {emp['last_name']}"}, {"email": new_email})
-                                    st.success(f"✅ {emp['first_name']} {emp['last_name']} updated successfully!")
-                                    st.cache_data.clear()
-                                    time.sleep(1)
-                                    st.rerun()
+                                    st.success(f"✅ {emp['first_name']} {emp['last_name']} updated!")
+                                    st.cache_data.clear(); time.sleep(1); st.rerun()
                                 except Exception as e:
                                     st.error(f"Update failed: {str(e)}")
                         
@@ -2125,43 +2289,48 @@ def employee_management():
                         action_col1, action_col2, action_col3 = st.columns([2, 1, 1])
                         with action_col1:
                             current_status = str(emp.get('status', 'Active'))
-                            if current_status == 'Archived':
-                                st.info(f"📦 This employee is archived")
-                            else:
-                                st.caption(f"Status: {current_status}")
+                            if current_status == 'Archived': st.info("📦 This employee is archived")
+                            else: st.caption(f"Status: {current_status}")
                         with action_col2:
                             if current_status == 'Archived':
                                 if st.button("🔄 Restore", key=f"restore_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
                                     db._patch("employees", {"status": "Active"}, {"employee_id": emp['employee_id']})
-                                    st.success(f"✅ {emp['first_name']} {emp['last_name']} restored!")
-                                    st.cache_data.clear()
-                                    time.sleep(1)
-                                    st.rerun()
+                                    st.success(f"✅ Restored!"); st.cache_data.clear(); time.sleep(1); st.rerun()
                             else:
                                 if st.button("📦 Archive", key=f"archive_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
                                     db._patch("employees", {"status": "Archived"}, {"employee_id": emp['employee_id']})
-                                    st.success(f"📦 {emp['first_name']} {emp['last_name']} archived!")
-                                    st.cache_data.clear()
-                                    time.sleep(1)
-                                    st.rerun()
+                                    st.success(f"📦 Archived!"); st.cache_data.clear(); time.sleep(1); st.rerun()
                         with action_col3:
                             if st.button("🗑️ Delete", key=f"del_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
-                                st.error("This will permanently delete the employee. Are you sure?")
-                                if st.button("⚠️ Yes, Delete Permanently", key=f"confirm_del_{emp['employee_id']}_{st.session_state.dir_page}"):
+                                st.error("Permanently delete?")
+                                if st.button("⚠️ Yes, Delete", key=f"confirm_del_{emp['employee_id']}_{st.session_state.dir_page}"):
                                     try:
                                         db._delete("employees", {"employee_id": emp['employee_id']})
-                                        st.success(f"🗑️ {emp['first_name']} {emp['last_name']} permanently deleted!")
-                                        st.cache_data.clear()
-                                        time.sleep(1)
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Delete failed: {str(e)}")
+                                        st.success("🗑️ Deleted!"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                                    except Exception as e: st.error(f"Failed: {str(e)}")
         else:
             st.info("No employees match your search criteria.")
     
-   # ============ TAB 2: ADD EMPLOYEE ============
+    # ============ TAB 2: ADD EMPLOYEE ============
     with tab2:
         st.subheader("➕ Add New Employee")
+        
+        # Region/Subsidiary OUTSIDE form
+        st.markdown("### Location & Reporting")
+        loc_col1, loc_col2, loc_col3 = st.columns(3)
+        with loc_col1:
+            if 'add_region' not in st.session_state: st.session_state.add_region = 'Abuja'
+            add_region = st.selectbox("Region *", ['Abuja', 'Lagos', 'Aba'], key="add_region_selector")
+            st.session_state.add_region = add_region
+        with loc_col2:
+            add_sub_opts = SUBSIDIARY_OPTIONS.get(add_region, SUBSIDIARY_OPTIONS.get('Lagos', []))
+            add_subsidiary = st.selectbox("Subsidiary *", add_sub_opts, key="add_subsidiary_selector")
+        with loc_col3:
+            report_options = ['None'] + all_employee_names
+            add_reports_to = st.selectbox("Reports To *", report_options, key="add_reports_to_selector")
+        
+        st.markdown("---")
+        
         with st.form("add_employee_form"):
             st.markdown("### Personal Information")
             c1, c2, c3 = st.columns(3)
@@ -2172,48 +2341,80 @@ def employee_management():
                 phone = st.text_input("Phone")
             with c2:
                 employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
-                business = st.selectbox("Subsidiary *", CHURCHGATE_BUSINESSES)
-                department = st.selectbox("Department *", DEPARTMENTS)
-                region = st.selectbox("Region *", ['Abuja', 'Lagos'])
+                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                 position = st.text_input("Position *")
                 grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'])
             with c3:
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
                 join_date = st.date_input("Join Date")
                 date_of_birth = st.date_input("Date of Birth *", min_value=date(1920, 1, 1), max_value=date(2026, 12, 31), value=date(1990, 1, 1))
-                system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'])
+                system_role = st.selectbox("System Role *", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], index=4)
                 status = st.selectbox("Status", ['Active', 'Probation'])
             
             if st.form_submit_button("✅ Add Employee", use_container_width=True):
                 if first_name and last_name and employee_id and department and position:
                     try:
-                        result = db._post("employees", {
-                            "employee_id": employee_id, "first_name": first_name, "last_name": last_name,
-                            "email": email, "phone": phone, "department": department,
-                            "region": region, "subsidiary": business,
-                            "position": position, "grade": grade, "employment_type": employment_type,
-                            "join_date": join_date.strftime('%Y-%m-%d'), 
-                            "date_of_birth": date_of_birth.strftime('%Y-%m-%d'),
-                            "status": status
-                        })
-                        if result:
-                            st.success(f"✅ {first_name} {last_name} added!")
-                            st.balloons()
-                            st.cache_data.clear()
-                            time.sleep(0.5)
-                            st.rerun()
+                        # Check if employee ID already exists
+                        existing = db._get("employees", {"employee_id": employee_id})
+                        if existing and len(existing) > 0:
+                            st.error(f"❌ Employee ID '{employee_id}' already exists. Please use a different ID.")
                         else:
-                            st.error("❌ Insert failed - check Supabase RLS policies or employee_id uniqueness")
+                            result = db._post("employees", {
+                                "employee_id": employee_id, "first_name": first_name, "last_name": last_name,
+                                "email": email, "phone": phone, "department": department,
+                                "region": add_region, "subsidiary": add_subsidiary,
+                                "reports_to": add_reports_to if add_reports_to != 'None' else '',
+                                "position": position, "grade": grade, "employment_type": employment_type,
+                                "join_date": join_date.strftime('%Y-%m-%d'), 
+                                "date_of_birth": date_of_birth.strftime('%Y-%m-%d'),
+                                "status": status
+                            })
+                            if result:
+                                # Also create user account with correct system role
+                                try:
+                                    import hashlib
+                                    default_pw = hashlib.sha256("churchgate2026".encode()).hexdigest()
+                                    db._post("users", {
+                                        "employee_id": employee_id,
+                                        "name": f"{first_name} {last_name}",
+                                        "email": email,
+                                        "password": default_pw,
+                                        "role": system_role,
+                                        "department": department,
+                                        "position": position
+                                    })
+                                except:
+                                    pass
+                                
+                                st.success(f"✅ {first_name} {last_name} added!")
+                                st.balloons()
+                                # Send welcome email
+                                if email and '@' in email:
+                                    try:
+                                        from utils.email_service import EmailService
+                                        EmailService().send_welcome_email(f"{first_name} {last_name}", email, "https://hris.churchgate.com")
+                                        st.info(f"📧 Welcome email sent to {email}")
+                                    except:
+                                        pass
+                                st.cache_data.clear()
+                                time.sleep(0.5)
+                                st.rerun()
+                            else:
+                                st.error("❌ Could not add employee. Please try again.")
                     except Exception as e:
-                        st.error(f"❌ Error adding employee: {str(e)}")
+                        error_msg = str(e)
+                        if "duplicate" in error_msg.lower() or "23505" in error_msg:
+                            st.error(f"❌ Employee ID '{employee_id}' or email already exists. Please use a different one.")
+                        else:
+                            st.error(f"❌ Error: {error_msg}")
                 else:
                     st.error("❌ Required fields missing!")
     
     # ============ TAB 3: BULK UPLOAD ============
     with tab3:
         st.subheader("📤 Bulk Employee Upload")
-        st.info("Upload CSV with columns: employee_id, first_name, last_name, email, phone, department, region, subsidiary, position, grade, employment_type, join_date")
-        template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'region', 'subsidiary', 'position', 'grade', 'employment_type', 'join_date'])
+        st.info("Upload CSV with columns: employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date, date_of_birth, region, subsidiary, reports_to, gender, status, system_role")
+        template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'date_of_birth', 'region', 'subsidiary', 'reports_to', 'gender', 'status', 'system_role'])
         st.download_button("📥 Download Template", template_df.to_csv(index=False), "employee_template.csv", "text/csv")
         uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
         if uploaded_file:
@@ -2224,27 +2425,76 @@ def employee_management():
                 success, fail = 0, 0
                 for _, row in df.iterrows():
                     try:
+                        # Convert dates from DD/MM/YYYY to YYYY-MM-DD
+                        join_date = str(row.get('join_date', ''))
+                        dob = str(row.get('date_of_birth', ''))
+                        
+                        # Try to convert date formats
+                        try:
+                            if '/' in join_date:
+                                parts = join_date.split('/')
+                                if len(parts[2]) == 4:  # DD/MM/YYYY
+                                    join_date = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        except:
+                            pass
+                        
+                        try:
+                            if '/' in dob:
+                                parts = dob.split('/')
+                                if len(parts[2]) == 4:  # DD/MM/YYYY
+                                    dob = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        except:
+                            pass
+                        
+                        # Check for duplicate employee ID
+                        emp_id = str(row.get('employee_id', ''))
+                        existing = db._get("employees", {"employee_id": emp_id})
+                        if existing and len(existing) > 0:
+                            # Skip duplicates
+                            fail += 1
+                            continue
+                        
                         db._post("employees", {
-                            "employee_id": str(row.get('employee_id', '')), "first_name": str(row.get('first_name', '')),
-                            "last_name": str(row.get('last_name', '')), "email": str(row.get('email', '')),
-                            "phone": str(row.get('phone', '')), "department": str(row.get('department', '')),
-                            "region": str(row.get('region', '')), "subsidiary": str(row.get('subsidiary', '')),
-                            "position": str(row.get('position', '')), "grade": str(row.get('grade', 'Junior')),
+                            "employee_id": emp_id,
+                            "first_name": str(row.get('first_name', '')),
+                            "last_name": str(row.get('last_name', '')),
+                            "email": str(row.get('email', '')),
+                            "phone": str(row.get('phone', '')),
+                            "department": str(row.get('department', '')),
+                            "position": str(row.get('position', '')),
+                            "grade": str(row.get('grade', 'Junior')),
                             "employment_type": str(row.get('employment_type', 'Full-time')),
-                            "join_date": str(row.get('join_date', '')), "status": "Active"
+                            "join_date": join_date,
+                            "date_of_birth": dob,
+                            "status": str(row.get('status', 'Active')),
+                            "region": str(row.get('region', 'Lagos')),
+                            "subsidiary": str(row.get('subsidiary', '')),
+                            "reports_to": str(row.get('reports_to', '')),
+                            "gender": str(row.get('gender', 'Male'))
                         })
+                        
+                        # Send welcome email
+                        emp_email = str(row.get('email', ''))
+                        emp_name = f"{str(row.get('first_name', ''))} {str(row.get('last_name', ''))}"
+                        if emp_email and '@' in emp_email:
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_welcome_email(emp_name, emp_email, "https://hris.churchgate.com")
+                            except:
+                                pass
+                        
                         success += 1
                     except:
                         fail += 1
-                st.success(f"✅ {success} uploaded! ({fail} skipped)")
+                st.success(f"✅ {success} uploaded! ({fail} skipped - duplicates or errors)")
+                if success > 0:
+                    st.info(f"📧 Welcome emails sent to {success} employees")
                 st.balloons()
                 st.cache_data.clear()
     
     # ============ TAB 4: GENERATE LOGINS ============
     with tab4:
         st.subheader("🔑 Generate Employee Login Credentials")
-        
-        # Single employee login
         st.markdown("### ⚡ Quick Single Employee")
         with st.form("single_login_form"):
             c1, c2 = st.columns(2)
@@ -2253,7 +2503,7 @@ def employee_management():
                 single_name = st.text_input("Full Name *")
                 single_pw = st.text_input("Password", value="churchgate2026")
             with c2:
-                single_dept = st.selectbox("Department", DEPARTMENTS, key="single_dept")
+                single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], key="single_dept")
                 single_role = st.selectbox("Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key="single_role")
                 single_id = st.text_input("Employee ID", placeholder="e.g., AN00001")
             
@@ -2262,9 +2512,17 @@ def employee_management():
                     try:
                         db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, 'Staff')
                         st.success(f"✅ Login created for {single_name}!")
+                        st.info(f"🔗 Login at: https://hris.churchgate.com")
+                        # Send welcome email
+                        try:
+                            from utils.email_service import EmailService
+                            EmailService().send_welcome_email(single_name, single_email, "https://hris.churchgate.com")
+                            st.info(f"📧 Welcome email sent to {single_email}")
+                        except:
+                            pass
                         st.balloons()
                     except:
-                        st.warning("User may already exist.")
+                        st.warning(f"⚠️ A login for {single_email} may already exist.")
                 else:
                     st.error("❌ Email and Name required!")
         
@@ -2274,10 +2532,7 @@ def employee_management():
             default_pw = st.text_input("Default Password for Bulk", value="churchgate2026")
             emp_list = []
             for _, emp in employees_df.iterrows():
-                emp_list.append({
-                    'Name': f"{emp['first_name']} {emp['last_name']}", 'ID': emp['employee_id'],
-                    'Email': emp.get('email', 'N/A'), 'Department': emp.get('department', ''), 'Role': 'Team Member'
-                })
+                emp_list.append({'Name': f"{emp['first_name']} {emp['last_name']}", 'ID': emp['employee_id'], 'Email': emp.get('email', 'N/A'), 'Department': emp.get('department', ''), 'Role': 'Team Member'})
             st.dataframe(pd.DataFrame(emp_list), use_container_width=True, hide_index=True)
             if st.button("🔑 Generate Logins for All", use_container_width=True):
                 count = 0
@@ -2285,11 +2540,18 @@ def employee_management():
                     if emp['Email'] and emp['Email'] != 'N/A':
                         try:
                             db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, 'Team Member', emp['Department'], 'Staff')
+                            # Send welcome email
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_welcome_email(emp['Name'], emp['Email'], "https://hris.churchgate.com")
+                            except:
+                                pass
                             count += 1
                         except:
                             pass
                 st.success(f"✅ {count} logins generated!")
-                st.info(f"Default password: **{default_pw}**")
+                st.info(f"🔗 Login URL: https://hris.churchgate.com")
+                st.info(f"🔑 Default password: **{default_pw}**")
                 st.download_button("📥 Download Login List", pd.DataFrame(emp_list).to_csv(index=False), "logins.csv", "text/csv")
         else:
             st.info("No employees found.")
@@ -2303,260 +2565,93 @@ def employee_management():
             for i, (dept, count) in enumerate(dept_counts.items()):
                 color = dept_colors.get(dept, '#CC0000')
                 with (c1 if i % 2 == 0 else c2):
-                    st.markdown(f"""
-                    <div style="background:white;padding:1.2rem;border-radius:10px;margin-bottom:0.8rem;border-left:4px solid {color};box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                        <strong>{dept}</strong>
-                        <span style="float:right;font-size:1.5rem;font-weight:700;color:{color};">{count}</span>
-                        <br><small style="color:#888;">staff members</small>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.markdown(f"""<div style="background:white;padding:1.2rem;border-radius:10px;margin-bottom:0.8rem;border-left:4px solid {color};box-shadow:0 2px 8px rgba(0,0,0,0.05);"><strong>{dept}</strong><span style="float:right;font-size:1.5rem;font-weight:700;color:{color};">{count}</span><br><small style="color:#888;">staff members</small></div>""", unsafe_allow_html=True)
     
     # ============ TAB 6: ORG CHART ============
     with tab6:
         st.subheader("📊 Organizational Structure — Churchgate Group")
-        
-        # Key Leadership Cards
         st.markdown("### 🌟 Key Leadership")
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            st.markdown("""
-            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #CC0000;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                <div style="width:50px;height:50px;border-radius:50%;background:#CC0000;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">VM</div>
-                <strong style="display:block;margin-top:0.5rem;">Vinay Mahtani</strong>
-                <small style="color:#888;">GMD/CEO</small><br>
-                <small style="color:#CC0000;">👥 Group-wide</small>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown("""<div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #CC0000;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><div style="width:50px;height:50px;border-radius:50%;background:#CC0000;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">VM</div><strong style="display:block;margin-top:0.5rem;">Vinay Mahtani</strong><small style="color:#888;">GMD/CEO</small><br><small style="color:#CC0000;">👥 Group-wide</small></div>""", unsafe_allow_html=True)
         with c2:
-            st.markdown("""
-            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #e53e3e;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                <div style="width:50px;height:50px;border-radius:50%;background:#e53e3e;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">JD</div>
-                <strong style="display:block;margin-top:0.5rem;">Jerome Das</strong>
-                <small style="color:#888;">COO</small><br>
-                <small style="color:#e53e3e;">👥 All Departments</small>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown("""<div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #e53e3e;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><div style="width:50px;height:50px;border-radius:50%;background:#e53e3e;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">JD</div><strong style="display:block;margin-top:0.5rem;">Jerome Das</strong><small style="color:#888;">COO</small><br><small style="color:#e53e3e;">👥 All Departments</small></div>""", unsafe_allow_html=True)
         with c3:
-            st.markdown("""
-            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #dd6b20;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                <div style="width:50px;height:50px;border-radius:50%;background:#dd6b20;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">AK</div>
-                <strong style="display:block;margin-top:0.5rem;">Ahmed Karim</strong>
-                <small style="color:#888;">VP Sales</small><br>
-                <small style="color:#dd6b20;">👥 Sales & Marketing</small>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown("""<div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #dd6b20;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><div style="width:50px;height:50px;border-radius:50%;background:#dd6b20;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">AK</div><strong style="display:block;margin-top:0.5rem;">Ahmed Karim</strong><small style="color:#888;">VP Sales</small><br><small style="color:#dd6b20;">👥 Sales & Marketing</small></div>""", unsafe_allow_html=True)
         with c4:
-            st.markdown("""
-            <div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #805ad5;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                <div style="width:50px;height:50px;border-radius:50%;background:#805ad5;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">PL</div>
-                <strong style="display:block;margin-top:0.5rem;">Partab Lalchandani</strong>
-                <small style="color:#888;">GEA</small><br>
-                <small style="color:#805ad5;">👥 Group Advisor</small>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown("""<div style="background:white;padding:1rem;border-radius:10px;text-align:center;border-top:3px solid #805ad5;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><div style="width:50px;height:50px;border-radius:50%;background:#805ad5;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">PL</div><strong style="display:block;margin-top:0.5rem;">Partab Lalchandani</strong><small style="color:#888;">GEA</small><br><small style="color:#805ad5;">👥 Group Advisor</small></div>""", unsafe_allow_html=True)
         
         st.markdown("---")
-        
-        # Main Sankey - Group Level
         st.markdown("### 🔗 Group Reporting Hierarchy")
-        st.info("GMD → COO (All Depts) / VP Sales (Sales & Mkt) / GEA | Regions: Abuja & Lagos")
+        st.info("GMD → COO (All Depts) / VP Sales (Sales & Mkt) / GEA | Regions: Abuja, Lagos & Aba")
         
-        labels = [
-            'GMD', 'COO', 'VP Sales', 'GEA',
-            'Technology (Abuja)', 'Technology (Lagos)',
-            'Facility Mgmt (Abuja)', 'Facility Mgmt (Lagos)',
-            'Engineering/MEP', 'HR', 'Accounts & Finance',
-            'Sales & Marketing', 'Procurement', 'Security',
-            'Legal', 'Operations',
-            'Heads of Department',
-            'Sr. Managers', 'Managers', 'Team Leads', 'Team Members'
-        ]
-        
-        colors = [
-            '#CC0000', '#e53e3e', '#dd6b20', '#805ad5',
-            '#3182ce', '#3182ce',
-            '#38a169', '#38a169',
-            '#d53f8c', '#d69e2e', '#805ad5',
-            '#dd6b20', '#2b6cb0', '#718096',
-            '#e53e3e', '#319795',
-            '#FF6B35',
-            '#38a169', '#d69e2e', '#2b6cb0', '#718096'
-        ]
-        
+        labels = ['GMD', 'COO', 'VP Sales', 'GEA', 'Technology (Abuja)', 'Technology (Lagos)', 'Facility Mgmt (Abuja)', 'Facility Mgmt (Lagos)', 'Engineering/MEP', 'HR', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members']
+        colors = ['#CC0000', '#e53e3e', '#dd6b20', '#805ad5', '#3182ce', '#3182ce', '#38a169', '#38a169', '#d53f8c', '#d69e2e', '#805ad5', '#dd6b20', '#2b6cb0', '#718096', '#e53e3e', '#319795', '#FF6B35', '#38a169', '#d69e2e', '#2b6cb0', '#718096']
         sources = [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3]
         targets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 11, 15]
-        values  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        values = [1]*15
+        for i in range(4, 16): sources.append(i); targets.append(16); values.append(1)
+        sources.append(16); targets.append(17); values.append(11)
+        sources += [17, 17, 18, 18]; targets += [18, 19, 19, 20]; values += [10, 5, 12, 30]
         
-        # Departments → HODs
-        for i in range(4, 16):
-            sources.append(i)
-            targets.append(16)
-            values.append(1)
-        
-        # HODs → Sr. Managers
-        sources.append(16)
-        targets.append(17)
-        values.append(11)
-        
-        # Sr. Managers → Managers → Team Leads → Team Members
-        sources += [17, 17, 18, 18]
-        targets += [18, 19, 19, 20]
-        values += [10, 5, 12, 30]
-        
-        fig = go.Figure(data=[go.Sankey(
-            node=dict(pad=20, thickness=18, label=labels, color=colors),
-            link=dict(source=sources, target=targets, value=values,
-                color=['rgba(204,0,0,0.2)'] * len(sources))
-        )])
+        fig = go.Figure(data=[go.Sankey(node=dict(pad=20, thickness=18, label=labels, color=colors), link=dict(source=sources, target=targets, value=values, color=['rgba(204,0,0,0.2)']*len(sources)))])
         fig.update_layout(height=600)
         st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---")
-        
-        # Businesses & Department Heads by Region — driven from live employee data.
-        def _region_breakdown(df, region_name):
-            """Business/Department/Headcount/HODs table for a region, from real data."""
-            if df is None or df.empty or 'region' not in df.columns:
-                return None
-            rdf = df[df['region'].astype(str).str.strip().str.lower() == region_name.lower()]
-            if rdf.empty:
-                return None
-            rows = []
-            group_cols = [c for c in ['subsidiary', 'department'] if c in rdf.columns]
-            if not group_cols:
-                return None
-            for keys, grp in rdf.groupby(group_cols):
-                keys = keys if isinstance(keys, tuple) else (keys,)
-                info = dict(zip(group_cols, keys))
-                hods = grp[grp.get('grade', pd.Series(dtype=str)).astype(str).isin(['HOD', 'C-Level'])] if 'grade' in grp.columns else grp.iloc[0:0]
-                hod_names = ', '.join(f"{r['first_name']} {r['last_name']}" for _, r in hods.iterrows()) or 'TBD'
-                rows.append({
-                    'Subsidiary': info.get('subsidiary', '—') or '—',
-                    'Department': info.get('department', '—') or '—',
-                    'Headcount': len(grp),
-                    'HOD(s)': hod_names,
-                })
-            return pd.DataFrame(rows).sort_values(['Subsidiary', 'Department']) if rows else None
-
         col1, col2 = st.columns(2)
-
         with col1:
-            st.markdown("### 🏢 Abuja Region — Businesses & Heads")
-            _abuja = _region_breakdown(employees_df, 'Abuja')
-            if _abuja is not None:
-                st.dataframe(_abuja, use_container_width=True, hide_index=True)
-            else:
-                st.info("No Abuja employees categorized by business/department yet.")
-
+            st.markdown("### 🏢 Abuja Region — Department Heads")
+            st.dataframe(pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'], 'HOD': ['Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'Adebayo Sakote', 'Jeff Arikawe', 'Ahmed Karim (VP)', 'Anand Bora', 'Usman Sani', 'David Aiyedun', 'Ibukun Adeogun'], 'Team': [12, 20, 8, 6, 8, 12, 6, 15, 3, 10]}), use_container_width=True, hide_index=True)
         with col2:
-            st.markdown("### 🏢 Lagos Region — Businesses & Heads")
-            _lagos = _region_breakdown(employees_df, 'Lagos')
-            if _lagos is not None:
-                st.dataframe(_lagos, use_container_width=True, hide_index=True)
-            else:
-                st.info("No Lagos employees categorized by business/department yet.")
+            st.markdown("### 🏢 Lagos Region — Department Heads")
+            st.dataframe(pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'], 'HOD': ['Lawal Mohammed', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD'], 'Team': ['TBD']*10}), use_container_width=True, hide_index=True)
         
         st.markdown("---")
-        
-        # Span of Control
-        st.markdown("### 👥 Span of Control — Key Leaders")
-        span_data = pd.DataFrame({
-            'Leader': ['Vinay Mahtani', 'Jerome Das', 'Ahmed Karim', 'Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'All HODs (Avg)'],
-            'Role': ['GMD', 'COO', 'VP Sales', 'HOD Tech (Abuja)', 'HOD FM (Abuja)', 'HOD Engr (MEP)', 'Heads of Dept'],
-            'Region': ['Group', 'Group', 'Group', 'Abuja', 'Abuja', 'Abuja', 'Group'],
-            'Direct Reports': [5, 12, 6, 12, 20, 8, 10]
-        })
-        fig2 = px.bar(span_data, x='Leader', y='Direct Reports', color='Region', text='Direct Reports',
-                     color_discrete_sequence=['#CC0000', '#3182ce', '#38a169'])
-        fig2.update_layout(height=350)
-        fig2.update_traces(textposition='outside')
+        st.markdown("### 👥 Span of Control")
+        span_data = pd.DataFrame({'Leader': ['Vinay Mahtani', 'Jerome Das', 'Ahmed Karim', 'Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'All HODs (Avg)'], 'Role': ['GMD', 'COO', 'VP Sales', 'HOD Tech (Abuja)', 'HOD FM (Abuja)', 'HOD Engr (MEP)', 'Heads of Dept'], 'Region': ['Group', 'Group', 'Group', 'Abuja', 'Abuja', 'Abuja', 'Group'], 'Direct Reports': [5, 12, 6, 12, 20, 8, 10]})
+        fig2 = px.bar(span_data, x='Leader', y='Direct Reports', color='Region', text='Direct Reports', color_discrete_sequence=['#CC0000', '#3182ce', '#38a169'])
+        fig2.update_layout(height=350); fig2.update_traces(textposition='outside')
         st.plotly_chart(fig2, use_container_width=True)
         
         st.markdown("---")
-        
-        # Reporting Chain Finder
         st.markdown("### 🔍 Find Reporting Chain")
-        chain_search = st.text_input("Enter employee name to see reporting line", placeholder="e.g., Francis Asuquo", key="chain_search")
+        chain_search = st.text_input("Enter employee name", placeholder="e.g., Francis Asuquo", key="chain_search")
         if chain_search:
-            found = False
-            chain = ""
+            found = False; chain = ""
             try:
                 for _, emp in employees_df.iterrows():
                     full_name = f"{emp['first_name']} {emp['last_name']}".lower()
                     if chain_search.lower() in full_name:
                         found = True
-                        role = emp.get('position', '')
-                        dept = emp.get('department', '')
-                        region = emp.get('region', 'Abuja')
-                        
-                        if 'GMD' in role or 'CEO' in role:
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Reports to Board"
-                        elif 'COO' in role or 'GED' in role or 'GEA' in role or 'Advisor' in role:
-                            role_name = 'COO' if 'COO' in role else ('GED' if 'GED' in role else 'GEA')
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → {role_name} → GMD (Vinay Mahtani)"
-                        elif 'VP' in role or 'Vice President' in role:
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → VP Sales → GMD (Vinay Mahtani)"
-                        elif 'HOD' in role or 'Head' in role or 'head' in role.lower() or 'GM,' in role or 'GM ' in role or role.lower().startswith('head'):
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → HOD ({dept}, {region}) → COO (Jerome Das) → GMD (Vinay Mahtani)"
-                        elif 'Senior Manager' in role or 'Sr. Manager' in role:
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Sr. Manager ({dept}) → HOD → COO → GMD"
-                        elif 'Manager' in role:
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Manager ({dept}) → Sr. Manager → HOD → COO → GMD"
-                        elif 'Team Lead' in role:
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Lead ({dept}) → Manager → Sr. Manager → HOD → COO → GMD"
-                        else:
-                            chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Member ({dept}) → Team Lead → Manager → Sr. Manager → HOD → COO → GMD"
+                        role = emp.get('position', ''); dept = emp.get('department', ''); region = emp.get('region', 'Abuja')
+                        reports_to = emp.get('reports_to', '')
+                        if reports_to: chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Reports to: {reports_to}"
+                        elif 'GMD' in role or 'CEO' in role: chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Reports to Board"
+                        elif 'COO' in role: chain = f"📋 **{emp['first_name']} {emp['last_name']}** → COO → GMD"
+                        elif 'HOD' in role: chain = f"📋 **{emp['first_name']} {emp['last_name']}** → HOD ({dept}, {region}) → COO → GMD"
+                        elif 'Manager' in role: chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Manager ({dept}) → HOD → COO → GMD"
+                        elif 'Team Lead' in role: chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Lead ({dept}) → Manager → HOD → COO → GMD"
+                        else: chain = f"📋 **{emp['first_name']} {emp['last_name']}** → Team Member ({dept}) → Team Lead → Manager → HOD → COO → GMD"
                         break
-                
-                if not found:
-                    chain = f"📋 **{chain_search}** not found in employee directory."
-            except:
-                chain = f"📋 Reporting chain lookup unavailable."
-            
+                if not found: chain = f"📋 **{chain_search}** not found."
+            except: chain = "📋 Lookup unavailable."
             st.info(chain)
-            
-            if chain and 'Sales & Marketing' in chain:
-                st.caption("*Sales & Marketing reports to VP Sales → GMD")
-        
-        st.markdown("---")
-        
-        # Full Reporting Structure
-        st.markdown("### 📋 Complete Reporting Structure")
-        structure_data = pd.DataFrame({
-            'Level': [1, 2, 2, 2, 3, 4, 5, 6, 7, 8],
-            'Role': ['GMD/CEO', 'COO (All Depts)', 'VP Sales', 'GEA', 'Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members', 'GED'],
-            'Reports To': ['Board', 'GMD', 'GMD', 'GMD', 'COO / GEA', 'HOD', 'Sr. Managers', 'Managers', 'Team Leads', 'GMD'],
-            'Regions': ['Group-wide', 'Abuja & Lagos', 'Abuja & Lagos', 'Group-wide', 'By Region', 'By Department', 'By Department', 'By Department', 'By Department', 'Group-wide'],
-            'Notes': ['', '11 Departments', 'Sales & Marketing only', 'Advisory', 'Reports to COO & GEA', '', 'Dotted line to HOD', '', '', 'Standalone, reports to GMD']
-        })
-        st.dataframe(structure_data, use_container_width=True, hide_index=True)
     
     # ============ TAB 7: DEMOGRAPHICS ============
     with tab7:
         st.subheader("📈 Demographics & Inclusion")
-        
-        # Gender distribution
         st.markdown("### 👥 Gender Distribution")
         gender_data = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [38, 18]})
         fig = px.pie(gender_data, values='Count', names='Gender', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000'])
-        fig.update_layout(height=350)
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(height=350); st.plotly_chart(fig, use_container_width=True)
         
-        # Department gender split
-        st.markdown("---")
-        st.markdown("### 🏢 Department Gender Split")
-        dept_gender = pd.DataFrame({
-            'Department': ['Technology Group', 'Facility Management', 'Human Resources', 'Sales & Marketing', 'Accounts & Finance', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'],
-            'Male': [10, 10, 3, 6, 4, 3, 10, 1, 4, 3],
-            'Female': [4, 3, 5, 4, 2, 2, 2, 1, 1, 1]
-        })
+        st.markdown("---"); st.markdown("### 🏢 Department Gender Split")
+        dept_gender = pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Human Resources', 'Sales & Marketing', 'Accounts & Finance', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], 'Male': [10, 10, 3, 6, 4, 3, 10, 1, 4, 3], 'Female': [4, 3, 5, 4, 2, 2, 2, 1, 1, 1]})
         fig2 = px.bar(dept_gender, x='Department', y=['Male', 'Female'], barmode='group', color_discrete_sequence=['#3182ce', '#CC0000'])
-        fig2.update_layout(height=400)
-        st.plotly_chart(fig2, use_container_width=True)
+        fig2.update_layout(height=400); st.plotly_chart(fig2, use_container_width=True)
         
-        # Tenure distribution
-        st.markdown("---")
-        st.markdown("### 📅 Tenure Distribution")
+        st.markdown("---"); st.markdown("### 📅 Tenure Distribution")
         try:
             tenure_data = []
             for _, emp in employees_df.iterrows():
@@ -2568,112 +2663,110 @@ def employee_management():
                         elif years < 5: tenure_data.append('3-5 years')
                         elif years < 10: tenure_data.append('6-10 years')
                         else: tenure_data.append('10+ years')
-                    except:
-                        pass
+                    except: pass
             if tenure_data:
                 tenure_df = pd.DataFrame(pd.Series(tenure_data).value_counts()).reset_index()
                 tenure_df.columns = ['Tenure', 'Count']
                 fig3 = px.bar(tenure_df, x='Tenure', y='Count', color='Tenure', color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e'])
-                fig3.update_layout(height=350, showlegend=False)
-                st.plotly_chart(fig3, use_container_width=True)
-        except:
-            pass
+                fig3.update_layout(height=350, showlegend=False); st.plotly_chart(fig3, use_container_width=True)
+        except: pass
         
-        # Grade distribution
-        st.markdown("---")
-        st.markdown("### 📊 Grade Distribution")
+        st.markdown("---"); st.markdown("### 📊 Grade Distribution")
         if not employees_df.empty:
             grade_counts = employees_df['grade'].value_counts()
             grade_df = pd.DataFrame({'Grade': grade_counts.index, 'Count': grade_counts.values})
             fig4 = px.pie(grade_df, values='Count', names='Grade', hole=0.4, color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e', '#805ad5'])
-            fig4.update_layout(height=350)
-            st.plotly_chart(fig4, use_container_width=True)
+            fig4.update_layout(height=350); st.plotly_chart(fig4, use_container_width=True)
     
     # ============ TAB 8: EXPORT ============
     with tab8:
         st.subheader("📥 Export Employee Data")
         if not employees_df.empty:
             st.download_button("📥 Download Full Directory (CSV)", employees_df.to_csv(index=False), "churchgate_employees.csv", "text/csv")
-            
-            st.markdown("---")
-            st.markdown("### 📊 Export by Department")
+            st.markdown("---"); st.markdown("### 📊 Export by Department")
             selected_export_dept = st.selectbox("Select Department", ['All'] + list(employees_df['department'].unique()) if not employees_df.empty else ['All'])
             if selected_export_dept != 'All':
                 dept_df = employees_df[employees_df['department'] == selected_export_dept]
                 st.download_button(f"📥 Download {selected_export_dept} (CSV)", dept_df.to_csv(index=False), f"{selected_export_dept}_employees.csv", "text/csv")
-            
-            st.markdown("---")
-            st.markdown("### 📊 Quick Stats")
+            st.markdown("---"); st.markdown("### 📊 Quick Stats")
             st.dataframe(employees_df.describe(), use_container_width=True)
 
-def generate_appraisal_certificate(name, cycle_name, final_score, completed_date):
-    """Build a one-page PDF appraisal completion certificate. Returns bytes (or None on failure)."""
-    try:
-        import fpdf
-        FPDF = fpdf.FPDF
-        pdf = FPDF(orientation='L', unit='mm', format='A4')
-        pdf.set_auto_page_break(auto=False)
-        pdf.add_page()
-
-        # Churchgate header band
-        pdf.set_fill_color(26, 26, 26)
-        pdf.rect(0, 0, 297, 34, 'F')
-        pdf.set_fill_color(204, 0, 0)
-        pdf.rect(0, 34, 297, 3, 'F')
-        pdf.set_font('Helvetica', 'B', 26)
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_y(9)
-        pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
-
-        # Decorative border
-        pdf.set_draw_color(204, 0, 0)
-        pdf.set_line_width(1.2)
-        pdf.rect(12, 44, 273, 150)
-
-        pdf.set_y(58)
-        pdf.set_font('Helvetica', 'B', 30)
-        pdf.set_text_color(26, 26, 26)
-        pdf.cell(0, 16, 'CERTIFICATE OF COMPLETION', ln=True, align='C')
-        pdf.set_font('Helvetica', '', 13)
-        pdf.set_text_color(90, 90, 90)
-        pdf.cell(0, 10, 'Performance Appraisal', ln=True, align='C')
-        pdf.ln(8)
-
-        pdf.set_font('Helvetica', '', 12)
-        pdf.set_text_color(60, 60, 60)
-        pdf.cell(0, 8, 'This is to certify that', ln=True, align='C')
-        pdf.ln(2)
-        pdf.set_font('Helvetica', 'B', 24)
-        pdf.set_text_color(204, 0, 0)
-        pdf.cell(0, 14, str(name), ln=True, align='C')
-        pdf.ln(2)
-        pdf.set_font('Helvetica', '', 12)
-        pdf.set_text_color(60, 60, 60)
-        pdf.cell(0, 8, f"has successfully completed the appraisal for", ln=True, align='C')
-        pdf.set_font('Helvetica', 'B', 14)
-        pdf.set_text_color(26, 26, 26)
-        pdf.cell(0, 10, str(cycle_name), ln=True, align='C')
-        pdf.ln(4)
-
-        if final_score is not None:
-            pdf.set_font('Helvetica', 'B', 16)
-            pdf.set_text_color(56, 161, 105)
-            pdf.cell(0, 10, f"Final Agreed Score: {final_score:.1f}%", ln=True, align='C')
-
-        # Footer: date + signature line
-        pdf.set_y(178)
-        pdf.set_font('Helvetica', '', 11)
-        pdf.set_text_color(90, 90, 90)
-        pdf.cell(140, 8, f"  Date Completed: {completed_date}", 0, 0, 'L')
-        pdf.cell(133, 8, "Authorised Signature: ______________________  ", 0, 1, 'R')
-
-        out = pdf.output(dest='S')
-        return out.encode('latin-1') if isinstance(out, str) else bytes(out)
-    except Exception:
-        return None
 
 def performance_okrs():
-    st.markdown("""<div class="churchgate-header"><h1>📈 Performance & Appraisal Engine</h1><p>KPI Management | Self-Assessment | HOD Review | Goal Cascading | Evidence Upload | Smart Notifications | Audit Trail</p></div>""", unsafe_allow_html=True)
+    """
+    Churchgate Group HRIS - Performance & OKRs Module v8.0
+    Fortune 500 Grade: Appraisal Committee | Certificates | Full Admin Control | Advanced Analytics
+    """
+    
+    # ============================================================
+    # CSS INJECTION
+    # ============================================================
+    st.markdown("""
+    <style>
+    .glass-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 16px;
+        border: 1px solid rgba(204, 0, 0, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-card:hover { box-shadow: 0 12px 40px rgba(204, 0, 0, 0.12); transform: translateY(-2px); }
+    .kpi-card {
+        background: white; border-radius: 12px; padding: 1rem; margin: 0.4rem 0;
+        border-left: 5px solid #CC0000; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.25s ease;
+    }
+    .kpi-card:hover { box-shadow: 0 6px 20px rgba(204, 0, 0, 0.15); transform: translateX(4px); }
+    .region-header {
+        background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1rem 1.5rem;
+        border-radius: 12px; margin: 1rem 0 0.5rem 0; font-weight: 700; font-size: 1.1rem; border-left: 5px solid #CC0000;
+    }
+    .subsidiary-header {
+        background: linear-gradient(135deg, #2d2d2d, #3d3d3d); color: white; padding: 0.7rem 1.2rem;
+        border-radius: 10px; margin: 0.4rem 0 0.4rem 1.5rem; font-weight: 600; border-left: 4px solid #CC0000;
+    }
+    .metric-mini {
+        background: rgba(255,255,255,0.9); border-radius: 10px; padding: 0.8rem 1rem;
+        text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); backdrop-filter: blur(8px);
+    }
+    .metric-mini .value { font-size: 1.5rem; font-weight: 700; color: #CC0000; }
+    .metric-mini .label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin: 2px; }
+    .badge-green { background: #c6f6d5; color: #22543d; }
+    .badge-yellow { background: #fefcbf; color: #744210; }
+    .badge-gray { background: #e2e8f0; color: #2d3748; }
+    .badge-red { background: #fed7d7; color: #742a2a; }
+    .badge-escalated { background: #fbb6ce; color: #742a2a; }
+    .certificate-card {
+        background: linear-gradient(135deg, #fffef5, #fff8e1);
+        border: 2px solid #d69e2e;
+        border-radius: 16px;
+        padding: 2rem;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(214, 158, 46, 0.2);
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .pulse-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #38a169; animation: pulse 2s infinite; margin-right: 6px; }
+    input[type="number"] { border: 2px solid #e0e0e0; border-radius: 8px; padding: 8px 12px; font-size: 1rem; transition: all 0.2s; }
+    input[type="number"]:focus { border-color: #CC0000; box-shadow: 0 0 0 3px rgba(204, 0, 0, 0.1); outline: none; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: #CC0000; border-radius: 3px; }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # ============================================================
+    # INITIALIZATION
+    # ============================================================
+    from datetime import timezone, timedelta
+    import re, os
+    from collections import defaultdict
+    
+    wat = timezone(timedelta(hours=1))
+    now_wat = datetime.now(wat)
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
@@ -2682,1464 +2775,3529 @@ def performance_okrs():
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     is_sr_mgmt = user_dept == 'Senior Management'
     is_hod = is_admin or user_role in ['Manager', 'HOD']
+    is_team_lead_or_manager = user_role in ['Manager', 'Team Lead', 'HOD', 'Admin', 'HR Director']
+    is_super_admin = user_email == 'admin@churchgate.com' or user_role in ['Admin', 'HR Director']
     
-    from datetime import timezone, timedelta
-    wat = timezone(timedelta(hours=1))
-    now_wat = datetime.now(wat)
+    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 
+                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 
+                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     
-    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 
-                 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 
-                 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
+    SUBSIDIARY_REGIONS = {
+        'World Trade Center(WTC)': 'Abuja', 'World Trade Center': 'Abuja', 'WTC': 'Abuja',
+        'Agroline Ventures Limited': 'Abuja', 'Agroline Ventures': 'Abuja',
+        'Aba Textile Mills PLC': 'Aba', 'Aba Textile Mills': 'Aba',
+    }
     
-    if 'appraisal_cycle_active' not in st.session_state:
-        # Seed cycle state from the shared key-value store so every user session
-        # (not just the admin who activated it) sees the same active cycle.
+    def get_region(subsidiary):
+        if not subsidiary: return 'Lagos'
+        sub_lower = str(subsidiary).lower().strip()
+        for key, region in SUBSIDIARY_REGIONS.items():
+            if key.lower() in sub_lower or sub_lower in key.lower(): return region
+        return 'Lagos'
+    
+    # ============================================================
+    # DATABASE-BACKED APPRAISAL CYCLE STATE
+    # ============================================================
+    def load_appraisal_cycle_from_db():
         try:
-            _cycle = db.get_cycle_state()
-        except Exception:
-            _cycle = None
-        if _cycle:
-            st.session_state.appraisal_cycle_active = _cycle['active']
-            st.session_state.appraisal_cycle_name = _cycle['name'] or "2026 Half-Year Appraisal"
-            st.session_state.appraisal_start = _cycle['start'] or "2026-06-01"
-            st.session_state.appraisal_end = _cycle['end'] or "2026-12-31"
-            st.session_state.appraisal_locked = _cycle['locked']
-        else:
-            st.session_state.appraisal_cycle_active = False
-    if 'appraisal_cycle_name' not in st.session_state:
-        st.session_state.appraisal_cycle_name = "2026 Half-Year Appraisal"
-    if 'appraisal_start' not in st.session_state:
-        st.session_state.appraisal_start = "2026-06-01"
-    if 'appraisal_end' not in st.session_state:
-        st.session_state.appraisal_end = "2026-12-31"
-    if 'appraisal_locked' not in st.session_state:
-        st.session_state.appraisal_locked = False
-    if 'self_assessments' not in st.session_state:
-        st.session_state.self_assessments = {}
+            cycles = db._get("appraisal_cycles", {"is_active": "true"})
+            if cycles and len(cycles) > 0:
+                cycle = cycles[0]
+                st.session_state.appraisal_cycle_active = True
+                st.session_state.appraisal_cycle_name = cycle.get('cycle_name', '2026 Half-Year Appraisal')
+                st.session_state.appraisal_start = cycle.get('start_date', '2026-06-01')
+                st.session_state.appraisal_end = cycle.get('end_date', '2026-12-31')
+                st.session_state.appraisal_locked = cycle.get('is_locked', False)
+                return True
+            else:
+                st.session_state.appraisal_cycle_active = False
+                return False
+        except:
+            return False
+    
+    def save_appraisal_cycle_to_db():
+        try:
+            existing = db._get("appraisal_cycles")
+            if existing:
+                for c in existing: db._patch("appraisal_cycles", {"is_active": False}, {"id": c['id']})
+            db._post("appraisal_cycles", {
+                "cycle_name": st.session_state.appraisal_cycle_name,
+                "start_date": st.session_state.appraisal_start,
+                "end_date": st.session_state.appraisal_end,
+                "is_active": True,
+                "is_locked": st.session_state.appraisal_locked,
+                "activated_by": user_name,
+                "activated_at": now_wat.strftime('%Y-%m-%d %H:%M WAT')
+            })
+            return True
+        except:
+            return False
+    
+    # Initialize session state
+    if 'appraisal_cycle_active' not in st.session_state: st.session_state.appraisal_cycle_active = False
+    if 'appraisal_cycle_name' not in st.session_state: st.session_state.appraisal_cycle_name = "2026 Half-Year Appraisal"
+    if 'appraisal_start' not in st.session_state: st.session_state.appraisal_start = "2026-06-01"
+    if 'appraisal_end' not in st.session_state: st.session_state.appraisal_end = "2026-12-31"
+    if 'appraisal_locked' not in st.session_state: st.session_state.appraisal_locked = False
+    
+    if 'cycle_loaded_from_db' not in st.session_state:
+        load_appraisal_cycle_from_db()
+        st.session_state.cycle_loaded_from_db = True
+    
+    if 'self_assessments' not in st.session_state: st.session_state.self_assessments = {}
+    if 'audit_trail' not in st.session_state: st.session_state.audit_trail = []
+    if 'exceptional_achievements' not in st.session_state: st.session_state.exceptional_achievements = {}
+    if 'editing_kpi' not in st.session_state: st.session_state.editing_kpi = None
+    if 'dept_expanded' not in st.session_state: st.session_state.dept_expanded = {}
+    if 'subsidiary_expanded' not in st.session_state: st.session_state.subsidiary_expanded = {}
+    if 'team_lead_reviews' not in st.session_state: st.session_state.team_lead_reviews = {}
+    
+    # Load appraisals from DB
     try:
         all_appraisals = db.get_all_appraisals()
         for a in all_appraisals:
-            if a['user_name'] not in st.session_state.self_assessments or st.session_state.self_assessments[a['user_name']].get('status') != a.get('status'):
-                st.session_state.self_assessments[a['user_name']] = {
-                'scores': a.get('scores', {}),
-                'comments': a.get('comments', ''),
-                'pillar_comments': a.get('pillar_comments', {}),
-                'date': a.get('submitted_date', ''),
-                'status': a.get('status', 'Submitted'),
-                'department': a.get('department', ''),
-                'email': a.get('user_email', ''),
-                'hod_scores': a.get('hod_scores'),
-                'hod_comments': a.get('hod_comments'),
-                'hod_pillar_comments': a.get('hod_pillar_comments'),
-                'acceptance': a.get('acceptance'),
-                'sr_decision': a.get('sr_decision')
+            st.session_state.self_assessments[a['user_name']] = {
+                'scores': a.get('scores', {}), 'comments': a.get('comments', ''),
+                'pillar_comments': a.get('pillar_comments', {}), 'date': a.get('submitted_date', ''),
+                'status': a.get('status', 'Submitted'), 'department': a.get('department', ''),
+                'email': a.get('user_email', ''), 'hod_scores': a.get('hod_scores'),
+                'hod_comments': a.get('hod_comments'), 'hod_pillar_comments': a.get('hod_pillar_comments'),
+                'acceptance': a.get('acceptance'), 'sr_decision': a.get('sr_decision'),
+                'rejection_comment': a.get('rejection_comment', ''), 'rejection_docs': a.get('rejection_docs', '[]'),
+                'reviewer_type': a.get('reviewer_type', 'HOD'),
+                'tl_scores': a.get('tl_scores'), 'tl_comments': a.get('tl_comments'),
             }
-    except:
-        pass
-    if 'kpi_history' not in st.session_state:
-        st.session_state.kpi_history = []
-    if 'confirm_submit' not in st.session_state:
-        st.session_state.confirm_submit = False
-    if 'audit_trail' not in st.session_state:
-        st.session_state.audit_trail = []
-        try:
-            db_audit = db.get_audit_trail()
-            for a in db_audit:
-                st.session_state.audit_trail.append({
-                    'action': a.get('action', ''), 'details': a.get('details', ''),
-                    'user': a.get('user_name', ''), 'timestamp': a.get('timestamp_text', '')
-                })
-        except:
-            pass
+    except: pass
     
+    # Load appraisal history for accepted/completed
+    try:
+        appraisal_history = db.get_appraisal_history()
+        if appraisal_history:
+            for h in appraisal_history:
+                uname = h.get('user_name', '')
+                if uname and uname not in st.session_state.self_assessments:
+                    st.session_state.self_assessments[uname] = {
+                        'scores': h.get('scores', {}), 'comments': h.get('comments', ''),
+                        'status': 'Completed', 'acceptance': 'Accepted',
+                        'hod_scores': h.get('hod_scores'), 'hod_comments': h.get('hod_comments', ''),
+                        'date': h.get('completed_date', ''),
+                    }
+    except: pass
+    
+    if not st.session_state.audit_trail:
+        try:
+            for a in (db.get_audit_trail() or []):
+                st.session_state.audit_trail.append({'action': a.get('action', ''), 'details': a.get('details', ''), 'user': a.get('user_name', ''), 'timestamp': a.get('timestamp_text', '')})
+        except: pass
+    
+    # ============================================================
+    # HELPER FUNCTIONS
+    # ============================================================
     def log_audit(action, details):
         entry = {'action': action, 'details': details, 'user': user_name, 'timestamp': now_wat.strftime('%Y-%m-%d %H:%M WAT')}
         st.session_state.audit_trail.append(entry)
-        try:
-            db.save_audit(action, details, user_name, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-        except:
-            pass
-    
-    performance_data = {}
-    try:
-        db_perf = db.get_performance_data()
-        if not db_perf.empty:
-            for _, row in db_perf.iterrows():
-                dept = row['department']
-                pillar = row['pillar_name']
-                if dept not in performance_data:
-                    performance_data[dept] = {}
-                kpi_list = json.loads(row['kpi_data']) if row['kpi_data'] else []
-                performance_data[dept][pillar] = {
-                    'weight': row['weight'], 'progress': row['progress'],
-                    'status': row['status'], 'deadline': row['deadline'], 'kpis': kpi_list
-                }
-    except:
-        pass
-    
-    for dept in all_depts:
-        if dept not in performance_data:
-            performance_data[dept] = {}
-        for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', 
-                       '3. Asset Reliability & Digitalization', '4. People & Culture']:
-            if pillar not in performance_data[dept]:
-                performance_data[dept][pillar] = {
-                    'weight': 0, 'progress': 0, 'status': 'Not Started',
-                    'deadline': '2026-12-31', 'kpis': []
-                }
+        try: db.save_audit(action, details, user_name, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+        except: pass
     
     def get_kpi_status(progress):
         if progress >= 85: return 'On Track', "#38a169"
         elif progress >= 65: return 'Near Target', "#d69e2e"
         else: return 'At Risk', "#CC0000"
-
-    import re
+    
     def natural_sort_key(item):
-        key = item[0]
+        key = item[0] if isinstance(item, tuple) else str(item)
         parts = re.split(r'(\d+)', key)
         return [int(p) if p.isdigit() else p for p in parts]
     
-    # Appraisal Cycle Status
-    if st.session_state.get('appraisal_cycle_active'):
+    @st.cache_data(ttl=120)
+    def get_all_perf_cached(): 
+        try: return db.get_performance_data()
+        except: return pd.DataFrame()
+    
+    @st.cache_data(ttl=300)
+    def get_all_emp_cached(): 
+        try: return db.get_all_employees()
+        except: return pd.DataFrame()
+    
+    def get_user_perf(): 
+        try: return db.get_performance_data(user_name)
+        except: return pd.DataFrame()
+    
+    def load_user_pillar_data():
+        user_perf = get_user_perf()
+        pillar_data = {}
+        for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+            pillar_data[pillar] = {'weight': 0, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': [], 'submission_status': 'Draft'}
+        if not user_perf.empty:
+            for _, row in user_perf.iterrows():
+                p_name = row.get('pillar_name', '')
+                if p_name in pillar_data:
+                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                    pillar_data[p_name] = {'weight': row.get('weight', 25), 'progress': row.get('progress', 0), 'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'), 'kpis': kpi_list, 'submission_status': row.get('submission_status', 'Draft')}
+        return pillar_data
+    
+    # Employee lookup maps
+    employees_df = get_all_emp_cached()
+    emp_dept_map, emp_subsidiary_map, emp_email_map, emp_role_map = {}, {}, {}, {}
+    
+    if not employees_df.empty:
+        for _, emp in employees_df.iterrows():
+            first = str(emp.get('first_name', '')).strip()
+            last = str(emp.get('last_name', '')).strip()
+            full_name = f"{first} {last}".strip()
+            emp_id = str(emp.get('employee_id', '')).strip()
+            dept = emp.get('department', 'General')
+            sub = emp.get('subsidiary', '')
+            email_addr = emp.get('email', '')
+            role = str(emp.get('role', 'Team Member'))
+            
+            for key in [full_name, first, emp_id]:
+                if key:
+                    emp_dept_map[key] = dept
+                    emp_subsidiary_map[key] = sub
+                    emp_email_map[key] = email_addr
+                    emp_role_map[key] = role
+    
+    def get_employee_dept(name):
+        clean = ' '.join(str(name).split())
+        return emp_dept_map.get(clean, emp_dept_map.get(clean.split()[0] if ' ' in clean else clean, 'General'))
+    
+    def get_employee_subsidiary(name):
+        clean = ' '.join(str(name).split())
+        return emp_subsidiary_map.get(clean, emp_subsidiary_map.get(clean.split()[0] if ' ' in clean else clean, ''))
+    
+    def get_employee_email(name):
+        clean = ' '.join(str(name).split())
+        return emp_email_map.get(clean, emp_email_map.get(clean.split()[0] if ' ' in clean else clean, ''))
+    
+    def find_hod_email_for_dept(dept):
+        if not employees_df.empty:
+            hod_rows = employees_df[(employees_df['department'] == dept) & (employees_df['role'].isin(['HOD', 'Admin', 'HR Director']))]
+            if not hod_rows.empty: return hod_rows.iloc[0].get('email', '')
+        return ''
+    
+    # ============================================================
+    # HEADER & CYCLE STATUS
+    # ============================================================
+    st.markdown("""<div class="glass-card" style="text-align:center;margin-bottom:1.5rem;"><h1 style="margin:0;color:#1a1a1a;">📈 Performance & Appraisal Engine</h1><p style="color:#888;margin:0.5rem 0 0 0;">Fortune 500 Grade | KPI Management | Self-Assessment | Team Lead Review | HOD Review | Appraisal Committee | Certificates</p></div>""", unsafe_allow_html=True)
+    
+    if st.session_state.appraisal_cycle_active:
         try:
             end_date = datetime.strptime(st.session_state.appraisal_end, '%Y-%m-%d')
             days_left = (end_date - datetime.now()).days
-            
-            # Check if user has approved KPIs
-            user_kpis = db.get_performance_data(user_name)
-            has_approved_kpis = False
-            if not user_kpis.empty:
-                for _, row in user_kpis.iterrows():
-                    if row.get('submission_status') == 'Approved':
-                        has_approved_kpis = True
-                        break
-            
-            if has_approved_kpis:
-                if days_left > 0:
-                    color = "#38a169" if days_left > 14 else "#d69e2e" if days_left > 7 else "#CC0000"
-                    st.markdown(f"""
-                    <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {color};">
-                        <strong>📊 Appraisal Active: {st.session_state.appraisal_cycle_name}</strong>
-                        <span style="float:right;color:{color};font-weight:700;">⏰ {days_left} day{'s' if days_left > 1 else ''} remaining</span>
-                        <br><small style="color:#38a169;">✅ Your KPIs are approved — you're ready for self-assessment!</small>
-                    </div>
-                    """, unsafe_allow_html=True)
-                elif days_left == 0:
-                    st.warning(f"🚨 Appraisal deadline is TODAY! Submit your self-assessment now.")
-                else:
-                    st.error(f"⚠️ Appraisal cycle ended on {st.session_state.appraisal_end}")
+            user_perf = get_user_perf()
+            has_approved = any(row.get('submission_status') == 'Approved' for _, row in user_perf.iterrows()) if not user_perf.empty else False
+            if has_approved:
+                color = "#38a169" if days_left > 14 else "#d69e2e" if days_left > 7 else "#CC0000"
+                st.markdown(f"""<div class="glass-card" style="border-left:4px solid {color};padding:0.8rem 1rem;"><strong>📊 Appraisal Active: {st.session_state.appraisal_cycle_name}</strong><span style="float:right;color:{color};font-weight:700;">⏰ {days_left} day{'s' if days_left > 1 else ''} remaining</span><br><small style="color:#38a169;">✅ Your KPIs are approved — ready for self-assessment!</small></div>""", unsafe_allow_html=True)
             else:
-                st.warning(f"⚠️ Appraisal cycle is active, but your KPIs have not been approved by your HOD yet. Please complete KPI submission and HOD approval first.")
-        except:
-            pass
+                st.warning("⚠️ Appraisal cycle active, but your KPIs haven't been approved yet.")
+        except: pass
     else:
-        st.info("📊 No active appraisal cycle. HR will notify you when the next cycle begins.")
+        st.info("📊 No active appraisal cycle. HR will activate it when ready.")
     
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", "👔 HOD Review", "🌟 Exceptional Achievements", "📊 Dashboard"
+    # ============================================================
+    # 9 TABS (Added Appraisal Committee)
+    # ============================================================
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+        "🎯 Strategic Pillars", "✏️ My KPIs", "📝 Self-Assessment", 
+        "👔 HOD Review", "👥 Team Lead Review", "🌟 Exceptional Achievements",
+        "⚙️ Appraisal Settings", "📊 Dashboard", "🏛️ Appraisal Committee"
     ])
     
-    # ============ TAB 1: STRATEGIC PILLARS ============
+    # ============================================================
+    # TAB 1: STRATEGIC PILLARS
+    # ============================================================
     with tab1:
-        st.subheader("🎯 My Strategic Pillars")
+        st.markdown('<div class="glass-card"><h3>🎯 My Strategic Pillars</h3></div>', unsafe_allow_html=True)
+        pillar_data = load_user_pillar_data()
+        overall_status = 'Draft'
+        statuses = [p['submission_status'] for p in pillar_data.values()]
+        if 'Submitted' in statuses: overall_status = 'Submitted'
+        if 'Approved' in statuses and 'Submitted' not in statuses: overall_status = 'Approved'
         
-        # Reload KPIs from database for current user
-        existing_data = db.get_performance_data(user_name)
-        if not existing_data.empty:
-            for _, row in existing_data.iterrows():
-                p_name = row.get('pillar_name', '')
-                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                if user_name not in performance_data:
-                    performance_data[user_name] = {}
-                performance_data[user_name][p_name] = {
-                    'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
-                    'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
-                    'kpis': kpi_list,
-                    'submission_status': row.get('submission_status', 'Draft')
-                }
-        
-        # Load KPI data for THIS USER
-        if user_name not in performance_data:
-            performance_data[user_name] = {}
-            for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', 
-                           '3. Asset Reliability & Digitalization', '4. People & Culture']:
-                performance_data[user_name][pillar] = {
-                    'weight': 0, 'progress': 0, 'status': 'Not Started',
-                    'deadline': '2026-12-31', 'kpis': []
-                }
-        
-        # Cycle filter
-        available_cycles = set()
-        for p_data in performance_data.get(user_name, {}).values():
-            for kpi in p_data.get('kpis', []):
-                if kpi.get('cycle'):
-                    available_cycles.add(kpi['cycle'])
-        cycle_list = sorted(list(available_cycles)) if available_cycles else ['Half-Year Appraisal']
-        filter_cycle = st.selectbox("📅 Filter by Cycle", ['All Cycles'] + cycle_list, key="filter_cycle_tab1")
-        
-        user_pillar_data = performance_data[user_name]
-        
-        # Admin can view all departments for comparison
-        if is_admin:
-            st.markdown("""<div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #CC0000;"><strong>🔐 Admin Console</strong> — View any department's KPIs</div>""", unsafe_allow_html=True)
-            view_type = st.radio("View", ["My KPIs", "Department Overview"], horizontal=True)
-            if view_type == "Department Overview":
-                selected_dept = st.selectbox("🏢 Select Department", all_depts)
-                if selected_dept in performance_data:
-                    dept_data = performance_data[selected_dept]
-                    st.markdown(f"### 📊 {selected_dept} — Department Scorecard")
-                else:
-                    dept_data = {}
-                    st.info("No KPIs set for this department yet.")
-            else:
-                dept_data = user_pillar_data
-                selected_dept = user_dept
-                st.markdown(f"### 📊 My Strategic Pillars — {user_name}")
-        else:
-            dept_data = user_pillar_data
-            selected_dept = user_dept
-            st.markdown(f"### 📊 My Strategic Pillars")
-        
-        # Calculate scores
-        total_weighted = sum(p['progress'] * p['weight'] / 100 for p in dept_data.values()) if dept_data else 0
-        on_track = sum(1 for p in dept_data.values() if p['status'] in ['On Track', 'Exceeding'])
-        at_risk = sum(1 for p in dept_data.values() if p['status'] == 'At Risk')
-        completed = sum(1 for p in dept_data.values() if p['status'] == 'Completed')
-        
+        total_weighted = sum(p['progress'] * p['weight'] / 100 for p in pillar_data.values())
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Overall Score", f"{total_weighted:.1f}%")
-        c2.metric("On Track", on_track)
-        c3.metric("At Risk", at_risk)
-        c4.metric("Completed", completed)
+        with c1: st.markdown(f'<div class="metric-mini"><div class="label">Overall Score</div><div class="value">{total_weighted:.1f}%</div></div>', unsafe_allow_html=True)
+        with c2: st.markdown(f'<div class="metric-mini"><div class="label">On Track</div><div class="value" style="color:#38a169;">{sum(1 for p in pillar_data.values() if p["status"] in ["On Track","Exceeding"])}</div></div>', unsafe_allow_html=True)
+        with c3: st.markdown(f'<div class="metric-mini"><div class="label">At Risk</div><div class="value" style="color:#CC0000;">{sum(1 for p in pillar_data.values() if p["status"]=="At Risk")}</div></div>', unsafe_allow_html=True)
+        with c4: st.markdown(f'<div class="metric-mini"><div class="label">KPI Status</div><div class="value" style="font-size:1rem;">{overall_status.upper()}</div></div>', unsafe_allow_html=True)
         
-        # KPI Submission Status
-        user_kpi_status = "Draft"
-        if user_name in performance_data:
-            for p in performance_data[user_name].values():
-                if p.get('submission_status') == 'Submitted':
-                    user_kpi_status = "Submitted"
-                    break
-                elif p.get('submission_status') == 'Approved':
-                    user_kpi_status = "Approved"
+        if overall_status == 'Draft' and any(len(p['kpis']) > 0 for p in pillar_data.values()):
+            if st.button("🚀 Final Submit All KPIs", use_container_width=True, type="primary"):
+                all_rows = db._get("performance_data", {"user_name": user_name})
+                for row in (all_rows or []): db._patch("performance_data", {"submission_status": "Submitted"}, {"id": row['id']})
+                send_kpi_notification('submitted_to_employee', user_name, user_email)
+                hod_email = find_hod_email_for_dept(user_dept)
+                if hod_email: send_kpi_notification('submitted_to_hod', user_name, '', hod_email)
+                log_audit("KPIs Submitted", f"All KPIs submitted by {user_name}")
+                st.cache_data.clear()
+                st.success("✅ All KPIs submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         
-        status_colors = {'Draft': '#a0aec0', 'Submitted': '#d69e2e', 'Approved': '#38a169', 'Sealed': '#1a1a1a'}
-        status_badge = status_colors.get(user_kpi_status, '#a0aec0')
-        
-        st.markdown(f"""
-        <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid {status_badge};display:flex;justify-content:space-between;align-items:center;">
-            <div>
-                <strong>KPI Status:</strong> <span style="color:{status_badge};font-weight:700;">{user_kpi_status.upper()}</span>
-                <br><small>{'Your KPIs are in draft mode. Edit and add as needed.' if user_kpi_status == 'Draft' else 'KPIs submitted and locked for review.' if user_kpi_status == 'Submitted' else 'KPIs approved and sealed for appraisal.'}</small>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Final Submit Button (only in Draft mode)
-        if user_kpi_status == 'Draft':
-            has_kpis = any(len(p.get('kpis', [])) > 0 for p in performance_data.get(user_name, {}).values())
-            if has_kpis:
-                with st.form("final_submit_form"):
-                    st.warning("⚠️ Submit all KPIs? After submission, you CANNOT edit or delete them.")
-                    submitted = st.form_submit_button("🚀 Final Submit All KPIs", use_container_width=True, type="primary")
-                    if submitted:
-                        all_rows = db._get("performance_data", {"user_name": user_name})
-                        if all_rows:
-                            for row in all_rows:
-                                db._patch("performance_data", {"submission_status": "Submitted"}, {"id": row['id']})
-                        emp_email = st.session_state.user.get('email', '')
-                        send_kpi_notification('submitted_to_employee', user_name, emp_email)
-                        log_audit_action("KPIs Submitted", f"All KPIs submitted by {user_name}", "KPI")
-                        st.success("✅ All KPIs submitted! HOD will be notified.")
-                        st.balloons()
-                        time.sleep(2)
-                        st.rerun()
-        
-        # Department comparison for admins
-        if is_admin:
-            st.markdown("---")
-            st.markdown("### 🏢 Department Comparison")
-            comp_data = []
-            for d in all_depts:
-                if d in performance_data:
-                    dd = performance_data[d]
-                    comp_data.append({
-                        'Department': d,
-                        'Occupancy & Revenue': dd.get('1. Occupancy & Revenue Growth', {}).get('progress', 0),
-                        'Process Simplification': dd.get('2. Process Simplification', {}).get('progress', 0),
-                        'Asset Reliability': dd.get('3. Asset Reliability & Digitalization', {}).get('progress', 0),
-                        'People & Culture': dd.get('4. People & Culture', {}).get('progress', 0)
-                    })
-            if comp_data:
-                df_comp = pd.DataFrame(comp_data)
-                fig = px.bar(df_comp.melt(id_vars=['Department'], var_name='Pillar', value_name='Progress'),
-                            x='Department', y='Progress', color='Pillar', barmode='group',
-                            color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#aaaaaa'])
-                fig.update_layout(height=350)
-                st.plotly_chart(fig, use_container_width=True)
-        
-        st.markdown("---")
-        pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
-        for pillar_name in pillar_order:
-            if pillar_name in dept_data:
-                pillar_data = dept_data[pillar_name]
-                status_text, color = get_kpi_status(pillar_data['progress'])
-                if pillar_data['status'] in ['Exceeding', 'Completed']:
-                    color = "#38a169"
-            
-            with st.expander(f"{pillar_name} | {pillar_data['progress']}% | {pillar_data['status']}", expanded=False):
-                st.progress(pillar_data['progress'] / 100)
-                
-                if is_admin:
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        new_progress = st.slider("Progress %", 0, 100, int(pillar_data['progress']), key=f"prog_{selected_dept}_{pillar_name}")
-                    with c2:
-                        new_status = st.selectbox("Status", ['On Track', 'In Progress', 'At Risk', 'Exceeding', 'Completed'], index=0, key=f"stat_{selected_dept}_{pillar_name}")
-                    with c3:
-                        new_weight = st.slider("Weight %", 0, 100, int(pillar_data['weight']), key=f"wgt_{selected_dept}_{pillar_name}")
-                    
-                    if st.button(f"💾 Update", key=f"upd_{selected_dept}_{pillar_name}"):
-                        performance_data[selected_dept][pillar_name]['progress'] = new_progress
-                        performance_data[selected_dept][pillar_name]['status'] = new_status
-                        performance_data[selected_dept][pillar_name]['weight'] = new_weight
-                        try:
-                            db.save_performance_data(selected_dept, pillar_name, new_weight, new_progress, new_status, pillar_data['deadline'], pillar_data['kpis'])
-                        except:
-                            pass
-                        st.rerun()
-                
-                if pillar_data['kpis']:
-                    is_locked = pillar_data.get('submission_status', 'Draft') != 'Draft'
-                    
-                    filtered_kpis = pillar_data['kpis']
-                    if filter_cycle != 'All Cycles':
-                        filtered_kpis = [k for k in filtered_kpis if k.get('cycle') == filter_cycle]
-                    
-                    for kpi_index, kpi in enumerate(filtered_kpis):
-                        try:
-                            kpi_progress = int(float(str(kpi.get('current', '0')).replace('%', '')))
-                        except:
-                            kpi_progress = 0
-                        kpi_status, kpi_color = get_kpi_status(kpi_progress)
-                        
-                        cycle_badge = kpi.get('cycle', '')
-                        cycle_label = f" [{cycle_badge}]" if cycle_badge else ""
-                        with st.expander(f"{kpi['kpi'][:60]}{cycle_label} — {kpi_progress}% — {kpi_status}", expanded=False):
-                            if not is_locked:
-                                col1, col2, col3 = st.columns(3)
-                                with col1:
-                                    edit_title = st.text_input("Title", value=kpi['kpi'], key=f"edit_title_{selected_dept}_{pillar_name}_{kpi_index}")
-                                    edit_target = st.text_input("Target", value=kpi.get('target', ''), key=f"edit_target_{selected_dept}_{pillar_name}_{kpi_index}")
-                                with col2:
-                                    edit_current = st.text_input("Current Progress", value=kpi.get('current', '0'), key=f"edit_current_{selected_dept}_{pillar_name}_{kpi_index}")
-                                    edit_weight = st.number_input("Weight (%)", value=int(kpi.get('weight', 0)), min_value=0, max_value=100, key=f"edit_weight_{selected_dept}_{pillar_name}_{kpi_index}")
-                                with col3:
-                                    edit_deadline = st.date_input("Deadline", value=datetime.strptime(kpi.get('deadline', '2026-12-31'), '%Y-%m-%d') if kpi.get('deadline') else datetime.now(), key=f"edit_deadline_{selected_dept}_{pillar_name}_{kpi_index}")
-                                
-                                col_btn1, col_btn2, col_btn3 = st.columns(3)
-                                with col_btn1:
-                                    if st.button("💾 Save", key=f"save_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
-                                        pillar_data['kpis'][kpi_index] = {
-                                            'kpi': edit_title, 'target': edit_target, 'current': edit_current,
-                                            'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'), 'owner': kpi.get('owner', user_name),
-                                            'weight': edit_weight
-                                        }
-                                        # Auto-calculate pillar weight
-                                        total_weight = sum(k.get('weight', 0) for k in pillar_data['kpis'])
-                                        if total_weight > 0:
-                                            pillar_data['weight'] = total_weight
-                                        
-                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'], pillar_data.get('submission_status', 'Draft'))
-                                        st.success("✅ KPI saved!")
-                                        st.rerun()
-                                with col_btn2:
-                                    if st.button("🗑️ Delete", key=f"del_kpi_{selected_dept}_{pillar_name}_{kpi_index}"):
-                                        del pillar_data['kpis'][kpi_index]
-                                        db.save_performance_data(user_name, pillar_name, pillar_data['weight'], pillar_data['progress'], pillar_data['status'], pillar_data['deadline'], pillar_data['kpis'])
-                                        st.success("✅ KPI deleted!")
-                                        st.rerun()
-                                with col_btn3:
-                                    st.markdown(f"<small style='color:{kpi_color};'>{kpi_status}</small>", unsafe_allow_html=True)
-                            else:
-                                st.info("🔒 KPIs are locked after submission")
-                                st.markdown(f"**Target:** {kpi.get('target', 'N/A')}")
-                                st.markdown(f"**Current:** {kpi.get('current', '0')}")
-                                st.markdown(f"**Deadline:** {kpi.get('deadline', 'N/A')}")
-                                st.markdown(f"<small style='color:{kpi_color};'>{kpi_status}</small>", unsafe_allow_html=True)
+        for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+            pd_data = pillar_data[pillar_name]
+            status_text, color = get_kpi_status(pd_data['progress'])
+            is_locked = pd_data['submission_status'] != 'Draft'
+            with st.expander(f"📌 {pillar_name} | {pd_data['progress']}% | {pd_data['status']}", expanded=not is_locked):
+                st.progress(pd_data['progress'] / 100)
+                if pd_data['kpis']:
+                    for i, kpi in enumerate(pd_data['kpis']):
+                        try: kpi_prog = int(float(str(kpi.get('current', '0')).replace('%', '')))
+                        except: kpi_prog = 0
+                        kpi_stat, kpi_col = get_kpi_status(kpi_prog)
+                        st.markdown(f"""<div class="kpi-card" style="border-left-color:{kpi_col};"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small><br><small style="color:{kpi_col};">● {kpi_stat}</small></div>""", unsafe_allow_html=True)
+                        if not is_locked:
+                            c1, c2 = st.columns([1, 1])
+                            with c1:
+                                if st.button("✏️ Edit", key=f"qedit_{pillar_name}_{i}"): st.session_state.editing_kpi = {'pillar': pillar_name, 'index': i, 'data': kpi}; st.rerun()
+                            with c2:
+                                if st.button("🗑️ Delete", key=f"qdel_{pillar_name}_{i}"):
+                                    pd_data['kpis'].pop(i)
+                                    db.save_performance_data(user_name, pillar_name, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
+                                    st.cache_data.clear(); st.success("Deleted!"); st.rerun()
+                else: st.info("No KPIs in this pillar yet.")
     
-    # ============ TAB 2: MY KPIs ============
+    # ============================================================
+    # TAB 2: MY KPIs
+    # ============================================================
     with tab2:
-        st.subheader("✏️ My KPIs & Objectives")
-        st.info("Set unlimited KPIs aligned to the 4 strategic pillars. All fields are required.")
+        st.markdown('<div class="glass-card"><h3>✏️ My KPIs & Objectives</h3></div>', unsafe_allow_html=True)
+        st.info("Set unlimited KPIs aligned to the 4 strategic pillars.")
+        pillar_data = load_user_pillar_data()
+        overall_status = 'Draft'
+        statuses = [p['submission_status'] for p in pillar_data.values()]
+        if 'Submitted' in statuses: overall_status = 'Submitted'
+        if 'Approved' in statuses and 'Submitted' not in statuses: overall_status = 'Approved'
         
-        if is_hod and user_dept in performance_data:
-            with st.expander("📋 One-Click Copy KPIs to Team"):
-                copy_pillar = st.selectbox("Select Pillar to Copy", ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture'], key="copy_pillar")
-                if st.button("📤 Copy KPIs to Team"):
-                    if performance_data[user_dept][copy_pillar]['kpis']:
-                        count = len(performance_data[user_dept][copy_pillar]['kpis'])
-                        st.success(f"✅ {count} KPIs ready to be assigned to team members!")
-                    else:
-                        st.warning("No KPIs in this pillar to copy.")
-        
-        with st.form("my_kpi_form"):
-            st.markdown("### Add New KPI")
-            
-            # Appraisal Cycle Selector
-            cycle_options = ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal']
-            selected_cycle = st.selectbox("Select Appraisal Cycle *", cycle_options, 
-                index=0 if st.session_state.get('appraisal_cycle_active') and 'Half-Year' in st.session_state.get('appraisal_cycle_name', '') else 0)
-            
-            edit_mode = st.session_state.get('edit_kpi', None)
-            
-            edit_mode = st.session_state.get('edit_kpi', None)
-            if edit_mode:
-                st.info(f"✏️ Editing KPI: {edit_mode['title'][:50]}")
-            
-            c1, c2 = st.columns(2)
-            with c1:
-                default_pillar = edit_mode['pillar'] if edit_mode else '1. Occupancy & Revenue Growth'
-                pillar_list = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
-                pillar_choice = st.selectbox("Strategic Pillar *", pillar_list, index=pillar_list.index(default_pillar))
-                kpi_title = st.text_input("KPI Title *", value=edit_mode['title'] if edit_mode else "", placeholder="What will you achieve?")
-                kpi_target = st.text_input("Target *", value=edit_mode['target'] if edit_mode else "", placeholder="e.g., 15% increase")
-            with c2:
-                kpi_weight = st.slider("Weight (%) *", 0, 100, 25)
-                kpi_deadline = st.date_input("Target Deadline *", value=datetime.strptime(edit_mode['deadline'], '%Y-%m-%d') if edit_mode and edit_mode.get('deadline') else datetime.now())
-                kpi_current = st.text_input("Current Progress *", value=edit_mode['current'] if edit_mode else "", placeholder="e.g., 10%")
-            
-            kpi_description = st.text_area("Description / Key Results *", placeholder="How will you achieve this KPI?")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                submit_continue = st.form_submit_button("💾 Save & Add Another", use_container_width=True)
-            with col2:
-                submit_final = st.form_submit_button("✅ Submit KPI", use_container_width=True)
-            
-            if submit_continue or submit_final:
-                if not kpi_title or not kpi_target or not kpi_current or not kpi_description:
-                    st.error("❌ All fields are required!")
-                else:
-                    new_kpi = {
-                        'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current,
-                        'status': 'In Progress', 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'owner': user_name,
-                        'cycle': selected_cycle
-                    }
-                    
-                    if edit_mode:
-                        performance_data[user_dept][pillar_choice]['kpis'][edit_mode['index']] = new_kpi
-                        del st.session_state['edit_kpi']
-                        st.success("✅ KPI updated!")
-                        log_audit_action("KPI Updated", f"KPI '{kpi_title}' updated in {pillar_choice}", "KPI")
-                    else:
-                        if user_name not in performance_data:
-                            performance_data[user_name] = {}
-                            existing_data = db.get_performance_data(user_name)
-                            if not existing_data.empty:
-                                for _, row in existing_data.iterrows():
-                                    p_name = row.get('pillar_name', '')
-                                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                    if p_name not in performance_data[user_name]:
-                                        performance_data[user_name][p_name] = {
-                                            'weight': row.get('weight', 25), 'progress': row.get('progress', 0),
-                                            'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'),
-                                            'kpis': kpi_list
-                                        }
-                        if pillar_choice not in performance_data[user_name]:
-                            performance_data[user_name][pillar_choice] = {'weight': 0, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': []}
-                        performance_data[user_name][pillar_choice]['kpis'].append(new_kpi)
-                        st.success("✅ KPI saved!")
-                        log_audit_action("KPI Added", f"KPI '{kpi_title}' added to {pillar_choice}", "KPI")
-                    
-                    # Auto-calculate pillar weight from KPI weights
-                    total_weight = sum(kpi.get('weight', 0) for kpi in performance_data[user_name][pillar_choice]['kpis'])
-                    if total_weight > 0:
-                        performance_data[user_name][pillar_choice]['weight'] = total_weight
-                    
-                    pd_data = performance_data[user_name][pillar_choice]
-                    try:
-                        db.save_performance_data(user_name, pillar_choice, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
-                    except:
-                        pass
-                    
-                    if submit_continue:
-                        st.rerun()
-                    if submit_final:
-                        st.session_state.confirm_submit = True
-                        st.rerun()
-        
-        if st.session_state.confirm_submit:
-            st.markdown("---")
-            st.warning("### ⚠️ Confirm Final Submission")
-            st.markdown("Your KPI has been saved. It will be submitted for appraisal review.")
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("✅ Confirm & Finish", use_container_width=True):
-                    st.session_state.confirm_submit = False
-                    log_audit('KPI Submitted', 'Final KPI submission confirmed')
-                    st.success("✅ KPI submitted successfully!")
-                    st.balloons()
-                    st.rerun()
-            with c2:
-                if st.button("❌ Cancel", use_container_width=True):
-                    st.session_state.confirm_submit = False
-                    st.rerun()
-        
-        try:
-            history_data = db.get_kpi_history()
-            if not is_admin:
-                history_data = [h for h in history_data if h.get('user_name') == user_name]
-        except:
-            history_data = []
-        if history_data:
-            st.markdown("---")
-            with st.expander("📋 KPI History Log"):
-                # Load all employees once for department mapping
-                try:
-                    all_emps = db.get_all_employees()
-                    emp_dept_map = {}
-                    if not all_emps.empty:
-                        for _, e in all_emps.iterrows():
-                            raw_name = f"{str(e['first_name']).strip()} {str(e['last_name']).strip()}"
-                            clean_name = ' '.join(raw_name.split())
-                            emp_dept_map[clean_name] = e.get('department', 'General')
-                except:
-                    emp_dept_map = {}
-                
-                from collections import defaultdict
-                dept_history = defaultdict(list)
-                for h in history_data:
-                    user = h.get('user_name', 'Unknown')
-                    clean_user = ' '.join(str(user).split())
-                    dept = emp_dept_map.get(clean_user, 'General')
-                    dept_history[dept].append(h)
-                
-                for dept in sorted(dept_history.keys()):
-                    st.markdown(f"**🏢 {dept}**")
-                    for h in dept_history[dept][-10:]:
-                        st.markdown(f"- **{h.get('created_at', 'N/A')}**: {h.get('action', '')} — {h.get('kpi_name', '')[:50]} by {h.get('user_name', '')}")
+        if overall_status != 'Draft':
+            st.warning(f"🔒 KPIs are locked ({overall_status}). Contact your HOD if changes are needed.")
         else:
-            st.info("No KPI history yet.")
-    
-    # ============ TAB 3: SELF-ASSESSMENT (UPGRADED) ============
-    with tab3:
-        st.subheader("📝 Self-Assessment")
-        
-        if st.session_state.appraisal_cycle_active:
-            try:
-                end_date = datetime.strptime(st.session_state.appraisal_end, '%Y-%m-%d')
-                days_left = (end_date - datetime.now()).days
-                if days_left <= 7 and days_left > 0:
-                    st.warning(f"⏰ **Reminder:** Appraisal cycle ends in {days_left} days!")
-                elif days_left <= 0:
-                    st.error("⚠️ Appraisal cycle has ended.")
-            except:
-                pass
-            
-            # KPI Eligibility Check
-            user_kpis = db.get_performance_data(user_name)
-            has_approved_kpis = False
-            if not user_kpis.empty:
-                for _, row in user_kpis.iterrows():
-                    if row.get('submission_status') == 'Approved':
-                        has_approved_kpis = True
-                        break
-            
-            if not has_approved_kpis:
-                st.warning("⚠️ You cannot start self-assessment until your KPIs are approved by your HOD. Go to '✏️ My KPIs' to submit them for review.")
-        
-        if is_admin:
-            with st.expander("⚙️ Appraisal Cycle Settings (Admin)", expanded=False):
-                st.session_state.appraisal_cycle_active = st.checkbox("Activate Appraisal Cycle", value=st.session_state.appraisal_cycle_active)
-                cycle_type_options = ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal']
-                st.session_state.appraisal_cycle_name = st.selectbox("Select Appraisal Cycle", cycle_type_options, 
-                    index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 0)
+            editing = st.session_state.get('editing_kpi')
+            if editing: st.info(f"✏️ Editing KPI: {editing['data'].get('kpi', '')[:60]}")
+            with st.form("kpi_add_form", clear_on_submit=not editing):
                 c1, c2 = st.columns(2)
                 with c1:
-                    start_val = st.session_state.appraisal_start
-                    if isinstance(start_val, str):
-                        start_val = datetime.strptime(start_val, '%Y-%m-%d')
-                    elif hasattr(start_val, 'strftime'):
-                        start_val = start_val
-                    else:
-                        start_val = datetime.now()
-                    st.session_state.appraisal_start = st.date_input("Start Date", value=start_val)
+                    pillar_list = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                    pillar_choice = st.selectbox("Strategic Pillar *", pillar_list, index=pillar_list.index(editing['pillar']) if editing else 0)
+                    kpi_title = st.text_input("KPI Title *", value=editing['data'].get('kpi', '') if editing else "", placeholder="What will you achieve?")
+                    kpi_target = st.text_input("Target *", value=editing['data'].get('target', '') if editing else "", placeholder="e.g., 15% increase")
                 with c2:
-                    end_val = st.session_state.appraisal_end
-                    if isinstance(end_val, str):
-                        end_val = datetime.strptime(end_val, '%Y-%m-%d')
-                    elif hasattr(end_val, 'strftime'):
-                        end_val = end_val
-                    else:
-                        end_val = datetime.now()
-                    st.session_state.appraisal_end = st.date_input("End Date", value=end_val)
-                st.session_state.appraisal_locked = st.checkbox("Lock Scores", value=st.session_state.appraisal_locked)
-                cycle_name = st.session_state.appraisal_cycle_name
+                    kpi_weight = st.number_input("Weight (%)", 0, 100, value=int(editing['data'].get('weight', 25)) if editing else 25)
+                    kpi_deadline = st.date_input("Target Deadline *", value=datetime.strptime(editing['data'].get('deadline', '2026-12-31'), '%Y-%m-%d') if editing and editing['data'].get('deadline') else datetime.now())
+                    kpi_current = st.text_input("Current Progress", value=editing['data'].get('current', '0') if editing else "0", placeholder="e.g., 10%")
+                kpi_cycle = st.selectbox("Appraisal Cycle *", ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal'])
+                c1, c2 = st.columns(2)
+                with c1: save_add = st.form_submit_button("💾 Save & Add Another", use_container_width=True)
+                with c2: save_done = st.form_submit_button("✅ Save & Finish", use_container_width=True)
                 
-                if st.button("💾 Activate Appraisal Cycle", use_container_width=True):
-                    st.session_state.appraisal_start = st.session_state.appraisal_start.strftime('%Y-%m-%d') if hasattr(st.session_state.appraisal_start, 'strftime') else str(st.session_state.appraisal_start)
-                    st.session_state.appraisal_end = st.session_state.appraisal_end.strftime('%Y-%m-%d') if hasattr(st.session_state.appraisal_end, 'strftime') else str(st.session_state.appraisal_end)
-
-                    log_audit('Cycle Activated', f'Appraisal cycle {st.session_state.appraisal_cycle_name} activated')
-
-                    # Persist cycle state (as strings) so all employee sessions see the active cycle.
-                    try:
-                        db.save_cycle_state(
-                            st.session_state.appraisal_cycle_active,
-                            st.session_state.appraisal_cycle_name,
-                            st.session_state.appraisal_start,
-                            st.session_state.appraisal_end,
-                            st.session_state.appraisal_locked)
-                    except Exception:
-                        pass
-
-                    # Only send to employees with approved KPIs for THIS cycle
-
-                    try:
-                        emp_df = db.get_all_employees()
-                        from utils.email_service import EmailService
-                        email_svc = EmailService()
-                        sent = 0
-                        
-                        for _, emp in emp_df.iterrows():
-                            emp_name = f"{emp['first_name']} {emp['last_name']}"
-                            emp_email = emp.get('email', '')
-                            if emp_email and '@' in str(emp_email):
-                                emp_kpis = db.get_performance_data(emp_name)
-                                has_approved_for_cycle = False
-                                if not emp_kpis.empty:
-                                    for _, row in emp_kpis.iterrows():
-                                        if row.get('submission_status') == 'Approved':
-                                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                            for kpi in kpi_list:
-                                                if kpi.get('cycle') == cycle_name:
-                                                    has_approved_for_cycle = True
-                                                    break
-                                        if has_approved_for_cycle:
-                                            break
-                                
-                                if has_approved_for_cycle:
-                                    try:
-                                        email_svc.send_email(emp_email,
-                                            f"📊 Appraisal Cycle Now Open: {st.session_state.appraisal_cycle_name}",
-                                            f"Dear {emp_name},\n\nThe appraisal cycle '{st.session_state.appraisal_cycle_name}' is now active.\n\nPeriod: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}\n\nPlease log in to complete your self-assessment.\n\nhttps://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
-                                        sent += 1
-                                    except:
-                                        pass
-                        
-                        st.success(f"✅ Cycle activated! Email sent to {sent} employees with approved KPIs for this cycle.")
-                    except:
-                        st.success(f"✅ Cycle activated!")
-                    
-                    send_browser_notification("📊 Appraisal Cycle Active!", f"{st.session_state.appraisal_cycle_name} is now open. Submit your self-assessment.")
-                    st.balloons()
-                    st.rerun()
+                if save_add or save_done:
+                    if not kpi_title or not kpi_target: st.error("❌ Title and Target are required!")
+                    else:
+                        new_kpi = {'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current, 'weight': kpi_weight, 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'cycle': kpi_cycle, 'owner': user_name, 'status': 'In Progress'}
+                        if editing: pillar_data[pillar_choice]['kpis'][editing['index']] = new_kpi; st.session_state.editing_kpi = None; log_audit("KPI Updated", f"KPI '{kpi_title}' updated")
+                        else: pillar_data[pillar_choice]['kpis'].append(new_kpi); log_audit("KPI Added", f"KPI '{kpi_title}' added")
+                        total_weight = sum(k.get('weight', 0) for k in pillar_data[pillar_choice]['kpis'])
+                        if total_weight > 0: pillar_data[pillar_choice]['weight'] = total_weight
+                        db.save_performance_data(user_name, pillar_choice, pillar_data[pillar_choice]['weight'], pillar_data[pillar_choice]['progress'], pillar_data[pillar_choice]['status'], pillar_data[pillar_choice]['deadline'], pillar_data[pillar_choice]['kpis'])
+                        st.cache_data.clear(); st.success("✅ KPI saved!")
+                        if save_done: st.rerun()
+                        else: time.sleep(0.5); st.rerun()
+    
+    # ============================================================
+    # TAB 3: SELF-ASSESSMENT
+    # ============================================================
+    with tab3:
+        st.markdown('<div class="glass-card"><h3>📝 Self-Assessment</h3></div>', unsafe_allow_html=True)
         
         if st.session_state.appraisal_cycle_active:
-            st.success(f"🔓 Appraisal Active: {st.session_state.appraisal_cycle_name}")
+            user_perf = get_user_perf()
+            has_approved = not user_perf.empty and any(row.get('submission_status') == 'Approved' for _, row in user_perf.iterrows())
             
-            if st.session_state.appraisal_locked:
-                st.warning("🔒 Scores are locked.")
+            if not has_approved: st.warning("⚠️ Your KPIs must be approved before self-assessment.")
+            elif st.session_state.appraisal_locked: st.warning("🔒 Scores are locked.")
+            elif st.session_state.self_assessments.get(user_name, {}).get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review']: pass
             else:
-                _my_a = st.session_state.self_assessments.get(user_name, {})
-                if _my_a.get('status') == 'Revision Requested':
-                    st.error("🔄 **Your HOD has requested a revision.** Please update and resubmit your self-assessment below.")
-                    if _my_a.get('hod_comments'):
-                        st.info(f"**HOD comments:** {_my_a['hod_comments']}")
-                st.markdown("### Rate Yourself (0-100%)")
-                st.info("Provide justification and attach evidence for each pillar. Evidence files strengthen your assessment.")
-                
-                if user_dept in performance_data:
-                    pillar_evidence = {}
-                    for pillar_name, pillar_data in performance_data[user_dept].items():
-                        if pillar_data['kpis']:
-                            st.markdown(f"**📎 Evidence for {pillar_name}** (Optional — up to 5 files)")
-                            evidence_files = []
-                            ev_cols = st.columns(5)
-                            for j in range(5):
-                                with ev_cols[j]:
-                                    ev_file = st.file_uploader(f"File {j+1}", type=['pdf', 'docx', 'jpg', 'png', 'xlsx'], key=f"pe_{pillar_name}_{j}", label_visibility="collapsed")
-                                    if ev_file:
-                                        evidence_files.append(ev_file)
-                            pillar_evidence[pillar_name] = evidence_files if evidence_files else None
-                    
-                    with st.form("self_assessment_form"):
-                        scores = {}
-                        pillar_comments = {}
-                        
-                        for pillar_name, pillar_data in performance_data[user_dept].items():
-                            if pillar_data['kpis']:
-                                st.markdown(f"### {pillar_name} ({pillar_data['weight']}%)")
-                                for i, kpi in enumerate(pillar_data['kpis']):
+                st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
+                with st.form("self_assessment_form"):
+                    scores, pillar_comments, evidence_files = {}, {}, {}
+                    for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                        pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
+                        if not pillar_rows.empty:
+                            kpi_list = json.loads(pillar_rows.iloc[0].get('kpi_data', '[]')) if pillar_rows.iloc[0].get('kpi_data') else []
+                            if kpi_list:
+                                st.markdown(f"### {pillar_name}")
+                                st.caption("📎 Evidence (Optional — up to 5 files)")
+                                ev_cols = st.columns(5); pillar_files = []
+                                for j in range(5):
+                                    with ev_cols[j]:
+                                        ev = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_{pillar_name}_{j}", label_visibility="collapsed")
+                                        if ev: pillar_files.append(ev)
+                                evidence_files[pillar_name] = pillar_files if pillar_files else None
+                                for i, kpi in enumerate(kpi_list):
                                     score_key = f"{pillar_name}_{i}"
-                                    scores[score_key] = st.slider(kpi['kpi'][:60], 0, 100, 50, key=f"sa_{user_name}_{pillar_name}_{i}")
-                                pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", key=f"pc_{pillar_name}")
+                                    col1, col2 = st.columns([3, 1])
+                                    with col1: st.markdown(f"**{kpi.get('kpi', 'KPI')[:80]}**"); st.caption(f"Target: {kpi.get('target', 'N/A')}")
+                                    with col2: scores[score_key] = st.number_input("Score %", 0, 100, 50, 1, key=f"score_{pillar_name}_{i}")
+                                pillar_comments[pillar_name] = st.text_area(f"Justification *", key=f"just_{pillar_name}")
                                 st.markdown("---")
-                        
-                        overall_comments = st.text_area("Overall Comments *", placeholder="Summarize your overall performance...")
-                        
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            submitted = st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True)
-                        
-                        if submitted:
-                            all_comments_filled = all(pillar_comments.values())
-                            if not scores or not overall_comments or not all_comments_filled:
-                                st.error("❌ All scores, pillar justifications, and overall comments are required!")
+                    overall_comments = st.text_area("Overall Comments *")
+                    if st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True, type="primary"):
+                        if not scores: st.error("❌ Please score at least one KPI!")
+                        elif not overall_comments: st.error("❌ Overall comments required!")
+                        else:
+                            empty_just = [k for k, v in pillar_comments.items() if v is not None and not v]
+                            if empty_just: st.error(f"❌ Justification required for: {', '.join(empty_just)}")
                             else:
-                                # Upload evidence files
                                 evidence_urls = {}
-                                for p_name, files in pillar_evidence.items():
+                                for p_name, files in evidence_files.items():
                                     if files:
                                         urls = []
                                         for f in files:
                                             try:
                                                 url = db.upload_file("evidence", f"{user_name}_{p_name}_{f.name}", f.read(), f.type)
-                                                if url:
-                                                    urls.append(url)
-                                            except:
-                                                pass
-                                        if urls:
-                                            evidence_urls[p_name] = urls
-                                
-                                try:
-                                    db.save_appraisal(user_name, user_email, user_dept, 
-                                        st.session_state.appraisal_cycle_name, 'Submitted',
-                                        scores, overall_comments, pillar_comments, None, None, None, None, None,
-                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                                except:
-                                    pass
-                                st.session_state.self_assessments[user_name] = {
-                                    'scores': scores, 'comments': overall_comments,
-                                    'pillar_comments': pillar_comments,
-                                    'evidence_urls': evidence_urls,
-                                    'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
-                                    'status': 'Submitted', 'department': user_dept, 'email': user_email,
-                                    'hod_scores': None, 'hod_comments': None, 'acceptance': None
-                                }
+                                                if url: urls.append(url)
+                                            except: pass
+                                        if urls: evidence_urls[p_name] = urls
+                                try: db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                except: pass
+                                st.session_state.self_assessments[user_name] = {'scores': scores, 'comments': overall_comments, 'pillar_comments': pillar_comments, 'evidence_files': json.dumps(evidence_urls), 'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'), 'status': 'Submitted', 'department': user_dept, 'email': user_email, 'hod_scores': None, 'hod_comments': None, 'acceptance': None}
                                 log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
-                                st.success("✅ Submitted! Saved to database. Awaiting HOD review.")
-                                st.balloons()
-        else:
-            st.info("⏳ Appraisal cycle not active.")
+                                st.success("✅ Submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
+        else: st.info("⏳ No active appraisal cycle.")
         
-        # Show submission status and HOD review
+        # Acceptance/Rejection
         if user_name in st.session_state.self_assessments:
             a = st.session_state.self_assessments[user_name]
-            st.markdown("---")
-            st.markdown("### 📋 Your Submission")
-            st.markdown(f"**Status:** {a['status']} | **Date:** {a['date']}")
+            reviewer_type = a.get('reviewer_type', 'HOD')
+            reviewer_scores = a.get('hod_scores') or a.get('tl_scores')
             
-            if a.get('evidence_urls'):
-                st.markdown("**📎 Evidence Uploaded:**")
-                for p, urls in a['evidence_urls'].items():
-                    st.markdown(f"- {p}: {len(urls)} file(s)")
-            
-            if a.get('hod_scores'):
-                st.success("✅ HOD review complete")
-                if not a.get('acceptance'):
-                    st.markdown("### 🔍 HOD Review Pending Your Acceptance")
-                    st.markdown("#### 📊 Side-by-Side Score Comparison")
+            if a.get('status') == 'Submitted': st.info("📝 Your self-assessment has been submitted and is awaiting review.")
+            elif reviewer_scores and not a.get('acceptance'):
+                st.markdown("---"); st.success(f"✅ {reviewer_type} review complete — awaiting your acceptance")
+                with st.expander("📊 Score Comparison", expanded=True):
                     for score_key, staff_score in sorted(a['scores'].items(), key=natural_sort_key):
-                        hod_score = a['hod_scores'].get(score_key, 'N/A') if a['hod_scores'] else 'N/A'
-                        c1, c2, c3 = st.columns([1, 1, 2])
-                        with c1:
-                            st.markdown(f"**You:** {staff_score}%")
-                        with c2:
-                            st.markdown(f"**HOD:** {hod_score}%")
-                        with c3:
-                            st.markdown(f"*{score_key}*")
+                        r_score = reviewer_scores.get(score_key, 'N/A') if reviewer_scores else 'N/A'
+                        c1, c2 = st.columns(2)
+                        c1.metric("Your Score", f"{staff_score}%"); c2.metric(f"{reviewer_type} Score", f"{r_score}%" if r_score != 'N/A' else 'N/A')
+                
+                st.markdown("---"); st.markdown(f"### 🔍 Accept or Reject {reviewer_type} Review")
+                with st.form(f"accept_reject_form_{user_name}", clear_on_submit=True):
+                    rejection_comment = st.text_area("Comments/Remarks *", placeholder="Required if rejecting...", key=f"rejection_comment_{user_name}")
+                    st.caption("📎 Attach Documents (Optional — up to 2 files)")
+                    d1, d2 = st.columns(2); rejection_docs = []
+                    with d1:
+                        doc1 = st.file_uploader("Document 1", type=['pdf','docx','jpg','png','xlsx'], key=f"rej_doc1_{user_name}")
+                        if doc1: rejection_docs.append(doc1)
+                    with d2:
+                        doc2 = st.file_uploader("Document 2", type=['pdf','docx','jpg','png','xlsx'], key=f"rej_doc2_{user_name}")
+                        if doc2: rejection_docs.append(doc2)
+                    col1, col2 = st.columns(2)
+                    with col1: 
+                        accept_btn = st.form_submit_button("✅ Accept Review", use_container_width=True, type="primary")
+                    with col2: 
+                        reject_btn = st.form_submit_button("❌ Reject - Request Re-review", use_container_width=True)
+                    
+                    if accept_btn:
+                        st.session_state.self_assessments[user_name]['acceptance'] = 'Accepted'
+                        st.session_state.self_assessments[user_name]['status'] = 'Completed'
+                        try: 
+                            db.archive_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Accepted', a['scores'], reviewer_scores or {}, a.get('comments', ''), a.get('hod_comments', ''), now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                            # Also update appraisals table
+                            db._patch("appraisals", {"status": "Completed", "acceptance": "Accepted"}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                        except Exception as e: 
+                            st.error(f"Save error: {str(e)}")
+                        log_audit('Appraisal Accepted', f'{user_name} accepted {reviewer_type} review')
+                        st.success("✅ Appraisal Accepted! Congratulations!"); st.balloons(); time.sleep(2); st.rerun()
+                    
+                    if reject_btn:
+                        if not rejection_comment.strip(): 
+                            st.error("❌ You MUST provide comments when rejecting!")
+                        else:
+                            rej_urls = []
+                            for doc in rejection_docs:
+                                try:
+                                    url = db.upload_file("rejection_evidence", f"reject_{user_name}_{doc.name}", doc.read(), doc.type)
+                                    if url: rej_urls.append(url)
+                                except: pass
+                            st.session_state.self_assessments[user_name]['acceptance'] = 'Rejected'
+                            st.session_state.self_assessments[user_name]['status'] = f'Awaiting {reviewer_type} Re-review'
+                            st.session_state.self_assessments[user_name]['rejection_comment'] = rejection_comment
+                            st.session_state.self_assessments[user_name]['rejection_docs'] = json.dumps(rej_urls)
+                            st.session_state.self_assessments[user_name]['reject_count'] = a.get('reject_count', 0) + 1
+                            
+                            # Save to DB
+                            try:
+                                db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, f'Awaiting {reviewer_type} Re-review', a['scores'], a.get('comments', ''), a.get('pillar_comments', {}), a.get('hod_scores'), a.get('hod_comments', ''), a.get('hod_pillar_comments', {}), 'Rejected', None, a.get('date', ''))
+                            except: pass
+                            
+                            # Notify reviewer
+                            reviewer_email = find_hod_email_for_dept(user_dept) if reviewer_type == 'HOD' else get_employee_email(user_name)
+                            if reviewer_email:
+                                try: 
+                                    EmailService().send_email(reviewer_email, f"🔄 Appraisal Rejected by {user_name}", f"Dear {reviewer_type},\n\n{user_name} has rejected your review.\n\nReason: {rejection_comment}\n\nPlease log in to review.\n\nhttps://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
+                                except: pass
+                            
+                            log_audit('Appraisal Rejected', f'{user_name} rejected {reviewer_type} review')
+                            st.warning(f"⚠️ Rejected! {reviewer_type} notified."); time.sleep(2); st.rerun()
+            elif a.get('acceptance') == 'Accepted': st.success("🎉 Appraisal Complete!")
+            elif a.get('acceptance') == 'Rejected': st.warning(f"🔄 Awaiting {reviewer_type} re-review")
+    
+    # ============================================================
+    # TAB 4: HOD REVIEW (FIXED - Stand Firm + Admin sees ALL)
+    # ============================================================
+    with tab4:
+        st.markdown('<div class="glass-card"><h3>👔 HOD Review Hub</h3></div>', unsafe_allow_html=True)
+        if not is_hod: st.info("This section is for Managers, HODs, and Admins only.")
+        else:
+            # ===== SECTION 1: KPI APPROVAL =====
+            st.markdown("### 📊 Team KPI Submissions")
+            try:
+                all_perf = db._get("performance_data"); team_submissions = {}
+                for row in (all_perf or []):
+                    if row.get('submission_status') == 'Submitted':
+                        clean_name = ' '.join(str(row.get('user_name', '')).split())
+                        # Admin sees ALL, HOD sees their department
+                        if is_admin or get_employee_dept(clean_name) == user_dept:
+                            if clean_name not in team_submissions: team_submissions[clean_name] = []
+                            team_submissions[clean_name].append({'pillar': row.get('pillar_name', ''), 'kpis': json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else [], 'row_id': row.get('id')})
+                if team_submissions:
+                    st.success(f"📋 {len(team_submissions)} team member(s)")
+                    for emp_name, submissions in team_submissions.items():
+                        with st.expander(f"👤 {emp_name}", expanded=False):
+                            for sub in submissions:
+                                st.markdown(f"**{sub['pillar']}**")
+                                for kpi in sub['kpis']: st.markdown(f"• {kpi.get('kpi', 'N/A')}")
+                            hod_comment = st.text_area(f"💬 Comment", key=f"hod_comment_{emp_name}")
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                if st.button(f"✅ Approve", key=f"app_{emp_name}", type="primary"):
+                                    for sub in submissions: db._patch("performance_data", {"submission_status": "Approved"}, {"id": sub['row_id']})
+                                    emp_email_addr = get_employee_email(emp_name)
+                                    if emp_email_addr: send_kpi_notification('approved', emp_name, emp_email_addr)
+                                    log_audit("KPIs Approved", f"HOD approved KPIs for {emp_name}")
+                                    st.success("✅ Approved!"); st.balloons(); time.sleep(1); st.rerun()
+                            with c2:
+                                if st.button(f"🔄 Revise", key=f"rev_{emp_name}"):
+                                    if hod_comment:
+                                        for sub in submissions:
+                                            db._patch("performance_data", {"submission_status": "Draft"}, {"id": sub['row_id']})
+                                        emp_email_addr = get_employee_email(emp_name)
+                                        if emp_email_addr:
+                                            send_kpi_notification('revision_requested', emp_name, emp_email_addr)
+                                        st.warning("🔄 Revision requested")
+                                        time.sleep(1)
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Please provide a comment!")
+                else:
+                    st.info("No pending KPI submissions.")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+            
+            # ===== SECTION 1B: APPROVED KPIs PREVIEW =====
+            st.markdown("---")
+            st.markdown("### ✅ Team Approved KPIs")
+            try:
+                all_perf = db._get("performance_data")
+                team_approved = {}
+                for row in all_perf:
+                    if row.get('submission_status') == 'Approved':
+                        clean_name = ' '.join(str(row.get('user_name', '')).split())
+                        if is_admin or get_employee_dept(clean_name) == user_dept:
+                            if clean_name not in team_approved:
+                                team_approved[clean_name] = []
+                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                            team_approved[clean_name].append({
+                                'pillar': row.get('pillar_name', ''),
+                                'kpis': kpi_list,
+                                'weight': row.get('weight', 0)
+                            })
+                if team_approved:
+                    st.success(f"✅ {len(team_approved)} team member(s) with approved KPIs")
+                    for emp_name, kpi_data in team_approved.items():
+                        with st.expander(f"✅ {emp_name} — {len(kpi_data)} pillar(s) approved", expanded=False):
+                            for entry in kpi_data:
+                                st.markdown(f"**{entry['pillar']}** (Weight: {entry['weight']}%)")
+                                for kpi in entry['kpis']:
+                                    st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')} — Weight: {kpi.get('weight', 'N/A')}%")
+                                st.markdown("")
+                else:
+                    st.info("No team members have approved KPIs yet.")
+            except:
+                pass
+            
+            # ===== SECTION 2: APPRAISAL REVIEW (FIXED) =====
+            st.markdown("---")
+            st.markdown("### 📝 Appraisal Review")
+            
+            if is_admin:
+                submitted_appraisals = {k: v for k, v in st.session_state.self_assessments.items() 
+                                       if v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL']}
+            else:
+                submitted_appraisals = {k: v for k, v in st.session_state.self_assessments.items() 
+                                       if get_employee_dept(k) == user_dept and v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL']}
+            
+            if submitted_appraisals:
+                st.success(f"📋 {len(submitted_appraisals)} appraisal(s) for review")
+                
+                for staff_name, assessment in submitted_appraisals.items():
+                    is_escalated = assessment.get('status') == 'Escalated from TL'
+                    is_re_review = assessment.get('status') == 'Awaiting HOD Re-review'
+                    
+                    expander_title = f"{'🚨 ESCALATED: ' if is_escalated else '🔄 RE-REVIEW: ' if is_re_review else '📋 '}{staff_name} | {get_employee_dept(staff_name)}"
+                    
+                    with st.expander(expander_title, expanded=True):
+                        if is_escalated: 
+                            st.warning(f"🚨 Escalated from Team Lead. TL scores available for reference.")
+                            if assessment.get('tl_scores'):
+                                st.markdown("**Team Lead Scores:**")
+                                for k, v in assessment['tl_scores'].items():
+                                    st.markdown(f"- {k[:60]}: {v}%")
+                        
+                        if is_re_review: 
+                            st.warning(f"⚠️ Staff rejected your review (Rejection #{assessment.get('reject_count', 1)})")
+                            st.markdown(f"**Staff Rejection Reason:** {assessment.get('rejection_comment', 'No comment provided')}")
+                        
+                        st.markdown(f"**Staff Overall Comments:** {assessment.get('comments', 'N/A')}")
+                        
+                        st.markdown("---")
+                        st.markdown("### 📊 Your Review Scores")
+                        
+                        hod_scores = {}
+                        for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key):
+                            c1, c2 = st.columns(2)
+                            with c1: 
+                                st.markdown(f"**Staff Score:** {staff_score}%")
+                                st.caption(score_key[:80])
+                            with c2:
+                                # Show previous HOD score for re-reviews
+                                prev_hod = assessment.get('hod_scores', {}).get(score_key, staff_score) if is_re_review else staff_score
+                                hod_scores[score_key] = st.number_input(
+                                    "Your Score",
+                                    min_value=0, max_value=100,
+                                    value=int(prev_hod) if prev_hod else int(staff_score),
+                                    step=1,
+                                    key=f"hod_{staff_name}_{score_key}"
+                                )
+                        
+                        st.markdown("---")
+                        hod_overall = st.text_area(
+                            f"Your Overall Comments for {staff_name} *",
+                            value=assessment.get('hod_comments', '') if is_re_review else '',
+                            key=f"hod_app_{staff_name}",
+                            placeholder="Provide detailed feedback..."
+                        )
+                        
+                        # BUTTONS: Submit + Stand Firm (for re-reviews)
+                        if is_re_review or is_escalated:
+                            c1, c2, c3 = st.columns(3)
+                            with c1:
+                                if st.button(f"✅ Submit Revised Review", key=f"submit_{staff_name}", type="primary"):
+                                    if not hod_overall: 
+                                        st.error("❌ Comments required!")
+                                    else:
+                                        st.session_state.self_assessments[staff_name].update({
+                                            'status': 'Approved', 'hod_scores': hod_scores, 
+                                            'hod_comments': hod_overall, 'acceptance': None, 'reviewer_type': 'HOD'
+                                        })
+                                        try:
+                                            db.save_appraisal(staff_name, assessment.get('email', ''), 
+                                                get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 
+                                                'Approved', assessment['scores'], assessment.get('comments', ''),
+                                                assessment.get('pillar_comments', {}), hod_scores, hod_overall, 
+                                                {}, None, None, assessment.get('date', ''))
+                                        except: pass
+                                        # Notify employee
+                                        emp_email = get_employee_email(staff_name)
+                                        if emp_email:
+                                            try:
+                                                EmailService().send_email(emp_email, 
+                                                    f"📝 Updated HOD Review - {st.session_state.appraisal_cycle_name}",
+                                                    f"Dear {staff_name},\n\nYour HOD has submitted an updated review.\n\nPlease log in to accept or reject.\n\nChurchgate Group HR")
+                                            except: pass
+                                        log_audit('HOD Revised Review', f'{staff_name} review revised by HOD {user_name}')
+                                        st.success("✅ Revised review submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
+                            
+                            with c2:
+                                if st.button(f"✋ Stand Firm - Send to Committee", key=f"standfirm_{staff_name}"):
+                                    if not hod_overall:
+                                        # Use existing HOD comments if no new ones
+                                        hod_overall = assessment.get('hod_comments', 'Standing firm on original review.')
+                                    
+                                    st.session_state.self_assessments[staff_name].update({
+                                        'status': 'Escalated from TL' if is_escalated else 'Approved',
+                                        'acceptance': 'Rejected',
+                                        'hod_scores': hod_scores if hod_scores else assessment.get('hod_scores', {}),
+                                        'hod_comments': hod_overall,
+                                        'sr_decision': 'Pending Committee'
+                                    })
+                                    try:
+                                        db.save_appraisal(staff_name, assessment.get('email', ''), 
+                                            get_employee_dept(staff_name), st.session_state.appraisal_cycle_name,
+                                            'Escalated from TL' if is_escalated else 'Approved',
+                                            assessment['scores'], assessment.get('comments', ''),
+                                            assessment.get('pillar_comments', {}),
+                                            st.session_state.self_assessments[staff_name].get('hod_scores', {}),
+                                            hod_overall, {}, 'Rejected', 'Pending Committee',
+                                            assessment.get('date', ''))
+                                    except: pass
+                                    
+                                    # Notify Senior Management
+                                    try:
+                                        sr_emails = employees_df[employees_df['department'] == 'Senior Management']['email'].dropna().tolist() if not employees_df.empty else []
+                                        for sr_email in sr_emails:
+                                            if sr_email and '@' in str(sr_email):
+                                                EmailService().send_email(sr_email,
+                                                    f"🚨 Appraisal Escalated to Committee: {staff_name}",
+                                                    f"Dear Committee Member,\n\n{staff_name}'s appraisal has been escalated.\n\nHOD: {user_name}\nHOD Comments: {hod_overall}\n\nPlease review in the Appraisal Committee Board.\n\nChurchgate Group HR")
+                                    except: pass
+                                    
+                                    log_audit('HOD Escalated to Committee', f'{staff_name} sent to committee by HOD {user_name}')
+                                    st.warning("✋ Escalated to Appraisal Committee!"); time.sleep(1.5); st.rerun()
+                            
+                            with c3:
+                                if st.button(f"💬 Request Staff Revision", key=f"request_rev_{staff_name}"):
+                                    st.session_state.self_assessments[staff_name]['status'] = 'Revision Requested by HOD'
+                                    emp_email = get_employee_email(staff_name)
+                                    if emp_email:
+                                        try:
+                                            EmailService().send_email(emp_email,
+                                                f"🔄 Revision Requested - {st.session_state.appraisal_cycle_name}",
+                                                f"Dear {staff_name},\n\nYour HOD has requested additional information.\n\nComments: {hod_overall}\n\nPlease update your self-assessment.\n\nChurchgate Group HR")
+                                        except: pass
+                                    log_audit('HOD Requested Revision', f'{staff_name} revision requested by HOD')
+                                    st.info("💬 Revision requested from staff"); time.sleep(1.5); st.rerun()
+                        else:
+                            # First-time review
+                            if st.button(f"✅ Submit HOD Review for {staff_name}", key=f"submit_{staff_name}", type="primary"):
+                                if not hod_overall: 
+                                    st.error("❌ Comments required!")
+                                else:
+                                    st.session_state.self_assessments[staff_name].update({
+                                        'status': 'Approved', 'hod_scores': hod_scores, 
+                                        'hod_comments': hod_overall, 'acceptance': None, 'reviewer_type': 'HOD'
+                                    })
+                                    try:
+                                        db.save_appraisal(staff_name, assessment.get('email', ''), 
+                                            get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 
+                                            'Approved', assessment['scores'], assessment.get('comments', ''),
+                                            assessment.get('pillar_comments', {}), hod_scores, hod_overall, 
+                                            {}, None, None, assessment.get('date', ''))
+                                    except: pass
+                                    # Notify employee
+                                    emp_email = get_employee_email(staff_name)
+                                    if emp_email:
+                                        try:
+                                            EmailService().send_email(emp_email,
+                                                f"📝 HOD Review Complete - {st.session_state.appraisal_cycle_name}",
+                                                f"Dear {staff_name},\n\nYour HOD has completed your performance review.\n\nPlease log in to accept or reject.\n\nChurchgate Group HR")
+                                        except: pass
+                                    log_audit('HOD Review Submitted', f'{staff_name} reviewed by HOD {user_name}')
+                                    st.success("✅ Review submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
+            else:
+                st.info("No pending appraisals for review.")
+    
+    # ============================================================
+    # TAB 5: TEAM LEAD/MANAGER REVIEW (STRICT REPORTS-TO FILTER)
+    # ============================================================
+    with tab5:
+        st.markdown('<div class="glass-card"><h3>👥 Team Lead / Manager Review</h3><p style="color:#888;">Review ONLY team members who report directly to you</p></div>', unsafe_allow_html=True)
+        
+        if not is_team_lead_or_manager:
+            st.info("This section is for Team Leads and Managers only.")
+        else:
+            # STRICT FILTER: Find employees whose reports_to matches current user's name
+            team_members = []
+            if not employees_df.empty:
+                for _, emp in employees_df.iterrows():
+                    emp_name = f"{emp['first_name']} {emp['last_name']}".strip()
+                    reports_to = str(emp.get('reports_to', '')).strip()
+                    
+                    # Check if this employee reports to the current user
+                    if reports_to.lower() == user_name.lower():
+                        team_members.append(emp_name)
+            
+            if not team_members:
+                st.warning("⚠️ No team members report directly to you. You can only review employees who have you listed as their 'Reports To' in the employee directory.")
+                st.info("If team members should report to you, ask HR/Admin to update their 'Reports To' field in Employee Management.")
+            else:
+                st.success(f"👥 {len(team_members)} team member(s) reporting directly to you")
+                
+                for member_name in team_members:
+                    assessment = st.session_state.self_assessments.get(member_name, {})
+                    member_status = assessment.get('status', 'Not Submitted')
+                    member_dept = get_employee_dept(member_name)
+                    
+                    with st.expander(f"👤 {member_name} | {member_dept} | Status: {member_status}", expanded=(member_status in ['Submitted', 'Awaiting TL Re-review'])):
+                        if member_status == 'Not Submitted' or not assessment:
+                            st.info(f"⏳ {member_name} has not submitted their self-assessment yet.")
+                        elif member_status == 'Submitted' or member_status == 'Awaiting TL Re-review':
+                            st.markdown(f"**Staff Comments:** {assessment.get('comments', 'N/A')}")
+                            
+                            if member_status == 'Awaiting TL Re-review':
+                                st.warning(f"⚠️ Staff rejected your previous review (Rejection #{assessment.get('reject_count', 1)})")
+                                st.markdown(f"**Rejection Reason:** {assessment.get('rejection_comment', 'No comment provided')}")
+                            
+                            if assessment.get('scores'):
+                                st.markdown("---")
+                                st.markdown("### 📊 Score Review")
+                                tl_scores = {}
+                                for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key):
+                                    c1, c2 = st.columns(2)
+                                    with c1:
+                                        st.markdown(f"**Staff Score:** {staff_score}%")
+                                        st.caption(score_key[:80])
+                                    with c2:
+                                        existing_tl_score = assessment.get('tl_scores', {}).get(score_key, staff_score) if member_status == 'Awaiting TL Re-review' else staff_score
+                                        tl_scores[score_key] = st.number_input(
+                                            "Your Score",
+                                            min_value=0, max_value=100,
+                                            value=int(existing_tl_score) if existing_tl_score else int(staff_score),
+                                            step=1,
+                                            key=f"tl_{member_name}_{score_key}"
+                                        )
+                                
+                                st.markdown("---")
+                                tl_comments = st.text_area(
+                                    f"Your Overall Comments for {member_name} *",
+                                    value=assessment.get('tl_comments', '') if member_status == 'Awaiting TL Re-review' else '',
+                                    key=f"tl_comment_{member_name}",
+                                    placeholder="Provide detailed feedback on their performance..."
+                                )
+                                
+                                c1, c2, c3 = st.columns(3)
+                                with c1:
+                                    if st.button(f"✅ Submit Review", key=f"tl_submit_{member_name}", type="primary"):
+                                        if not tl_comments:
+                                            st.error("❌ Comments are required!")
+                                        else:
+                                            # Save to session state
+                                            st.session_state.self_assessments[member_name].update({
+                                                'status': 'Approved',
+                                                'tl_scores': tl_scores,
+                                                'tl_comments': tl_comments,
+                                                'hod_scores': tl_scores,
+                                                'hod_comments': tl_comments,
+                                                'acceptance': None,
+                                                'reviewer_type': 'Team Lead'
+                                            })
+                                            
+                                            # Save to database
+                                            try:
+                                                db.save_appraisal(
+                                                    member_name,
+                                                    assessment.get('email', ''),
+                                                    member_dept,
+                                                    st.session_state.appraisal_cycle_name,
+                                                    'Approved',
+                                                    assessment['scores'],
+                                                    assessment.get('comments', ''),
+                                                    assessment.get('pillar_comments', {}),
+                                                    tl_scores,
+                                                    tl_comments,
+                                                    {},
+                                                    None,
+                                                    None,
+                                                    assessment.get('date', '')
+                                                )
+                                            except Exception as e:
+                                                st.error(f"Save error: {str(e)}")
+                                            
+                                            # Send email to team member
+                                            member_email = get_employee_email(member_name)
+                                            if member_email:
+                                                try:
+                                                    EmailService().send_email(
+                                                        member_email,
+                                                        f"📝 Performance Review Complete - {st.session_state.appraisal_cycle_name}",
+                                                        f"Dear {member_name},\n\n"
+                                                        f"Your Team Lead ({user_name}) has completed your performance review.\n\n"
+                                                        f"Please log in to the HRIS to view your scores and accept or reject the review.\n\n"
+                                                        f"https://churchgate-churchgate-hris.hf.space\n\n"
+                                                        f"Churchgate Group HR"
+                                                    )
+                                                except:
+                                                    pass
+                                            
+                                            log_audit('TL Review Submitted', f'{member_name} reviewed by Team Lead {user_name}')
+                                            st.success(f"✅ Review submitted for {member_name}!")
+                                            st.balloons()
+                                            time.sleep(1.5)
+                                            st.rerun()
+                                
+                                with c2:
+                                    if member_status == 'Awaiting TL Re-review' and st.button(f"🚨 Escalate to HOD", key=f"tl_escalate_{member_name}"):
+                                        st.session_state.self_assessments[member_name].update({
+                                            'status': 'Escalated from TL',
+                                            'tl_scores': tl_scores if tl_scores else assessment.get('tl_scores', {}),
+                                            'tl_comments': tl_comments if tl_comments else assessment.get('tl_comments', ''),
+                                            'acceptance': 'Rejected'
+                                        })
+                                        
+                                        # Save to database
+                                        try:
+                                            db.save_appraisal(
+                                                member_name,
+                                                assessment.get('email', ''),
+                                                member_dept,
+                                                st.session_state.appraisal_cycle_name,
+                                                'Escalated from TL',
+                                                assessment['scores'],
+                                                assessment.get('comments', ''),
+                                                assessment.get('pillar_comments', {}),
+                                                st.session_state.self_assessments[member_name].get('tl_scores', {}),
+                                                st.session_state.self_assessments[member_name].get('tl_comments', ''),
+                                                {},
+                                                'Rejected',
+                                                None,
+                                                assessment.get('date', '')
+                                            )
+                                        except:
+                                            pass
+                                        
+                                        # Notify HOD
+                                        hod_email = find_hod_email_for_dept(member_dept)
+                                        if hod_email:
+                                            try:
+                                                EmailService().send_email(
+                                                    hod_email,
+                                                    f"🚨 Escalated Appraisal: {member_name}",
+                                                    f"Dear HOD,\n\n"
+                                                    f"The appraisal for {member_name} ({member_dept}) has been escalated by Team Lead {user_name}.\n\n"
+                                                    f"The team member rejected the Team Lead's review.\n"
+                                                    f"Rejection reason: {assessment.get('rejection_comment', 'No comment')}\n\n"
+                                                    f"Please review and make the final decision.\n\n"
+                                                    f"https://churchgate-churchgate-hris.hf.space\n\n"
+                                                    f"Churchgate Group HR"
+                                                )
+                                            except:
+                                                pass
+                                        
+                                        log_audit('TL Escalated to HOD', f'{member_name} escalated to HOD by Team Lead {user_name}')
+                                        st.warning(f"🚨 Escalated to HOD for final decision!")
+                                        time.sleep(1.5)
+                                        st.rerun()
+                                
+                                with c3:
+                                    if st.button(f"💬 Request Revision", key=f"tl_request_revision_{member_name}"):
+                                        st.session_state.self_assessments[member_name]['status'] = 'Revision Requested by TL'
+                                        member_email = get_employee_email(member_name)
+                                        if member_email:
+                                            try:
+                                                EmailService().send_email(
+                                                    member_email,
+                                                    f"🔄 Revision Requested - {st.session_state.appraisal_cycle_name}",
+                                                    f"Dear {member_name},\n\n"
+                                                    f"Your Team Lead ({user_name}) has requested a revision to your self-assessment.\n\n"
+                                                    f"Please review and update your submission.\n\n"
+                                                    f"https://churchgate-churchgate-hris.hf.space\n\n"
+                                                    f"Churchgate Group HR"
+                                                )
+                                            except:
+                                                pass
+                                        log_audit('TL Requested Revision', f'{member_name} revision requested by {user_name}')
+                                        st.info(f"💬 Revision requested from {member_name}")
+                                        time.sleep(1.5)
+                                        st.rerun()
+                            else:
+                                st.info("No scores available for review.")
+                        elif member_status == 'Approved' and not assessment.get('acceptance'):
+                            st.info(f"✅ Review submitted. Waiting for {member_name} to accept or reject.")
+                        elif assessment.get('acceptance') == 'Accepted':
+                            st.success(f"🎉 Appraisal complete for {member_name}!")
+                        elif assessment.get('acceptance') == 'Rejected' and member_status == 'Escalated from TL':
+                            st.warning(f"🚨 Escalated to HOD for final decision.")
+                        else:
+                            st.info(f"Status: {member_status}")
+    
+    # ============================================================
+    # TAB 6: EXCEPTIONAL ACHIEVEMENTS
+    # ============================================================
+    with tab6:
+        st.markdown('<div class="glass-card"><h3>🌟 Exceptional Achievements</h3></div>', unsafe_allow_html=True)
+        st.info("Document accomplishments outside your formal KPIs.")
+        categories = {"💡 Innovation": "New ideas", "👑 Leadership": "Leading teams", "😊 Customer Impact": "Going above and beyond", "💰 Cost Savings": "Efficiency gains", "🚨 Crisis Management": "Handling emergencies", "🤝 Teamwork": "Collaboration"}
+        my_achievements = st.session_state.exceptional_achievements.get(user_name, [])
+        c1, c2, c3 = st.columns(3)
+        c1.metric("🏆 Achievements", len(my_achievements))
+        c2.metric("⭐ Avg Impact", f"{sum(3 if a.get('impact')=='Organization' else 2 if a.get('impact')=='Department' else 1 for a in my_achievements) / len(my_achievements):.1f}" if my_achievements else "N/A")
+        c3.metric("🎖️ Badges", len(set(a.get('category', '') for a in my_achievements)))
+        if my_achievements:
+            for i, ach in enumerate(sorted(my_achievements, key=lambda x: x.get('date', ''), reverse=True)):
+                with st.expander(f"{ach.get('category', '💡')} {ach.get('title', '')}", expanded=i==0):
+                    st.markdown(f"**Description:** {ach.get('description', '')}")
+                    st.markdown(f"**Outcome:** {ach.get('outcome', '')}")
+        with st.form("add_achievement"):
+            c1, c2 = st.columns(2)
+            with c1: ach_title = st.text_input("Title *"); ach_category = st.selectbox("Category", list(categories.keys())); ach_impact = st.selectbox("Impact", ["Individual", "Team", "Department", "Organization"]); ach_date = st.date_input("Date")
+            with c2: ach_description = st.text_area("Description *", height=100); ach_outcome = st.text_area("Outcome *", height=100)
+            if st.form_submit_button("💾 Save", use_container_width=True):
+                if ach_title and ach_description and ach_outcome:
+                    if user_name not in st.session_state.exceptional_achievements: st.session_state.exceptional_achievements[user_name] = []
+                    st.session_state.exceptional_achievements[user_name].append({'title': ach_title, 'category': ach_category, 'description': ach_description, 'impact': ach_impact, 'outcome': ach_outcome, 'date': ach_date.strftime('%Y-%m-%d')})
+                    st.success("✅ Saved!"); st.balloons(); time.sleep(1); st.rerun()
+                else: st.error("❌ All fields required!")
+    
+    # ============================================================
+    # TAB 7: APPRAISAL SETTINGS (ADMIN ONLY)
+    # ============================================================
+    with tab7:
+        st.markdown('<div class="glass-card"><h3>⚙️ Appraisal Cycle Settings</h3><p style="color:#888;">Admin & HR Only — Changes apply to ALL users</p></div>', unsafe_allow_html=True)
+        
+        if not is_admin:
+            st.info("⛔ This section is restricted to Admin and HR Director only.")
+        else:
+            all_perf_data = get_all_perf_cached()
+            approved_kpi_count = len(all_perf_data[all_perf_data['submission_status'] == 'Approved']) if not all_perf_data.empty else 0
+            submitted_appraisal_count = len([v for v in st.session_state.self_assessments.values() if v['status'] == 'Submitted'])
+            completed_count = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Accepted'])
+            escalated_count = len([v for v in st.session_state.self_assessments.values() if v.get('status') == 'Escalated from TL'])
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("✅ KPIs Approved", approved_kpi_count)
+            c2.metric("📝 Appraisals Submitted", submitted_appraisal_count)
+            c3.metric("🎉 Completed", completed_count)
+            c4.metric("🚨 Escalated", escalated_count)
+            
+            st.markdown("---")
+            if st.session_state.appraisal_cycle_active:
+                st.success(f"🟢 Appraisal Cycle ACTIVE: **{st.session_state.appraisal_cycle_name}**")
+                st.markdown(f"Period: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}")
+            else:
+                st.info("⚪ No active appraisal cycle.")
+            
+            st.markdown("---")
+            st.markdown("### ⚙️ Cycle Configuration")
+            st.session_state.appraisal_cycle_active = st.checkbox("Activate Appraisal Cycle", value=st.session_state.appraisal_cycle_active)
+            cycle_options = ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal']
+            st.session_state.appraisal_cycle_name = st.selectbox("Select Appraisal Cycle", cycle_options, index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 0)
+            c1, c2 = st.columns(2)
+            with c1:
+                start_val = st.session_state.appraisal_start
+                if isinstance(start_val, str):
+                    try: start_val = datetime.strptime(start_val, '%Y-%m-%d')
+                    except: start_val = datetime.now()
+                st.session_state.appraisal_start = st.date_input("Start Date", value=start_val if hasattr(start_val, 'strftime') else datetime.now())
+            with c2:
+                end_val = st.session_state.appraisal_end
+                if isinstance(end_val, str):
+                    try: end_val = datetime.strptime(end_val, '%Y-%m-%d')
+                    except: end_val = datetime.now()
+                st.session_state.appraisal_end = st.date_input("End Date", value=end_val if hasattr(end_val, 'strftime') else datetime.now())
+            st.session_state.appraisal_locked = st.checkbox("Lock Scores", value=st.session_state.appraisal_locked)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("💾 Activate & Notify All Eligible", use_container_width=True, type="primary"):
+                    st.session_state.appraisal_start = st.session_state.appraisal_start.strftime('%Y-%m-%d') if hasattr(st.session_state.appraisal_start, 'strftime') else str(st.session_state.appraisal_start)
+                    st.session_state.appraisal_end = st.session_state.appraisal_end.strftime('%Y-%m-%d') if hasattr(st.session_state.appraisal_end, 'strftime') else str(st.session_state.appraisal_end)
+                    save_appraisal_cycle_to_db()
+                    try:
+                        es = EmailService(); sent_count = 0
+                        for _, emp in employees_df.iterrows():
+                            emp_name = f"{emp['first_name']} {emp['last_name']}"; emp_email_addr = emp.get('email', '')
+                            if emp_email_addr and '@' in str(emp_email_addr):
+                                emp_perf = db.get_performance_data(emp_name)
+                                if not emp_perf.empty and any(row.get('submission_status') == 'Approved' for _, row in emp_perf.iterrows()):
+                                    es.send_email(emp_email_addr, f"📊 Appraisal Cycle Open: {st.session_state.appraisal_cycle_name}", f"Dear {emp_name},\n\nThe appraisal cycle is now active.\n\nPeriod: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}\n\nPlease complete your self-assessment.\n\nhttps://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
+                                    sent_count += 1
+                        st.success(f"📧 Emails sent to {sent_count} employees.")
+                    except: pass
+                    send_browser_notification("📊 Appraisal Cycle Active!", f"{st.session_state.appraisal_cycle_name} is now open.")
+                    st.balloons(); st.rerun()
+            with col2:
+                if st.button("🛑 Deactivate Cycle", use_container_width=True):
+                    st.session_state.appraisal_cycle_active = False
+                    existing = db._get("appraisal_cycles")
+                    if existing:
+                        for c in existing: db._patch("appraisal_cycles", {"is_active": False}, {"id": c['id']})
+                    st.warning("🛑 Cycle deactivated."); st.rerun()
+    
+    # ============================================================
+    # TAB 8: ADVANCED DASHBOARD - NO st.rerun() - OPTIMIZED
+    # ============================================================
+    with tab8:
+        st.markdown('<div class="glass-card"><h3>📊 Advanced Dashboard</h3><p style="color:#888;">Full Group-Wide Performance Disclosure & Analytics</p></div>', unsafe_allow_html=True)
+        
+        if is_admin or user_role in ['HR Director']:
+            admin_dash_tabs = st.tabs(["🏢 Group Dashboard", "👤 My Performance"])
+            
+            # ============================================================
+            # ADMIN SUB-TAB 0: FULL GROUP DASHBOARD
+            # ============================================================
+            with admin_dash_tabs[0]:
+                
+                SUBSIDIARY_OPTIONS_DASH = {
+                    'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                    'Lagos': ['First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
+                    'Aba': ['Aba Textile Mills PLC']
+                }
+                
+                st.markdown("### 🔍 Filter Dashboard Data")
+                filter_col1, filter_col2, filter_col3 = st.columns(3)
+                with filter_col1:
+                    dash_region_filter = st.selectbox("🌍 Region", ['All Regions', 'Abuja', 'Lagos', 'Aba'], key="dash_region_filter")
+                with filter_col2:
+                    if dash_region_filter == 'All Regions':
+                        all_subs = []
+                        for subs in SUBSIDIARY_OPTIONS_DASH.values():
+                            all_subs.extend(subs)
+                    else:
+                        all_subs = SUBSIDIARY_OPTIONS_DASH.get(dash_region_filter, [])
+                    dash_sub_filter = st.selectbox("🏢 Subsidiary", ['All Subsidiaries'] + sorted(all_subs), key="dash_sub_filter")
+                with filter_col3:
+                    dash_dept_filter = st.selectbox("🏭 Department", ['All Departments'] + all_depts, key="dash_dept_filter")
+                
+                def apply_dash_filters(region, subsidiary, department):
+                    if dash_region_filter != 'All Regions' and region != dash_region_filter:
+                        return False
+                    if dash_sub_filter != 'All Subsidiaries' and subsidiary != dash_sub_filter:
+                        return False
+                    if dash_dept_filter != 'All Departments' and department != dash_dept_filter:
+                        return False
+                    return True
+                
+                st.markdown("---")
+                
+                dash_tabs = st.tabs(["📈 Group Metrics", "👥 Reviewer Transparency", "📊 Score Matrix", "🔍 Rejection Analysis", "🏢 Hierarchy View"])
+                all_perf = get_all_perf_cached()
+                
+                # ============================================================
+                # DASH TAB 0: GROUP METRICS
+                # ============================================================
+                with dash_tabs[0]:
+                    st.subheader("📈 Group-Wide Performance Metrics")
+                    total_approved = len(all_perf[all_perf['submission_status'] == 'Approved']) if not all_perf.empty else 0
+                    total_submitted = len(all_perf[all_perf['submission_status'] == 'Submitted']) if not all_perf.empty else 0
+                    total_appraisals_in = len([v for v in st.session_state.self_assessments.values() if v['status'] in ['Submitted', 'Approved', 'Completed']])
+                    total_completed = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Accepted'])
+                    total_escalated = len([v for v in st.session_state.self_assessments.values() if v.get('status') == 'Escalated from TL'])
+                    total_rejected = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected'])
+                    
+                    c1, c2, c3, c4, c5, c6 = st.columns(6)
+                    c1.metric("✅ KPIs Approved", total_approved)
+                    c2.metric("📝 Submitted", total_submitted)
+                    c3.metric("📊 Appraisals In", total_appraisals_in)
+                    c4.metric("🎉 Completed", total_completed)
+                    c5.metric("🚨 Escalated", total_escalated)
+                    c6.metric("❌ Rejected", total_rejected)
+                    
                     st.markdown("---")
-                    st.markdown(f"**Your Comments:** {a.get('comments', 'N/A')}")
-                    st.markdown(f"**HOD Comments:** {a.get('hod_comments', 'N/A')}")
+                    st.subheader("🌍 Performance by Region → Subsidiary → Department")
+                    
+                    region_breakdown = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {'total_employees': 0, 'approved_kpis': 0, 'appraisals_completed': 0, 'appraisals_rejected': 0, 'appraisals_escalated': 0})))
+                    
+                    if not employees_df.empty:
+                        for _, emp in employees_df.iterrows():
+                            emp_name = f"{emp['first_name']} {emp['last_name']}".strip()
+                            if not emp_name: continue
+                            dept = emp.get('department', 'General'); sub = emp.get('subsidiary', 'Unassigned'); region = get_region(sub)
+                            if not apply_dash_filters(region, sub or 'Unassigned', dept): continue
+                            stats = region_breakdown[region][sub or 'Unassigned'][dept]; stats['total_employees'] += 1
+                            emp_perf = all_perf[all_perf['user_name'] == emp_name] if not all_perf.empty else pd.DataFrame()
+                            if not emp_perf.empty and any(emp_perf['submission_status'] == 'Approved'): stats['approved_kpis'] += 1
+                            assessment = st.session_state.self_assessments.get(emp_name, {})
+                            if assessment.get('acceptance') == 'Accepted': stats['appraisals_completed'] += 1
+                            if assessment.get('acceptance') == 'Rejected': stats['appraisals_rejected'] += 1
+                            if assessment.get('status') == 'Escalated from TL': stats['appraisals_escalated'] += 1
+                    
+                    total_filtered = 0
+                    for region in ['Abuja', 'Lagos', 'Aba']:
+                        if region not in region_breakdown: continue
+                        if dash_region_filter != 'All Regions' and region != dash_region_filter: continue
+                        region_color = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#1a1a1a')
+                        region_total = sum(d['total_employees'] for s in region_breakdown[region].values() for d in s.values())
+                        region_approved = sum(d['approved_kpis'] for s in region_breakdown[region].values() for d in s.values())
+                        region_completed = sum(d['appraisals_completed'] for s in region_breakdown[region].values() for d in s.values())
+                        if region_total == 0: continue
+                        total_filtered += region_total
+                        st.markdown(f"""<div class="region-header" style="background:linear-gradient(135deg, {region_color}, #2d2d2d);display:flex;justify-content:space-between;align-items:center;"><span>🌍 {region} Region</span><span style="font-size:0.85rem;opacity:0.85;">👥 {region_total} | ✅ {region_approved} KPIs | 🎉 {region_completed} Completed</span></div>""", unsafe_allow_html=True)
+                        
+                        for subsidiary in sorted(region_breakdown[region].keys()):
+                            sub_data = region_breakdown[region][subsidiary]
+                            sub_emps = sum(d['total_employees'] for d in sub_data.values()); sub_approved = sum(d['approved_kpis'] for d in sub_data.values()); sub_completed = sum(d['appraisals_completed'] for d in sub_data.values())
+                            if sub_emps == 0: continue
+                            sub_key = f"metric_sub_{region}_{subsidiary}".replace(' ', '_').replace('(', '').replace(')', '').replace('.', '')
+                            if sub_key not in st.session_state: st.session_state[sub_key] = False
+                            expand_icon = "▼" if st.session_state[sub_key] else "▶"
+                            col1, col2 = st.columns([1, 20])
+                            with col1:
+                                if st.button(expand_icon, key=f"btn_{sub_key}"):
+                                    st.session_state[sub_key] = not st.session_state[sub_key]
+                            with col2:
+                                st.markdown(f"""<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {subsidiary} — 👥 {sub_emps} | ✅ {sub_approved} KPIs | 🎉 {sub_completed} Completed</div>""", unsafe_allow_html=True)
+                            if st.session_state[sub_key]:
+                                for department in sorted(sub_data.keys()):
+                                    dept_stats = sub_data[department]
+                                    st.markdown(f"""<div style="background:#f8f9fa;padding:0.5rem 1rem;border-radius:6px;margin:0.2rem 0 0.2rem 3rem;border-left:3px solid #CC0000;display:flex;justify-content:space-between;align-items:center;"><span>🏭 {department}</span><span style="font-size:0.8rem;">👥 {dept_stats['total_employees']} | ✅ {dept_stats['approved_kpis']} KPIs | 🎉 {dept_stats['appraisals_completed']} Done | ❌ {dept_stats['appraisals_rejected']} Rejected | 🚨 {dept_stats['appraisals_escalated']} Escalated</span></div>""", unsafe_allow_html=True)
+                    
+                    if total_filtered == 0: st.info("No data matches the selected filters.")
+                    
+                    st.markdown("---")
+                    region_chart_data = []
+                    for region in ['Abuja', 'Lagos', 'Aba']:
+                        if region in region_breakdown and (dash_region_filter == 'All Regions' or region == dash_region_filter):
+                            total_c = sum(d['appraisals_completed'] for s in region_breakdown[region].values() for d in s.values())
+                            total_r = sum(d['appraisals_rejected'] for s in region_breakdown[region].values() for d in s.values())
+                            region_chart_data.append({'Region': region, 'Completed': total_c, 'Rejected': total_r})
+                    if region_chart_data:
+                        chart_df = pd.DataFrame(region_chart_data)
+                        fig = px.bar(chart_df, x='Region', y=['Completed', 'Rejected'], barmode='group', color_discrete_sequence=['#38a169', '#CC0000']); fig.update_layout(height=350)
+                        st.plotly_chart(fig, use_container_width=True)
+                
+                # ============================================================
+                # DASH TAB 1: REVIEWER TRANSPARENCY
+                # ============================================================
+                with dash_tabs[1]:
+                    st.subheader("👥 Reviewer Scoring Transparency")
+                    reviewer_breakdown = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+                    for emp_name, assessment in st.session_state.self_assessments.items():
+                        scores = assessment.get('hod_scores') or assessment.get('tl_scores') or {}
+                        if scores:
+                            avg_score = sum(int(v) for v in scores.values() if v) / len(scores) if scores else 0
+                            dept = get_employee_dept(emp_name); sub = get_employee_subsidiary(emp_name); region = get_region(sub)
+                            if not apply_dash_filters(region, sub or 'Unassigned', dept): continue
+                            reviewer_breakdown[region][sub or 'Unassigned'][dept].append({'reviewer': assessment.get('reviewer_type', 'N/A'), 'employee': emp_name, 'avg_score': round(avg_score, 1), 'status': assessment.get('acceptance', assessment.get('status', 'Pending'))})
+                    
+                    total_reviewers = sum(len(v) for r in reviewer_breakdown.values() for s in r.values() for v in s.values())
+                    if total_reviewers == 0: st.info("No review data matches the selected filters.")
+                    else:
+                        for region in ['Abuja', 'Lagos', 'Aba']:
+                            if region not in reviewer_breakdown: continue
+                            region_color = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#1a1a1a')
+                            region_count = sum(len(v) for s in reviewer_breakdown[region].values() for v in s.values())
+                            st.markdown(f"""<div class="region-header" style="background:linear-gradient(135deg, {region_color}, #2d2d2d);">🌍 {region} — {region_count} reviews</div>""", unsafe_allow_html=True)
+                            for subsidiary in sorted(reviewer_breakdown[region].keys()):
+                                sub_key = f"rev_sub_{region}_{subsidiary}".replace(' ', '_').replace('(', '').replace(')', '').replace('.', '')
+                                if sub_key not in st.session_state: st.session_state[sub_key] = False
+                                expand_icon = "▼" if st.session_state[sub_key] else "▶"
+                                col1, col2 = st.columns([1, 20])
+                                with col1:
+                                    if st.button(expand_icon, key=f"revbtn_{sub_key}"):
+                                        st.session_state[sub_key] = not st.session_state[sub_key]
+                                with col2: st.markdown(f"""<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {subsidiary}</div>""", unsafe_allow_html=True)
+                                if st.session_state[sub_key]:
+                                    for department in sorted(reviewer_breakdown[region][subsidiary].keys()):
+                                        reviews = reviewer_breakdown[region][subsidiary][department]
+                                        dept_avg = sum(r['avg_score'] for r in reviews) / len(reviews) if reviews else 0
+                                        with st.expander(f"🏭 {department} — {len(reviews)} reviews | Avg: {dept_avg:.0f}%", expanded=False):
+                                            for r in reviews:
+                                                badge_class = {'Accepted': 'badge-green', 'Rejected': 'badge-red'}.get(r['status'], 'badge-yellow')
+                                                st.markdown(f"""<div style="padding:0.4rem;margin:0.2rem 0;border-left:3px solid #CC0000;"><strong>{r['employee']}</strong> | Reviewer: {r['reviewer']} | Score: <strong>{r['avg_score']}%</strong> | <span class="badge {badge_class}">{r['status']}</span></div>""", unsafe_allow_html=True)
+                        
+                        dept_avg_scores = {}
+                        for region_data in reviewer_breakdown.values():
+                            for sub_data in region_data.values():
+                                for dept, reviews in sub_data.items():
+                                    if reviews: dept_avg_scores[dept] = sum(r['avg_score'] for r in reviews) / len(reviews)
+                        if dept_avg_scores:
+                            dept_avg_df = pd.DataFrame({'Department': list(dept_avg_scores.keys()), 'Avg Reviewer Score': list(dept_avg_scores.values())})
+                            fig = px.bar(dept_avg_df, x='Department', y='Avg Reviewer Score', color='Avg Reviewer Score', color_continuous_scale=['#38a169', '#d69e2e', '#CC0000']); fig.update_layout(height=350)
+                            st.plotly_chart(fig, use_container_width=True)
+                
+                # ============================================================
+                # DASH TAB 2: SCORE MATRIX
+                # ============================================================
+                with dash_tabs[2]:
+                    st.subheader("📊 Score Comparison Matrix")
+                    score_breakdown = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+                    for emp_name, assessment in st.session_state.self_assessments.items():
+                        self_scores = assessment.get('scores', {}); reviewer_scores = assessment.get('hod_scores') or assessment.get('tl_scores') or {}
+                        if not self_scores: continue
+                        dept = get_employee_dept(emp_name); sub = get_employee_subsidiary(emp_name); region = get_region(sub)
+                        if not apply_dash_filters(region, sub or 'Unassigned', dept): continue
+                        self_avg = sum(int(v) for v in self_scores.values() if v) / len(self_scores) if self_scores else 0
+                        rev_avg = sum(int(v) for v in reviewer_scores.values() if v) / len(reviewer_scores) if reviewer_scores else 0
+                        score_breakdown[region][sub or 'Unassigned'][dept].append({'employee': emp_name, 'self_avg': round(self_avg, 1), 'reviewer_avg': round(rev_avg, 1), 'diff': round(self_avg - rev_avg, 1), 'status': assessment.get('acceptance', 'Pending')})
+                    
+                    total_scores = sum(len(v) for r in score_breakdown.values() for s in r.values() for v in s.values())
+                    if total_scores == 0: st.info("No score data matches the selected filters.")
+                    else:
+                        for region in ['Abuja', 'Lagos', 'Aba']:
+                            if region not in score_breakdown: continue
+                            region_color = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#1a1a1a')
+                            st.markdown(f"""<div class="region-header" style="background:linear-gradient(135deg, {region_color}, #2d2d2d);">🌍 {region}</div>""", unsafe_allow_html=True)
+                            for subsidiary in sorted(score_breakdown[region].keys()):
+                                sub_key = f"score_sub_{region}_{subsidiary}".replace(' ', '_').replace('(', '').replace(')', '').replace('.', '')
+                                if sub_key not in st.session_state: st.session_state[sub_key] = False
+                                expand_icon = "▼" if st.session_state[sub_key] else "▶"
+                                col1, col2 = st.columns([1, 20])
+                                with col1:
+                                    if st.button(expand_icon, key=f"scorebtn_{sub_key}"):
+                                        st.session_state[sub_key] = not st.session_state[sub_key]
+                                with col2: st.markdown(f'<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {subsidiary}</div>', unsafe_allow_html=True)
+                                if st.session_state[sub_key]:
+                                    for department in sorted(score_breakdown[region][subsidiary].keys()):
+                                        entries = score_breakdown[region][subsidiary][department]
+                                        with st.expander(f"🏭 {department} — {len(entries)} employees", expanded=False):
+                                            for e in entries:
+                                                diff_color = '#38a169' if e['diff'] >= 0 else '#CC0000'; status_badge = {'Accepted': 'badge-green', 'Rejected': 'badge-red'}.get(e['status'], 'badge-yellow')
+                                                st.markdown(f"""<div style="padding:0.4rem;margin:0.2rem 0;border-left:3px solid {diff_color};display:flex;justify-content:space-between;align-items:center;"><strong>{e['employee']}</strong><span>Self: <strong>{e['self_avg']}%</strong> | Rev: <strong>{e['reviewer_avg']}%</strong> | Diff: <strong style="color:{diff_color};">{e['diff']:+.1f}%</strong> | <span class="badge {status_badge}">{e['status']}</span></span></div>""", unsafe_allow_html=True)
+                
+                # ============================================================
+                # DASH TAB 3: REJECTION ANALYSIS
+                # ============================================================
+                with dash_tabs[3]:
+                    st.subheader("🔍 Rejection Analysis")
+                    rejections = []
+                    for emp_name, assessment in st.session_state.self_assessments.items():
+                        if assessment.get('acceptance') == 'Rejected':
+                            dept = get_employee_dept(emp_name); sub = get_employee_subsidiary(emp_name); region = get_region(sub)
+                            if not apply_dash_filters(region, sub or 'N/A', dept): continue
+                            rejections.append({'Employee': emp_name, 'Department': dept, 'Subsidiary': sub or 'N/A', 'Region': region, 'Reviewer': assessment.get('reviewer_type', 'HOD'), 'Rejection Reason': assessment.get('rejection_comment', 'No comment'), 'Reject Count': assessment.get('reject_count', 1), 'Date': assessment.get('date', '')})
+                    
+                    if rejections:
+                        rej_df = pd.DataFrame(rejections)
+                        c1, c2, c3 = st.columns(3)
+                        c1.metric("❌ Total Rejections", len(rejections)); c2.metric("🔄 Avg Reject Count", f"{sum(r['Reject Count'] for r in rejections) / len(rejections):.1f}"); c3.metric("🏢 Departments", len(set(r['Department'] for r in rejections)))
+                        st.markdown("---")
+                        rej_breakdown = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+                        for r in rejections: rej_breakdown[r['Region']][r['Subsidiary']][r['Department']].append(r)
+                        for region in ['Abuja', 'Lagos', 'Aba']:
+                            if region not in rej_breakdown: continue
+                            region_color = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#1a1a1a')
+                            st.markdown(f'<div class="region-header" style="background:linear-gradient(135deg, {region_color}, #2d2d2d);">🌍 {region} — {sum(len(v) for s in rej_breakdown[region].values() for v in s.values())} rejections</div>', unsafe_allow_html=True)
+                            for sub in sorted(rej_breakdown[region].keys()):
+                                sub_key = f"rej_sub_{region}_{sub}".replace(' ', '_').replace('(', '').replace(')', '').replace('.', '')
+                                if sub_key not in st.session_state: st.session_state[sub_key] = False
+                                expand_icon = "▼" if st.session_state[sub_key] else "▶"
+                                col1, col2 = st.columns([1, 20])
+                                with col1:
+                                    if st.button(expand_icon, key=f"rejbtn_{sub_key}"):
+                                        st.session_state[sub_key] = not st.session_state[sub_key]
+                                with col2: st.markdown(f'<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {sub}</div>', unsafe_allow_html=True)
+                                if st.session_state[sub_key]:
+                                    for dept in sorted(rej_breakdown[region][sub].keys()):
+                                        dept_rejs = rej_breakdown[region][sub][dept]
+                                        with st.expander(f"🏭 {dept} — {len(dept_rejs)} rejection(s)", expanded=False):
+                                            for r in dept_rejs:
+                                                st.markdown(f"""<div style="padding:0.5rem;margin:0.3rem 0;border-left:4px solid #CC0000;background:#fff5f5;border-radius:6px;"><strong>👤 {r['Employee']}</strong> | Reviewer: {r['Reviewer']} | #{r['Reject Count']}<br><small style="color:#CC0000;">💬 {r['Rejection Reason'][:200]}</small></div>""", unsafe_allow_html=True)
+                        
+                        dept_rej_counts = rej_df['Department'].value_counts()
+                        fig3 = px.pie(values=dept_rej_counts.values, names=dept_rej_counts.index, hole=0.5, title="Rejections by Department", color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169']); st.plotly_chart(fig3, use_container_width=True)
+                        
+                        if st.button("🤖 AI Analyze Rejection Patterns", use_container_width=True, type="primary"):
+                            with st.spinner("🧠 Analyzing..."):
+                                try:
+                                    import openai
+                                    openai_key = os.environ.get("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", ""))
+                                    if openai_key:
+                                        client = openai.OpenAI(api_key=openai_key)
+                                        reasons_text = "\n".join([f"- {r['Employee']} ({r['Department']}, {r['Region']}): {r['Rejection Reason']}" for r in rejections])
+                                        response = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "Analyze these appraisal rejections. Provide: 1) Top 3 themes 2) Departments with issues 3) Recommendations."}, {"role": "user", "content": reasons_text}], temperature=0.5, max_tokens=400)
+                                        st.markdown("### 🤖 AI Analysis"); st.success("Analysis complete!"); st.markdown(response.choices[0].message.content)
+                                    else: st.info("OpenAI API key not configured.")
+                                except Exception as e:
+                                    st.warning(f"AI analysis unavailable: {str(e)}")
+                                    st.markdown("### 📊 Manual Analysis\n**Common Themes:** Score disagreements, insufficient evidence review, communication gaps.\n**Recommendations:** Pre-review calibration meetings, ensure evidence acknowledgment, add discussion step.")
+                    else: st.info("✅ No rejections recorded matching the filters.")
+                
+                # ============================================================
+                # DASH TAB 4: HIERARCHY VIEW
+                # ============================================================
+                with dash_tabs[4]:
+                    st.subheader("🏢 Full Hierarchy View")
+                    hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+                    if not employees_df.empty:
+                        for _, emp in employees_df.iterrows():
+                            emp_name = f"{emp['first_name']} {emp['last_name']}".strip()
+                            if not emp_name: continue
+                            dept = emp.get('department', 'General'); sub = emp.get('subsidiary', ''); region = get_region(sub)
+                            if not apply_dash_filters(region, sub or 'Unassigned', dept): continue
+                            assessment = st.session_state.self_assessments.get(emp_name, {})
+                            scores = assessment.get('scores', {}); reviewer_scores = assessment.get('hod_scores') or assessment.get('tl_scores') or {}
+                            hierarchy[region][sub or 'Unassigned'][dept][emp_name] = {'self_avg': round(sum(int(v) for v in scores.values() if v) / len(scores), 1) if scores else 0, 'reviewer_avg': round(sum(int(v) for v in reviewer_scores.values() if v) / len(reviewer_scores), 1) if reviewer_scores else 0, 'status': assessment.get('status', 'Not Started'), 'acceptance': assessment.get('acceptance', ''), 'reviewer_type': assessment.get('reviewer_type', 'N/A'), 'rejection_comment': assessment.get('rejection_comment', ''), 'reject_count': assessment.get('reject_count', 0)}
+                    
+                    if not all_perf.empty:
+                        for _, row in all_perf.iterrows():
+                            uname = ' '.join(str(row.get('user_name', '')).split())
+                            for region in hierarchy:
+                                for sub in hierarchy[region]:
+                                    for dept in hierarchy[region][sub]:
+                                        if uname in hierarchy[region][sub][dept]: hierarchy[region][sub][dept][uname]['kpi_status'] = row.get('submission_status', 'Draft')
+                    
+                    total_emps_shown = 0
+                    for region in ['Abuja', 'Lagos', 'Aba']:
+                        if region not in hierarchy: continue
+                        region_color = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#1a1a1a')
+                        region_emp_count = sum(len(d) for s in hierarchy[region].values() for d in s.values())
+                        if region_emp_count == 0: continue
+                        st.markdown(f"""<div class="region-header" style="background:linear-gradient(135deg, {region_color}, #2d2d2d);display:flex;justify-content:space-between;align-items:center;"><span>🌍 {region} Region</span><span style="font-size:0.85rem;opacity:0.85;">👥 {region_emp_count} employees</span></div>""", unsafe_allow_html=True)
+                        for subsidiary in sorted(hierarchy[region].keys()):
+                            departments = hierarchy[region][subsidiary]; sub_emp_count = sum(len(e) for e in departments.values())
+                            if sub_emp_count == 0: continue
+                            sub_key = f"hier_sub_{region}_{subsidiary}".replace(' ', '_').replace('(', '').replace(')', '').replace('.', '')
+                            if sub_key not in st.session_state: st.session_state[sub_key] = False
+                            expand_icon = "▼" if st.session_state[sub_key] else "▶"
+                            col1, col2 = st.columns([1, 20])
+                            with col1:
+                                if st.button(expand_icon, key=f"hierbtn_{sub_key}"):
+                                    st.session_state[sub_key] = not st.session_state[sub_key]
+                            with col2: st.markdown(f"""<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {subsidiary} — {len(departments)} depts | 👥 {sub_emp_count}</div>""", unsafe_allow_html=True)
+                            if st.session_state[sub_key]:
+                                for department in sorted(departments.keys()):
+                                    employees = departments[department]
+                                    if len(employees) == 0: continue
+                                    dept_key = f"hier_dept_{region}_{subsidiary}_{department}".replace(' ', '_').replace('(', '').replace(')', '').replace('.', '')
+                                    if dept_key not in st.session_state: st.session_state[dept_key] = False
+                                    dept_icon = "▼" if st.session_state[dept_key] else "▶"
+                                    col1d, col2d = st.columns([1, 20])
+                                    with col1d:
+                                        if st.button(dept_icon, key=f"hierdeptbtn_{dept_key}"):
+                                            st.session_state[dept_key] = not st.session_state[dept_key]
+                                    with col2d:
+                                        dept_completed = sum(1 for e in employees.values() if e['acceptance'] == 'Accepted'); dept_rejected = sum(1 for e in employees.values() if e['acceptance'] == 'Rejected')
+                                        st.markdown(f"""<div style="background:#f8f9fa;padding:0.4rem 1rem;border-radius:6px;margin:0.2rem 0;border-left:3px solid #CC0000;">🏭 {department} — 👥 {len(employees)} | 🎉 {dept_completed} done | ❌ {dept_rejected} rejected</div>""", unsafe_allow_html=True)
+                                    if st.session_state[dept_key]:
+                                        for emp_name, data in sorted(employees.items()):
+                                            total_emps_shown += 1
+                                            accept_class = {'Accepted': 'badge-green', 'Rejected': 'badge-red', '': 'badge-gray'}; accept_badge = accept_class.get(data['acceptance'], 'badge-gray')
+                                            status_text = data['acceptance'] or data['status'] or 'Not Started'
+                                            kpi_badge_class = {'Approved': 'badge-green', 'Submitted': 'badge-yellow', 'Draft': 'badge-gray'}.get(data.get('kpi_status', ''), 'badge-gray')
+                                            border_color = '#38a169' if data['acceptance'] == 'Accepted' else '#CC0000' if data['acceptance'] == 'Rejected' else '#d69e2e'
+                                            st.markdown(f"""<div style="padding:0.6rem;margin:0.3rem 0 0.3rem 2rem;border-left:4px solid {border_color};background:white;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;"><strong>👤 {emp_name}</strong><span style="font-size:0.8rem;">📊 Self: <strong>{data['self_avg']}%</strong> | Rev: <strong>{data['reviewer_avg']}%</strong> | <span class="badge {kpi_badge_class}">KPI: {data.get('kpi_status', 'N/A')}</span> | <span class="badge {accept_badge}">{status_text}</span> | {data['reviewer_type']}</span></div>{f'<small style="color:#CC0000;">💬 {data["rejection_comment"][:100]}...</small>' if data['rejection_comment'] else ''}</div>""", unsafe_allow_html=True)
+                    if total_emps_shown == 0: st.info("No employees match the selected filters.")
+            
+            # ============================================================
+            # ADMIN SUB-TAB 1: MY PERFORMANCE
+            # ============================================================
+            with admin_dash_tabs[1]:
+                st.subheader("👤 My Personal Performance")
+                user_assessment = st.session_state.self_assessments.get(user_name, {})
+                
+                if user_assessment.get('acceptance') == 'Accepted':
+                    st.success("🎉 Congratulations! Your appraisal has been accepted!")
+                    final_scores = user_assessment.get('hod_scores') or user_assessment.get('tl_scores') or user_assessment.get('scores', {})
+                    avg_score = sum(int(v) for v in final_scores.values() if v) / len(final_scores) if final_scores else 0
+                    
+                    if avg_score >= 90: classification, class_color = 'PLATINUM', '#E5E4E2'; emoji = '🥇'
+                    elif avg_score >= 80: classification, class_color = 'GOLD', '#FFD700'; emoji = '🥇'
+                    elif avg_score >= 70: classification, class_color = 'SILVER', '#C0C0C0'; emoji = '🥈'
+                    elif avg_score >= 60: classification, class_color = 'BRONZE', '#CD7F32'; emoji = '🥉'
+                    elif avg_score >= 50: classification, class_color = 'STEEL', '#71797E'; emoji = '🔵'
+                    else: classification, class_color = 'DEVELOPMENT', '#A0AEC0'; emoji = '⚪'
+                    
+                    st.markdown(f"""
+                    <div style="background:linear-gradient(135deg, #fffef5, #fff8e1);border:3px solid {class_color};border-radius:16px;padding:2rem;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.1);margin:1rem 0;">
+                        <h2 style="color:#1a1a1a;margin:0;">🏆 APPRAISAL CERTIFICATE</h2>
+                        <h3 style="color:#CC0000;margin:0.5rem 0;">Churchgate Group</h3>
+                        <p style="font-size:1.2rem;margin:0.5rem 0;"><strong>{user_name}</strong></p>
+                        <p style="margin:0.3rem 0;">Has successfully completed the</p>
+                        <p style="font-size:1.1rem;color:#d69e2e;margin:0.3rem 0;"><strong>{st.session_state.appraisal_cycle_name}</strong></p>
+                        <p style="margin:0.3rem 0;">with an overall score of <strong style="color:#38a169;font-size:1.3rem;">{avg_score:.1f}%</strong></p>
+                        <p style="font-size:1.4rem;font-weight:700;color:{class_color};margin:0.5rem 0;">Classification: {emoji} {classification}</p>
+                        <p style="color:#888;font-size:0.85rem;margin:0.3rem 0;">Date: {user_assessment.get('date', now_wat.strftime('%Y-%m-%d %H:%M WAT'))}</p>
+                        <p style="color:#888;font-size:0.8rem;">Verified by Churchgate Group HRIS</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if st.button("📜 Download Certificate (PDF)", use_container_width=True, type="primary", key="cert_dl_admin_t8"):
+                        try:
+                            from fpdf import FPDF
+                            safe_name = user_name.encode('ascii', 'ignore').decode('ascii')
+                            dept = st.session_state.user.get('department', 'N/A')
+                            emp_id = st.session_state.user.get('employee_id', 'N/A')
+                            reviewer = user_assessment.get('reviewer_type', 'HOD')
+                            
+                            if avg_score >= 90: pdf_class_color = (229, 228, 226)
+                            elif avg_score >= 80: pdf_class_color = (255, 215, 0)
+                            elif avg_score >= 70: pdf_class_color = (192, 192, 192)
+                            elif avg_score >= 60: pdf_class_color = (205, 127, 50)
+                            elif avg_score >= 50: pdf_class_color = (113, 121, 126)
+                            else: pdf_class_color = (160, 174, 192)
+                            
+                            if avg_score >= 90: grade = "A+"
+                            elif avg_score >= 80: grade = "A"
+                            elif avg_score >= 70: grade = "B"
+                            elif avg_score >= 60: grade = "C"
+                            elif avg_score >= 50: grade = "D"
+                            else: grade = "F"
+                            
+                            if avg_score >= 80: rating = "EXCEEDS EXPECTATIONS"
+                            elif avg_score >= 60: rating = "MEETS EXPECTATIONS"
+                            else: rating = "BELOW EXPECTATIONS"
+                            
+                            pillar_scores = {}
+                            for key, val in final_scores.items():
+                                pillar_name = key.split('_')[0] if '_' in key else key[:35]
+                                if pillar_name not in pillar_scores: pillar_scores[pillar_name] = []
+                                pillar_scores[pillar_name].append(int(val) if val else 0)
+                            pillar_avgs = {k: sum(v)/len(v) for k, v in pillar_scores.items()}
+                            
+                            pdf = FPDF(orientation='L', unit='mm', format='A4')
+                            pdf.add_page()
+                            pdf.set_draw_color(*pdf_class_color); pdf.set_line_width(2)
+                            pdf.rect(6, 6, 285, 198); pdf.set_line_width(0.5); pdf.rect(8, 8, 281, 194)
+                            pdf.set_fill_color(26, 26, 26); pdf.rect(10, 10, 277, 40, 'F')
+                            pdf.set_fill_color(204, 0, 0); pdf.rect(10, 50, 277, 3, 'F')
+                            pdf.set_fill_color(*pdf_class_color); pdf.rect(10, 53, 277, 1.5, 'F')
+                            pdf.set_font('Helvetica', 'B', 28); pdf.set_text_color(255, 255, 255)
+                            pdf.cell(0, 22, 'CHURCHGATE GROUP', ln=True, align='C')
+                            pdf.set_font('Helvetica', 'B', 13); pdf.set_text_color(*pdf_class_color)
+                            pdf.cell(0, 8, 'PERFORMANCE APPRAISAL CERTIFICATE OF ACHIEVEMENT', ln=True, align='C')
+                            pdf.ln(12); pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 13)
+                            pdf.cell(0, 8, 'This is to certify that', ln=True, align='C'); pdf.ln(4)
+                            pdf.set_font('Helvetica', 'B', 24); pdf.set_text_color(204, 0, 0)
+                            pdf.cell(0, 14, safe_name.upper(), ln=True, align='C'); pdf.ln(4)
+                            pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 12)
+                            pdf.cell(0, 8, f'has successfully completed the {st.session_state.appraisal_cycle_name}', ln=True, align='C')
+                            pdf.cell(0, 8, f'from {st.session_state.appraisal_start} to {st.session_state.appraisal_end}', ln=True, align='C')
+                            pdf.ln(6)
+                            box_y = pdf.get_y(); pdf.set_fill_color(245, 245, 245); pdf.rect(25, box_y, 247, 28, 'F')
+                            col_w = 247 / 4
+                            metrics = [('OVERALL SCORE', f'{avg_score:.1f}%', (56, 161, 105)), ('GRADE', grade, (204, 0, 0)), ('RATING', rating, (*pdf_class_color,)), ('CLASSIFICATION', classification, (*pdf_class_color,))]
+                            for i, (label, value, color) in enumerate(metrics):
+                                pdf.set_xy(25 + i*col_w, box_y + 4); pdf.set_font('Helvetica', '', 8); pdf.set_text_color(128, 128, 128); pdf.cell(col_w, 6, label, align='C')
+                                pdf.set_xy(25 + i*col_w, box_y + 12); pdf.set_font('Helvetica', 'B', 13); pdf.set_text_color(*color[:3]); pdf.cell(col_w, 8, value, align='C')
+                            pdf.set_y(box_y + 32); pdf.ln(4)
+                            pdf.set_font('Helvetica', 'B', 11); pdf.set_text_color(26, 26, 26)
+                            pdf.cell(0, 8, 'PERFORMANCE PILLAR BREAKDOWN', ln=True, align='C'); pdf.ln(3)
+                            table_x = 40
+                            pdf.set_fill_color(26, 26, 26); pdf.set_text_color(255, 255, 255); pdf.set_font('Helvetica', 'B', 9)
+                            pdf.set_xy(table_x, pdf.get_y())
+                            pdf.cell(110, 8, ' Strategic Pillar', 1, 0, 'L', True); pdf.cell(40, 8, 'Score', 1, 0, 'C', True); pdf.cell(40, 8, 'Rating', 1, 0, 'C', True); pdf.cell(40, 8, 'Grade', 1, 0, 'C', True); pdf.ln()
+                            pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 8)
+                            for pillar, avg in pillar_avgs.items():
+                                if avg >= 90: p_grade = "A+"
+                                elif avg >= 80: p_grade = "A"
+                                elif avg >= 70: p_grade = "B"
+                                elif avg >= 60: p_grade = "C"
+                                elif avg >= 50: p_grade = "D"
+                                else: p_grade = "F"
+                                if avg >= 80: p_rating = 'Exceeds'
+                                elif avg >= 60: p_rating = 'Meets'
+                                else: p_rating = 'Below'
+                                pdf.set_xy(table_x, pdf.get_y()); pdf.cell(110, 7, f' {pillar[:45]}', 1, 0, 'L'); pdf.cell(40, 7, f'{avg:.1f}%', 1, 0, 'C'); pdf.cell(40, 7, p_rating, 1, 0, 'C'); pdf.cell(40, 7, p_grade, 1, 0, 'C'); pdf.ln()
+                            pdf.ln(8); pdf.set_font('Helvetica', '', 9); pdf.set_text_color(80, 80, 80)
+                            pdf.cell(0, 6, f'Department: {dept}    |    Reviewer: {reviewer}    |    Employee ID: {emp_id}', ln=True, align='C')
+                            pdf.cell(0, 6, f'Date of Issue: {now_wat.strftime("%B %d, %Y")}    |    Time: {now_wat.strftime("%H:%M WAT")}', ln=True, align='C')
+                            pdf.ln(6); sig_w = 75
+                            pdf.set_font('Helvetica', 'B', 9); pdf.set_text_color(26, 26, 26)
+                            pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.cell(25, 7, ''); pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.cell(25, 7, ''); pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.ln()
+                            pdf.set_font('Helvetica', '', 8); pdf.set_text_color(128, 128, 128)
+                            pdf.cell(sig_w, 5, 'Reviewer / HOD', align='C'); pdf.cell(25, 5, ''); pdf.cell(sig_w, 5, 'HR Director', align='C'); pdf.cell(25, 5, ''); pdf.cell(sig_w, 5, 'GMD / CEO', align='C')
+                            pdf.ln(12); pdf.set_font('Helvetica', 'I', 7); pdf.set_text_color(160, 160, 160)
+                            pdf.cell(0, 5, 'This certificate is electronically generated by Churchgate Group HRIS and is valid without physical signature.', ln=True, align='C')
+                            pdf.cell(0, 5, 'Churchgate Group - Nigeria | hris@churchgate.com', ln=True, align='C')
+                            
+                            pdf_output = pdf.output(dest='S').encode('latin-1')
+                            st.download_button("📥 Download PDF Certificate", pdf_output, f"{safe_name.replace(' ', '_')}_Certificate.pdf", "application/pdf", key="cert_dl_btn_admin_t8")
+                            st.success("✅ Fortune 500 Certificate ready!")
+                        except Exception as e:
+                            st.error(f"PDF error: {str(e)}")
+                
+                if st.session_state.appraisal_cycle_active:
+                    current_status = user_assessment.get('status', 'Not Started')
+                    acceptance = user_assessment.get('acceptance', '')
+                    if acceptance == 'Accepted' or current_status == 'Completed':
+                        current_status = 'Completed'
+                    steps = [("Set KPIs", 1), ("Self-Assessment", 2), ("Review", 3), ("Complete", 4)]
+                    status_map = {'Not Started': 0, 'KPIs Set': 1, 'Submitted': 2, 'Approved': 3, 'Awaiting HOD Re-review': 3, 'Awaiting TL Re-review': 3, 'Accepted': 4, 'Completed': 4}
+                    current_step = status_map.get(current_status, 0)
+                    cols = st.columns(4)
+                    for i, (step_name, step_num) in enumerate(steps):
+                        with cols[i]:
+                            if step_num < current_step: st.success(f"✅ {step_name}")
+                            elif step_num == current_step: st.success(f"✅ {step_name}")
+                            else: st.markdown(f"⏳ {step_name}")
+                
+                pillar_data = load_user_pillar_data()
+                for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                    pd_data = pillar_data[pillar_name]; status_text, color = get_kpi_status(pd_data['progress'])
+                    st.markdown(f"""<div class="glass-card" style="border-left:4px solid {color};padding:0.8rem;"><strong>{pillar_name}</strong> ({pd_data['weight']}%)<br><small>Progress: {pd_data['progress']}% | {pd_data['status']}</small><div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;"><div style="background:{color};width:{pd_data['progress']}%;height:6px;border-radius:3px;"></div></div></div>""", unsafe_allow_html=True)
+                
+                total_prog = sum(p['progress'] * p['weight'] / 100 for p in pillar_data.values())
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Weighted Score", f"{total_prog:.1f}%"); c2.metric("On Track", sum(1 for p in pillar_data.values() if p['status'] in ['On Track', 'Exceeding'])); c3.metric("At Risk", sum(1 for p in pillar_data.values() if p['status'] == 'At Risk'))
+                
+                st.markdown("---"); st.subheader("📜 My Appraisal History")
+                try:
+                    history = db.get_appraisal_history(user_name)
+                    if history:
+                        for h in history[-5:]:
+                            sc = '#38a169' if 'Accepted' in str(h.get('final_status', '')) else '#CC0000'
+                            st.markdown(f"""<div class="kpi-card" style="border-left-color:{sc};"><strong>{h.get('cycle_name', 'N/A')}</strong>: {h.get('final_status', 'N/A')} — {h.get('completed_date', 'N/A')}</div>""", unsafe_allow_html=True)
+                    else: st.info("No completed appraisals yet.")
+                except: pass
+        
+        else:
+            # ===== NON-ADMIN EMPLOYEE VIEW =====
+            st.subheader("📈 My Performance Summary")
+            user_assessment = st.session_state.self_assessments.get(user_name, {})
+            
+            if user_assessment.get('acceptance') == 'Accepted':
+                st.success("🎉 Congratulations! Your appraisal has been accepted!")
+                final_scores = user_assessment.get('hod_scores') or user_assessment.get('tl_scores') or user_assessment.get('scores', {})
+                avg_score = sum(int(v) for v in final_scores.values() if v) / len(final_scores) if final_scores else 0
+                
+                if avg_score >= 90: classification, class_color = 'PLATINUM', '#E5E4E2'; emoji = '🥇'
+                elif avg_score >= 80: classification, class_color = 'GOLD', '#FFD700'; emoji = '🥇'
+                elif avg_score >= 70: classification, class_color = 'SILVER', '#C0C0C0'; emoji = '🥈'
+                elif avg_score >= 60: classification, class_color = 'BRONZE', '#CD7F32'; emoji = '🥉'
+                elif avg_score >= 50: classification, class_color = 'STEEL', '#71797E'; emoji = '🔵'
+                else: classification, class_color = 'DEVELOPMENT', '#A0AEC0'; emoji = '⚪'
+                
+                st.markdown(f"""
+                <div style="background:linear-gradient(135deg, #fffef5, #fff8e1);border:3px solid {class_color};border-radius:16px;padding:2rem;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.1);margin:1rem 0;">
+                    <h2 style="color:#1a1a1a;margin:0;">🏆 APPRAISAL CERTIFICATE</h2>
+                    <h3 style="color:#CC0000;margin:0.5rem 0;">Churchgate Group</h3>
+                    <p style="font-size:1.2rem;margin:0.5rem 0;"><strong>{user_name}</strong></p>
+                    <p style="margin:0.3rem 0;">Has successfully completed the</p>
+                    <p style="font-size:1.1rem;color:#d69e2e;margin:0.3rem 0;"><strong>{st.session_state.appraisal_cycle_name}</strong></p>
+                    <p style="margin:0.3rem 0;">with an overall score of <strong style="color:#38a169;font-size:1.3rem;">{avg_score:.1f}%</strong></p>
+                    <p style="font-size:1.4rem;font-weight:700;color:{class_color};margin:0.5rem 0;">Classification: {emoji} {classification}</p>
+                    <p style="color:#888;font-size:0.85rem;margin:0.3rem 0;">Date: {user_assessment.get('date', now_wat.strftime('%Y-%m-%d %H:%M WAT'))}</p>
+                    <p style="color:#888;font-size:0.8rem;">Verified by Churchgate Group HRIS</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if st.button("📜 Download Certificate (PDF)", use_container_width=True, type="primary", key="cert_dl_emp_t8"):
+                    try:
+                        from fpdf import FPDF
+                        safe_name = user_name.encode('ascii', 'ignore').decode('ascii')
+                        dept = st.session_state.user.get('department', 'N/A')
+                        emp_id = st.session_state.user.get('employee_id', 'N/A')
+                        reviewer = user_assessment.get('reviewer_type', 'HOD')
+                        
+                        if avg_score >= 90: pdf_class_color = (229, 228, 226)
+                        elif avg_score >= 80: pdf_class_color = (255, 215, 0)
+                        elif avg_score >= 70: pdf_class_color = (192, 192, 192)
+                        elif avg_score >= 60: pdf_class_color = (205, 127, 50)
+                        elif avg_score >= 50: pdf_class_color = (113, 121, 126)
+                        else: pdf_class_color = (160, 174, 192)
+                        
+                        if avg_score >= 90: grade = "A+"
+                        elif avg_score >= 80: grade = "A"
+                        elif avg_score >= 70: grade = "B"
+                        elif avg_score >= 60: grade = "C"
+                        elif avg_score >= 50: grade = "D"
+                        else: grade = "F"
+                        
+                        if avg_score >= 80: rating = "EXCEEDS EXPECTATIONS"
+                        elif avg_score >= 60: rating = "MEETS EXPECTATIONS"
+                        else: rating = "BELOW EXPECTATIONS"
+                        
+                        pillar_scores = {}
+                        for key, val in final_scores.items():
+                            pillar_name = key.split('_')[0] if '_' in key else key[:35]
+                            if pillar_name not in pillar_scores: pillar_scores[pillar_name] = []
+                            pillar_scores[pillar_name].append(int(val) if val else 0)
+                        pillar_avgs = {k: sum(v)/len(v) for k, v in pillar_scores.items()}
+                        
+                        pdf = FPDF(orientation='L', unit='mm', format='A4')
+                        pdf.add_page()
+                        pdf.set_draw_color(*pdf_class_color); pdf.set_line_width(2)
+                        pdf.rect(6, 6, 285, 198); pdf.set_line_width(0.5); pdf.rect(8, 8, 281, 194)
+                        pdf.set_fill_color(26, 26, 26); pdf.rect(10, 10, 277, 40, 'F')
+                        pdf.set_fill_color(204, 0, 0); pdf.rect(10, 50, 277, 3, 'F')
+                        pdf.set_fill_color(*pdf_class_color); pdf.rect(10, 53, 277, 1.5, 'F')
+                        pdf.set_font('Helvetica', 'B', 28); pdf.set_text_color(255, 255, 255)
+                        pdf.cell(0, 22, 'CHURCHGATE GROUP', ln=True, align='C')
+                        pdf.set_font('Helvetica', 'B', 13); pdf.set_text_color(*pdf_class_color)
+                        pdf.cell(0, 8, 'PERFORMANCE APPRAISAL CERTIFICATE OF ACHIEVEMENT', ln=True, align='C')
+                        pdf.ln(12); pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 13)
+                        pdf.cell(0, 8, 'This is to certify that', ln=True, align='C'); pdf.ln(4)
+                        pdf.set_font('Helvetica', 'B', 24); pdf.set_text_color(204, 0, 0)
+                        pdf.cell(0, 14, safe_name.upper(), ln=True, align='C'); pdf.ln(4)
+                        pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 12)
+                        pdf.cell(0, 8, f'has successfully completed the {st.session_state.appraisal_cycle_name}', ln=True, align='C')
+                        pdf.cell(0, 8, f'from {st.session_state.appraisal_start} to {st.session_state.appraisal_end}', ln=True, align='C')
+                        pdf.ln(6)
+                        box_y = pdf.get_y(); pdf.set_fill_color(245, 245, 245); pdf.rect(25, box_y, 247, 28, 'F')
+                        col_w = 247 / 4
+                        metrics = [('OVERALL SCORE', f'{avg_score:.1f}%', (56, 161, 105)), ('GRADE', grade, (204, 0, 0)), ('RATING', rating, (*pdf_class_color,)), ('CLASSIFICATION', classification, (*pdf_class_color,))]
+                        for i, (label, value, color) in enumerate(metrics):
+                            pdf.set_xy(25 + i*col_w, box_y + 4); pdf.set_font('Helvetica', '', 8); pdf.set_text_color(128, 128, 128); pdf.cell(col_w, 6, label, align='C')
+                            pdf.set_xy(25 + i*col_w, box_y + 12); pdf.set_font('Helvetica', 'B', 13); pdf.set_text_color(*color[:3]); pdf.cell(col_w, 8, value, align='C')
+                        pdf.set_y(box_y + 32); pdf.ln(4)
+                        pdf.set_font('Helvetica', 'B', 11); pdf.set_text_color(26, 26, 26)
+                        pdf.cell(0, 8, 'PERFORMANCE PILLAR BREAKDOWN', ln=True, align='C'); pdf.ln(3)
+                        table_x = 40
+                        pdf.set_fill_color(26, 26, 26); pdf.set_text_color(255, 255, 255); pdf.set_font('Helvetica', 'B', 9)
+                        pdf.set_xy(table_x, pdf.get_y())
+                        pdf.cell(110, 8, ' Strategic Pillar', 1, 0, 'L', True); pdf.cell(40, 8, 'Score', 1, 0, 'C', True); pdf.cell(40, 8, 'Rating', 1, 0, 'C', True); pdf.cell(40, 8, 'Grade', 1, 0, 'C', True); pdf.ln()
+                        pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 8)
+                        for pillar, avg in pillar_avgs.items():
+                            if avg >= 90: p_grade = "A+"
+                            elif avg >= 80: p_grade = "A"
+                            elif avg >= 70: p_grade = "B"
+                            elif avg >= 60: p_grade = "C"
+                            elif avg >= 50: p_grade = "D"
+                            else: p_grade = "F"
+                            if avg >= 80: p_rating = 'Exceeds'
+                            elif avg >= 60: p_rating = 'Meets'
+                            else: p_rating = 'Below'
+                            pdf.set_xy(table_x, pdf.get_y()); pdf.cell(110, 7, f' {pillar[:45]}', 1, 0, 'L'); pdf.cell(40, 7, f'{avg:.1f}%', 1, 0, 'C'); pdf.cell(40, 7, p_rating, 1, 0, 'C'); pdf.cell(40, 7, p_grade, 1, 0, 'C'); pdf.ln()
+                        pdf.ln(8); pdf.set_font('Helvetica', '', 9); pdf.set_text_color(80, 80, 80)
+                        pdf.cell(0, 6, f'Department: {dept}    |    Reviewer: {reviewer}    |    Employee ID: {emp_id}', ln=True, align='C')
+                        pdf.cell(0, 6, f'Date of Issue: {now_wat.strftime("%B %d, %Y")}    |    Time: {now_wat.strftime("%H:%M WAT")}', ln=True, align='C')
+                        pdf.ln(6); sig_w = 75
+                        pdf.set_font('Helvetica', 'B', 9); pdf.set_text_color(26, 26, 26)
+                        pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.cell(25, 7, ''); pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.cell(25, 7, ''); pdf.cell(sig_w, 7, '_______________________', align='C'); pdf.ln()
+                        pdf.set_font('Helvetica', '', 8); pdf.set_text_color(128, 128, 128)
+                        pdf.cell(sig_w, 5, 'Reviewer / HOD', align='C'); pdf.cell(25, 5, ''); pdf.cell(sig_w, 5, 'HR Director', align='C'); pdf.cell(25, 5, ''); pdf.cell(sig_w, 5, 'GMD / CEO', align='C')
+                        pdf.ln(12); pdf.set_font('Helvetica', 'I', 7); pdf.set_text_color(160, 160, 160)
+                        pdf.cell(0, 5, 'This certificate is electronically generated by Churchgate Group HRIS and is valid without physical signature.', ln=True, align='C')
+                        pdf.cell(0, 5, 'Churchgate Group - Nigeria | hris@churchgate.com', ln=True, align='C')
+                        
+                        pdf_output = pdf.output(dest='S').encode('latin-1')
+                        st.download_button("📥 Download PDF Certificate", pdf_output, f"{safe_name.replace(' ', '_')}_Certificate.pdf", "application/pdf", key="cert_dl_btn_emp_t8")
+                        st.success("✅ Fortune 500 Certificate ready!")
+                    except Exception as e:
+                        st.error(f"PDF error: {str(e)}")
+            
+            if st.session_state.appraisal_cycle_active:
+                current_status = user_assessment.get('status', 'Not Started')
+                acceptance = user_assessment.get('acceptance', '')
+                if acceptance == 'Accepted' or current_status == 'Completed':
+                    current_status = 'Completed'
+                steps = [("Set KPIs", 1), ("Self-Assessment", 2), ("Review", 3), ("Complete", 4)]
+                status_map = {'Not Started': 0, 'KPIs Set': 1, 'Submitted': 2, 'Approved': 3, 'Awaiting HOD Re-review': 3, 'Awaiting TL Re-review': 3, 'Accepted': 4, 'Completed': 4}
+                current_step = status_map.get(current_status, 0)
+                cols = st.columns(4)
+                for i, (step_name, step_num) in enumerate(steps):
+                    with cols[i]:
+                        if step_num < current_step: st.success(f"✅ {step_name}")
+                        elif step_num == current_step: st.success(f"✅ {step_name}")
+                        else: st.markdown(f"⏳ {step_name}")
+            
+            pillar_data = load_user_pillar_data()
+            for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                pd_data = pillar_data[pillar_name]; status_text, color = get_kpi_status(pd_data['progress'])
+                st.markdown(f"""<div class="glass-card" style="border-left:4px solid {color};padding:0.8rem;"><strong>{pillar_name}</strong> ({pd_data['weight']}%)<br><small>Progress: {pd_data['progress']}% | {pd_data['status']}</small><div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;"><div style="background:{color};width:{pd_data['progress']}%;height:6px;border-radius:3px;"></div></div></div>""", unsafe_allow_html=True)
+            
+            total_prog = sum(p['progress'] * p['weight'] / 100 for p in pillar_data.values())
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Weighted Score", f"{total_prog:.1f}%"); c2.metric("On Track", sum(1 for p in pillar_data.values() if p['status'] in ['On Track', 'Exceeding'])); c3.metric("At Risk", sum(1 for p in pillar_data.values() if p['status'] == 'At Risk'))
+            
+            if st.button("📊 Benchmark Report", use_container_width=True):
+                all_perf_data = get_all_perf_cached()
+                dept_avg = all_perf_data[all_perf_data['department'] == user_dept]['progress'].mean() if not all_perf_data.empty and 'progress' in all_perf_data.columns else 0
+                group_avg = all_perf_data['progress'].mean() if not all_perf_data.empty and 'progress' in all_perf_data.columns else 0
+                bench_data = pd.DataFrame({'Metric': ['My Score', 'Dept Average', 'Group Average', 'Target'], 'Score': [total_prog, dept_avg, group_avg, 85]})
+                fig = px.bar(bench_data, x='Metric', y='Score', color='Metric', color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#38a169']); fig.add_hline(y=85, line_dash="dash", line_color="#38a169"); fig.update_layout(height=350)
+                st.plotly_chart(fig, use_container_width=True)
+            
+            st.markdown("---"); st.subheader("📜 My Appraisal History")
+            try:
+                history = db.get_appraisal_history(user_name)
+                if history:
+                    for h in history[-5:]:
+                        sc = '#38a169' if 'Accepted' in str(h.get('final_status', '')) else '#CC0000'
+                        st.markdown(f"""<div class="kpi-card" style="border-left-color:{sc};"><strong>{h.get('cycle_name', 'N/A')}</strong>: {h.get('final_status', 'N/A')} — {h.get('completed_date', 'N/A')}</div>""", unsafe_allow_html=True)
+                else: st.info("No completed appraisals yet.")
+            except: pass
+    
+    # ============================================================
+    # TAB 9: APPRAISAL COMMITTEE - COMPLETE WITH ALL FIXES
+    # ============================================================
+    with tab9:
+        st.markdown('<div class="glass-card"><h3>🏛️ Appraisal Committee Board</h3><p style="color:#888;">Senior Management & Admin — Full Appraisal Oversight & Talent Analytics</p></div>', unsafe_allow_html=True)
+        
+        if not (is_sr_mgmt or is_super_admin):
+            st.info("⛔ Restricted to Senior Management and Admin only.")
+        else:
+            
+            def get_classification(score):
+                if score >= 90: return 'PLATINUM', '#E5E4E2'
+                elif score >= 80: return 'GOLD', '#FFD700'
+                elif score >= 70: return 'SILVER', '#C0C0C0'
+                elif score >= 60: return 'BRONZE', '#CD7F32'
+                elif score >= 50: return 'STEEL', '#71797E'
+                else: return 'DEVELOPMENT', '#A0AEC0'
+            
+            def get_performance_level(score):
+                if score >= 80: return 'High'
+                elif score >= 60: return 'Average'
+                else: return 'Low'
+            
+            def get_emp_score(emp_name):
+                a = st.session_state.self_assessments.get(emp_name, {})
+                scores = a.get('hod_scores') or a.get('tl_scores') or a.get('scores', {})
+                return sum(int(v) for v in scores.values() if v) / len(scores) if scores else 0
+            
+            def get_potential_level(emp_name):
+                assessment = st.session_state.self_assessments.get(emp_name, {})
+                scores = assessment.get('scores', {})
+                reviewer_scores = assessment.get('hod_scores') or assessment.get('tl_scores') or {}
+                potential_score = 0
+                if scores and reviewer_scores:
+                    self_avg = sum(int(v) for v in scores.values() if v) / len(scores)
+                    rev_avg = sum(int(v) for v in reviewer_scores.values() if v) / len(reviewer_scores)
+                    gap = abs(self_avg - rev_avg)
+                    if gap <= 5: potential_score += 30
+                    elif gap <= 15: potential_score += 20
+                    else: potential_score += 5
+                elif scores: potential_score += 15
+                all_perf_data = get_all_perf_cached()
+                emp_perf = all_perf_data[all_perf_data['user_name'] == emp_name] if not all_perf_data.empty else pd.DataFrame()
+                total_kpis = 0
+                if not emp_perf.empty:
+                    for _, row in emp_perf.iterrows():
+                        kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                        total_kpis += len(kpi_list)
+                if total_kpis >= 16: potential_score += 25
+                elif total_kpis >= 10: potential_score += 20
+                elif total_kpis >= 5: potential_score += 15
+                else: potential_score += 5
+                if not emp_perf.empty:
+                    if any(emp_perf['submission_status'] == 'Approved'): potential_score += 25
+                    elif any(emp_perf['submission_status'] == 'Submitted'): potential_score += 15
+                    else: potential_score += 5
+                else: potential_score += 5
+                if scores:
+                    pillar_scores = defaultdict(list)
+                    for key, val in scores.items():
+                        pillar = key.split('_')[0] if '_' in key else key[:20]
+                        pillar_scores[pillar].append(int(val) if val else 0)
+                    pillar_avgs = [sum(v)/len(v) for v in pillar_scores.values()]
+                    if pillar_avgs and len(pillar_avgs) > 1:
+                        consistency = 100 - (max(pillar_avgs) - min(pillar_avgs))
+                        if consistency >= 80: potential_score += 20
+                        elif consistency >= 60: potential_score += 15
+                        else: potential_score += 5
+                    else: potential_score += 10
+                else: potential_score += 10
+                if potential_score >= 75: return 'High'
+                elif potential_score >= 50: return 'Moderate'
+                else: return 'Low'
+            
+            def get_9box_position(score, emp_name):
+                perf = get_performance_level(score)
+                pot = get_potential_level(emp_name)
+                positions = {
+                    ('High', 'High'): ('⭐ CONSISTENT STAR', '#6bcb77', 'Top Talent', 'Reward, promote'),
+                    ('High', 'Average'): ('💎 POTENTIAL GEM', '#ffd93d', 'Rising Talent', 'Develop, coach'),
+                    ('High', 'Low'): ('🚀 RISING STAR', '#ff6b6b', 'Diamond in Rough', 'Mentorship'),
+                    ('Moderate', 'High'): ('🏆 CURRENT STAR', '#98fb98', 'Strong Performer', 'Recognize, retain'),
+                    ('Moderate', 'Average'): ('👔 SOLID PROFESSIONAL', '#87ceeb', 'Core Contributor', 'Engage, upskill'),
+                    ('Moderate', 'Low'): ('🔄 INCONSISTENT PLAYER', '#ffa07a', 'Mixed Results', 'Performance plan'),
+                    ('Low', 'High'): ('🔧 TECHNOCRAT', '#90ee90', 'Technical Expert', 'Specialist role'),
+                    ('Low', 'Average'): ('📋 STABILIZER', '#b0c4de', 'Steady Hand', 'Maintain role'),
+                    ('Low', 'Low'): ('⚠️ TALENT AT BAY', '#ff4444', 'At Risk', 'Urgent intervention')
+                }
+                return positions.get((pot, perf), ('N/A', '#ccc', 'Unknown', 'Review'))
+            
+            # Build all employee score data
+            all_emps_scored = []
+            if not employees_df.empty:
+                for _, emp in employees_df.iterrows():
+                    en = f"{emp['first_name']} {emp['last_name']}".strip()
+                    if not en: continue
+                    sc = get_emp_score(en)
+                    if sc > 0:
+                        cl, co = get_classification(sc)
+                        pot = get_potential_level(en)
+                        perf = get_performance_level(sc)
+                        pos_name, pos_color, pos_desc, pos_action = get_9box_position(sc, en)
+                        all_emps_scored.append({
+                            'name': en, 'score': sc, 'class': cl, 'color': co,
+                            'dept': emp.get('department', 'General'),
+                            'subsidiary': emp.get('subsidiary', ''),
+                            'region': get_region(emp.get('subsidiary', '')),
+                            'initials': generate_initials(en),
+                            'potential': pot, 'performance': perf,
+                            'position_name': pos_name, 'position_color': pos_color,
+                            'position_desc': pos_desc, 'position_action': pos_action
+                        })
+            
+            all_assessments = st.session_state.self_assessments
+            
+            committee_tabs = st.tabs([
+                "📊 9-Box Matrix", "📈 Analytics", "📝 Submissions", 
+                "🚨 Escalated", "🎉 Completed", "🏆 Rankings", "📋 Recommendations"
+            ])
+            
+            # ============================================================
+            # TAB 0: 9-BOX MATRIX
+            # ============================================================
+            with committee_tabs[0]:
+                st.subheader("📊 9-Box Talent Matrix")
+                st.markdown("*Performance vs Potential — Data-driven talent assessment*")
+                
+                box_data = defaultdict(list)
+                for e in all_emps_scored:
+                    box_data[f"{e['potential']}_{e['performance']}"].append(e)
+                
+                total_in_matrix = len(all_emps_scored)
+                stars = len(box_data.get('High_High', [])) + len(box_data.get('Moderate_High', []))
+                at_risk = len(box_data.get('Low_Low', [])) + len(box_data.get('Moderate_Low', []))
+                
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("👥 Total", total_in_matrix)
+                m2.metric("⭐ Top Talent", stars)
+                m3.metric("⚠️ At Risk", at_risk)
+                m4.metric("📊 Avg Score", f"{sum(e['score'] for e in all_emps_scored) / total_in_matrix:.1f}%" if total_in_matrix > 0 else "N/A")
+                
+                st.markdown("---")
+                
+                st.markdown("""
+                <div style="display:flex;justify-content:space-around;margin-bottom:0.5rem;">
+                    <div style="text-align:center;width:30%;background:#fff5f5;padding:0.5rem;border-radius:8px;border:2px solid #ff4444;">
+                        <strong style="color:#CC0000;">📉 LOW PERFORMANCE</strong><br><small>Below 60%</small>
+                    </div>
+                    <div style="text-align:center;width:30%;background:#fffef5;padding:0.5rem;border-radius:8px;border:2px solid #ffd93d;">
+                        <strong style="color:#d69e2e;">📊 AVERAGE PERFORMANCE</strong><br><small>60-79%</small>
+                    </div>
+                    <div style="text-align:center;width:30%;background:#f0fff4;padding:0.5rem;border-radius:8px;border:2px solid #38a169;">
+                        <strong style="color:#38a169;">📈 HIGH PERFORMANCE</strong><br><small>80-100%</small>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                for pot_level, pot_label, pot_emoji in [('High', 'HIGH POTENTIAL', '⭐'), ('Moderate', 'MODERATE POTENTIAL', '👔'), ('Low', 'LOW POTENTIAL', '👤')]:
+                    st.markdown(f'<p style="font-weight:700;font-size:1.1rem;margin-top:1rem;">{pot_emoji} {pot_label}</p>', unsafe_allow_html=True)
+                    c1, c2, c3 = st.columns(3)
+                    for i, perf_level in enumerate(['Low', 'Average', 'High']):
+                        key = f"{pot_level}_{perf_level}"
+                        emps = box_data.get(key, [])
+                        if emps:
+                            pos_name = emps[0]['position_name']
+                            color = emps[0]['position_color']
+                            desc = emps[0]['position_desc']
+                            action = emps[0]['position_action']
+                        else:
+                            pos_name, color, desc, action = 'Empty', '#e0e0e0', 'No employees', 'N/A'
+                        initials_html = ''
+                        for e in emps[:12]:
+                            initials_html += f'<span style="display:inline-block;width:26px;height:26px;border-radius:50%;background:{e["position_color"]};color:white;text-align:center;line-height:26px;font-size:0.6rem;font-weight:700;margin:2px;cursor:pointer;" title="{e["name"]} — {e["score"]:.0f}% — {e["dept"]}">{e["initials"]}</span>'
+                        with [c1, c2, c3][i]:
+                            st.markdown(f"""
+                            <div style="border:2px solid {color};border-radius:12px;padding:0.8rem;text-align:center;min-height:130px;background:linear-gradient(135deg, {color}08, {color}15);">
+                                <div style="font-weight:700;font-size:0.85rem;color:{color};">{pos_name}</div>
+                                <div style="font-size:0.6rem;color:#888;margin:0.2rem 0;">{desc}</div>
+                                <div style="margin:0.4rem 0;">{initials_html if initials_html else '<small style="color:#aaa;">—</small>'}</div>
+                                <div style="font-size:0.7rem;font-weight:600;">👥 {len(emps)}</div>
+                                <div style="font-size:0.55rem;color:#888;margin-top:0.2rem;">💡 {action}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                
+                st.markdown("---")
+                st.subheader("🏆 Employee Classifications")
+                class_counts = defaultdict(int)
+                for e in all_emps_scored:
+                    class_counts[e['class']] += 1
+                
+                class_cols = st.columns(6)
+                classifications = ['PLATINUM', 'GOLD', 'SILVER', 'BRONZE', 'STEEL', 'DEVELOPMENT']
+                class_colors_list = ['#E5E4E2', '#FFD700', '#C0C0C0', '#CD7F32', '#71797E', '#A0AEC0']
+                class_ranges = ['90-100%', '80-89%', '70-79%', '60-69%', '50-59%', 'Below 50%']
+                class_emojis = ['🥇', '🥇', '🥈', '🥉', '🔵', '⚪']
+                
+                for i, (cls, color, crange, emoji) in enumerate(zip(classifications, class_colors_list, class_ranges, class_emojis)):
+                    with class_cols[i]:
+                        count = class_counts.get(cls, 0)
+                        st.markdown(f"""
+                        <div style="text-align:center;padding:0.6rem;border-radius:10px;background:{color}22;border:2px solid {color};">
+                            <div style="font-size:1.5rem;">{emoji}</div>
+                            <div style="font-weight:700;font-size:0.7rem;">{cls}</div>
+                            <div style="font-size:1.2rem;font-weight:700;color:{color};">{count}</div>
+                            <small style="color:#888;font-size:0.6rem;">{crange}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+            
+            # ============================================================
+            # COMMITTEE TAB 1: MASSIVE AI-POWERED ANALYTICS
+            # ============================================================
+            with committee_tabs[1]:
+                st.subheader("📈 Advanced Appraisal Analytics Dashboard")
+                st.markdown("*Fortune 500 Grade — Comprehensive Performance Intelligence*")
+                
+                if not all_emps_scored:
+                    st.info("No appraisal data available yet.")
+                else:
+                    # ============================================================
+                    # TOP METRICS ROW
+                    # ============================================================
+                    avg_all = sum(e['score'] for e in all_emps_scored) / len(all_emps_scored)
+                    completed = len([v for v in all_assessments.values() if v.get('acceptance') == 'Accepted'])
+                    pending_review = len([v for v in all_assessments.values() if v.get('status') in ['Submitted', 'Approved']])
+                    pending_acceptance = len([v for v in all_assessments.values() if v.get('status') == 'Approved' and not v.get('acceptance')])
+                    escalated = len([v for v in all_assessments.values() if v.get('status') == 'Escalated from TL'])
+                    rejected = len([v for v in all_assessments.values() if v.get('acceptance') == 'Rejected'])
+                    not_started = len([v for v in all_assessments.values() if v.get('status') == 'Not Started' or not v.get('status')])
+                    in_progress = len([v for v in all_assessments.values() if v.get('status') == 'Submitted'])
+                    
+                    total_participants = len(all_emps_scored)
+                    
+                    st.markdown("### 📊 Key Performance Indicators")
+                    m1, m2, m3, m4, m5, m6 = st.columns(6)
+                    m1.metric("👥 Total Participants", total_participants)
+                    m2.metric("📊 Avg Score", f"{avg_all:.1f}%")
+                    m3.metric("🎉 Completed", completed)
+                    m4.metric("⏳ Pending Review", pending_review)
+                    m5.metric("🚨 Escalated", escalated)
+                    m6.metric("❌ Rejected", rejected)
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # KPI OBJECTIVE STATUS
+                    # ============================================================
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.subheader("🎯 KPI Objective Status")
+                        all_perf_data = get_all_perf_cached()
+                        kpi_approved = len(all_perf_data[all_perf_data['submission_status'] == 'Approved']) if not all_perf_data.empty else 0
+                        kpi_submitted = len(all_perf_data[all_perf_data['submission_status'] == 'Submitted']) if not all_perf_data.empty else 0
+                        kpi_draft = len(all_perf_data[all_perf_data['submission_status'] == 'Draft']) if not all_perf_data.empty else 0
+                        kpi_no = total_participants - kpi_approved - kpi_submitted - kpi_draft
+                        
+                        kpi_data = pd.DataFrame({
+                            'Status': ['Approved', 'Pending Approval', 'Draft', 'No Objectives'],
+                            'Count': [kpi_approved, kpi_submitted, kpi_draft, max(0, kpi_no)]
+                        })
+                        kpi_data = kpi_data[kpi_data['Count'] > 0]
+                        
+                        fig_kpi = px.pie(kpi_data, values='Count', names='Status', hole=0.6,
+                                        color_discrete_sequence=['#38a169', '#d69e2e', '#a0aec0', '#CC0000'])
+                        fig_kpi.update_layout(height=350, title="KPI Objective Status")
+                        st.plotly_chart(fig_kpi, use_container_width=True)
+                        
+                        # KPI stats
+                        for _, row in kpi_data.iterrows():
+                            pct = (row['Count'] / total_participants * 100) if total_participants > 0 else 0
+                            st.markdown(f"""
+                            <div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #eee;">
+                                <span>{row['Status']}</span>
+                                <strong>{row['Count']} ({pct:.1f}%)</strong>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        st.subheader("📋 Objective Performance")
+                        # Calculate from actual KPI data
+                        at_risk_count = 0
+                        behind_count = 0
+                        on_track_count = 0
+                        completed_kpi_count = 0
+                        
+                        if not all_perf_data.empty:
+                            for _, row in all_perf_data.iterrows():
+                                status = row.get('status', '')
+                                progress = row.get('progress', 0)
+                                if status == 'At Risk' or (progress < 40 and row.get('submission_status') == 'Approved'):
+                                    at_risk_count += 1
+                                elif status == 'Near Target' or (40 <= progress < 65):
+                                    behind_count += 1
+                                elif status == 'On Track' or (65 <= progress < 100):
+                                    on_track_count += 1
+                                elif status == 'Completed' or progress >= 100:
+                                    completed_kpi_count += 1
+                        
+                        total_kpis = at_risk_count + behind_count + on_track_count + completed_kpi_count
+                        if total_kpis == 0:
+                            total_kpis = 1  # Avoid division by zero
+                        
+                        obj_perf = pd.DataFrame({
+                            'Performance': ['At Risk', 'Behind Schedule', 'On Track', 'Completed'],
+                            'Count': [at_risk_count, behind_count, on_track_count, completed_kpi_count],
+                            'Pct': [
+                                at_risk_count/total_kpis*100,
+                                behind_count/total_kpis*100,
+                                on_track_count/total_kpis*100,
+                                completed_kpi_count/total_kpis*100
+                            ]
+                        })
+                        obj_perf = obj_perf[obj_perf['Count'] > 0]
+                        
+                        fig_obj = px.bar(obj_perf, x='Performance', y='Count', color='Performance',
+                                        color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169'],
+                                        text='Pct')
+                        fig_obj.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                        fig_obj.update_layout(height=350, title="Objective Performance Distribution", showlegend=False)
+                        st.plotly_chart(fig_obj, use_container_width=True)
+                        
+                        for _, row in obj_perf.iterrows():
+                            st.markdown(f"""
+                            <div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #eee;">
+                                <span>{row['Performance']}</span>
+                                <strong>{row['Count']} ({row['Pct']:.1f}%)</strong>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # APPRAISAL COMPLETION STATUS
+                    # ============================================================
+                    st.subheader("📋 Appraisal Completion Status")
+                    
+                    completion_data = {
+                        'Not Started': max(0, total_participants - len(all_assessments)),
+                        'In Progress (Self)': in_progress,
+                        'Pending Reviewer': pending_review,
+                        'Pending Acceptance': pending_acceptance,
+                        'Pending Committee': escalated,
+                        'Completed': completed,
+                        'Rejected': rejected
+                    }
+                    
+                    comp_df = pd.DataFrame({
+                        'Stage': list(completion_data.keys()),
+                        'Count': list(completion_data.values())
+                    })
+                    comp_df = comp_df[comp_df['Count'] > 0]
+                    comp_df['Pct'] = comp_df['Count'] / total_participants * 100
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        fig_comp = px.pie(comp_df, values='Count', names='Stage', hole=0.5,
+                                         color_discrete_sequence=['#a0aec0', '#3182ce', '#d69e2e', '#FFD700', '#CC0000', '#38a169', '#ff4444'])
+                        fig_comp.update_layout(height=400, title="Appraisal Completion Status")
+                        st.plotly_chart(fig_comp, use_container_width=True)
+                    
+                    with col2:
+                        for _, row in comp_df.iterrows():
+                            st.markdown(f"""
+                            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem;margin:0.3rem 0;background:#f8f9fa;border-radius:6px;">
+                                <span>{row['Stage']}</span>
+                                <div style="text-align:right;">
+                                    <strong>{row['Count']}</strong>
+                                    <small style="color:#888;">({row['Pct']:.1f}%)</small>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # AVERAGE SCORE BY DEPARTMENT
+                    # ============================================================
+                    st.subheader("📊 Average Score by Department")
+                    
+                    dept_scores = defaultdict(list)
+                    for e in all_emps_scored:
+                        dept_scores[e['dept']].append(e['score'])
+                    
+                    dept_avg_data = []
+                    for dept, scores in dept_scores.items():
+                        dept_avg_data.append({
+                            'Department': dept,
+                            'Avg Score': round(sum(scores)/len(scores), 1),
+                            'Employees': len(scores),
+                            'Min': min(scores),
+                            'Max': max(scores)
+                        })
+                    
+                    dept_avg_df = pd.DataFrame(dept_avg_data).sort_values('Avg Score', ascending=False)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        fig_dept = px.bar(dept_avg_df, x='Department', y='Avg Score', color='Avg Score',
+                                         color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'],
+                                         text='Avg Score')
+                        fig_dept.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                        fig_dept.update_layout(height=400, title="Average Score by Department")
+                        st.plotly_chart(fig_dept, use_container_width=True)
+                    
+                    with col2:
+                        st.dataframe(dept_avg_df, use_container_width=True, hide_index=True,
+                                    column_config={
+                                        'Department': 'Department',
+                                        'Avg Score': st.column_config.NumberColumn('Avg Score', format='%.1f%%'),
+                                        'Employees': 'Employees',
+                                        'Min': st.column_config.NumberColumn('Min', format='%.0f%%'),
+                                        'Max': st.column_config.NumberColumn('Max', format='%.0f%%')
+                                    })
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # REVIEWER & COMMITTEE RECOMMENDATIONS BREAKDOWN
+                    # ============================================================
+                    st.subheader("📋 Recommendations Breakdown")
+                    
+                    # Collect reviewer recommendations
+                    reviewer_recs = defaultdict(int)
+                    committee_recs = defaultdict(int)
+                    
+                    for emp_name, assessment in all_assessments.items():
+                        sc = get_emp_score(emp_name)
+                        if sc == 0: continue
+                        
+                        # Reviewer recommendation
+                        comments = assessment.get('hod_comments', '') or assessment.get('tl_comments', '')
+                        if assessment.get('acceptance') == 'Accepted':
+                            if 'promot' in comments.lower():
+                                reviewer_recs['Promote'] += 1
+                            elif 'salary' in comments.lower() or 'increment' in comments.lower():
+                                reviewer_recs['Salary Review'] += 1
+                            elif 'train' in comments.lower() or 'develop' in comments.lower():
+                                reviewer_recs['Training'] += 1
+                            elif 'pip' in comments.lower() or 'improve' in comments.lower():
+                                reviewer_recs['PIP'] += 1
+                            elif 'status quo' in comments.lower() or 'maintain' in comments.lower():
+                                reviewer_recs['Status Quo'] += 1
+                            else:
+                                reviewer_recs['Completed - No Specific Rec'] += 1
+                        
+                        # Committee recommendation
+                        sr_decision = assessment.get('sr_decision', '')
+                        if 'Overturned' in str(sr_decision):
+                            committee_recs['Overturned'] += 1
+                        elif 'Upheld' in str(sr_decision):
+                            committee_recs['Upheld'] += 1
+                        elif assessment.get('status') == 'Escalated from TL':
+                            committee_recs['Pending Decision'] += 1
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.subheader("Reviewer Recommendation")
+                        if reviewer_recs:
+                            rec_df = pd.DataFrame({'Recommendation': list(reviewer_recs.keys()), 'Count': list(reviewer_recs.values())})
+                            fig_rec = px.pie(rec_df, values='Count', names='Recommendation', hole=0.5,
+                                            color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#CC0000', '#FFD700', '#a0aec0'])
+                            fig_rec.update_layout(height=300)
+                            st.plotly_chart(fig_rec, use_container_width=True)
+                            st.caption(f"Total Participants: {sum(reviewer_recs.values())}")
+                        else:
+                            st.info("No recommendations yet.")
+                    
+                    with col2:
+                        st.subheader("Committee Decision")
+                        if committee_recs:
+                            com_df = pd.DataFrame({'Decision': list(committee_recs.keys()), 'Count': list(committee_recs.values())})
+                            fig_com = px.pie(com_df, values='Count', names='Decision', hole=0.5,
+                                            color_discrete_sequence=['#38a169', '#CC0000', '#d69e2e'])
+                            fig_com.update_layout(height=300)
+                            st.plotly_chart(fig_com, use_container_width=True)
+                            st.caption(f"Total Decisions: {sum(committee_recs.values())}")
+                        else:
+                            st.info("No committee decisions yet.")
+                    
+                    with col3:
+                        st.subheader("Classification Summary")
+                        class_counts = defaultdict(int)
+                        for e in all_emps_scored:
+                            class_counts[e['class']] += 1
+                        class_df = pd.DataFrame({'Class': list(class_counts.keys()), 'Count': list(class_counts.values())})
+                        fig_cls = px.pie(class_df, values='Count', names='Class', hole=0.5,
+                                        color_discrete_sequence=['#E5E4E2', '#FFD700', '#C0C0C0', '#CD7F32', '#71797E', '#A0AEC0'])
+                        fig_cls.update_layout(height=300)
+                        st.plotly_chart(fig_cls, use_container_width=True)
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # AVERAGE PERFORMANCE SCORE & REGION BREAKDOWN
+                    # ============================================================
+                    st.subheader("🌍 Performance Overview")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.markdown(f"""
+                        <div style="text-align:center;padding:2rem;background:linear-gradient(135deg, #1a1a1a, #2d2d2d);border-radius:16px;color:white;">
+                            <div style="font-size:0.9rem;opacity:0.8;">AVERAGE PERFORMANCE SCORE</div>
+                            <div style="font-size:3rem;font-weight:700;color:#38a169;">{avg_all:.1f}%</div>
+                            <div style="font-size:0.8rem;opacity:0.7;">Total Employees: {total_participants}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        # Region breakdown
+                        region_scores = defaultdict(list)
+                        for e in all_emps_scored:
+                            region_scores[e['region']].append(e['score'])
+                        
+                        region_avg = {r: sum(s)/len(s) for r, s in region_scores.items()}
+                        for region, avg in sorted(region_avg.items()):
+                            rc = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#CC0000')
+                            st.markdown(f"""
+                            <div style="text-align:center;padding:1rem;margin:0.3rem 0;background:white;border-radius:10px;border-left:4px solid {rc};">
+                                <strong>🌍 {region}</strong><br>
+                                <span style="font-size:1.5rem;font-weight:700;color:{rc};">{avg:.1f}%</span><br>
+                                <small style="color:#888;">{len(region_scores[region])} employees</small>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    with col3:
+                        # 9-Box distribution
+                        box_dist = defaultdict(int)
+                        for e in all_emps_scored:
+                            box_dist[e['position_name']] += 1
+                        
+                        st.markdown("**9-Box Matrix Distribution**")
+                        for pos, count in sorted(box_dist.items(), key=lambda x: x[1], reverse=True)[:9]:
+                            st.markdown(f"""
+                            <div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #eee;">
+                                <small>{pos}</small>
+                                <strong>{count}</strong>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    
+                    # ============================================================
+                    # AI-POWERED INSIGHTS
+                    # ============================================================
+                    st.subheader("🤖 AI-Powered Performance Insights")
+                    
+                    if st.button("🧠 Generate AI Insights", use_container_width=True, type="primary"):
+                        with st.spinner("Analyzing appraisal data with AI..."):
+                            try:
+                                import openai
+                                openai_key = os.environ.get("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", ""))
+                                if openai_key:
+                                    client = openai.OpenAI(api_key=openai_key)
+                                    
+                                    # Build comprehensive data summary
+                                    insights_text = f"""
+                                    Appraisal Cycle: {st.session_state.appraisal_cycle_name}
+                                    Total Participants: {total_participants}
+                                    Average Score: {avg_all:.1f}%
+                                    Completed: {completed}
+                                    Escalated: {escalated}
+                                    Rejected: {rejected}
+                                    
+                                    Department Scores:
+                                    {dept_avg_df.to_string()}
+                                    
+                                    Classification Distribution:
+                                    {class_df.to_string()}
+                                    
+                                    9-Box Distribution:
+                                    {dict(box_dist)}
+                                    
+                                    Recommendations:
+                                    Reviewer: {dict(reviewer_recs)}
+                                    Committee: {dict(committee_recs)}
+                                    """
+                                    
+                                    response = client.chat.completions.create(
+                                        model="gpt-3.5-turbo",
+                                        messages=[{
+                                            "role": "system",
+                                            "content": "You are a Fortune 500 HR Analytics Director. Analyze this appraisal data and provide: 1) Top 3 key findings 2) Department performance comparison 3) Talent risk areas 4) 3 strategic recommendations for leadership 5) Predicted trends for next cycle. Be specific and data-driven."
+                                        }, {
+                                            "role": "user",
+                                            "content": insights_text
+                                        }],
+                                        temperature=0.5,
+                                        max_tokens=600
+                                    )
+                                    
+                                    st.markdown("### 🤖 AI-Generated Insights")
+                                    st.success("Analysis complete!")
+                                    st.markdown(response.choices[0].message.content)
+                                else:
+                                    st.info("OpenAI API key not configured.")
+                            except Exception as e:
+                                st.warning(f"AI insights unavailable: {str(e)}")
+                                st.markdown("""
+                                ### 📊 Manual Analysis
+                                
+                                **Key Findings:**
+                                1. Review completion rates and identify bottlenecks
+                                2. Compare department performance for best practices
+                                3. Address escalated cases promptly
+                                
+                                **Recommendations:**
+                                1. Implement pre-review calibration sessions
+                                2. Provide additional training for reviewers with high rejection rates
+                                3. Fast-track high-performing employees for leadership development
+                                """)
+                    
+                    # ============================================================
+                    # EXPORT
+                    # ============================================================
+                    st.markdown("---")
+                    st.subheader("📥 Export Analytics")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button("📊 Export Full Report (CSV)", use_container_width=True):
+                            export_data = []
+                            for e in all_emps_scored:
+                                assessment = all_assessments.get(e['name'], {})
+                                export_data.append({
+                                    'Employee': e['name'],
+                                    'Department': e['dept'],
+                                    'Region': e['region'],
+                                    'Score': e['score'],
+                                    'Classification': e['class'],
+                                    '9-Box Position': e['position_name'],
+                                    'Potential': e['potential'],
+                                    'Status': assessment.get('acceptance', assessment.get('status', 'N/A')),
+                                    'Reviewer': assessment.get('reviewer_type', 'N/A')
+                                })
+                            export_df = pd.DataFrame(export_data)
+                            st.download_button("📥 Download CSV", export_df.to_csv(index=False), "appraisal_analytics.csv", "text/csv")
+                    
+                    with col2:
+                        if st.button("📊 Export Department Summary (CSV)", use_container_width=True):
+                            st.download_button("📥 Download CSV", dept_avg_df.to_csv(index=False), "department_summary.csv", "text/csv")
+            
+            # ============================================================
+            # TAB 2: SUBMISSIONS
+            # ============================================================
+            with committee_tabs[2]:
+                st.subheader("📝 All Submitted Appraisals")
+                sub = {k: v for k, v in all_assessments.items() if v.get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review']}
+                if sub:
+                    st.success(f"📋 {len(sub)} pending appraisal(s)")
+                    for en, a in sub.items():
+                        sc = get_emp_score(en)
+                        cl, co = get_classification(sc) if sc > 0 else ('N/A', '#a0aec0')
+                        with st.expander(f"📋 {en} | {get_employee_dept(en)} | {get_region(get_employee_subsidiary(en))} | {cl}", expanded=False):
+                            c1, c2, c3 = st.columns(3)
+                            c1.metric("Score", f"{sc:.1f}%" if sc else "N/A")
+                            c2.metric("Status", a.get('status', 'N/A'))
+                            c3.metric("Reviewer", a.get('reviewer_type', 'N/A'))
+                            if a.get('rejection_comment'):
+                                st.warning(f"💬 Rejection: {a['rejection_comment'][:200]}")
+                else:
+                    st.info("No pending submissions.")
+            
+            # ============================================================
+            # TAB 3: ESCALATED (FIXED - UPHOLD/OVERTURN WITH PROPER STATE UPDATE)
+            # ============================================================
+            with committee_tabs[3]:
+                st.subheader("🚨 Escalated Appraisals")
+                esc = {k: v for k, v in all_assessments.items() if v.get('status') == 'Escalated from TL' or (v.get('acceptance') == 'Rejected' and v.get('status') != 'Awaiting HOD Re-review')}
+                if esc:
+                    for en, a in esc.items():
+                        with st.expander(f"🚨 {en} | {get_employee_dept(en)} | Rejections: {a.get('reject_count', 1)}", expanded=True):
+                            st.markdown(f"**Staff Comments:** {a.get('comments', 'N/A')}")
+                            st.markdown(f"**Reviewer Comments:** {a.get('hod_comments', a.get('tl_comments', 'N/A'))}")
+                            st.markdown(f"**Rejection Reason:** {a.get('rejection_comment', 'N/A')}")
+                            
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                if st.button(f"✅ Uphold Reviewer", key=f"cmt_up_{en}"):
+                                    # Update employee's session state so certificate shows
+                                    st.session_state.self_assessments[en].update({
+                                        'acceptance': 'Accepted',
+                                        'status': 'Completed',
+                                        'sr_decision': 'Upheld by Committee'
+                                    })
+                                    try:
+                                        db.archive_appraisal(en, a.get('email', ''), a.get('department', ''),
+                                            st.session_state.appraisal_cycle_name, 'Accepted - Committee Upheld',
+                                            a['scores'], a.get('hod_scores', a.get('tl_scores', {})),
+                                            a.get('comments', ''), a.get('hod_comments', ''),
+                                            now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                        db._patch("appraisals", 
+                                            {"status": "Completed", "acceptance": "Accepted", "sr_decision": "Upheld by Committee"},
+                                            {"user_name": en, "cycle_name": st.session_state.appraisal_cycle_name})
+                                    except: pass
+                                    emp_email = get_employee_email(en)
+                                    if emp_email:
+                                        try:
+                                            EmailService().send_email(emp_email,
+                                                f"📋 Appraisal Decision: {st.session_state.appraisal_cycle_name}",
+                                                f"Dear {en},\n\nThe Appraisal Committee has upheld the reviewer's decision.\n\n"
+                                                f"Your appraisal is now complete. Log in to download your certificate.\n\n"
+                                                f"https://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
+                                        except: pass
+                                    log_audit('Committee Upheld', f'{en} upheld by committee')
+                                    st.success("✅ Upheld! Staff notified and certificate available."); st.balloons(); time.sleep(1.5); st.rerun()
+                            
+                            with c2:
+                                if st.button(f"🔄 Overturn - Favor Staff", key=f"cmt_ov_{en}"):
+                                    # Update employee's session state so certificate shows immediately
+                                    st.session_state.self_assessments[en].update({
+                                        'acceptance': 'Accepted',
+                                        'hod_scores': a['scores'],  # Use staff scores as final
+                                        'status': 'Completed',
+                                        'sr_decision': 'Overturned by Committee',
+                                        'reviewer_type': 'Committee (Overturned)'
+                                    })
+                                    try:
+                                        db.archive_appraisal(en, a.get('email', ''), a.get('department', ''),
+                                            st.session_state.appraisal_cycle_name, 'Accepted - Overturned',
+                                            a['scores'], a['scores'],  # Staff scores become final
+                                            a.get('comments', ''), a.get('hod_comments', ''),
+                                            now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                        db._patch("appraisals", 
+                                            {"status": "Completed", "acceptance": "Accepted", "sr_decision": "Overturned by Committee"},
+                                            {"user_name": en, "cycle_name": st.session_state.appraisal_cycle_name})
+                                    except: pass
+                                    emp_email = get_employee_email(en)
+                                    if emp_email:
+                                        try:
+                                            EmailService().send_email(emp_email,
+                                                f"🎉 Appraisal Overturned: {st.session_state.appraisal_cycle_name}",
+                                                f"Dear {en},\n\nGreat news! The Appraisal Committee has overturned the decision in your favor.\n\n"
+                                                f"Your appraisal is now complete. Log in to download your certificate.\n\n"
+                                                f"https://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
+                                        except: pass
+                                    log_audit('Committee Overturned', f'{en} overturned by committee')
+                                    st.success("🔄 Overturned! Staff notified and certificate available."); st.balloons(); time.sleep(1.5); st.rerun()
+                else:
+                    st.info("No escalated appraisals.")
+            
+            # ============================================================
+            # TAB 4: COMPLETED
+            # ============================================================
+            with committee_tabs[4]:
+                st.subheader("🎉 Completed Appraisals")
+                comp = {k: v for k, v in all_assessments.items() if v.get('acceptance') == 'Accepted'}
+                if comp:
+                    st.success(f"🎉 {len(comp)} completed appraisal(s)")
+                    for en, a in comp.items():
+                        sc = get_emp_score(en)
+                        cl, co = get_classification(sc)
+                        st.markdown(f"""
+                        <div class="kpi-card" style="border-left-color:{co};">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <div>
+                                    <strong>👤 {en}</strong><br>
+                                    <small>{get_employee_dept(en)} | {get_region(get_employee_subsidiary(en))}</small>
+                                </div>
+                                <div style="text-align:right;">
+                                    <span style="font-size:1.2rem;font-weight:700;color:{co};">{sc:.1f}%</span><br>
+                                    <span style="color:{co};font-weight:600;">{cl}</span>
+                                </div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("No completed appraisals yet.")
+            
+            # ============================================================
+            # TAB 5: RANKINGS
+            # ============================================================
+            with committee_tabs[5]:
+                st.subheader("🏆 Performance Rankings")
+                sorted_emps = sorted(all_emps_scored, key=lambda x: x['score'], reverse=True)
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.markdown("### 🏆 Top 10 Performers")
+                    if sorted_emps:
+                        for i, e in enumerate(sorted_emps[:10]):
+                            st.markdown(f"""
+                            <div class="kpi-card" style="border-left-color:#38a169;">
+                                <strong>#{i+1} {e['name']}</strong> | {e['dept']} | 
+                                <span style="font-weight:700;color:#38a169;">{e['score']:.1f}%</span> | {e['class']}
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else: st.info("No data.")
+                with c2:
+                    st.markdown("### ⚠️ Bottom 10 Performers")
+                    if sorted_emps:
+                        for i, e in enumerate(sorted_emps[-10:]):
+                            st.markdown(f"""
+                            <div class="kpi-card" style="border-left-color:#CC0000;">
+                                <strong>#{len(sorted_emps)-9+i} {e['name']}</strong> | {e['dept']} | 
+                                <span style="font-weight:700;color:#CC0000;">{e['score']:.1f}%</span> | {e['class']}
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else: st.info("No data.")
+            
+            # ============================================================
+            # COMMITTEE TAB 6: RECOMMENDATIONS (FROM ACTUAL REVIEWS)
+            # ============================================================
+            with committee_tabs[6]:
+                st.subheader("📋 Appraisal Recommendations")
+                st.markdown("*Based on actual reviewer feedback and committee decisions*")
+                
+                # Collect real recommendations from assessments
+                recommendations = []
+                
+                for emp_name, assessment in all_assessments.items():
+                    sc = get_emp_score(emp_name)
+                    if sc == 0:
+                        continue
+                    
+                    cl, co = get_classification(sc)
+                    dept = get_employee_dept(emp_name)
+                    region = get_region(get_employee_subsidiary(emp_name))
+                    
+                    # Get the actual reviewer recommendation from comments
+                    hod_comments = assessment.get('hod_comments', '')
+                    tl_comments = assessment.get('tl_comments', '')
+                    sr_decision = assessment.get('sr_decision', '')
+                    acceptance = assessment.get('acceptance', '')
+                    reviewer_type = assessment.get('reviewer_type', 'N/A')
+                    
+                    # Determine real recommendation
+                    recommendation = ""
+                    recommendation_source = ""
+                    
+                    if sr_decision and 'Overturned' in str(sr_decision):
+                        recommendation = "OVERTURNED BY COMMITTEE - Staff scores accepted"
+                        recommendation_source = "Appraisal Committee"
+                    elif sr_decision and 'Upheld' in str(sr_decision):
+                        recommendation = "UPHELD BY COMMITTEE - Reviewer decision stands"
+                        recommendation_source = "Appraisal Committee"
+                    elif acceptance == 'Accepted':
+                        # Check reviewer comments for recommendation
+                        comments = hod_comments or tl_comments or ''
+                        if 'promot' in comments.lower():
+                            recommendation = "PROMOTE - " + comments[:100]
+                        elif 'salary' in comments.lower() or 'increment' in comments.lower():
+                            recommendation = "SALARY REVIEW - " + comments[:100]
+                        elif 'train' in comments.lower() or 'develop' in comments.lower():
+                            recommendation = "TRAINING & DEVELOPMENT - " + comments[:100]
+                        elif 'pip' in comments.lower() or 'improve' in comments.lower():
+                            recommendation = "PERFORMANCE IMPROVEMENT PLAN - " + comments[:100]
+                        elif 'consistent' in comments.lower() or 'good' in comments.lower() or 'solid' in comments.lower():
+                            recommendation = "MAINTAIN - Consistent Performer"
+                        else:
+                            recommendation = "REVIEW COMPLETED - " + (comments[:80] if comments else "No specific recommendation")
+                        recommendation_source = f"{reviewer_type} Review"
+                    elif acceptance == 'Rejected':
+                        recommendation = "DISPUTED - Awaiting resolution"
+                        recommendation_source = "Pending"
+                    elif assessment.get('status') == 'Escalated from TL':
+                        recommendation = "ESCALATED - Pending Committee Decision"
+                        recommendation_source = "Pending Committee"
+                    else:
+                        recommendation = "IN PROGRESS - Review not yet complete"
+                        recommendation_source = "Pending"
+                    
+                    recommendations.append({
+                        'Employee': emp_name,
+                        'Department': dept,
+                        'Region': region,
+                        'Score': sc,
+                        'Classification': cl,
+                        'Reviewer': reviewer_type,
+                        'Recommendation': recommendation,
+                        'Source': recommendation_source,
+                        'Status': acceptance or assessment.get('status', 'Pending')
+                    })
+                
+                if recommendations:
+                    # Summary by recommendation type
+                    st.subheader("📊 Recommendation Summary")
+                    
+                    rec_categories = defaultdict(list)
+                    for r in recommendations:
+                        cat = r['Recommendation'].split(' - ')[0] if ' - ' in r['Recommendation'] else r['Recommendation'][:50]
+                        rec_categories[cat].append(r)
                     
                     c1, c2 = st.columns(2)
                     with c1:
-                        if st.button("✅ Accept HOD Review", use_container_width=True):
-                            st.session_state.self_assessments[user_name]['acceptance'] = 'Accepted'
-                            st.session_state.self_assessments[user_name]['status'] = 'Completed'
-                            try:
-                                db.archive_appraisal(user_name, user_email, user_dept,
-                                    st.session_state.appraisal_cycle_name, 'Accepted',
-                                    a['scores'], a['hod_scores'], a.get('comments', ''), a.get('hod_comments', ''),
-                                    now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                            except:
-                                pass
-                            # Persist acceptance so it survives a fresh session (archive alone doesn't update the appraisals record).
-                            try:
-                                db.save_appraisal(user_name, user_email, user_dept,
-                                    st.session_state.appraisal_cycle_name, 'Completed',
-                                    a.get('scores'), a.get('comments', ''), a.get('pillar_comments'),
-                                    a.get('hod_scores'), a.get('hod_comments', ''), a.get('hod_pillar_comments'),
-                                    'Accepted', a.get('sr_decision', ''), a.get('date', ''))
-                            except Exception:
-                                pass
-                            log_audit('Appraisal Accepted', f'{user_name} accepted HOD review')
-                            send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, user_email, user_name)
-                            st.success("✅ Appraisal accepted! Cycle complete. Certificate available below.")
-                            st.balloons()
-                            st.rerun()
-                    with c2:
-                        if st.button("❌ Reject - Request Re-review", use_container_width=True):
-                            st.session_state.self_assessments[user_name]['acceptance'] = 'Rejected'
-                            st.session_state.self_assessments[user_name]['status'] = 'Awaiting HOD Re-review'
-                            st.session_state.self_assessments[user_name]['reject_count'] = a.get('reject_count', 0) + 1
-                            # Persist so the re-review actually routes back to the HOD (survives reload).
-                            try:
-                                db.save_appraisal(user_name, user_email, user_dept,
-                                    st.session_state.appraisal_cycle_name, 'Awaiting HOD Re-review',
-                                    a.get('scores'), a.get('comments', ''), a.get('pillar_comments'),
-                                    a.get('hod_scores'), a.get('hod_comments', ''), a.get('hod_pillar_comments'),
-                                    'Rejected', a.get('sr_decision', ''), a.get('date', ''))
-                            except Exception:
-                                pass
-                            log_audit('Appraisal Rejected', f'{user_name} rejected - sent back to HOD')
-                            send_appraisal_cycle_email('rejected', st.session_state.appraisal_cycle_name, user_email, user_name)
-                            st.warning("⚠️ Rejected. Sent back to HOD for re-review.")
-                            st.rerun()
-                elif a.get('acceptance') == 'Accepted':
-                    st.success("🎉 Appraisal Complete! Cycle closed.")
-                    # Final agreed score = mean of HOD scores (fallback to self scores).
-                    _cert_scores = a.get('hod_scores') or a.get('scores') or {}
-                    try:
-                        _vals = [float(v) for v in _cert_scores.values()]
-                        _final_score = sum(_vals) / len(_vals) if _vals else None
-                    except Exception:
-                        _final_score = None
-                    _cert_pdf = generate_appraisal_certificate(
-                        user_name, st.session_state.appraisal_cycle_name, _final_score,
-                        a.get('date', now_wat.strftime('%Y-%m-%d')))
-                    if _cert_pdf:
-                        st.download_button("📜 Download Certificate", _cert_pdf,
-                            file_name=f"Appraisal_Certificate_{user_name.replace(' ', '_')}.pdf",
-                            mime="application/pdf", use_container_width=True)
-    
-    # ============ TAB 4: HOD REVIEW ============
-    with tab4:
-        st.subheader("👔 HOD KPI Review & Appraisal Approval")
-        
-        if is_hod:
-            # ===== SECTION 1: KPI SUBMISSION REVIEW (NEW) =====
-            st.markdown("### 📊 Team KPI Submissions for Review")
-            
-            try:
-                all_perf = db._get("performance_data")
-                team_submissions = {}
-                
-                for row in all_perf:
-                    if row.get('user_name') and row.get('submission_status') == 'Submitted':
-                        uname = row['user_name']
-                        emp_data = db._get("employees", {"first_name": uname.split()[0] if ' ' in uname else uname})
-                        emp_dept = None
-                        if emp_data and len(emp_data) > 0:
-                            emp_dept = emp_data[0].get('department', '')
-                        
-                        if is_admin or emp_dept == user_dept:
-                            if uname not in team_submissions:
-                                team_submissions[uname] = []
-                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                            team_submissions[uname].append({
-                                'pillar': row['pillar_name'],
-                                'kpis': kpi_list,
-                                'row_id': row['id']
-                            })
-                
-                if team_submissions:
-                    submitted_count = len(team_submissions)
-                    total_kpis = sum(len(v) for v in team_submissions.values())
+                        rec_summary = {k: len(v) for k, v in rec_categories.items()}
+                        if rec_summary:
+                            rec_df = pd.DataFrame({'Recommendation': list(rec_summary.keys()), 'Count': list(rec_summary.values())})
+                            fig = px.pie(rec_df, values='Count', names='Recommendation', hole=0.5,
+                                        color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#CC0000', '#FFD700', '#a0aec0'])
+                            fig.update_layout(height=350, title="Recommendations from Reviews")
+                            st.plotly_chart(fig, use_container_width=True)
                     
-                    c1, c2, c3 = st.columns(3)
-                    c1.metric("Team Members Submitted", submitted_count)
-                    c2.metric("Total KPIs to Review", total_kpis)
-                    c3.metric("Department", user_dept)
+                    with c2:
+                        st.subheader("👥 By Status")
+                        status_counts = defaultdict(int)
+                        for r in recommendations:
+                            status_counts[r['Source']] += 1
+                        for source, count in status_counts.items():
+                            st.markdown(f"""
+                            <div class="kpi-card">
+                                <strong>{source}</strong>
+                                <span style="float:right;font-size:1.3rem;font-weight:700;">{count}</span>
+                                <br><small style="color:#888;">employees</small>
+                            </div>
+                            """, unsafe_allow_html=True)
                     
                     st.markdown("---")
+                    st.subheader("📋 Detailed Recommendations by Employee")
                     
-                    for emp_name, submissions in team_submissions.items():
-                        # Group and deduplicate KPIs by pillar
-                        pillar_kpis = {}
-                        for sub in submissions:
-                            p_name = sub['pillar']
-                            if p_name not in pillar_kpis:
-                                pillar_kpis[p_name] = []
-                            for kpi in sub['kpis']:
-                                kpi_key = kpi.get('kpi', '').strip().lower()
-                                existing_keys = [k.get('kpi', '').strip().lower() for k in pillar_kpis[p_name]]
-                                if kpi_key not in existing_keys:
-                                    pillar_kpis[p_name].append(kpi)
+                    for r in sorted(recommendations, key=lambda x: x['Score'], reverse=True):
+                        border_color = '#38a169' if r['Status'] == 'Accepted' else '#CC0000' if r['Status'] == 'Rejected' else '#d69e2e'
+                        source_badge = {
+                            'Appraisal Committee': 'badge-green',
+                            'HOD Review': 'badge-green',
+                            'Team Lead Review': 'badge-green',
+                            'Pending': 'badge-yellow',
+                            'Pending Committee': 'badge-red'
+                        }.get(r['Source'], 'badge-gray')
                         
-                        with st.expander(f"📋 {emp_name} — {len(pillar_kpis)} pillars submitted", expanded=False):
-                            pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
-                            for p_name in pillar_order:
-                                if p_name in pillar_kpis and pillar_kpis[p_name]:
-                                    # Calculate total weight for this pillar
-                                    total_pillar_weight = sum(k.get('weight', 0) for k in pillar_kpis[p_name])
-                                    st.markdown(f"**{p_name}** — {len(pillar_kpis[p_name])} KPI(s) — Total Weight: **{total_pillar_weight}%**")
-                                    for kpi in pillar_kpis[p_name]:
-                                        kpi_weight = kpi.get('weight', 'N/A')
-                                        st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')} — Weight: **{kpi_weight}%**")
-                                    st.markdown("")
-                            
-                            st.markdown("---")
-                            hod_comment = st.text_area(f"HOD Comment for {emp_name}", key=f"hod_comment_{emp_name}", placeholder="Provide feedback, approval reason, or revision notes...")
-                            
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                if st.button(f"✅ Approve {emp_name}'s KPIs", key=f"approve_{emp_name}", use_container_width=True, type="primary"):
-                                    for sub in submissions:
-                                        db._patch("performance_data", {"submission_status": "Approved"}, {"id": sub['row_id']})
-                                    emp_email = None
-                                    emp_record = db._get("employees", {"first_name": emp_name.split()[0] if ' ' in emp_name else emp_name})
-                                    if emp_record and len(emp_record) > 0:
-                                        emp_email = emp_record[0].get('email', '')
-                                    if emp_email:
-                                        send_kpi_notification('approved', emp_name, emp_email)
-                                    log_audit_action("KPIs Approved", f"HOD {user_name} approved KPIs for {emp_name}", "KPI")
-                                    st.success(f"✅ {emp_name}'s KPIs approved!")
-                                    send_browser_notification("✅ KPIs Approved!", f"Your KPIs have been approved by {user_name}.")
-                                    st.balloons()
-                                    st.rerun()
-                            with col2:
-                                if st.button(f"🔄 Request Revision from {emp_name}", key=f"revise_{emp_name}", use_container_width=True):
-                                    if hod_comment:
-                                        # Clean duplicates first - keep only latest per pillar
-                                        all_rows = db._get("performance_data", {"user_name": emp_name})
-                                        if all_rows:
-                                            pillars_seen = {}
-                                            for row in all_rows:
-                                                p = row['pillar_name']
-                                                if p in pillars_seen:
-                                                    db._delete("performance_data", {"id": row['id']})
-                                                else:
-                                                    pillars_seen[p] = True
-                                        
-                                        # Unlock KPIs back to Draft
-                                        for sub in submissions:
-                                            db._patch("performance_data", {"submission_status": "Draft"}, {"id": sub['row_id']})
-                                        emp_email = None
-                                        emp_record = db._get("employees", {"first_name": emp_name.split()[0] if ' ' in emp_name else emp_name})
-                                        if emp_record and len(emp_record) > 0:
-                                            emp_email = emp_record[0].get('email', '')
-                                        if emp_email:
-                                            send_kpi_notification('revision_requested', emp_name, emp_email)
-                                        log_audit_action("KPI Revision Requested", f"HOD {user_name} requested revision for {emp_name}", "KPI")
-                                        st.warning(f"🔄 Revision requested. {emp_name} can now edit and resubmit.")
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ Please provide a comment explaining what needs revision.")
+                        with st.expander(f"{r['Classification']} {r['Employee']} — {r['Score']:.1f}% — {r['Source']}", expanded=False):
+                            st.markdown(f"""
+                            <div style="padding:0.5rem;border-left:4px solid {border_color};margin:0.3rem 0;">
+                                <strong>👤 {r['Employee']}</strong><br>
+                                <small>🏢 {r['Department']} | 🌍 {r['Region']} | 🏅 {r['Classification']}</small><br>
+                                <small>📊 Score: {r['Score']:.1f}% | Reviewer: {r['Reviewer']}</small><br>
+                                <small>Status: {r['Status']} | Source: <span class="badge {source_badge}">{r['Source']}</span></small>
+                                <div style="margin-top:0.5rem;padding:0.5rem;background:#f8f9fa;border-radius:6px;">
+                                    <strong>💡 Recommendation:</strong><br>
+                                    <span style="color:#CC0000;">{r['Recommendation']}</span>
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
                 else:
-                    st.info("No team members have submitted KPIs yet.")
-            except Exception as e:
-                st.warning(f"Loading team KPIs: {str(e)}")
-            
-            st.markdown("---")
-            
-            # ===== SECTION 2: APPRAISAL REVIEW (EXISTING - KEEP ALL) =====
-            st.markdown("### 📊 Appraisal Review Status")
-            submitted_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Submitted'])
-            re_review_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Awaiting HOD Re-review'])
-            approved_count = len([v for v in st.session_state.self_assessments.values() if v.get('department') == user_dept and v['status'] == 'Approved'])
-            escalated_count = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected' and v.get('status') != 'Awaiting HOD Re-review'])
-            
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Appraisals Submitted", submitted_count)
-            c2.metric("Re-Review", re_review_count)
-            c3.metric("Approved", approved_count)
-            c4.metric("Escalated", escalated_count)
-            
-            st.markdown("---")
-            submitted = {k: v for k, v in st.session_state.self_assessments.items() if v.get('department') == user_dept and v['status'] in ['Submitted', 'Awaiting HOD Re-review']}
-            
-            if submitted:
-                for staff_name, assessment in submitted.items():
-                    is_re_review = assessment.get('status') == 'Awaiting HOD Re-review'
-                    expander_title = f"{'🔄 RE-REVIEW: ' if is_re_review else '📋 '}{staff_name} — {assessment['date']} — {assessment['status']}"
-                    
-                    with st.expander(expander_title, expanded=is_re_review):
-                        if is_re_review:
-                            st.warning(f"⚠️ {staff_name} has rejected your initial review (Rejection #{assessment.get('reject_count', 1)}). Please re-review.")
-                        
-                        st.markdown(f"**Overall Comments:** {assessment.get('comments', 'N/A')}")
-                        
-                        if assessment.get('evidence_urls'):
-                            st.markdown("**📎 Evidence Provided:**")
-                            for p, urls in assessment['evidence_urls'].items():
-                                st.markdown(f"- **{p}:** {len(urls)} file(s)")
-                        
-                        if assessment.get('pillar_comments'):
-                            st.markdown("**Staff Justifications by Pillar:**")
-                            for pillar, comment in sorted(assessment['pillar_comments'].items()):
-                                st.markdown(f"- **{pillar}:** {comment}")
-                        
-                        if is_re_review and assessment.get('hod_scores'):
-                            st.markdown("---")
-                            st.markdown("**📋 Your Previous Scores (for reference):**")
-                            for score_key, prev_hod_score in sorted(assessment['hod_scores'].items(), key=natural_sort_key):
-                                staff_score = assessment['scores'].get(score_key, 'N/A')
-                                st.markdown(f"- {score_key}: Staff={staff_score}% / Your Previous={prev_hod_score}%")
-                        
-                        st.markdown("---")
-                        st.markdown("### Side-by-Side Review")
-                        
-                        hod_scores = {}
-                        hod_pillar_comments = {}
-                        
-                        for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key):
-                            pillar_name = '_'.join(score_key.split('_')[:2])
-                            if pillar_name not in hod_pillar_comments:
-                                st.markdown(f"**{pillar_name}**")
-                                hod_pillar_comments[pillar_name] = st.text_area(f"HOD Justification for {pillar_name} *", key=f"hpc_{staff_name}_{pillar_name}")
-                            
-                            default_hod = assessment.get('hod_scores', {}).get(score_key, staff_score) if is_re_review else staff_score
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                st.markdown(f"Staff: {staff_score}%")
-                            with c2:
-                                hod_scores[score_key] = st.number_input(f"HOD Score", 0, 100, int(default_hod) if default_hod else staff_score, key=f"hod_{staff_name}_{score_key}")
-                        
-                        st.markdown("---")
-                        hod_overall = st.text_area(f"HOD Overall Comments for {staff_name} *", key=f"hod_com_{staff_name}")
-                        
-                        if is_re_review:
-                            c1, c2, c3 = st.columns(3)
-                            with c1:
-                                if st.button(f"🔄 Revise & Resubmit", key=f"revise_{staff_name}"):
-                                    if all(hod_pillar_comments.values()) and hod_overall:
-                                        st.session_state.self_assessments[staff_name]['status'] = 'Approved'
-                                        st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores
-                                        st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall
-                                        st.session_state.self_assessments[staff_name]['hod_pillar_comments'] = hod_pillar_comments
-                                        st.session_state.self_assessments[staff_name]['acceptance'] = None
-                                        log_audit('HOD Revised', f'{staff_name} scores revised by HOD')
-                                        try:
-                                            db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
-                                                st.session_state.appraisal_cycle_name, 'Approved',
-                                                assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}),
-                                                hod_scores, hod_overall, hod_pillar_comments, None, None,
-                                                assessment.get('date', ''))
-                                        except:
-                                            pass
-                                        st.success(f"✅ Scores revised! Sent back to {staff_name}.")
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ All justifications required!")
-                            with c2:
-                                if st.button(f"✋ Stand Firm - Escalate", key=f"standfirm_{staff_name}"):
-                                    _sf_hod_scores = hod_scores if hod_scores else assessment.get('hod_scores', {})
-                                    _sf_hod_comments = hod_overall if hod_overall else assessment.get('hod_comments', '')
-                                    st.session_state.self_assessments[staff_name]['status'] = 'Approved'
-                                    st.session_state.self_assessments[staff_name]['acceptance'] = 'Rejected'
-                                    st.session_state.self_assessments[staff_name]['hod_scores'] = _sf_hod_scores
-                                    st.session_state.self_assessments[staff_name]['hod_comments'] = _sf_hod_comments
-                                    # Persist so the Senior-Management committee queue (filters acceptance=='Rejected') survives reload.
-                                    try:
-                                        db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
-                                            st.session_state.appraisal_cycle_name, 'Approved',
-                                            assessment.get('scores'), assessment.get('comments', ''), assessment.get('pillar_comments', {}),
-                                            _sf_hod_scores, _sf_hod_comments, assessment.get('hod_pillar_comments'),
-                                            'Rejected', assessment.get('sr_decision', ''), assessment.get('date', ''))
-                                    except Exception:
-                                        pass
-                                    log_audit('HOD Stands Firm', f'{staff_name} escalated to Sr. Management')
-                                    st.warning(f"✋ Standing firm. Escalated to Sr. Management.")
-                                    st.rerun()
-                        else:
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                if st.button(f"✅ Approve {staff_name}", key=f"app_{staff_name}"):
-                                    if all(hod_pillar_comments.values()) and hod_overall:
-                                        st.session_state.self_assessments[staff_name]['status'] = 'Approved'
-                                        st.session_state.self_assessments[staff_name]['hod_scores'] = hod_scores
-                                        st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall
-                                        st.session_state.self_assessments[staff_name]['hod_pillar_comments'] = hod_pillar_comments
-                                        try:
-                                            db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
-                                                st.session_state.appraisal_cycle_name, 'Approved',
-                                                assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}),
-                                                hod_scores, hod_overall, hod_pillar_comments, None, None,
-                                                assessment.get('date', ''))
-                                        except:
-                                            pass
-                                        log_audit('Appraisal Approved', f'{staff_name} approved by HOD {user_name}')
-                                        st.success(f"✅ {staff_name} approved! Staff has been notified.")
-                                        st.balloons()
-                                        time.sleep(1.5)
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ All justifications required!")
-                            with c2:
-                                if st.button(f"🔄 Request Revision", key=f"rev_{staff_name}"):
-                                    if not hod_overall:
-                                        st.error("❌ Add an overall comment so the employee knows what to revise.")
-                                    else:
-                                        st.session_state.self_assessments[staff_name]['status'] = 'Revision Requested'
-                                        st.session_state.self_assessments[staff_name]['hod_comments'] = hod_overall
-                                        # Persist so the employee's Self-Assessment tab actually re-opens for revision.
-                                        try:
-                                            db.save_appraisal(staff_name, assessment.get('email', ''), user_dept,
-                                                st.session_state.appraisal_cycle_name, 'Revision Requested',
-                                                assessment.get('scores'), assessment.get('comments', ''), assessment.get('pillar_comments', {}),
-                                                assessment.get('hod_scores'), hod_overall, assessment.get('hod_pillar_comments'),
-                                                assessment.get('acceptance', ''), assessment.get('sr_decision', ''),
-                                                assessment.get('date', ''))
-                                        except Exception:
-                                            pass
-                                        log_audit('Revision Requested', f'Revision requested for {staff_name}')
-                                        send_appraisal_cycle_email('revision_requested', st.session_state.appraisal_cycle_name, assessment.get('email', ''), staff_name)
-                                        st.warning(f"🔄 Revision requested from {staff_name}")
-                                        st.rerun()
-            else:
-                st.info("No pending assessments for your team.")
-        
-        # Sr Management escalation (KEEP EXISTING)
-        if is_sr_mgmt:
-            st.markdown("---")
-            st.markdown("### ⚖️ Escalated Appraisals (Final Committee)")
-            escalated = {k: v for k, v in st.session_state.self_assessments.items() if v.get('acceptance') == 'Rejected' and v.get('status') != 'Awaiting HOD Re-review'}
-            if escalated:
-                for staff_name, assessment in escalated.items():
-                    with st.expander(f"🚨 {staff_name} — Escalated — {assessment.get('reject_count', 1)} rejection(s)", expanded=True):
-                        st.markdown(f"**Staff Comments:** {assessment.get('comments', 'N/A')}")
-                        st.markdown(f"**HOD Comments:** {assessment.get('hod_comments', 'N/A')}")
-                        st.markdown("---")
-                        st.markdown("#### 📊 Full Side-by-Side Score Comparison")
-                        for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key):
-                            hod_score = assessment.get('hod_scores', {}).get(score_key, 'N/A') if assessment.get('hod_scores') else 'N/A'
-                            c1, c2, c3 = st.columns([1, 1, 2])
-                            with c1:
-                                st.markdown(f"**Staff:** {staff_score}%")
-                            with c2:
-                                st.markdown(f"**HOD:** {hod_score}%")
-                            with c3:
-                                st.markdown(f"*{score_key}*")
-                        
-                        if assessment.get('evidence_urls'):
-                            st.markdown("**📎 Staff Evidence:**")
-                            for p, urls in assessment['evidence_urls'].items():
-                                st.markdown(f"- {p}: {len(urls)} file(s)")
-                        
-                        if assessment.get('pillar_comments') or assessment.get('hod_pillar_comments'):
-                            st.markdown("---")
-                            st.markdown("#### 💬 Justifications Comparison")
-                            for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
-                                staff_just = assessment.get('pillar_comments', {}).get(pillar, 'N/A')
-                                hod_just = assessment.get('hod_pillar_comments', {}).get(pillar, 'N/A') if assessment.get('hod_pillar_comments') else 'N/A'
-                                if staff_just != 'N/A' or hod_just != 'N/A':
-                                    st.markdown(f"**{pillar}**")
-                                    st.markdown(f"- Staff: {staff_just}")
-                                    st.markdown(f"- HOD: {hod_just}")
-                        
-                        st.markdown("---")
-                        c1, c2 = st.columns(2)
-                        with c1:
-                            if st.button(f"✅ Uphold HOD Decision - {staff_name}", key=f"up_{staff_name}"):
-                                st.session_state.self_assessments[staff_name]['acceptance'] = 'Accepted'
-                                st.session_state.self_assessments[staff_name]['sr_decision'] = 'HOD Upheld'
-                                st.session_state.self_assessments[staff_name]['status'] = 'Completed'
-                                log_audit('Sr Mgmt Decision', f'HOD upheld for {staff_name}')
-                                try:
-                                    db.archive_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
-                                        st.session_state.appraisal_cycle_name, 'Accepted - HOD Upheld',
-                                        assessment['scores'], assessment.get('hod_scores', {}), 
-                                        assessment.get('comments', ''), assessment.get('hod_comments', ''),
-                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                                except:
-                                    pass
-                                try:
-                                    db.save_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
-                                        st.session_state.appraisal_cycle_name, 'Completed',
-                                        assessment.get('scores'), assessment.get('comments', ''), assessment.get('pillar_comments'),
-                                        assessment.get('hod_scores'), assessment.get('hod_comments', ''), assessment.get('hod_pillar_comments'),
-                                        'Accepted', 'HOD Upheld', assessment.get('date', ''))
-                                except Exception:
-                                    pass
-                                send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, assessment.get('email', ''), staff_name)
-                                st.success(f"✅ HOD decision upheld. Appraisal complete.")
-                                st.balloons()
-                                time.sleep(1.5)
-                                st.rerun()
-                        with c2:
-                            if st.button(f"🔄 Overturn - Favor {staff_name}", key=f"ov_{staff_name}"):
-                                st.session_state.self_assessments[staff_name]['acceptance'] = 'Accepted'
-                                st.session_state.self_assessments[staff_name]['hod_scores'] = assessment['scores']
-                                st.session_state.self_assessments[staff_name]['sr_decision'] = 'Overturned in Favor of Staff'
-                                st.session_state.self_assessments[staff_name]['status'] = 'Completed'
-                                log_audit('Sr Mgmt Overturn', f'HOD overturned for {staff_name}')
-                                try:
-                                    db.archive_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
-                                        st.session_state.appraisal_cycle_name, 'Accepted - Overturned',
-                                        assessment['scores'], assessment['scores'],
-                                        assessment.get('comments', ''), assessment.get('hod_comments', ''),
-                                        now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                                except:
-                                    pass
-                                try:
-                                    db.save_appraisal(staff_name, assessment.get('email', ''), assessment.get('department', ''),
-                                        st.session_state.appraisal_cycle_name, 'Completed',
-                                        assessment.get('scores'), assessment.get('comments', ''), assessment.get('pillar_comments'),
-                                        assessment.get('scores'), assessment.get('hod_comments', ''), assessment.get('hod_pillar_comments'),
-                                        'Accepted', 'Overturned in Favor of Staff', assessment.get('date', ''))
-                                except Exception:
-                                    pass
-                                send_appraisal_cycle_email('completed', st.session_state.appraisal_cycle_name, assessment.get('email', ''), staff_name)
-                                st.success(f"🔄 Decision overturned in favor of {staff_name}. Appraisal complete.")
-                                st.balloons()
-                                time.sleep(1.5)
-                                st.rerun()
-            else:
-                st.info("No escalated appraisals.")
-        elif not is_hod:
-            st.info("HOD Review section is for Managers, HODs, Admin, and Senior Management.")
+                    st.info("No appraisal data available for recommendations.")
 
-    # ============ TAB 5: EXCEPTIONAL ACHIEVEMENTS ============
-    with tab5:
-        st.subheader("🌟 Exceptional Achievements")
-        st.info("Document accomplishments outside your formal KPIs — achievements that had significant impact on customers, colleagues, departments, or the organization.")
-        
-        categories = {
-            "💡 Innovation": "New ideas, process improvements, creative solutions",
-            "👑 Leadership": "Leading teams, mentoring, stepping up in crisis",
-            "😊 Customer Impact": "Going above and beyond for customers/tenants",
-            "💰 Cost Savings": "Saving money, reducing waste, efficiency gains",
-            "🚨 Crisis Management": "Handling emergencies, solving critical problems",
-            "🤝 Teamwork": "Cross-functional collaboration, helping colleagues succeed"
-        }
-        
-        if 'exceptional_achievements' not in st.session_state:
-            st.session_state.exceptional_achievements = {}
-        
-        my_achievements = st.session_state.exceptional_achievements.get(user_name, [])
-        col1, col2, col3 = st.columns(3)
-        col1.metric("🏆 My Achievements", len(my_achievements))
-        col2.metric("⭐ Avg Impact", f"{sum(3 if a.get('impact')=='Organization' else 2 if a.get('impact')=='Department' else 1 for a in my_achievements) / len(my_achievements):.1f}" if my_achievements else "N/A")
-        col3.metric("🎖️ Badges Earned", len(set(a.get('category', '') for a in my_achievements)))
-        
-        st.markdown("---")
-        
-        if my_achievements:
-            st.markdown("### 🏆 My Achievement Wall")
-            for i, ach in enumerate(sorted(my_achievements, key=lambda x: x.get('date', ''), reverse=True)):
-                cat_icon = ach.get('category', '💡')
-                impact_stars = "⭐" * (3 if ach.get('impact') == 'Organization' else 2 if ach.get('impact') == 'Department' else 1)
-                with st.expander(f"{cat_icon} {ach.get('title', 'Achievement')} {impact_stars} — {ach.get('date', '')}", expanded=i==0):
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.markdown(f"**Description:** {ach.get('description', '')}")
-                        st.markdown(f"**Outcome:** {ach.get('outcome', '')}")
-                    with col2:
-                        if ach.get('include_in_appraisal'):
-                            st.success("📎 Included in Appraisal")
-                    if st.button(f"👍 Endorse", key=f"endorse_{i}"):
-                        if 'endorsements' not in ach:
-                            ach['endorsements'] = []
-                        ach['endorsements'].append({'name': user_name, 'comment': 'Great achievement!', 'date': datetime.now().strftime('%Y-%m-%d')})
-                        st.success("✅ Endorsed!")
-                        st.rerun()
-        else:
-            st.info("🎯 No achievements recorded yet.")
-        
-        st.markdown("---")
-        st.markdown("### ➕ Add New Achievement")
-        with st.form("add_achievement"):
-            c1, c2 = st.columns(2)
-            with c1:
-                ach_title = st.text_input("Achievement Title *")
-                ach_category = st.selectbox("Category", list(categories.keys()))
-                ach_impact = st.selectbox("Impact Level *", ["Individual", "Team", "Department", "Organization"])
-                ach_date = st.date_input("Date of Achievement")
-            with c2:
-                ach_description = st.text_area("Description *", height=100)
-                ach_outcome = st.text_area("Outcome / Result *", height=100)
-            
-            include_in_appraisal = st.checkbox("Include in Appraisal Review", value=True)
-            
-            if st.form_submit_button("💾 Save Achievement", use_container_width=True):
-                if ach_title and ach_description and ach_outcome:
-                    if user_name not in st.session_state.exceptional_achievements:
-                        st.session_state.exceptional_achievements[user_name] = []
-                    st.session_state.exceptional_achievements[user_name].append({
-                        'title': ach_title, 'category': ach_category,
-                        'description': ach_description, 'impact': ach_impact,
-                        'outcome': ach_outcome, 'date': ach_date.strftime('%Y-%m-%d'),
-                        'include_in_appraisal': include_in_appraisal, 'endorsements': []
-                    })
-                    st.success("✅ Achievement saved!")
-                    st.balloons()
-                    st.rerun()
-                else:
-                    st.error("❌ Title, Description, and Outcome are required!")
-    
-    # ============ TAB 6: DASHBOARD (UPGRADED) ============
-    with tab6:
-        st.subheader("📊 My Appraisal Status & Performance")
-        
-        # Status tracker
-        if st.session_state.appraisal_cycle_active:
-            user_assessment = st.session_state.self_assessments.get(user_name, {})
-            current_status = user_assessment.get('status', 'Not Started')
-            
-            steps = [
-                ("Set KPIs", 1),
-                ("Self-Assessment", 2),
-                ("HOD Review", 3),
-                ("Acceptance", 4),
-                ("Complete", 5)
-            ]
-            
-            status_map = {'Not Started': 0, 'KPIs Set': 1, 'Submitted': 2, 'Approved': 3, 'Accepted': 4, 'Completed': 5}
-            current_step = status_map.get(current_status, 0)
-            
-            st.markdown("### 🔄 Your Appraisal Progress")
-            cols = st.columns(5)
-            for i, (step_name, step_num) in enumerate(steps):
-                with cols[i]:
-                    if step_num < current_step:
-                        st.success(f"✅ {step_name}")
-                    elif step_num == current_step:
-                        st.info(f"🔄 {step_name}")
-                    else:
-                        st.markdown(f"⏳ {step_name}")
-            
-            # Countdown
-            try:
-                end_date = datetime.strptime(st.session_state.appraisal_end, '%Y-%m-%d')
-                days_left = (end_date - datetime.now()).days
-                if days_left >= 0:
-                    st.progress((30 - min(days_left, 30)) / 30)
-                    st.caption(f"⏰ {days_left} days until deadline")
-            except:
-                pass
-        
-        # Performance summary
-        user_assessment = st.session_state.self_assessments.get(user_name, {})
-        if user_assessment.get('status') == 'Approved' and user_assessment.get('acceptance') == 'Accepted':
-            st.success("✅ Appraisal Complete!")
-            final_scores = user_assessment.get('hod_scores', user_assessment.get('scores', {}))
-            if final_scores:
-                valid = [s for s in final_scores.values() if isinstance(s, (int, float))]
-                avg = sum(valid) / len(valid) if valid else 0
-                st.metric("Final Score", f"{avg:.1f}%")
-        
-        if user_dept in performance_data:
-            for pillar_name, pillar_data in performance_data[user_dept].items():
-                color = "#38a169" if pillar_data['progress'] >= 85 else "#d69e2e" if pillar_data['progress'] >= 65 else "#CC0000"
-                st.markdown(f"""<div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.6rem; border-left: 4px solid {color};"><strong>{pillar_name}</strong> ({pillar_data['weight']}%)<br><small>Progress: {pillar_data['progress']}% | {pillar_data['status']}</small><div style="background: #e0e0e0; height: 6px; border-radius: 3px; margin-top: 0.5rem;"><div style="background: {color}; width: {pillar_data['progress']}%; height: 6px; border-radius: 3px;"></div></div></div>""", unsafe_allow_html=True)
-        
-        c1, c2, c3 = st.columns(3)
-        total_prog = sum(p['progress'] * p['weight'] / 100 for p in performance_data.get(user_dept, {}).values()) if user_dept in performance_data else 0
-        c1.metric("Weighted Score", f"{total_prog:.1f}%")
-        c2.metric("On Track", str(sum(1 for p in performance_data.get(user_dept, {}).values() if p['status'] in ['On Track', 'Exceeding'])))
-        c3.metric("At Risk", str(sum(1 for p in performance_data.get(user_dept, {}).values() if p['status'] == 'At Risk')))
-        
-        # Benchmark Report
-        st.markdown("---")
-        st.markdown("### 📊 Benchmark Report")
-        if st.button("📊 Generate Benchmark Report", use_container_width=True):
-            dept_avg = total_prog
-            group_avg = 0
-            count = 0
-            for d in all_depts:
-                if d in performance_data:
-                    group_avg += sum(p['progress'] * p['weight'] / 100 for p in performance_data[d].values())
-                    count += 1
-            group_avg = group_avg / count if count > 0 else 0
-            
-            bench_data = pd.DataFrame({'Metric': ['My Score', 'Dept Average', 'Group Average', 'Target'], 'Score': [total_prog, dept_avg, group_avg, 85]})
-            fig = px.bar(bench_data, x='Metric', y='Score', color='Metric', color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#38a169'])
-            fig.add_hline(y=85, line_dash="dash", line_color="#38a169", annotation_text="Target")
-            fig.update_layout(height=350)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Audit Trail
-        st.markdown("---")
-        with st.expander("📋 Audit Trail"):
-            if st.session_state.audit_trail:
-                for entry in st.session_state.audit_trail[-20:]:
-                    st.markdown(f"- **{entry['timestamp']}**: {entry['action']} — {entry['details']} by {entry['user']}")
-            else:
-                st.info("No audit entries yet.")
-        
-        # Appraisal History
-        st.markdown("---")
-        st.markdown("### 📜 Appraisal History")
-        try:
-            history = db.get_appraisal_history(user_name)
-            if history:
-                for h in history[-5:]:
-                    st.markdown(f"- **{h.get('cycle_name', 'N/A')}**: {h.get('final_status', 'N/A')} on {h.get('completed_date', 'N/A')}")
-            else:
-                st.info("No completed appraisals yet.")
-        except:
-            st.info("History loading...")
-        
-        # Reports
-        st.markdown("---")
-        st.markdown("### 📥 Appraisal Reports")
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("📊 CSV Report", use_container_width=True):
-                if user_assessment.get('scores'):
-                    report = []
-                    for k, v in user_assessment['scores'].items():
-                        hod = user_assessment.get('hod_scores', {}).get(k, 'Pending')
-                        report.append({'KPI': k[:80], 'Self': f"{v}%", 'HOD': f"{hod}%" if isinstance(hod, (int, float)) else 'Pending'})
-                    st.download_button("📥 Download CSV", pd.DataFrame(report).to_csv(index=False), f"{user_name}_appraisal.csv", "text/csv")
-        with c2:
-            if st.button("📕 PDF Report", use_container_width=True):
-                try:
-                    import fpdf
-                    FPDF = fpdf.FPDF
-                    pdf = FPDF(orientation='P', unit='mm', format='A4')
-                    pdf.add_page()
-                    pdf.set_fill_color(55, 55, 55)
-                    pdf.rect(0, 0, 210, 35, 'F')
-                    pdf.set_fill_color(204, 0, 0)
-                    pdf.rect(0, 35, 210, 3, 'F')
-                    pdf.set_font('Helvetica', 'B', 20)
-                    pdf.set_text_color(255, 255, 255)
-                    pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
-                    pdf.set_font('Helvetica', 'B', 11)
-                    pdf.set_text_color(255, 255, 255)
-                    pdf.cell(0, 8, 'PERFORMANCE APPRAISAL REPORT', ln=True, align='C')
-                    pdf.ln(10)
-                    pdf.set_font('Helvetica', 'B', 12)
-                    pdf.set_text_color(26, 26, 26)
-                    pdf.cell(0, 8, f'Employee: {user_name} | Dept: {user_dept}', ln=True)
-                    pdf.cell(0, 8, f'Cycle: {st.session_state.appraisal_cycle_name}', ln=True)
-                    pdf.cell(0, 8, f'Date: {now_wat.strftime("%Y-%m-%d %H:%M WAT")}', ln=True)
-                    pdf.ln(5)
-                    if user_assessment.get('scores'):
-                        pdf.set_fill_color(26, 26, 26)
-                        pdf.set_text_color(255, 255, 255)
-                        pdf.set_font('Helvetica', 'B', 9)
-                        pdf.cell(95, 7, ' KPI', 1, 0, 'L', True)
-                        pdf.cell(45, 7, 'SELF', 1, 0, 'C', True)
-                        pdf.cell(50, 7, 'HOD', 1, 0, 'C', True)
-                        pdf.ln()
-                        pdf.set_font('Helvetica', '', 8)
-                        pdf.set_text_color(26, 26, 26)
-                        for k, v in user_assessment['scores'].items():
-                            hod = user_assessment.get('hod_scores', {}).get(k, 'Pending')
-                            pdf.cell(95, 6, f' {k[:55]}', 1, 0, 'L')
-                            pdf.cell(45, 6, f'{v}%', 1, 0, 'C')
-                            pdf.cell(50, 6, f'{hod}%' if isinstance(hod, (int, float)) else str(hod), 1, 0, 'C')
-                            pdf.ln()
-                    pdf.set_y(-20)
-                    pdf.set_font('Helvetica', 'I', 7)
-                    pdf.set_text_color(150, 150, 150)
-                    pdf.cell(0, 10, 'Churchgate Group - Confidential | hr@churchgate.com', align='C')
-                    st.download_button("📥 Download Appraisal PDF", bytes(pdf.output()), f"{user_name}_appraisal.pdf", "application/pdf")
-                except:
-                    pass
 
-def promotions():
-    st.markdown("""<div class="churchgate-header"><h1>🚀 Promotions & Career Progression Console</h1><p>360° A-Player Assessment | Succession Planning | Talent Pipeline Management</p></div>""", unsafe_allow_html=True)
+def staff_confirmation():
+    """
+    Churchgate Group HRIS - Staff Confirmation Module v2.0
+    Fortune 500 Standard | Full Confirmation Decision Form | Auto-Notifications | Confirmation Letters
+    """
+    st.markdown("""<div class="churchgate-header"><h1>✅ Staff Confirmation Board</h1><p>Probation Tracking | Full Decision Form | Performance Rating | HOD Review | COO Approval | Confirmation Letters</p></div>""", unsafe_allow_html=True)
     
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
+    is_admin = user_role in ['Admin', 'HR Director']
+    is_hod = is_admin or user_role in ['Manager', 'HOD']
+    is_coo = user_name == 'Jerome Das' or is_admin
+    
+    def get_probation_employees():
+        try:
+            all_emp = db.get_all_employees()
+            if not all_emp.empty:
+                return all_emp[all_emp['status'] == 'Probation']
+        except:
+            pass
+        return pd.DataFrame()
+    
+    def calculate_probation_end(join_date, probation_months=6):
+        try:
+            if isinstance(join_date, str):
+                jd = datetime.strptime(join_date, '%Y-%m-%d')
+            else:
+                jd = pd.to_datetime(join_date)
+            return jd + timedelta(days=probation_months * 30)
+        except:
+            return None
+    
+    def send_confirmation_email(to_email, subject, body):
+        try:
+            from utils.email_service import EmailService
+            return EmailService().send_email(to_email, subject, body)
+        except:
+            return False, "Email service unavailable"
+    
+    def generate_confirmation_letter(emp_name, emp_position, emp_dept, emp_id, join_date, confirmation_date):
+        try:
+            from fpdf import FPDF
+            pdf = FPDF(orientation='P', unit='mm', format='A4')
+            pdf.add_page()
+            pdf.set_fill_color(26, 26, 26); pdf.rect(0, 0, 210, 35, 'F')
+            pdf.set_fill_color(204, 0, 0); pdf.rect(0, 35, 210, 2, 'F')
+            pdf.set_fill_color(212, 175, 55); pdf.rect(0, 37, 210, 1, 'F')
+            pdf.set_font('Helvetica', 'B', 20); pdf.set_text_color(255, 255, 255)
+            pdf.cell(0, 15, 'CHURCHGATE GROUP', ln=True, align='C')
+            pdf.set_font('Helvetica', 'B', 11); pdf.set_text_color(212, 175, 55)
+            pdf.cell(0, 8, 'CONFIRMATION OF EMPLOYMENT', ln=True, align='C')
+            pdf.ln(12); pdf.set_text_color(26, 26, 26); pdf.set_font('Helvetica', '', 11)
+            pdf.cell(0, 8, f'Date: {confirmation_date.strftime("%B %d, %Y")}', ln=True, align='R')
+            pdf.ln(5); pdf.set_font('Helvetica', '', 11)
+            pdf.cell(0, 8, f'Dear {emp_name},', ln=True); pdf.ln(3)
+            pdf.multi_cell(0, 7, 'We are pleased to confirm your employment with Churchgate Group following the successful completion of your probationary period.')
+            pdf.ln(2)
+            pdf.multi_cell(0, 7, f'Your performance during the probation period has been reviewed and found satisfactory. You are hereby confirmed in your position with effect from {confirmation_date.strftime("%B %d, %Y")}.')
+            pdf.ln(4)
+            pdf.set_font('Helvetica', 'B', 11); pdf.cell(0, 8, 'Employment Details:', ln=True)
+            pdf.set_font('Helvetica', '', 10)
+            for label, value in [('Employee Name:', emp_name), ('Employee ID:', emp_id), ('Position:', emp_position), ('Department:', emp_dept), ('Date of Joining:', join_date.strftime('%B %d, %Y') if hasattr(join_date, 'strftime') else str(join_date)), ('Confirmation Date:', confirmation_date.strftime('%B %d, %Y')), ('Status:', 'Confirmed - Full Employment')]:
+                pdf.cell(60, 7, f'  {label}', 0, 0); pdf.set_font('Helvetica', 'B', 10); pdf.cell(0, 7, value, 0, 1); pdf.set_font('Helvetica', '', 10)
+            pdf.ln(5)
+            pdf.multi_cell(0, 7, 'All terms and conditions of your employment as outlined in your original offer letter remain in effect. You are entitled to all company benefits applicable to confirmed employees.')
+            pdf.ln(8)
+            pdf.set_font('Helvetica', 'B', 10)
+            pdf.cell(95, 7, '_______________________', align='C'); pdf.cell(20, 7, ''); pdf.cell(95, 7, '_______________________', align='C')
+            pdf.ln(); pdf.set_font('Helvetica', '', 8); pdf.set_text_color(128, 128, 128)
+            pdf.cell(95, 5, 'HR Director', align='C'); pdf.cell(20, 5, ''); pdf.cell(95, 5, 'COO - Jerome Das', align='C')
+            pdf.set_y(-20); pdf.set_font('Helvetica', 'I', 7); pdf.set_text_color(160, 160, 160)
+            pdf.cell(0, 10, 'Churchgate Group - HR Department | hris@churchgate.com', align='C')
+            return bytes(pdf.output())
+        except:
+            return None
+    
+    # Top Stats
+    probation_employees = get_probation_employees()
+    total_probation = len(probation_employees)
+    ending_soon = 0; overdue = 0; now = datetime.now()
+    
+    if not probation_employees.empty:
+        for _, emp in probation_employees.iterrows():
+            end_date = calculate_probation_end(emp.get('join_date'))
+            if end_date:
+                days_left = (end_date - now).days
+                if days_left <= 14 and days_left >= 0: ending_soon += 1
+                elif days_left < 0: overdue += 1
+    
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("👥 On Probation", total_probation)
+    c2.metric("⏰ Ending Soon (14d)", ending_soon)
+    c3.metric("🚨 Overdue", overdue)
+    c4.metric("✅ Confirmed", 0)
+    
+    st.markdown("---")
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["📋 Probation Board", "🔍 Review & Confirm", "✅ Confirmed Staff", "📊 Dashboard"])
+    
+    # ============================================================
+    # TAB 1: PROBATION BOARD
+    # ============================================================
+    with tab1:
+        st.subheader("📋 Employees on Probation")
+        
+        # Region/Subsidiary/Department Filters (Admin only)
+        if is_admin:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                filter_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="prob_region")
+            with col2:
+                SUBSIDIARY_OPTIONS = {
+                    'Abuja': ['All', 'World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                    'Lagos': ['All', 'First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC'],
+                    'Aba': ['All', 'Aba Textile Mills PLC']
+                }
+                sub_opts = SUBSIDIARY_OPTIONS.get(filter_region, ['All']) if filter_region != 'All' else ['All']
+                filter_subsidiary = st.selectbox("🏢 Subsidiary", sub_opts, key="prob_sub")
+            with col3:
+                all_depts_list = ['All'] + sorted(list(probation_employees['department'].dropna().unique())) if not probation_employees.empty else ['All']
+                filter_dept = st.selectbox("🏭 Department", all_depts_list, key="prob_dept")
+        
+        if not probation_employees.empty:
+            # Apply filters
+            filtered_probation = probation_employees.copy()
+            if is_admin:
+                if filter_region != 'All':
+                    filtered_probation = filtered_probation[filtered_probation['region'] == filter_region]
+                if filter_subsidiary != 'All':
+                    filtered_probation = filtered_probation[filtered_probation['subsidiary'] == filter_subsidiary]
+                if filter_dept != 'All':
+                    filtered_probation = filtered_probation[filtered_probation['department'] == filter_dept]
+            
+            st.markdown(f"**{len(filtered_probation)} employees on probation**")
+            
+            for _, emp in filtered_probation.iterrows():
+                emp_name = f"{emp['first_name']} {emp['last_name']}"
+                emp_id = emp.get('employee_id', '')
+                dept = emp.get('department', '')
+                position = emp.get('position', '')
+                join_date = emp.get('join_date', '')
+                end_date = calculate_probation_end(join_date)
+                
+                if end_date:
+                    days_left = (end_date - now).days
+                    if days_left < 0: status_text = f"🚨 OVERDUE by {abs(days_left)} days"; status_color = '#CC0000'
+                    elif days_left <= 7: status_text = f"⏰ {days_left} days left"; status_color = '#d69e2e'
+                    elif days_left <= 14: status_text = f"📅 {days_left} days left"; status_color = '#3182ce'
+                    else: status_text = f"📅 {days_left} days left"; status_color = '#38a169'
+                else: status_text = "N/A"; status_color = '#a0aec0'
+                
+                with st.expander(f"{'🚨' if days_left < 0 else '⏰' if days_left <= 7 else '📅'} {emp_name} — {position} ({dept}) | {status_text}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**Employee:** {emp_name}")
+                        st.markdown(f"**ID:** {emp_id}")
+                        st.markdown(f"**Position:** {position}")
+                        st.markdown(f"**Department:** {dept}")
+                        st.markdown(f"**Region:** {emp.get('region', 'N/A')}")
+                        st.markdown(f"**Subsidiary:** {emp.get('subsidiary', 'N/A')}")
+                    with col2:
+                        st.markdown(f"**Join Date:** {join_date}")
+                        st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                        st.markdown(f"**Days Left:** <span style='color:{status_color};font-weight:700;'>{days_left if end_date else 'N/A'}</span>", unsafe_allow_html=True)
+        else:
+            st.success("🎉 No employees currently on probation!")
+    
+    # ============================================================
+    # TAB 2: REVIEW & CONFIRM (WITH FILTERS)
+    # ============================================================
+    with tab2:
+        st.subheader("🔍 Review & Confirm Employees")
+        
+        if is_hod or is_admin:
+            if not probation_employees.empty:
+                # Filters
+                filtered_review = probation_employees.copy()
+                if is_admin:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        rev_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="rev_region")
+                    with col2:
+                        SUBSIDIARY_OPTIONS_REV = {
+                            'Abuja': ['All', 'World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                            'Lagos': ['All', 'First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
+                            'Aba': ['All', 'Aba Textile Mills PLC']
+                        }
+                        sub_opts = SUBSIDIARY_OPTIONS_REV.get(rev_region, ['All']) if rev_region != 'All' else ['All']
+                        rev_sub = st.selectbox("🏢 Subsidiary", sub_opts, key="rev_sub")
+                    with col3:
+                        all_depts_rev = ['All'] + sorted(list(probation_employees['department'].dropna().unique()))
+                        rev_dept = st.selectbox("🏭 Department", all_depts_rev, key="rev_dept")
+                    
+                    if rev_region != 'All':
+                        filtered_review = filtered_review[filtered_review['region'] == rev_region]
+                    if rev_sub != 'All':
+                        filtered_review = filtered_review[filtered_review['subsidiary'] == rev_sub]
+                    if rev_dept != 'All':
+                        filtered_review = filtered_review[filtered_review['department'] == rev_dept]
+                
+                st.markdown(f"**{len(filtered_review)} employees to review**")
+                
+                if len(filtered_review) == 0:
+                    st.info("No employees match the selected filters.")
+                
+                for _, emp in filtered_review.iterrows():
+                    emp_name = f"{emp['first_name']} {emp['last_name']}"
+                    emp_id = emp.get('employee_id', '')
+                    dept = emp.get('department', '')
+                    position = emp.get('position', '')
+                    join_date = emp.get('join_date', '')
+                    end_date = calculate_probation_end(join_date)
+                    
+                    if not is_admin and dept != user_dept: continue
+                    
+                    days_left = (end_date - now).days if end_date else 0
+                    urgency = "🚨" if days_left < 0 else "⏰" if days_left <= 7 else "📅"
+                    
+                    with st.expander(f"{urgency} Review: {emp_name} — {position} ({dept}) | {'OVERDUE' if days_left < 0 else f'{days_left}d left'}"):
+                        st.markdown(f"**Probation Period:** {join_date} to {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                        st.markdown(f"**Region:** {emp.get('region', 'N/A')} | **Subsidiary:** {emp.get('subsidiary', 'N/A')}")
+                        
+                        # Check if already reviewed
+                        try:
+                            existing_review = db._get("confirmation_reviews")
+                            already_reviewed = [r for r in existing_review if r.get('employee_id') == emp_id]
+                            if already_reviewed:
+                                latest = already_reviewed[0]
+                                st.info(f"📋 Already reviewed by {latest.get('hod_name','')} on {latest.get('review_date','')[:10]} — Status: {latest.get('status','')}")
+                        except:
+                            pass
+                        
+                        # HOD Review - FULL DECISION FORM
+                        if is_hod:
+                            st.markdown("---")
+                            st.markdown("#### 👔 EMPLOYEE CONFIRMATION DECISION FORM")
+                            
+                            # Get employee data
+                            emp_region = emp.get('region', '')
+                            emp_subsidiary = emp.get('subsidiary', '')
+                            
+                            SUBSIDIARY_OPTIONS_FORM = {
+                                'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                                'Lagos': ['First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
+                                'Aba': ['Aba Textile Mills PLC']
+                            }
+                            
+                            # 1. EMPLOYEE DATA
+                            st.markdown("##### 1. EMPLOYEE DATA")
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.markdown(f"**Name:** {emp_name}")
+                                st.markdown(f"**Department:** {dept}")
+                                region_options = ['Abuja', 'Lagos', 'Aba']
+                                region_idx = region_options.index(emp_region) if emp_region in region_options else 0
+                                new_region = st.selectbox("Region *", region_options, index=region_idx, key=f"cf_region_{emp_id}")
+                                sub_opts = SUBSIDIARY_OPTIONS_FORM.get(new_region, ['World Trade Center(WTC)'])
+                                sub_idx = sub_opts.index(emp_subsidiary) if emp_subsidiary in sub_opts else 0
+                                new_subsidiary = st.selectbox("Subsidiary *", sub_opts, index=sub_idx, key=f"cf_sub_{emp_id}")
+                            with col2:
+                                st.markdown(f"**Position:** {position}")
+                                st.markdown(f"**Join Date:** {join_date}")
+                                st.text_input("Highest Qualification", key=f"qual_{emp_id}", placeholder="e.g., B.Sc.")
+                            with col3:
+                                st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                                st.text_input("Confirmation Due Date", value=end_date.strftime('%Y-%m-%d') if end_date else '', key=f"due_{emp_id}")
+                            
+                            st.markdown("---")
+                            
+                            # 3. PERFORMANCE RATING - OUTSIDE FORM FOR REAL-TIME UPDATES
+                            st.markdown("##### 3. PERFORMANCE RATING (0-10 each)")
+                            perf_criteria = [
+                                "Quality and Quantity of work", "Knowledge of work and procedures",
+                                "Requisite/cognate Technical Skills", "Care and Maintenance of Assets",
+                                "Ability to Communicate", "Interpersonal Relationship & Team Spirit",
+                                "Dependability/Discipline", "Initiative and Creativity",
+                                "Leadership", "Potentialities"
+                            ]
+                            perf_scores = {}
+                            
+                            for i, criterion in enumerate(perf_criteria):
+                                col1, col2 = st.columns([3, 1])
+                                with col1: st.markdown(f"**{criterion}**")
+                                with col2:
+                                    perf_scores[str(i)] = st.number_input("Score", 0, 10, 5, key=f"perf_{i}_{emp_id}")
+                            
+                            total_perf = sum(perf_scores.values())
+                            st.markdown(f"**TOTAL SCORE: {total_perf} / 100**")
+                            
+                            if total_perf >= 90: perf_rating = "Outstanding"; perf_color = "#38a169"
+                            elif total_perf >= 70: perf_rating = "Satisfactory"; perf_color = "#3182ce"
+                            elif total_perf >= 50: perf_rating = "Average"; perf_color = "#d69e2e"
+                            elif total_perf >= 30: perf_rating = "Unsatisfactory"; perf_color = "#dd6b20"
+                            else: perf_rating = "Poor"; perf_color = "#CC0000"
+                            
+                            st.markdown(f"""<div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#888;margin-top:0.3rem;"><span>10-29: Poor</span><span>30-49: Unsatisfactory</span><span>50-69: Average</span><span>70-89: Satisfactory</span><span>90-100: Outstanding</span></div>
+                            <div style="margin-top:0.5rem;padding:0.5rem;background:{perf_color}15;border-radius:6px;border-left:4px solid {perf_color};"><strong>Rating: <span style="color:{perf_color};">{perf_rating}</span></strong></div>""", unsafe_allow_html=True)
+                            
+                            st.markdown("---")
+                            
+                            # REST IN FORM
+                            with st.form(key=f"hod_review_{emp_id}"):
+                                # 2. STRENGTHS / WEAKNESSES
+                                st.markdown("##### 2. EMPLOYEE STRENGTHS / WEAKNESSES")
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    strengths = st.text_area("AREA OF STRENGTHS *", key=f"strengths_{emp_id}", height=100, placeholder="Key strengths and achievements...")
+                                with col2:
+                                    weaknesses = st.text_area("AREA OF WEAKNESSES *", key=f"weaknesses_{emp_id}", height=100, placeholder="Areas needing improvement...")
+                                
+                                st.markdown("---")
+                                
+                                # 4. DISCIPLINARY STATUS
+                                st.markdown("##### 4. DISCIPLINARY STATUS")
+                                col1, col2, col3 = st.columns(3)
+                                with col1: disc_action = st.selectbox("Action", ["None","Caution","Warning","Final Warning","Suspension"], key=f"disc_{emp_id}")
+                                with col2: disc_reason = st.text_input("Reason", key=f"discr_{emp_id}")
+                                with col3: disc_remark = st.text_input("Remark", key=f"disck_{emp_id}")
+                                
+                                st.markdown("---")
+                                
+                                # 5. RECOMMENDATIONS
+                                st.markdown("##### 5. RECOMMENDATIONS")
+                                hod_decision = st.radio("Decision *", [
+                                    "✅ Well Fitted / Confirm & Possible Increment",
+                                    "✅ Fitted / Confirm",
+                                    "🔄 Not Fitted / Extend Confirmation (1 Month)",
+                                    "🔄 Not Fitted / Extend Confirmation (2 Months)",
+                                    "🔄 Not Fitted / Extend Confirmation (3 Months)",
+                                    "❌ Not Recommended"
+                                ], key=f"hod_dec_{emp_id}")
+                                
+                                hod_comments = st.text_area("HOD / PCH Comment *", key=f"hod_com_{emp_id}", height=80, placeholder="Justification for recommendation...")
+                                
+                                st.markdown("---")
+                                col1, col2 = st.columns(2)
+                                with col1: supervisor_name = st.text_input("Immediate Supervisor Name", value=user_name, key=f"sup_{emp_id}")
+                                with col2: line_manager = st.text_input("Line Manager Name", key=f"lm_{emp_id}")
+                                
+                                if st.form_submit_button("📤 Submit Confirmation Decision", use_container_width=True, type="primary"):
+                                    if strengths and weaknesses and hod_comments:
+                                        try:
+                                            db._post("confirmation_reviews", {
+                                                "employee_id": emp_id, "employee_name": emp_name,
+                                                "department": dept, "position": position,
+                                                "region": new_region, "subsidiary": new_subsidiary,
+                                                "join_date": str(join_date), "probation_end": end_date.strftime('%Y-%m-%d') if end_date else '',
+                                                "hod_name": user_name, "supervisor_name": supervisor_name,
+                                                "line_manager_name": line_manager,
+                                                "strengths": strengths, "weaknesses": weaknesses,
+                                                "performance_scores": json.dumps(perf_scores),
+                                                "total_performance_score": total_perf,
+                                                "performance_rating": perf_rating,
+                                                "disciplinary_action": disc_action,
+                                                "disciplinary_reason": disc_reason,
+                                                "disciplinary_remark": disc_remark,
+                                                "hod_decision": hod_decision,
+                                                "hod_comments": hod_comments,
+                                                "status": "Pending COO Approval" if "Confirm" in hod_decision else "Extension Recommended",
+                                                "review_date": now.strftime('%Y-%m-%d %H:%M')
+                                            })
+                                        except: pass
+                                        
+                                        if "Confirm" in hod_decision:
+                                            send_confirmation_email("jeromedas@churchgate.com", f"✅ Confirmation Recommended: {emp_name}", f"Dear Jerome,\n\n{user_name} has recommended confirmation for {emp_name}.\n\nScore: {total_perf}/100 ({perf_rating})\n\nhttps://hris.churchgate.com")
+                                            st.success("✅ Submitted! Sent to COO.")
+                                        else:
+                                            send_confirmation_email("asakote@churchgate.com", f"🔄 Extension: {emp_name}", f"HR Team,\n\n{user_name} recommended extension for {emp_name}.\n\n{hod_decision}\n\nPlease process.")
+                                            send_confirmation_email(emp.get('email',''), f"🔄 Probation Update", f"Dear {emp_name},\n\nYour probation period has been extended.\n\nYour HOD will discuss this with you.\n\nChurchgate Group HR")
+                                            st.warning("🔄 Extension recommended.")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Strengths, Weaknesses, and Comments required!")
+                        
+                        # COO Approval - FULL PREVIEW
+                        if is_coo:
+                            try:
+                                reviews = db._get("confirmation_reviews")
+                                for r in reviews:
+                                    if r.get('employee_id') == emp_id and r.get('status') == 'Pending COO Approval':
+                                        st.markdown("---")
+                                        st.markdown("#### 🏢 COO Final Approval - Full Review")
+                                        
+                                        # FULL FORM PREVIEW
+                                        st.markdown("##### 1. EMPLOYEE DATA")
+                                        col1, col2, col3 = st.columns(3)
+                                        with col1:
+                                            st.markdown(f"**Name:** {r.get('employee_name','')}")
+                                            st.markdown(f"**Department:** {r.get('department','')}")
+                                            st.markdown(f"**Region:** {r.get('region','N/A')}")
+                                        with col2:
+                                            st.markdown(f"**Position:** {r.get('position','')}")
+                                            st.markdown(f"**Join Date:** {r.get('join_date','')}")
+                                            st.markdown(f"**Subsidiary:** {r.get('subsidiary','N/A')}")
+                                        with col3:
+                                            st.markdown(f"**Probation End:** {r.get('probation_end','')}")
+                                        
+                                        st.markdown("---")
+                                        st.markdown("##### 2. STRENGTHS & WEAKNESSES")
+                                        col1, col2 = st.columns(2)
+                                        with col1:
+                                            st.markdown(f"**💪 Strengths:**\n{r.get('strengths','N/A')}")
+                                        with col2:
+                                            st.markdown(f"**📈 Areas for Development:**\n{r.get('weaknesses','N/A')}")
+                                        
+                                        st.markdown("---")
+                                        st.markdown("##### 3. PERFORMANCE RATING")
+                                        try:
+                                            scores = json.loads(r.get('performance_scores', '{}'))
+                                            perf_criteria = [
+                                                "Quality and Quantity of work", "Knowledge of work and procedures",
+                                                "Requisite/cognate Technical Skills", "Care and Maintenance of Assets",
+                                                "Ability to Communicate", "Interpersonal Relationship & Team Spirit",
+                                                "Dependability/Discipline", "Initiative and Creativity",
+                                                "Leadership", "Potentialities"
+                                            ]
+                                            for i, criterion in enumerate(perf_criteria):
+                                                score = scores.get(str(i), 0)
+                                                st.markdown(f"**{criterion}:** {score}/10")
+                                        except:
+                                            pass
+                                        
+                                        total_score = r.get('total_performance_score', 'N/A')
+                                        rating = r.get('performance_rating', 'N/A')
+                                        rating_color = '#38a169' if rating == 'Outstanding' else '#3182ce' if rating == 'Satisfactory' else '#d69e2e' if rating == 'Average' else '#dd6b20'
+                                        
+                                        st.markdown(f"**TOTAL SCORE: {total_score}/100 — <span style='color:{rating_color};font-weight:700;'>{rating}</span>**", unsafe_allow_html=True)
+                                        
+                                        st.markdown("---")
+                                        st.markdown("##### 4. DISCIPLINARY STATUS")
+                                        st.markdown(f"**Action:** {r.get('disciplinary_action','None')} | **Reason:** {r.get('disciplinary_reason','N/A')} | **Remark:** {r.get('disciplinary_remark','N/A')}")
+                                        
+                                        st.markdown("---")
+                                        st.markdown("##### 5. RECOMMENDATIONS")
+                                        st.markdown(f"**Decision:** {r.get('hod_decision','')}")
+                                        st.markdown(f"**HOD Comment:** {r.get('hod_comments','')}")
+                                        st.markdown(f"**Immediate Supervisor:** {r.get('supervisor_name','')} | **Line Manager:** {r.get('line_manager_name','')}")
+                                        st.markdown(f"**Reviewed by HOD:** {r.get('hod_name','')} on {r.get('review_date','')[:10]}")
+                                        
+                                        st.markdown("---")
+                                        
+                                        # Approval buttons
+                                        col1, col2, col3 = st.columns(3)
+                                        with col1:
+                                            if st.button(f"✅ Approve Confirmation", key=f"coo_app_{emp_id}", use_container_width=True, type="primary"):
+                                                db._patch("confirmation_reviews", {
+                                                    "status":"Approved by COO","coo_decision":"Approved",
+                                                    "coo_name":user_name,"approved_date":now.strftime('%Y-%m-%d %H:%M')
+                                                }, {"id":r.get('id')})
+                                                db._patch("employees", {"status":"Active"}, {"employee_id":emp_id})
+                                                
+                                                # Generate confirmation letter
+                                                try:
+                                                    jd = r.get('join_date','')
+                                                    if isinstance(jd, str): jd = datetime.strptime(jd, '%Y-%m-%d')
+                                                    generate_confirmation_letter(emp_name, position, dept, emp_id, jd, now)
+                                                except: pass
+                                                
+                                                send_confirmation_email("asakote@churchgate.com", 
+                                                    f"✅ Confirmation Approved: {emp_name}", 
+                                                    f"HR Team,\n\nCOO approved {emp_name}.\nScore: {total_score}/100 ({rating})\n\nPlease process confirmation letter.")
+                                                send_confirmation_email(emp.get('email',''), 
+                                                    f"🎉 Confirmation Approved!", 
+                                                    f"Dear {emp_name},\n\nCongratulations! Your employment has been confirmed.\n\nChurchgate Group HR")
+                                                st.success("✅ Confirmed!"); st.balloons(); st.rerun()
+                                        with col2:
+                                            if st.button(f"🔄 Return to HOD", key=f"coo_ret_{emp_id}", use_container_width=True):
+                                                db._patch("confirmation_reviews", {
+                                                    "status":"Returned to HOD","coo_decision":"Returned"
+                                                }, {"id":r.get('id')})
+                                                send_confirmation_email("asakote@churchgate.com",
+                                                    f"🔄 Confirmation Returned: {emp_name}",
+                                                    f"HR Team,\n\nCOO returned {emp_name}'s confirmation to HOD for revision.")
+                                                st.warning("🔄 Returned to HOD"); st.rerun()
+                                        with col3:
+                                            if st.button(f"❌ Reject", key=f"coo_rej_{emp_id}", use_container_width=True):
+                                                db._patch("confirmation_reviews", {
+                                                    "status":"Rejected by COO","coo_decision":"Rejected"
+                                                }, {"id":r.get('id')})
+                                                send_confirmation_email("asakote@churchgate.com",
+                                                    f"❌ Confirmation Rejected: {emp_name}",
+                                                    f"HR Team,\n\nCOO rejected {emp_name}'s confirmation.")
+                                                st.error("❌ Rejected"); st.rerun()
+                                        break
+                            except: pass
+    
+    # ============================================================
+    # TAB 3: CONFIRMED STAFF (UPGRADED)
+    # ============================================================
+    with tab3:
+        st.subheader("✅ Confirmed Staff Records")
+        
+        try:
+            reviews = db._get("confirmation_reviews")
+            if reviews:
+                confirmed = [r for r in reviews if r.get('status') == 'Approved by COO']
+                
+                # ===== FILTERS =====
+                if confirmed and is_admin:
+                    st.markdown("---")
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        conf_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="conf_region")
+                    with col2:
+                        SUBS_OPT = {
+                            'Abuja': ['All', 'World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                            'Lagos': ['All', 'First Continental Properties Limited', 'Churchgate Nigeria Limited', 'R. B Properties Limited', 'Aba Textile Mills PLC'],
+                            'Aba': ['All', 'Aba Textile Mills PLC']
+                        }
+                        sub_opts = SUBS_OPT.get(conf_region, ['All']) if conf_region != 'All' else ['All']
+                        conf_sub = st.selectbox("🏢 Subsidiary", sub_opts, key="conf_sub")
+                    with col3:
+                        all_depts_conf = ['All'] + sorted(list(set(r.get('department','') for r in confirmed)))
+                        conf_dept = st.selectbox("🏭 Department", all_depts_conf, key="conf_dept")
+                    with col4:
+                        conf_rating = st.selectbox("⭐ Rating", ["All", "Outstanding", "Satisfactory", "Average", "Unsatisfactory", "Poor"], key="conf_rating")
+                    
+                    # Apply filters
+                    if conf_region != 'All':
+                        confirmed = [r for r in confirmed if r.get('region','') == conf_region]
+                    if conf_sub != 'All':
+                        confirmed = [r for r in confirmed if r.get('subsidiary','') == conf_sub]
+                    if conf_dept != 'All':
+                        confirmed = [r for r in confirmed if r.get('department','') == conf_dept]
+                    if conf_rating != 'All':
+                        confirmed = [r for r in confirmed if r.get('performance_rating','') == conf_rating]
+                
+                if confirmed:
+                    # ===== SUMMARY STATS =====
+                    avg_score = sum(float(r.get('total_performance_score', 0)) for r in confirmed) / len(confirmed)
+                    outstanding = len([r for r in confirmed if r.get('performance_rating') == 'Outstanding'])
+                    satisfactory = len([r for r in confirmed if r.get('performance_rating') == 'Satisfactory'])
+                    avg_scores_by_dept = {}
+                    for r in confirmed:
+                        dept = r.get('department', 'Unknown')
+                        score = float(r.get('total_performance_score', 0))
+                        if dept not in avg_scores_by_dept:
+                            avg_scores_by_dept[dept] = []
+                        avg_scores_by_dept[dept].append(score)
+                    
+                    st.markdown("---")
+                    c1, c2, c3, c4, c5 = st.columns(5)
+                    c1.metric("✅ Total Confirmed", len(confirmed))
+                    c2.metric("📊 Avg Score", f"{avg_score:.0f}/100")
+                    c3.metric("🌟 Outstanding", outstanding)
+                    c4.metric("👍 Satisfactory", satisfactory)
+                    c5.metric("🏢 Departments", len(avg_scores_by_dept))
+                    
+                    # ===== CHARTS =====
+                    st.markdown("---")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("#### ⭐ Rating Distribution")
+                        rating_counts = {}
+                        for r in confirmed:
+                            rating = r.get('performance_rating', 'Unknown')
+                            rating_counts[rating] = rating_counts.get(rating, 0) + 1
+                        
+                        if rating_counts:
+                            fig1 = px.pie(values=list(rating_counts.values()), names=list(rating_counts.keys()), hole=0.5,
+                                        color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#dd6b20', '#CC0000'])
+                            fig1.update_layout(height=300, margin=dict(t=0, b=0, l=0, r=0))
+                            st.plotly_chart(fig1, use_container_width=True)
+                    
+                    with col2:
+                        st.markdown("#### 🏢 Avg Score by Department")
+                        dept_avg_data = [{'Department': d, 'Avg Score': sum(s)/len(s)} for d, s in avg_scores_by_dept.items()]
+                        if dept_avg_data:
+                            dept_df = pd.DataFrame(dept_avg_data).sort_values('Avg Score', ascending=False)
+                            fig2 = px.bar(dept_df, x='Department', y='Avg Score', color='Avg Score',
+                                        color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+                            fig2.update_layout(height=300, margin=dict(t=0, b=0, l=0, r=0), showlegend=False)
+                            st.plotly_chart(fig2, use_container_width=True)
+                    
+                    # ===== CONFIRMED STAFF CARDS =====
+                    st.markdown("---")
+                    st.markdown(f"### 👥 Confirmed Employees ({len(confirmed)})")
+                    
+                    # Sort options
+                    sort_by = st.selectbox("Sort by", ["Highest Score", "Most Recent", "Department", "Name"], key="conf_sort", label_visibility="collapsed")
+                    
+                    if sort_by == "Highest Score":
+                        confirmed = sorted(confirmed, key=lambda x: float(x.get('total_performance_score', 0)), reverse=True)
+                    elif sort_by == "Most Recent":
+                        confirmed = sorted(confirmed, key=lambda x: x.get('approved_date', ''), reverse=True)
+                    elif sort_by == "Department":
+                        confirmed = sorted(confirmed, key=lambda x: x.get('department', ''))
+                    else:
+                        confirmed = sorted(confirmed, key=lambda x: x.get('employee_name', ''))
+                    
+                    for r in confirmed:
+                        score = r.get('total_performance_score', 'N/A')
+                        rating = r.get('performance_rating', 'N/A')
+                        
+                        rating_colors = {
+                            'Outstanding': '#38a169', 'Satisfactory': '#3182ce', 
+                            'Average': '#d69e2e', 'Unsatisfactory': '#dd6b20', 'Poor': '#CC0000'
+                        }
+                        rating_color = rating_colors.get(rating, '#a0aec0')
+                        
+                        # Calculate score bar width
+                        score_pct = min(100, float(score)) if score != 'N/A' else 0
+                        
+                        with st.expander(f"{'🌟' if rating == 'Outstanding' else '✅'} {r.get('employee_name','')} — {r.get('position','')} | {score}/100 ({rating})"):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown(f"**👤 Employee:** {r.get('employee_name','')}")
+                                st.markdown(f"**💼 Position:** {r.get('position','')}")
+                                st.markdown(f"**🏢 Department:** {r.get('department','')}")
+                                st.markdown(f"**📍 Region:** {r.get('region','N/A')} | **🏢 Subsidiary:** {r.get('subsidiary','N/A')}")
+                                st.markdown(f"**👔 HOD:** {r.get('hod_name','')}")
+                            with col2:
+                                st.markdown(f"**📅 Confirmed:** {r.get('approved_date','')[:10]}")
+                                st.markdown(f"**📊 Score:** {score}/100")
+                                st.markdown(f"**⭐ Rating:** <span style='color:{rating_color};font-weight:700;'>{rating}</span>", unsafe_allow_html=True)
+                                # Score bar
+                                st.markdown(f"""
+                                <div style="background:#e0e0e0;height:8px;border-radius:4px;margin-top:0.5rem;">
+                                    <div style="background:{rating_color};width:{score_pct}%;height:8px;border-radius:4px;"></div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            
+                            # Strengths & Weaknesses
+                            if r.get('strengths') or r.get('weaknesses'):
+                                st.markdown("---")
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    if r.get('strengths'):
+                                        st.markdown("**💪 Strengths:**")
+                                        st.markdown(f"<small>{r.get('strengths','')[:300]}</small>", unsafe_allow_html=True)
+                                with col2:
+                                    if r.get('weaknesses'):
+                                        st.markdown("**📈 Development Areas:**")
+                                        st.markdown(f"<small>{r.get('weaknesses','')[:300]}</small>", unsafe_allow_html=True)
+                            
+                            # Disciplinary
+                            if r.get('disciplinary_action') and r.get('disciplinary_action') != 'None':
+                                st.markdown(f"**⚠️ Disciplinary:** {r.get('disciplinary_action')} — {r.get('disciplinary_reason','')}")
+                    
+                    # ===== EXPORT =====
+                    st.markdown("---")
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        export_data = [{
+                            'Employee': r.get('employee_name'), 'Position': r.get('position'),
+                            'Department': r.get('department'), 'Region': r.get('region',''),
+                            'Subsidiary': r.get('subsidiary',''), 'Score': r.get('total_performance_score'),
+                            'Rating': r.get('performance_rating'), 'Confirmed Date': r.get('approved_date','')[:10],
+                            'HOD': r.get('hod_name')
+                        } for r in confirmed]
+                        st.download_button("📥 Export Confirmed Staff (CSV)", 
+                            pd.DataFrame(export_data).to_csv(index=False),
+                            "confirmed_staff.csv", "text/csv", use_container_width=True)
+                    with col2:
+                        st.download_button("📥 Export Full Report (CSV)",
+                            pd.DataFrame([{
+                                'Employee': r.get('employee_name'), 'Position': r.get('position'),
+                                'Department': r.get('department'), 'Score': r.get('total_performance_score'),
+                                'Rating': r.get('performance_rating'), 'Strengths': r.get('strengths','')[:200],
+                                'Weaknesses': r.get('weaknesses','')[:200], 'Confirmed': r.get('approved_date','')[:10]
+                            } for r in confirmed]).to_csv(index=False),
+                            "confirmed_full_report.csv", "text/csv", use_container_width=True)
+                else:
+                    st.info("No confirmed staff match the selected filters.")
+            else:
+                st.info("No confirmation reviews found.")
+        except:
+            st.info("Data loading...")
+    
+    # ============================================================
+    # TAB 4: DASHBOARD - FORTUNE 500 ANALYTICS
+    # ============================================================
+    with tab4:
+        st.subheader("📊 Confirmation & Probation Analytics")
+        
+        try:
+            reviews = db._get("confirmation_reviews")
+            all_employees = db.get_all_employees()
+            
+            if reviews or not all_employees.empty:
+                total_employees = len(all_employees) if not all_employees.empty else 0
+                total_probation = len(all_employees[all_employees['status'] == 'Probation']) if not all_employees.empty else 0
+                total_confirmed = len([r for r in reviews if r.get('status') == 'Approved by COO']) if reviews else 0
+                total_pending = len([r for r in reviews if r.get('status') in ['Pending COO Approval', 'Pending']]) if reviews else 0
+                total_extended = len([r for r in reviews if 'Extension' in str(r.get('status', ''))]) if reviews else 0
+                confirmation_rate = (total_confirmed / max(total_probation + total_confirmed, 1)) * 100
+                
+                confirmed_reviews = [r for r in reviews if r.get('status') == 'Approved by COO'] if reviews else []
+                avg_perf_score = sum(float(r.get('total_performance_score', 0)) for r in confirmed_reviews) / max(len(confirmed_reviews), 1)
+                
+                processing_times = []
+                for r in confirmed_reviews:
+                    if r.get('review_date') and r.get('approved_date'):
+                        try:
+                            sub = datetime.strptime(r['review_date'][:10], '%Y-%m-%d')
+                            app = datetime.strptime(r['approved_date'][:10], '%Y-%m-%d')
+                            processing_times.append((app - sub).days)
+                        except: pass
+                avg_processing = sum(processing_times) / max(len(processing_times), 1) if processing_times else 0
+                
+                # KPIs - Compact
+                m1, m2, m3, m4, m5, m6 = st.columns(6)
+                m1.metric("👥 Total", total_employees)
+                m2.metric("📋 Probation", total_probation)
+                m3.metric("✅ Confirmed", total_confirmed)
+                m4.metric("⏳ Pending COO", total_pending)
+                m5.metric("🔄 Extended", total_extended)
+                m6.metric("📊 Rate", f"{confirmation_rate:.0f}%")
+                
+                m1b, m2b, m3b, m4b = st.columns(4)
+                m1b.metric("📊 Avg Score", f"{avg_perf_score:.0f}/100")
+                m2b.metric("⏱️ Avg Process", f"{avg_processing:.1f}d")
+                m3b.metric("🌟 Outstanding", len([r for r in confirmed_reviews if r.get('performance_rating') == 'Outstanding']))
+                m4b.metric("⚠️ At Risk", len([r for r in confirmed_reviews if r.get('performance_rating') in ['Poor', 'Unsatisfactory']]))
+                
+                st.markdown("---")
+                
+                # Charts - Compact with proper margins
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    status_data = {}
+                    if not all_employees.empty:
+                        for status in ['Active', 'Probation']:
+                            count = len(all_employees[all_employees['status'] == status])
+                            if count > 0: status_data[status] = count
+                    if reviews:
+                        status_data['Confirmed'] = total_confirmed
+                        status_data['Pending'] = total_pending
+                        status_data['Extended'] = total_extended
+                    
+                    if status_data:
+                        fig1 = px.pie(values=list(status_data.values()), names=list(status_data.keys()), hole=0.6,
+                                    color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000', '#dd6b20'])
+                        fig1.update_layout(height=350, margin=dict(t=40, b=20, l=20, r=20), title="Status Distribution", title_font_size=13)
+                        fig1.update_traces(textposition='inside', textinfo='percent+label', textfont_size=10)
+                        st.plotly_chart(fig1, use_container_width=True)
+                
+                with col2:
+                    dept_confirm_data = {}
+                    if reviews:
+                        for r in reviews:
+                            dept = r.get('department', 'Unknown')
+                            status = r.get('status', 'Pending')
+                            if dept not in dept_confirm_data:
+                                dept_confirm_data[dept] = {'Confirmed': 0, 'Pending': 0, 'Extended': 0}
+                            if status == 'Approved by COO': dept_confirm_data[dept]['Confirmed'] += 1
+                            elif 'Extension' in str(status): dept_confirm_data[dept]['Extended'] += 1
+                            else: dept_confirm_data[dept]['Pending'] += 1
+                    
+                    if dept_confirm_data:
+                        dept_df = pd.DataFrame([{'Department': d, **s} for d, s in dept_confirm_data.items()])
+                        fig2 = px.bar(dept_df, x='Department', y=['Confirmed', 'Pending', 'Extended'],
+                                    barmode='stack', color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce'])
+                        fig2.update_layout(height=350, margin=dict(t=40, b=80, l=20, r=20), title="By Department", 
+                                          title_font_size=13, legend=dict(font=dict(size=9), orientation="h", yanchor="bottom", y=1.02),
+                                          xaxis_tickangle=-45, xaxis_tickfont=dict(size=9))
+                        st.plotly_chart(fig2, use_container_width=True)
+                
+                st.markdown("---")
+                
+                col3, col4 = st.columns(2)
+                
+                with col3:
+                    region_data = {}
+                    if reviews:
+                        for r in reviews:
+                            region = r.get('region', 'Unknown')
+                            if region not in region_data: region_data[region] = {'Confirmed': 0, 'Pending': 0}
+                            if r.get('status') == 'Approved by COO': region_data[region]['Confirmed'] += 1
+                            else: region_data[region]['Pending'] += 1
+                    
+                    if region_data:
+                        region_df = pd.DataFrame([{'Region': r, **s} for r, s in region_data.items()])
+                        fig3 = px.bar(region_df, x='Region', y=['Confirmed', 'Pending'], barmode='group',
+                                    color_discrete_sequence=['#38a169', '#d69e2e'])
+                        fig3.update_layout(height=350, margin=dict(t=40, b=40, l=20, r=20), title="By Region",
+                                          title_font_size=13, legend=dict(font=dict(size=9), orientation="h", yanchor="bottom", y=1.02))
+                        st.plotly_chart(fig3, use_container_width=True)
+                
+                with col4:
+                    rating_data = {}
+                    if confirmed_reviews:
+                        for r in confirmed_reviews:
+                            rating = r.get('performance_rating', 'Unknown')
+                            rating_data[rating] = rating_data.get(rating, 0) + 1
+                    
+                    if rating_data:
+                        rating_order = ['Outstanding', 'Satisfactory', 'Average', 'Unsatisfactory', 'Poor']
+                        rating_values = [rating_data.get(r, 0) for r in rating_order]
+                        fig4 = px.bar(x=rating_order, y=rating_values, color=rating_order,
+                                    color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#dd6b20', '#CC0000'])
+                        fig4.update_layout(height=350, showlegend=False, margin=dict(t=40, b=60, l=20, r=20),
+                                        title="Performance Ratings", title_font_size=13,
+                                        xaxis_tickangle=-30, xaxis_tickfont=dict(size=10))
+                        st.plotly_chart(fig4, use_container_width=True)
+                
+                st.markdown("---")
+                
+                # AI Insights
+                with st.expander("🤖 AI-Powered Insights", expanded=False):
+                    if st.button("🧠 Generate Insights", use_container_width=True):
+                        with st.spinner("Analyzing..."):
+                            try:
+                                insights_context = f"""
+                                Churchgate Group Staff Confirmation Data:
+                                Total: {total_employees} | Probation: {total_probation} | Confirmed: {total_confirmed}
+                                Rate: {confirmation_rate:.0f}% | Avg Score: {avg_perf_score:.0f}/100 | Avg Process: {avg_processing:.1f}d
+                                Ending Soon: {ending_soon} | Overdue: {overdue}
+                                """
+                                
+                                openai_key = os.environ.get("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", ""))
+                                if openai_key:
+                                    import openai
+                                    client = openai.OpenAI(api_key=openai_key)
+                                    response = client.chat.completions.create(
+                                        model="gpt-3.5-turbo",
+                                        messages=[{"role": "system", "content": "You are an HR Analytics expert. Provide 3 key findings and 3 recommendations based on staff confirmation data. Be concise."},
+                                                  {"role": "user", "content": insights_context}],
+                                        temperature=0.5, max_tokens=400
+                                    )
+                                    st.success("Analysis complete!")
+                                    st.markdown(response.choices[0].message.content)
+                                else:
+                                    st.info("OpenAI key not configured. Manual insights: Monitor overdue confirmations, track department performance, fast-track outstanding employees.")
+                            except:
+                                st.info("AI insights unavailable. Check OpenAI configuration.")
+                
+                # Recent Activity
+                st.markdown("---")
+                st.markdown("#### 📅 Recent Activity")
+                if reviews:
+                    recent = sorted(reviews, key=lambda x: x.get('review_date', ''), reverse=True)[:5]
+                    for r in recent:
+                        status = r.get('status', 'Pending')
+                        icon = '✅' if 'Approved' in str(status) else '⏳' if 'Pending' in str(status) else '🔄' if 'Extension' in str(status) else '❌'
+                        color = '#38a169' if 'Approved' in str(status) else '#d69e2e' if 'Pending' in str(status) else '#3182ce'
+                        st.markdown(f"""<div style="padding:0.3rem 0.6rem;margin:0.15rem 0;border-left:3px solid {color};background:white;border-radius:3px;font-size:0.8rem;"><strong>{icon} {r.get('employee_name','')}</strong> — {r.get('position','')} | {status} | {r.get('review_date','')[:10]}</div>""", unsafe_allow_html=True)
+                
+                # Export
+                st.markdown("---")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if reviews:
+                        full_data = pd.DataFrame([{'Employee': r.get('employee_name'), 'Position': r.get('position'), 'Department': r.get('department'), 'Status': r.get('status'), 'Score': r.get('total_performance_score'), 'Rating': r.get('performance_rating'), 'Date': r.get('review_date','')[:10]} for r in reviews])
+                        st.download_button("📥 Export CSV", full_data.to_csv(index=False), "confirmation_data.csv", "text/csv", use_container_width=True)
+                with col2:
+                    summary = pd.DataFrame([{'Metric': 'Total', 'Value': total_employees}, {'Metric': 'Probation', 'Value': total_probation}, {'Metric': 'Confirmed', 'Value': total_confirmed}, {'Metric': 'Rate', 'Value': f"{confirmation_rate:.0f}%"}])
+                    st.download_button("📥 Summary CSV", summary.to_csv(index=False), "summary.csv", "text/csv", use_container_width=True)
+            else:
+                st.info("No confirmation data yet.")
+        except:
+            st.info("Dashboard loading...")
+
+
+
+def promotions():
+    """
+    Churchgate Group HRIS - Promotions & 360° Feedback Module v2.0
+    Fortune 500 Standard | A-Player Assessment | 360° Questionnaire | Feedback Dashboard
+    """
+    st.markdown("""<div class="churchgate-header"><h1>🚀 Promotions & Career Progression</h1><p>A-Player Assessment | 360° Feedback | Succession Planning | Talent Pipeline</p></div>""", unsafe_allow_html=True)
+    
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
     
-    # ALWAYS load from database
+    # Load A-Players data
     aplayers_data = {}
     try:
         db_players = db.get_all_aplayers()
@@ -4155,14 +6313,14 @@ def promotions():
                     'strategic': row['strategic'], 'peer_review': row['peer_review'],
                     'junior_review': row['junior_review'], 'independent_review': row['independent_review'],
                     'overall': row['overall'], 'readiness': row['readiness'],
-                    'gap': row['gap'], 'risk': row['risk'], 'photo': None
+                    'gap': row['gap'], 'risk': row['risk']
                 })
     except:
         pass
     
-    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 
-                 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 
-                 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
+    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 
+                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 
+                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     for dept in all_depts:
         if dept not in aplayers_data:
             aplayers_data[dept] = []
@@ -4176,14 +6334,19 @@ def promotions():
     if 'aplayer_nominations' not in st.session_state:
         st.session_state.aplayer_nominations = nominations_list
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏆 A-Players Board", "📝 Nominate A-Player", "📊 360° Assessment", "📋 Succession Pipeline", "📥 Reports"])
+    # ============================================================
+    # TABS (6 now with 360° Feedback)
+    # ============================================================
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🏆 A-Players Board", "📝 Nominate A-Player", "📊 360° Assessment", 
+        "📋 360° Questionnaire", "📊 Feedback Dashboard", "📥 Reports"
+    ])
     
+    # ============================================================
+    # TAB 1: A-PLAYERS BOARD (KEEP EXISTING)
+    # ============================================================
     with tab1:
         st.subheader("🏆 Group A-Players — Talent Pipeline")
-        
-        if st.session_state.aplayer_nominations:
-            pending_count = len(st.session_state.aplayer_nominations)
-            st.markdown(f"""<div style="background: #fff3cd; padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #d69e2e;"><strong>🔔 {pending_count} Pending Nomination{'s' if pending_count > 1 else ''}</strong></div>""", unsafe_allow_html=True)
         
         all_players = []
         for dept, players in aplayers_data.items():
@@ -4195,62 +6358,55 @@ def promotions():
         
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Total A-Players", len(all_players))
-        c2.metric("Ready Now", len(ready_now), "🚀")
+        c2.metric("Ready Now", len(ready_now))
         c3.metric("Avg Score", f"{sum(p['overall'] for p in all_players) / len(all_players):.1f}%" if all_players else "N/A")
         c4.metric("Departments", len([d for d, p in aplayers_data.items() if p]))
         
         st.markdown("---")
+        
+        if st.session_state.aplayer_nominations:
+            st.markdown(f"""<div style="background:#fff3cd;padding:0.8rem 1rem;border-radius:8px;margin-bottom:1rem;border-left:4px solid #d69e2e;"><strong>🔔 {len(st.session_state.aplayer_nominations)} Pending Nomination(s)</strong></div>""", unsafe_allow_html=True)
         
         if is_admin:
             view_dept = st.selectbox("🏢 Filter by Department", ["All Departments"] + all_depts)
         else:
             view_dept = "All Departments"
         
-        if view_dept == "All Departments":
-            display_players = all_players
-        else:
-            display_players = [p for p in all_players if p['department'] == view_dept]
+        display_players = all_players if view_dept == "All Departments" else [p for p in all_players if p['department'] == view_dept]
         
         if display_players:
             for player in display_players:
-                player_key = f"{player['name']}_{player['department']}"
-                color = "#38a169" if player['readiness'] == 'Ready Now' else "#d69e2e" if 'Q3' in str(player['readiness']) else "#3182ce" if 'Q4' in str(player['readiness']) else "#CC0000"
+                color = "#38a169" if player['readiness'] == 'Ready Now' else "#d69e2e" if 'Q3' in str(player['readiness']) else "#3182ce"
                 initials = generate_initials(player['name'])
                 st.markdown(f"""
-                <div style="background: white; padding: 1.2rem; border-radius: 10px; margin-bottom: 0.8rem; border-left: 5px solid {color}; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-                    <div style="display: flex; align-items: center; gap: 1.2rem;">
-                        <div style="width: 55px; height: 55px; border-radius: 50%; background: #CC0000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.3rem; color: white; min-width: 55px;">{initials}</div>
-                        <div style="flex: 1;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div>
-                                    <strong style="font-size: 1.1rem;">{player['name']}</strong>
-                                    <span style="color: #666; font-size: 0.85rem; margin-left: 0.5rem;">{player['department']}</span>
-                                    <br><small>{player['position']} → <strong>Nominated by: {player['nominated_by']}</strong></small>
-                                </div>
-                                <div style="text-align: right;">
-                                    <span style="background: {color}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-weight: 700; font-size: 0.85rem;">{player['readiness']}</span>
-                                    <br><small style="font-size: 0.8rem;">Overall: {player['overall']}% | Risk: {player['risk']}</small>
-                                </div>
+                <div style="background:white;padding:1rem;border-radius:8px;margin-bottom:0.6rem;border-left:5px solid {color};box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+                    <div style="display:flex;align-items:center;gap:1rem;">
+                        <div style="width:45px;height:45px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;color:white;min-width:45px;">{initials}</div>
+                        <div style="flex:1;">
+                            <strong>{player['name']}</strong> <small style="color:#666;">{player['department']}</small>
+                            <br><small>{player['position']} → Nominated by: {player['nominated_by']}</small>
+                            <div style="margin-top:0.3rem;display:flex;gap:0.3rem;flex-wrap:wrap;">
+                                <span style="background:#f0f0f0;padding:0.15rem 0.5rem;border-radius:8px;font-size:0.7rem;">Perf:{player['perf_score']}%</span>
+                                <span style="background:#f0f0f0;padding:0.15rem 0.5rem;border-radius:8px;font-size:0.7rem;">Lead:{player['leadership']}%</span>
+                                <span style="background:#f0f0f0;padding:0.15rem 0.5rem;border-radius:8px;font-size:0.7rem;">Strat:{player['strategic']}%</span>
+                                <span style="background:#f0f0f0;padding:0.15rem 0.5rem;border-radius:8px;font-size:0.7rem;">Peer:{player['peer_review']}%</span>
                             </div>
-                            <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Perf: {player['perf_score']}%</span>
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Leadership: {player['leadership']}%</span>
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Strategic: {player['strategic']}%</span>
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Peer: {player['peer_review']}%</span>
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Junior: {player['junior_review']}%</span>
-                                <span style="background: #f0f0f0; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Indep: {player['independent_review']}%</span>
-                            </div>
-                            <div style="margin-top: 0.3rem;"><small style="color: #CC0000;">Gap: {player['gap']}</small></div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="background:{color};color:white;padding:0.2rem 0.6rem;border-radius:12px;font-weight:700;font-size:0.8rem;">{player['readiness']}</span>
+                            <br><small>Overall:{player['overall']}% | Risk:{player['risk']}</small>
                         </div>
                     </div>
                 </div>""", unsafe_allow_html=True)
-                
         else:
-            st.info("No A-Players found. Nominate using the 'Nominate A-Player' tab.")
+            st.info("No A-Players found.")
     
+    # ============================================================
+    # TAB 2: NOMINATE A-PLAYER (KEEP EXISTING)
+    # ============================================================
     with tab2:
         st.subheader("📝 Nominate A-Player")
-        st.info("HODs and Line Managers can nominate top performers as A-Players for the 360-degree assessment process.")
+        st.info("HODs and Line Managers can nominate top performers.")
         
         with st.form("nominate_form"):
             c1, c2 = st.columns(2)
@@ -4259,248 +6415,614 @@ def promotions():
                 nominee_position = st.text_input("Current Position *")
                 nominee_dept = st.selectbox("Department *", all_depts)
             with c2:
-                nominated_by = st.text_input("Nominated By (HOD/Line Manager) *")
+                nominated_by = st.text_input("Nominated By *")
                 nomination_reason = st.text_area("Reason for Nomination")
+            
             if st.form_submit_button("✅ Submit Nomination", use_container_width=True):
                 if nominee_name and nominee_dept and nominated_by:
                     nom_entry = {
                         'name': nominee_name, 'position': nominee_position, 'department': nominee_dept,
                         'nominated_by': nominated_by, 'reason': nomination_reason,
                         'date': datetime.now().strftime('%Y-%m-%d'),
-                        'submitted_by': st.session_state.user['name'] if st.session_state.user else 'Unknown'
+                        'submitted_by': user_name
                     }
                     st.session_state.aplayer_nominations.append(nom_entry)
-                    db.save_nomination(nominee_name, nominee_position, nominee_dept, nominated_by, nomination_reason,
-                                     st.session_state.user['name'] if st.session_state.user else 'Unknown',
-                                     st.session_state.user['email'] if st.session_state.user else '')
-                    st.success(f"✅ {nominee_name} nominated successfully!")
+                    db.save_nomination(nominee_name, nominee_position, nominee_dept, nominated_by, 
+                                     nomination_reason, user_name, user_email)
+                    st.success(f"✅ {nominee_name} nominated!")
                     st.balloons()
                     time.sleep(1)
                     st.rerun()
         
         if st.session_state.aplayer_nominations:
             st.markdown("---")
-            st.markdown("### 📋 Pending Nominations — Admin Review")
+            st.markdown("### 📋 Pending Nominations")
             for i, nom in enumerate(st.session_state.aplayer_nominations):
                 c1, c2 = st.columns([3, 1])
                 with c1:
-                    st.markdown(f"""<div style="background: white; padding: 0.8rem; border-radius: 6px; margin-bottom: 0.3rem; border-left: 3px solid #d69e2e;"><strong>{nom.get('name', '')}</strong> - {nom.get('position', '')}<br><small>{nom.get('department', '')} | By: {nom.get('nominated_by', '')} | {str(nom.get('date', nom.get('created_at', '')))[:10]}</small><br><small style="color: #666;">Reason: {nom.get('reason', 'N/A')}</small></div>""", unsafe_allow_html=True)
+                    st.markdown(f"""<div style="background:white;padding:0.6rem;border-radius:6px;margin-bottom:0.3rem;border-left:3px solid #d69e2e;"><strong>{nom.get('name','')}</strong> - {nom.get('position','')}<br><small>{nom.get('department','')} | By: {nom.get('nominated_by','')}</small></div>""", unsafe_allow_html=True)
                 with c2:
                     if is_admin:
-                        action_key = f"action_{i}"
-                        if action_key not in st.session_state:
-                            st.session_state[action_key] = None
-                        
-                        col_btn1, col_btn2, col_btn3 = st.columns(3)
-                        with col_btn1:
-                            if st.button(f"✅", key=f"approve_{i}", use_container_width=True, help="Approve"):
-                                st.session_state[action_key] = 'approve'
-                        with col_btn2:
-                            if st.button(f"⏸️", key=f"hold_{i}", use_container_width=True, help="On Hold"):
-                                st.session_state[action_key] = 'hold'
-                        with col_btn3:
-                            if st.button(f"❌", key=f"reject_{i}", use_container_width=True, help="Reject"):
-                                st.session_state[action_key] = 'reject'
-                        
-                        if st.session_state[action_key]:
-                            reason = st.text_area(f"Reason for {st.session_state[action_key]}: *", key=f"reason_{i}", placeholder="Please provide a reason...")
-                            if st.button(f"✅ Confirm {st.session_state[action_key].title()}", key=f"confirm_{i}", use_container_width=True):
-                                if reason:
-                                    if st.session_state[action_key] == 'approve':
-                                        db.save_aplayer(nom['name'], nom['position'], nom['department'], nom['nominated_by'], 0, 0, 0, 0, 0, 0, 0, 'Pending Assessment', 'TBD', 'TBD')
-                                        st.session_state.aplayer_nominations.pop(i)
-                                        st.success(f"✅ {nom['name']} approved!")
-                                    elif st.session_state[action_key] == 'reject':
-                                        st.session_state.aplayer_nominations.pop(i)
-                                        st.error(f"❌ {nom['name']} rejected.")
-                                    st.session_state[action_key] = None
-                                    st.rerun()
+                        if st.button(f"✅ Approve", key=f"app_{i}"):
+                            db.save_aplayer(nom['name'], nom['position'], nom['department'], nom['nominated_by'], 0, 0, 0, 0, 0, 0, 0, 'Pending Assessment', 'TBD', 'TBD')
+                            st.session_state.aplayer_nominations.pop(i)
+                            st.success(f"✅ Approved!")
+                            st.rerun()
     
+    # ============================================================
+    # TAB 3: 360° ASSESSMENT (KEEP EXISTING + ENHANCED)
+    # ============================================================
     with tab3:
         st.subheader("📊 360° Assessment Scorecard")
-        st.info("Complete 360-degree assessment. Weights: Performance (35%), Leadership (25%), Strategic (20%), Peer (10%), Junior (5%), Independent (5%).")
         
         if is_admin:
-            depts_with_players = all_depts
-            if depts_with_players:
-                assess_dept = st.selectbox("Select Department", all_depts, key="assess_dept")
-                if assess_dept:
-                    player_names = [p['name'] for p in aplayers_data.get(assess_dept, [])]
-                    if player_names:
-                        assess_player_name = st.selectbox("Select A-Player", player_names, key="assess_player")
+            assess_dept = st.selectbox("Select Department", all_depts, key="assess_dept")
+            if assess_dept:
+                player_names = [p['name'] for p in aplayers_data.get(assess_dept, [])]
+                if player_names:
+                    assess_player_name = st.selectbox("Select A-Player", player_names, key="assess_player")
+                    
+                    player_data = None
+                    for p in aplayers_data.get(assess_dept, []):
+                        if p['name'] == assess_player_name:
+                            player_data = p
+                            break
+                    
+                    if player_data:
+                        st.markdown(f"### Assessing: {player_data['name']} - {player_data['position']}")
                         
-                        player_data = None
-                        for p in aplayers_data.get(assess_dept, []):
-                            if p['name'] == assess_player_name:
-                                player_data = p
-                                break
+                        # Show existing 360° feedback if any
+                        try:
+                            feedbacks = db._get("feedback_reviews")
+                            if feedbacks:
+                                player_feedbacks = [f for f in feedbacks if f.get('aplayer_name') == player_data['name']]
+                                if player_feedbacks:
+                                    with st.expander(f"📋 {len(player_feedbacks)} 360° Feedback(s) Received", expanded=False):
+                                        for fb in player_feedbacks:
+                                            scores = [fb.get(f'q{q}', 0) for q in range(5, 33) if fb.get(f'q{q}')]
+                                            avg = sum(scores) / len(scores) if scores else 0
+                                            st.markdown(f"**Reviewer:** {fb.get('reviewer_name','')} ({fb.get('reviewer_category','')}) | Avg Score: {avg:.1f}/5 | {fb.get('submitted_at','')[:10]}")
+                        except:
+                            pass
                         
-                        if player_data:
-                            st.markdown(f"### Assessing: {player_data['name']} - {player_data['position']}")
-                            with st.form("assessment_form"):
-                                c1, c2 = st.columns(2)
-                                with c1:
-                                    perf = st.slider("Performance Score (35%)", 0, 100, int(player_data['perf_score']))
-                                    leadership = st.slider("Leadership Competency (25%)", 0, 100, int(player_data['leadership']))
-                                    strategic = st.slider("Strategic Impact (20%)", 0, 100, int(player_data['strategic']))
-                                with c2:
-                                    peer = st.slider("Peer Review (10%)", 0, 100, int(player_data['peer_review']))
-                                    junior = st.slider("Junior Review (5%)", 0, 100, int(player_data['junior_review']))
-                                    independent = st.slider("Independent Review (5%)", 0, 100, int(player_data['independent_review']))
-                                
-                                readiness_options = ['Ready Now', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Pending Assessment']
-                                current_readiness = player_data['readiness'] if player_data['readiness'] in readiness_options else 'Pending Assessment'
-                                readiness = st.selectbox("Readiness", readiness_options, index=readiness_options.index(current_readiness))
-                                gap = st.text_input("Competency Gap", player_data['gap'])
-                                risk = st.selectbox("Risk", ['Low', 'Medium', 'High'], index=['Low', 'Medium', 'High'].index(player_data['risk']) if player_data['risk'] in ['Low', 'Medium', 'High'] else 0)
-                                
-                                if st.form_submit_button("💾 Save Assessment", use_container_width=True):
-                                    overall = int(perf * 0.35 + leadership * 0.25 + strategic * 0.20 + peer * 0.10 + junior * 0.05 + independent * 0.05)
-                                    db.save_aplayer(player_data['name'], player_data['position'], assess_dept, player_data['nominated_by'], perf, leadership, strategic, peer, junior, independent, overall, readiness, gap, risk)
-                                    st.success(f"✅ Assessment saved! Overall: {overall}%")
-                                    st.balloons()
-                                    time.sleep(1)
-                                    st.rerun()
-                    else:
-                        st.info(f"No A-Players found in {assess_dept}. Nominate first.")
-            else:
-                st.info("No A-Players available. Nominate first.")
-    
+                        with st.form("assessment_form"):
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                perf = st.slider("Performance Score (35%)", 0, 100, int(player_data['perf_score']))
+                                leadership = st.slider("Leadership (25%)", 0, 100, int(player_data['leadership']))
+                                strategic = st.slider("Strategic Impact (20%)", 0, 100, int(player_data['strategic']))
+                            with c2:
+                                peer = st.slider("Peer Review (10%)", 0, 100, int(player_data['peer_review']))
+                                junior = st.slider("Junior Review (5%)", 0, 100, int(player_data['junior_review']))
+                                independent = st.slider("Independent Review (5%)", 0, 100, int(player_data['independent_review']))
+                            
+                            readiness_options = ['Ready Now', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Pending Assessment']
+                            current_readiness = player_data['readiness'] if player_data['readiness'] in readiness_options else 'Pending Assessment'
+                            readiness = st.selectbox("Readiness", readiness_options, index=readiness_options.index(current_readiness))
+                            gap = st.text_input("Competency Gap", player_data['gap'])
+                            risk = st.selectbox("Risk", ['Low', 'Medium', 'High'], index=['Low','Medium','High'].index(player_data['risk']) if player_data['risk'] in ['Low','Medium','High'] else 0)
+                            
+                            if st.form_submit_button("💾 Save Assessment", use_container_width=True):
+                                overall = int(perf * 0.35 + leadership * 0.25 + strategic * 0.20 + peer * 0.10 + junior * 0.05 + independent * 0.05)
+                                db.save_aplayer(player_data['name'], player_data['position'], assess_dept, player_data['nominated_by'], perf, leadership, strategic, peer, junior, independent, overall, readiness, gap, risk)
+                                st.success(f"✅ Saved! Overall: {overall}%")
+                                st.balloons()
+                                time.sleep(1)
+                                st.rerun()
+
+# ============================================================
+    # TAB 4: 360° QUESTIONNAIRE (NEW)
+    # ============================================================
     with tab4:
-        st.subheader("📋 Succession Pipeline")
-        pipeline_data = []
-        for dept, players in aplayers_data.items():
-            for p in players:
-                pipeline_data.append({'Department': dept, 'A-Player': p['name'], 'Position': p['position'], 'Readiness': p['readiness'], 'Score': p['overall'], 'Risk': p['risk'], 'Gap': p['gap']})
-        if pipeline_data:
-            df = pd.DataFrame(pipeline_data)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+        st.subheader("📋 360° Questionnaire for A-Player")
+        st.info("Complete the 360-degree feedback questionnaire. All responses are confidential.")
+        
+        # Option to send questionnaire via email
+        if is_admin or is_hod:
+            with st.expander("📧 Send Questionnaire to Reviewer", expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    rev_email = st.text_input("Reviewer Email *", key="rev_email")
+                    rev_name = st.text_input("Reviewer Name *", key="rev_name")
+                with col2:
+                    rev_category = st.selectbox("Reviewer Category", [
+                        "Peer", "Direct Report", "Manager", "Cross-Functional Colleague", 
+                        "Internal Customer", "External Partner", "Self-Assessment"
+                    ], key="rev_cat")
+                    aplayer_select = st.selectbox("A-Player to Review", 
+                        [p['name'] for dept, players in aplayers_data.items() for p in players] if any(aplayers_data.values()) else ["No A-Players"],
+                        key="aplayer_email")
+                
+                if st.button("📧 Send Questionnaire Link", use_container_width=True):
+                    if rev_email and rev_name and aplayer_select != "No A-Players":
+                        review_token = f"FB-{datetime.now().strftime('%Y%m%d%H%M')}-{random.randint(100,999)}"
+                        
+                        db._post("feedback_reviews", {
+                            "review_token": review_token,
+                            "reviewer_name": rev_name,
+                            "reviewer_category": rev_category,
+                            "aplayer_name": aplayer_select,
+                            "aplayer_department": "See A-Players Board",
+                            "status": "Pending"
+                        })
+                        
+                        feedback_url = f"https://hris.churchgate.com"
+                        
+                        try:
+                            from utils.email_service import EmailService
+                            EmailService().send_email(
+                                rev_email,
+                                f"📋 360° Feedback Request: {aplayer_select}",
+                                f"Dear {rev_name},\n\n"
+                                f"You have been invited to provide 360-degree feedback for {aplayer_select} at Churchgate Group.\n\n"
+                                f"Please complete the questionnaire at: {feedback_url}\n\n"
+                                f"Your responses are confidential and will be used for development purposes only.\n\n"
+                                f"Thank you.\nChurchgate Group HR"
+                            )
+                            st.success(f"✅ Questionnaire sent to {rev_email}!")
+                        except:
+                            st.success(f"✅ Link created! Send manually: {review_token}")
+                    else:
+                        st.error("❌ Please fill all fields!")
+        
+        st.markdown("---")
+        st.markdown("### 📝 Complete 360° Feedback Questionnaire")
+        
+        # Select A-Player
+        all_aplayer_names = [p['name'] for dept, players in aplayers_data.items() for p in players]
+        if not all_aplayer_names:
+            all_aplayer_names = ["No A-Players available"]
+        
+        with st.form("feedback_form_360"):
+            st.markdown("#### Reviewer Information")
+            c1, c2 = st.columns(2)
+            with c1:
+                fb_reviewer_name = st.text_input("Your Name *")
+                fb_reviewer_category = st.selectbox("Your Category *", [
+                    "Peer", "Direct Report", "Manager", "Cross-Functional Colleague",
+                    "Internal Customer", "External Partner", "Self-Assessment"
+                ])
+            with c2:
+                fb_aplayer = st.selectbox("A-Player Being Reviewed *", all_aplayer_names)
+                fb_aplayer_dept = st.text_input("A-Player Department")
             
-            readiness_counts = df['Readiness'].value_counts()
-            fig = px.pie(values=readiness_counts.values, names=readiness_counts.index, hole=0.5, color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000'])
-            fig.update_layout(height=350)
-            st.plotly_chart(fig, use_container_width=True)
+            st.markdown("---")
+            
+            # SECTION 1: Personal Effectiveness & Teaming
+            st.markdown("#### 👥 Personal Effectiveness & Teaming")
+            q5 = st.radio("5. Communicates honestly and directly", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q5')
+            q6 = st.radio("6. Communicates with respect and dignity", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q6')
+            q7 = st.radio("7. Incorporates ideas and contributions of others", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q7')
+            q8 = st.radio("8. Encourages teamwork and co-operation", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q8')
+            q9 = st.radio("9. Effectively manages conflicts", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q9')
+            q10 = st.radio("10. Is an effective team player", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q10')
+            q11 = st.radio("11. Delivers on commitments", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q11')
+            
+            st.markdown("---")
+            
+            # SECTION 2: Continuous Learning
+            st.markdown("#### 📚 Continuous Learning")
+            q12 = st.radio("12. Supports learning and development", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q12')
+            q13 = st.radio("13. Provides constructive feedback and coaching", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q13')
+            q14 = st.radio("14. Brings in new learnings/techniques and applies them", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q14')
+            
+            st.markdown("---")
+            
+            # SECTION 3: Leadership
+            st.markdown("#### 👑 Leadership")
+            q15 = st.radio("15. Clearly communicates goals and directions", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q15')
+            q16 = st.radio("16. Sets personal example by acting in accordance with Company values", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q16')
+            q17 = st.radio("17. Demonstrates consistency between words and actions", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q17')
+            q18 = st.radio("18. Is seen as a role model", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q18')
+            q19 = st.radio("19. Sets clear, aggressive goals aligned with division/company", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q19')
+            q20 = st.radio("20. Manages & leads cross-cultural and cross-functional teams", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q20')
+            q21 = st.radio("21. Develops a pipeline of leaders (next level)", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q21')
+            
+            st.markdown("---")
+            
+            # SECTION 4: Customer Service
+            st.markdown("#### 😊 Customer Service")
+            q22 = st.radio("22. Effectively addresses Customer issues", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q22')
+            q23 = st.radio("23. Works towards win-win for Customer & Company", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q23')
+            
+            st.markdown("---")
+            
+            # SECTION 5: Business Management
+            st.markdown("#### 📊 Business Management")
+            q24 = st.radio("24. Demonstrates strategic thought and cross-functional perspective", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q24')
+            q25 = st.radio("25. Uses Company resources effectively", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q25')
+            q26 = st.radio("26. Identifies risks and works on mitigating them", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q26')
+            q27 = st.radio("27. Follows company standards and processes", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q27')
+            
+            st.markdown("---")
+            
+            # SECTION 6: Business Development
+            st.markdown("#### 📈 Business Development")
+            q28 = st.radio("28. Maintains and leverages professional network", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q28')
+            
+            st.markdown("---")
+            
+            # SECTION 7: Technical Expertise
+            st.markdown("#### 🔧 Technical Expertise")
+            q29 = st.radio("29. Demonstrates competence in own practice area", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q29')
+            q30 = st.radio("30. Challenges teams to develop better solutions/products", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q30')
+            
+            st.markdown("---")
+            
+            # SECTION 8: Innovation & Knowledge Sharing
+            st.markdown("#### 💡 Innovation & Knowledge Sharing")
+            q31 = st.radio("31. Shares business and product knowledge with others", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q31')
+            q32 = st.radio("32. Uses understanding of other specializations for quality solutions", [5,4,3,2,1], format_func=lambda x: {5:'Strongly Agree',4:'Agree',3:'Neutral',2:'Disagree',1:'Strongly Disagree'}[x], horizontal=True, key='q32')
+            
+            st.markdown("---")
+            
+            # OPEN-ENDED QUESTIONS
+            st.markdown("#### ✍️ Open-Ended Questions")
+            q33 = st.text_area("33. What should this person CONTINUE doing to 'live the values' at work? *", height=80, key='q33')
+            q34 = st.text_area("34. Is there anything this person should STOP doing that runs counter to the values? *", height=80, key='q34')
+            q35 = st.text_area("35. What should this person START doing to behave in accordance with the values? *", height=80, key='q35')
+            
+            st.markdown("---")
+            
+            if st.form_submit_button("📤 Submit 360° Feedback", use_container_width=True, type="primary"):
+                if fb_reviewer_name and fb_aplayer != "No A-Players available" and q33 and q34 and q35:
+                    review_token = f"FB-{datetime.now().strftime('%Y%m%d%H%M')}-{random.randint(100,999)}"
+                    
+                    db._post("feedback_reviews", {
+                        "review_token": review_token,
+                        "reviewer_name": fb_reviewer_name,
+                        "reviewer_category": fb_reviewer_category,
+                        "aplayer_name": fb_aplayer,
+                        "aplayer_department": fb_aplayer_dept,
+                        "status": "Completed",
+                        "q5": q5, "q6": q6, "q7": q7, "q8": q8, "q9": q9, "q10": q10, "q11": q11,
+                        "q12": q12, "q13": q13, "q14": q14,
+                        "q15": q15, "q16": q16, "q17": q17, "q18": q18, "q19": q19, "q20": q20, "q21": q21,
+                        "q22": q22, "q23": q23,
+                        "q24": q24, "q25": q25, "q26": q26, "q27": q27,
+                        "q28": q28,
+                        "q29": q29, "q30": q30,
+                        "q31": q31, "q32": q32,
+                        "q33": q33, "q34": q34, "q35": q35,
+                        "submitted_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                    })
+                    
+                    st.success("✅ 360° Feedback submitted successfully! Thank you for your contribution.")
+                    st.balloons()
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ Please fill all required fields!")
     
+    # ============================================================
+    # TAB 5: FEEDBACK DASHBOARD (NEW)
+    # ============================================================
     with tab5:
-        st.subheader("📥 Promotion Reports")
-        c1, c2 = st.columns(2)
-        with c1:
+        st.subheader("📊 360° Feedback Dashboard")
+        
+        if is_admin or is_hod:
+            try:
+                all_feedbacks = db._get("feedback_reviews")
+                if all_feedbacks:
+                    completed = [f for f in all_feedbacks if f.get('status') == 'Completed']
+                    
+                    if completed:
+                        st.markdown(f"**{len(completed)} completed feedback(s)**")
+                        
+                        # Filters
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            fb_aplayer_filter = st.selectbox("A-Player", ["All"] + list(set(f.get('aplayer_name','') for f in completed)), key="fb_player")
+                        with col2:
+                            fb_cat_filter = st.selectbox("Reviewer Category", ["All"] + list(set(f.get('reviewer_category','') for f in completed)), key="fb_cat")
+                        
+                        filtered_fb = completed
+                        if fb_aplayer_filter != "All":
+                            filtered_fb = [f for f in filtered_fb if f.get('aplayer_name') == fb_aplayer_filter]
+                        if fb_cat_filter != "All":
+                            filtered_fb = [f for f in filtered_fb if f.get('reviewer_category') == fb_cat_filter]
+                        
+                        for fb in filtered_fb:
+                            # Calculate average score
+                            scores = [fb.get(f'q{q}', 0) for q in range(5, 33) if fb.get(f'q{q}')]
+                            avg_score = sum(scores) / len(scores) if scores else 0
+                            
+                            # Color based on average
+                            if avg_score >= 4.0:
+                                color = '#38a169'
+                                rating = 'Excellent'
+                            elif avg_score >= 3.0:
+                                color = '#d69e2e'
+                                rating = 'Good'
+                            elif avg_score >= 2.0:
+                                color = '#dd6b20'
+                                rating = 'Average'
+                            else:
+                                color = '#CC0000'
+                                rating = 'Needs Improvement'
+                            
+                            with st.expander(f"📋 {fb.get('aplayer_name','')} | Reviewer: {fb.get('reviewer_name','')} ({fb.get('reviewer_category','')}) | Avg: {avg_score:.1f}/5 — {rating}"):
+                                # Score summary by category
+                                categories = {
+                                    'Personal Effectiveness': ['q5','q6','q7','q8','q9','q10','q11'],
+                                    'Continuous Learning': ['q12','q13','q14'],
+                                    'Leadership': ['q15','q16','q17','q18','q19','q20','q21'],
+                                    'Customer Service': ['q22','q23'],
+                                    'Business Management': ['q24','q25','q26','q27'],
+                                    'Business Development': ['q28'],
+                                    'Technical Expertise': ['q29','q30'],
+                                    'Innovation': ['q31','q32']
+                                }
+                                
+                                for cat, qs in categories.items():
+                                    cat_scores = [fb.get(q, 0) for q in qs if fb.get(q)]
+                                    cat_avg = sum(cat_scores) / len(cat_scores) if cat_scores else 0
+                                    st.markdown(f"""
+                                    <div style="display:flex;justify-content:space-between;padding:0.3rem 0;">
+                                        <span>{cat}</span>
+                                        <div style="width:200px;background:#e0e0e0;height:8px;border-radius:4px;">
+                                            <div style="width:{cat_avg*20}%;background:{color};height:8px;border-radius:4px;"></div>
+                                        </div>
+                                        <strong>{cat_avg:.1f}/5</strong>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                # Open-ended responses
+                                st.markdown("---")
+                                st.markdown("**💬 Continue Doing:**")
+                                st.markdown(f"_{fb.get('q33', 'N/A')}_")
+                                st.markdown("**⚠️ Stop Doing:**")
+                                st.markdown(f"_{fb.get('q34', 'N/A')}_")
+                                st.markdown("**🚀 Start Doing:**")
+                                st.markdown(f"_{fb.get('q35', 'N/A')}_")
+                        
+                        # Export
+                        if filtered_fb:
+                            export_data = []
+                            for f in filtered_fb:
+                                scores = [f.get(f'q{q}', 0) for q in range(5, 33) if f.get(f'q{q}')]
+                                export_data.append({
+                                    'A-Player': f.get('aplayer_name'),
+                                    'Reviewer': f.get('reviewer_name'),
+                                    'Category': f.get('reviewer_category'),
+                                    'Avg Score': f"{sum(scores)/len(scores):.1f}" if scores else 'N/A',
+                                    'Date': f.get('submitted_at', '')[:10]
+                                })
+                            
+                            st.download_button("📥 Export Feedback Report (CSV)", 
+                                pd.DataFrame(export_data).to_csv(index=False),
+                                "360_feedback_report.csv", "text/csv")
+                    else:
+                        st.info("No completed feedback yet.")
+                else:
+                    st.info("No feedback data available.")
+            except:
+                st.info("Feedback dashboard loading...")
+        else:
+            st.info("This section is for HODs, HR, and Admin only.")
+    
+    # ============================================================
+    # TAB 6: REPORTS
+    # ============================================================
+    with tab6:
+        st.subheader("📥 Reports & Downloads")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("### 📊 A-Players Report")
             if st.button("📊 Generate CSV Report", use_container_width=True):
                 csv_data = []
                 for dept, players in aplayers_data.items():
                     for p in players:
-                        csv_data.append({'Department': dept, 'Name': p['name'], 'Position': p['position'], 'Perf': p['perf_score'], 'Leadership': p['leadership'], 'Strategic': p['strategic'], 'Peer': p['peer_review'], 'Junior': p['junior_review'], 'Independent': p['independent_review'], 'Overall': p['overall'], 'Readiness': p['readiness'], 'Gap': p['gap'], 'Risk': p['risk']})
+                        csv_data.append({
+                            'Department': dept, 'Name': p['name'], 'Position': p['position'],
+                            'Performance': p['perf_score'], 'Leadership': p['leadership'],
+                            'Strategic': p['strategic'], 'Peer': p['peer_review'],
+                            'Overall': p['overall'], 'Readiness': p['readiness'], 'Risk': p['risk']
+                        })
                 if csv_data:
-                    st.download_button("📥 Download CSV", pd.DataFrame(csv_data).to_csv(index=False), "aplayers_report.csv", "text/csv")
-        with c2:
+                    st.download_button("📥 Download CSV", pd.DataFrame(csv_data).to_csv(index=False), "aplayers.csv", "text/csv")
+            
             if st.button("📕 Generate Executive PDF", use_container_width=True):
                 try:
                     import fpdf
                     FPDF = fpdf.FPDF
                     pdf = FPDF(orientation='L', unit='mm', format='A4')
-                    pdf.set_auto_page_break(auto=True, margin=10)
                     pdf.add_page()
-                    
-                    pdf.set_fill_color(55, 55, 55)
-                    pdf.rect(0, 0, 297, 35, 'F')
-                    pdf.set_fill_color(204, 0, 0)
-                    pdf.rect(0, 35, 297, 3, 'F')
-                    pdf.set_font('Helvetica', 'B', 22)
-                    pdf.set_text_color(255, 255, 255)
-                    pdf.cell(0, 18, 'CHURCHGATE GROUP', ln=True, align='C')
-                    pdf.set_font('Helvetica', 'B', 12)
-                    pdf.set_text_color(255, 255, 255)
-                    pdf.cell(0, 8, 'A-PLAYERS & SUCCESSION PIPELINE - EXECUTIVE REPORT', ln=True, align='C')
+                    pdf.set_fill_color(26,26,26); pdf.rect(0,0,297,30,'F')
+                    pdf.set_fill_color(204,0,0); pdf.rect(0,30,297,3,'F')
+                    pdf.set_font('Helvetica','B',20); pdf.set_text_color(255,255,255)
+                    pdf.cell(0,15,'CHURCHGATE GROUP',ln=True,align='C')
+                    pdf.set_font('Helvetica','B',11)
+                    pdf.cell(0,8,'A-PLAYERS & SUCCESSION PIPELINE',ln=True,align='C')
                     pdf.ln(10)
                     
-                    total = len(all_players)
-                    ready = len(ready_now)
-                    avg = sum(p['overall'] for p in all_players) / total if total > 0 else 0
+                    all_p = []
+                    for dept, players in aplayers_data.items():
+                        for p in players: all_p.append(p)
                     
-                    pdf.set_fill_color(245, 245, 245)
-                    pdf.rect(10, pdf.get_y(), 277, 10, 'F')
-                    pdf.set_font('Helvetica', 'B', 9)
-                    pdf.set_text_color(26, 26, 26)
-                    pdf.cell(92, 10, f'  Total: {total}', 0, 0, 'L')
-                    pdf.cell(92, 10, f'Ready Now: {ready}', 0, 0, 'C')
-                    pdf.cell(93, 10, f'Avg Score: {avg:.1f}%  ', 0, 0, 'R')
-                    pdf.ln(14)
+                    total = len(all_p)
+                    ready = len([p for p in all_p if p['readiness']=='Ready Now'])
+                    avg = sum(p['overall'] for p in all_p)/total if total>0 else 0
                     
-                    cards_data = [('TOTAL', str(total), (26, 26, 26)), ('READY NOW', str(ready), (56, 161, 105)), ('AVG SCORE', f'{avg:.1f}%', (204, 0, 0)), ('DEPTS', str(len([d for d, p in aplayers_data.items() if p])), (49, 130, 206))]
-                    col_w = 65
-                    col_h = 16
-                    x_start = 14
-                    y_pos = pdf.get_y()
-                    for j, (label, value, color) in enumerate(cards_data):
-                        x = x_start + j * (col_w + 5)
-                        pdf.set_fill_color(*color)
-                        pdf.rect(x, y_pos, col_w, col_h, 'F')
-                        pdf.set_text_color(255, 255, 255)
-                        pdf.set_xy(x, y_pos + 1)
-                        pdf.set_font('Helvetica', 'B', 7)
-                        pdf.cell(col_w, 6, label, 0, 0, 'C')
-                        pdf.set_xy(x, y_pos + 7)
-                        pdf.set_font('Helvetica', 'B', 14)
-                        pdf.cell(col_w, 8, value, 0, 0, 'C')
-                    pdf.set_y(y_pos + col_h + 8)
+                    pdf.set_font('Helvetica','B',9); pdf.set_text_color(26,26,26)
+                    pdf.cell(70,8,f'Total: {total}',0,0,'L')
+                    pdf.cell(70,8,f'Ready Now: {ready}',0,0,'C')
+                    pdf.cell(70,8,f'Avg Score: {avg:.1f}%',0,0,'R')
+                    pdf.ln(12)
                     
-                    pdf.set_fill_color(26, 26, 26)
-                    pdf.set_text_color(255, 255, 255)
-                    pdf.set_font('Helvetica', 'B', 8)
-                    pdf.cell(6, 7, ' #', 1, 0, 'C', True)
-                    pdf.cell(42, 7, ' NAME', 1, 0, 'L', True)
-                    pdf.cell(42, 7, ' DEPARTMENT', 1, 0, 'L', True)
-                    pdf.cell(50, 7, ' POSITION', 1, 0, 'L', True)
-                    pdf.cell(18, 7, 'SCORE', 1, 0, 'C', True)
-                    pdf.cell(32, 7, 'READINESS', 1, 0, 'C', True)
-                    pdf.cell(22, 7, 'RISK', 1, 0, 'C', True)
-                    pdf.cell(65, 7, ' GAP', 1, 0, 'L', True)
+                    pdf.set_fill_color(26,26,26); pdf.set_text_color(255,255,255); pdf.set_font('Helvetica','B',7)
+                    pdf.cell(5,6,' #',1,0,'C',True)
+                    pdf.cell(35,6,' NAME',1,0,'L',True)
+                    pdf.cell(35,6,' DEPT',1,0,'L',True)
+                    pdf.cell(45,6,' POSITION',1,0,'L',True)
+                    pdf.cell(15,6,'SCORE',1,0,'C',True)
+                    pdf.cell(28,6,'READINESS',1,0,'C',True)
+                    pdf.cell(18,6,'RISK',1,0,'C',True)
+                    pdf.cell(55,6,' GAP',1,0,'L',True)
                     pdf.ln()
                     
-                    row_num = 0
-                    pdf.set_font('Helvetica', '', 7)
-                    for dept, players in aplayers_data.items():
-                        for p in players:
-                            row_num += 1
-                            if p['overall'] >= 85:
-                                tc = (56, 161, 105)
-                            elif p['overall'] >= 70:
-                                tc = (214, 158, 46)
-                            else:
-                                tc = (204, 0, 0)
-                            pdf.set_text_color(26, 26, 26)
-                            pdf.cell(6, 6, str(row_num), 1, 0, 'C')
-                            pdf.cell(42, 6, f' {p["name"][:25]}', 1, 0, 'L')
-                            pdf.cell(42, 6, f' {dept[:25]}', 1, 0, 'L')
-                            pdf.cell(50, 6, f' {p["position"][:30]}', 1, 0, 'L')
-                            pdf.set_text_color(*tc)
-                            pdf.set_font('Helvetica', 'B', 7)
-                            pdf.cell(18, 6, f'{p["overall"]}%', 1, 0, 'C')
-                            pdf.set_text_color(26, 26, 26)
-                            pdf.set_font('Helvetica', '', 7)
-                            pdf.cell(32, 6, p['readiness'][:18], 1, 0, 'C')
-                            pdf.cell(22, 6, p['risk'], 1, 0, 'C')
-                            pdf.cell(65, 6, f' {p["gap"][:40]}', 1, 0, 'L')
-                            pdf.ln()
+                    pdf.set_font('Helvetica','',7)
+                    for i, p in enumerate(all_p):
+                        pdf.set_text_color(26,26,26)
+                        pdf.cell(5,5,str(i+1),1,0,'C')
+                        pdf.cell(35,5,f' {p["name"][:22]}',1,0,'L')
+                        pdf.cell(35,5,f' {p.get("department","")[:22]}',1,0,'L')
+                        pdf.cell(45,5,f' {p["position"][:28]}',1,0,'L')
+                        pdf.cell(15,5,f'{p["overall"]}%',1,0,'C')
+                        pdf.cell(28,5,p['readiness'][:16],1,0,'C')
+                        pdf.cell(18,5,p['risk'],1,0,'C')
+                        pdf.cell(55,5,f' {p["gap"][:35]}',1,0,'L')
+                        pdf.ln()
                     
-                    pdf.set_y(-15)
-                    pdf.set_fill_color(26, 26, 26)
-                    pdf.rect(0, pdf.get_y()-2, 297, 17, 'F')
-                    pdf.set_font('Helvetica', 'I', 7)
-                    pdf.set_text_color(180, 180, 180)
-                    pdf.cell(0, 5, 'Churchgate Group - Confidential | hr@churchgate.com', ln=True, align='C')
+                    pdf.set_y(-12)
+                    pdf.set_font('Helvetica','I',6); pdf.set_text_color(150,150,150)
+                    pdf.cell(0,5,'Churchgate Group - Confidential | hris@churchgate.com',align='C')
                     
                     st.download_button("📥 Download PDF", bytes(pdf.output()), "aplayers_report.pdf", "application/pdf")
                     st.success("✅ PDF generated!")
                 except Exception as e:
                     st.warning(f"PDF Error: {str(e)}")
+        
+        with col2:
+            st.markdown("### 📊 360° Feedback Report")
+            try:
+                all_fb = db._get("feedback_reviews")
+                if all_fb:
+                    fb_data = []
+                    for f in all_fb:
+                        scores = [f.get(f'q{q}',0) for q in range(5,33) if f.get(f'q{q}')]
+                        fb_data.append({
+                            'A-Player': f.get('aplayer_name',''),
+                            'Reviewer': f.get('reviewer_name',''),
+                            'Category': f.get('reviewer_category',''),
+                            'Avg Score': f"{sum(scores)/len(scores):.1f}" if scores else 'N/A',
+                            'Status': f.get('status',''),
+                            'Date': f.get('submitted_at','')[:10]
+                        })
+                    
+                    if fb_data:
+                        st.download_button("📥 Download Feedback CSV", 
+                            pd.DataFrame(fb_data).to_csv(index=False),
+                            "360_feedback.csv", "text/csv")
+            except:
+                pass
 
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
     
+    # ============================================================
+    # AUTO-POST FUNCTION
+    # ============================================================
+    def auto_post_job(job_title, job_department, job_location, job_type, job_salary, job_jd, job_ref, public_url):
+        """Auto-post job to LinkedIn, Indeed, and Glassdoor"""
+        import re
+        import urllib.parse
+        
+        clean_jd = re.sub(r'<[^>]+>', '', job_jd)
+        results = {}
+        
+        # LINKEDIN - Auto-post to personal profile + Company page link
+        import requests as req_linkedin
+        
+        linkedin_token = os.environ.get("LINKEDIN_ACCESS_TOKEN", st.secrets.get("LINKEDIN_ACCESS_TOKEN", ""))
+        
+        linkedin_post = f"""🚀 WE'RE HIRING: {job_title}
+
+📍 {job_location} | 💼 {job_type} | 🏢 {job_department}
+
+{clean_jd[:500]}...
+
+APPLY NOW: {public_url}
+
+#Hiring #Jobs #ChurchgateGroup #Careers #NigeriaJobs"""
+        
+        messages = []
+        
+        # 1. AUTO-POST TO PERSONAL PROFILE
+        if linkedin_token:
+            try:
+                user_url = "https://api.linkedin.com/v2/userinfo"
+                user_response = req_linkedin.get(user_url, headers={"Authorization": f"Bearer {linkedin_token}"})
+                
+                if user_response.status_code == 200:
+                    user_data = user_response.json()
+                    person_urn = f"urn:li:person:{user_data.get('sub')}"
+                    
+                    post_response = req_linkedin.post(
+                        "https://api.linkedin.com/v2/ugcPosts",
+                        headers={
+                            "Authorization": f"Bearer {linkedin_token}",
+                            "Content-Type": "application/json",
+                            "X-Restli-Protocol-Version": "2.0.0"
+                        },
+                        json={
+                            "author": person_urn,
+                            "lifecycleState": "PUBLISHED",
+                            "specificContent": {
+                                "com.linkedin.ugc.ShareContent": {
+                                    "shareCommentary": {"text": linkedin_post},
+                                    "shareMediaCategory": "NONE"
+                                }
+                            },
+                            "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}
+                        }
+                    )
+                    
+                    if post_response.status_code in [200, 201]:
+                        messages.append('✅ Posted to personal LinkedIn')
+                    else:
+                        messages.append('⚠️ Personal LinkedIn: Click share link below')
+                else:
+                    messages.append('⚠️ LinkedIn auth issue')
+            except:
+                messages.append('⚠️ LinkedIn API error')
+        else:
+            messages.append('⚠️ No LinkedIn token configured')
+        
+        # 2. WTC ABUJA PAGE - One-click share link
+        wtc_url = f"https://www.linkedin.com/shareArticle?mini=true&url={urllib.parse.quote(public_url)}&title={urllib.parse.quote('WE ARE HIRING: ' + job_title)}&summary={urllib.parse.quote(clean_jd[:200])}"
+        messages.append(f'🏢 [Click to post on WTC Abuja Page]({wtc_url})')
+        
+        # 3. CHURCHGATE GROUP PAGE - One-click share link
+        cg_url = f"https://www.linkedin.com/shareArticle?mini=true&url={urllib.parse.quote(public_url)}&title={urllib.parse.quote('WE ARE HIRING: ' + job_title)}&summary={urllib.parse.quote(clean_jd[:200])}"
+        messages.append(f'🏢 [Click to post on Churchgate Group Page]({cg_url})')
+        
+        results['linkedin'] = {
+            'status': 'success',
+            'post_text': linkedin_post,
+            'message': ' | '.join(messages)
+        }
+        
+        # INDEED
+        try:
+            db_temp = DatabaseManager()
+            db_temp.upload_file("job-feeds", f"indeed_{job_ref}.txt", clean_jd[:2500].encode('utf-8'), "text/plain")
+            results['indeed'] = {'status': 'posted', 'message': '✅ Indeed feed saved! Upload at indeed.com/hire'}
+        except:
+            results['indeed'] = {'status': 'ready', 'message': '📋 Indeed content ready'}
+        
+        # GLASSDOOR
+        glassdoor_url = f"https://www.glassdoor.com/employers/post-job/?title={urllib.parse.quote(job_title)}&location={urllib.parse.quote(job_location)}"
+        results['glassdoor'] = {'status': 'ready', 'post_url': glassdoor_url, 'message': '🏢 Glassdoor post ready!'}
+        
+        return results
     
+    # ============================================================
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
+    
+    # Auto-expire jobs past closing date
+    try:
+        today = datetime.now().strftime('%Y-%m-%d')
+        for i, req in enumerate(st.session_state.job_requisitions):
+            if req.get('status') == 'Approved - Live' and req.get('closing', '') and req.get('closing', '') < today:
+                st.session_state.job_requisitions[i]['status'] = 'Expired'
+                st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('ref') != req.get('id')]
+        st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('closing', '9999-12-31') >= today]
+    except:
+        pass
+    
     user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
     is_admin = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
@@ -4587,7 +7109,7 @@ def recruitment_hub():
             c1, c2 = st.columns(2)
             with c1:
                 job_title = st.text_input("Job Title *", placeholder="e.g., Senior Network Engineer")
-                department = st.selectbox("Department *", DEPARTMENTS)
+                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services'])
                 location = st.selectbox("Location", ["World Trade Center Abuja", "Churchgate Tower 1 Lagos", "Churchgate Tower 2 Lagos", "Churchgate Plaza Abuja", "Remote/Hybrid"])
                 employment_type = st.selectbox("Employment Type", ["Full-time", "Contract", "Part-time", "Intern"])
             with c2:
@@ -4889,6 +7411,28 @@ def recruitment_hub():
                                             except:
                                                 pass
                                         
+                                        # ===== AUTO-POST TO JOB BOARDS =====
+                                        post_settings = req.get('posts', {})
+                                        st.write(f"DEBUG posts: {post_settings}, type: {type(post_settings)}")
+                                        posting_results = []
+                                        
+                                        if post_settings.get('linkedin'):
+                                            result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
+                                            posting_results.append(result['linkedin']['message'])
+                                        
+                                        if post_settings.get('indeed'):
+                                            result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
+                                            posting_results.append(result['indeed']['message'])
+                                        
+                                        if post_settings.get('glassdoor'):
+                                            result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
+                                            posting_results.append(result['glassdoor']['message'])
+                                        
+                                        if posting_results:
+                                            for msg in posting_results:
+                                                st.success(msg)
+                                        # ===================================
+                                        
                                         st.success(f"✅ Job is LIVE on Careers Page!")
                                         st.code(public_url, language=None)
                                         st.balloons()
@@ -4963,39 +7507,330 @@ def recruitment_hub():
     # ============ TAB 2: ACTIVE JOBS ============
     with tab2:
         st.subheader("📢 Active Job Postings")
-        if st.session_state.active_jobs:
+        
+        # Get expired jobs
+        expired_jobs = [req for req in st.session_state.job_requisitions if req.get('status') == 'Expired']
+        
+        # Stats row
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric("🟢 Live Jobs", len(st.session_state.active_jobs))
+        with c2:
+            st.metric("🔴 Expired", len(expired_jobs))
+        with c3:
+            total_apps = sum(job.get('applications', 0) for job in st.session_state.active_jobs)
+            st.metric("👥 Total Applicants", total_apps)
+        with c4:
+            # Jobs closing within 7 days
+            urgent = 0
             for job in st.session_state.active_jobs:
-                with st.expander(f"🟢 {job['ref']} - {job['title']} | {job['department']} | {job.get('applications', 0)} applicants", expanded=False):
-                    st.markdown(f"**Location:** {job['location']} | **Type:** {job['type']} | **Closes:** {job['closing']}")
-                    st.markdown(f"**📎 Public Careers URL:**")
-                    st.code(job['public_url'], language=None)
-                    st.markdown(f"**Platforms:** LinkedIn: {'✅' if job['posts'].get('linkedin') else '❌'} | Indeed: {'✅' if job['posts'].get('indeed') else '❌'} | Glassdoor: {'✅' if job['posts'].get('glassdoor') else '❌'}")
-        else:
-            st.info("No active jobs. Submit a requisition in Tab 1.")
+                try:
+                    days_left = (datetime.strptime(job['closing'], '%Y-%m-%d') - datetime.now()).days
+                    if days_left <= 7:
+                        urgent += 1
+                except:
+                    pass
+            st.metric("⏰ Closing Soon", urgent)
+        
+        st.markdown("---")
+        
+        # ===== LIVE JOBS =====
+        if st.session_state.active_jobs:
+            st.markdown("### 🟢 Live Jobs")
+            for job in st.session_state.active_jobs:
+                try:
+                    days_left = (datetime.strptime(job['closing'], '%Y-%m-%d') - datetime.now()).days
+                    if days_left <= 3:
+                        status_icon = "🔴"
+                        status_text = f"Closing in {days_left} days!"
+                    elif days_left <= 7:
+                        status_icon = "🟡"
+                        status_text = f"{days_left} days remaining"
+                    else:
+                        status_icon = "🟢"
+                        status_text = f"{days_left} days remaining"
+                except:
+                    status_icon = "🟢"
+                    status_text = ""
+                
+                with st.expander(f"{status_icon} {job['ref']} - {job['title']} | {job['department']} | {job.get('applications', 0)} applicants | {status_text}", expanded=False):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**📍 Location:** {job['location']}")
+                        st.markdown(f"**💼 Type:** {job['type']}")
+                        st.markdown(f"**💰 Salary:** {job.get('salary', 'Not specified')}")
+                        st.markdown(f"**📅 Closes:** {job['closing']} ({status_text})")
+                    with col2:
+                        st.markdown(f"**📎 Public URL:**")
+                        st.code(job['public_url'], language=None)
+                        st.markdown(f"**Platforms:** LinkedIn: {'✅' if job['posts'].get('linkedin') else '❌'} | Indeed: {'✅' if job['posts'].get('indeed') else '❌'} | Glassdoor: {'✅' if job['posts'].get('glassdoor') else '❌'}")
+                    
+                    st.markdown("---")
+                    
+                    # Quick actions
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        share_url = job['public_url']
+                        st.markdown(f"[🔗 LinkedIn Share](https://www.linkedin.com/sharing/share-offsite/?url={share_url})")
+                        st.markdown(f"[💬 WhatsApp Share](https://wa.me/?text=Job:{job['title']}%20at%20Churchgate%20Group%20{share_url})")
+                    with c2:
+                        st.markdown(f"[📋 View JD]({share_url})")
+                        st.markdown(f"📊 **Applications:** {job.get('applications', 0)}")
+                    with c3:
+                        if st.button(f"⏹️ Close Job Early", key=f"close_{job['ref']}"):
+                            for i, req in enumerate(st.session_state.job_requisitions):
+                                if req.get('id') == job['ref']:
+                                    st.session_state.job_requisitions[i]['status'] = 'Expired'
+                                    break
+                            st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('ref') != job['ref']]
+                            st.warning(f"⏹️ {job['title']} closed early!")
+                            st.rerun()
+        
+        # ===== EXPIRED JOBS =====
+        if expired_jobs:
+            st.markdown("---")
+            st.markdown("### 🔴 Expired Jobs")
+            for req in expired_jobs:
+                with st.expander(f"🔴 {req['id']} - {req['title']} | {req['department']} | Expired: {req.get('closing', 'N/A')}", expanded=False):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**📍 Location:** {req.get('location', 'N/A')}")
+                        st.markdown(f"**💼 Type:** {req.get('type', 'N/A')}")
+                        st.markdown(f"**📅 Closed:** {req.get('closing', 'N/A')}")
+                    with col2:
+                        st.markdown(f"**👤 Submitted By:** {req.get('submitted_by', 'N/A')}")
+                        st.markdown(f"**📊 Positions:** {req.get('positions', 1)}")
+                    
+                    st.markdown("---")
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        if st.button(f"📊 View Report", key=f"report_{req['id']}"):
+                            try:
+                                candidates = db.get_all_candidates()
+                                job_candidates = candidates[candidates['job_id'] == req['id']] if not candidates.empty else []
+                                st.metric("Total Applicants", len(job_candidates))
+                                if len(job_candidates) > 0:
+                                    st.dataframe(job_candidates[['first_name', 'last_name', 'email', 'status']], use_container_width=True)
+                            except:
+                                st.info("No application data available.")
+                    with c2:
+                        if st.button(f"🔄 Repost", key=f"repost_{req['id']}"):
+                            st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
+                            st.session_state.job_requisitions[i]['closing'] = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+                            st.success(f"🔄 {req['title']} reposted for 30 days!")
+                            st.rerun()
+                    with c3:
+                        if st.button(f"🗑️ Delete", key=f"del_{req['id']}"):
+                            st.session_state.job_requisitions = [r for r in st.session_state.job_requisitions if r['id'] != req['id']]
+                            st.success("🗑️ Deleted permanently!")
+                            st.rerun()
+        
+        if not st.session_state.active_jobs and not expired_jobs:
+            st.info("No active or expired jobs. Submit a requisition in Tab 1.")
     
     # ============ TAB 3: CANDIDATE PORTAL ============
     with tab3:
-        st.subheader("🌐 Candidate Application Portal Preview")
-        st.info("This is what candidates see on the live Careers Page. Actual applications appear in AI Screening tab.")
-        with st.expander("📝 Preview Application Form", expanded=True):
-            c1, c2 = st.columns(2)
-            with c1:
-                st.text_input("First Name *", key="prev_fn", disabled=True)
-                st.text_input("Last Name *", key="prev_ln", disabled=True)
-                st.text_input("Email *", key="prev_em", disabled=True)
-                st.text_input("Phone *", key="prev_ph", disabled=True)
-                st.text_input("LinkedIn URL", key="prev_li", disabled=True)
-            with c2:
-                st.text_input("GitHub URL", key="prev_gh", disabled=True)
-                st.text_input("Portfolio URL", key="prev_pf", disabled=True)
-                st.text_input("Current Position", key="prev_cp", disabled=True)
-                st.text_input("Years of Experience", key="prev_ye", disabled=True)
-            st.text_area("Cover Letter (Optional)", key="prev_cl", disabled=True)
-            st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'], key="prev_cv", disabled=True)
-            st.markdown("### Screening Questions (Auto-generated per role)")
-            st.text_area("Q1: Relevant Experience *", key="prev_q1", disabled=True)
-            st.text_area("Q2: Key Achievement *", key="prev_q2", disabled=True)
-            st.text_area("Q3: Why Churchgate Group? *", key="prev_q3", disabled=True)
+        st.subheader("🌐 Candidate Management Portal")
+        
+        # Stats row
+        try:
+            candidates = db.get_all_candidates()
+            total_candidates = len(candidates) if not candidates.empty else 0
+            new_today = len(candidates[candidates['created_at'].str.contains(datetime.now().strftime('%Y-%m-%d'))]) if not candidates.empty and 'created_at' in candidates.columns else 0
+            shortlisted = len(candidates[candidates['status'] == 'Shortlisted']) if not candidates.empty and 'status' in candidates.columns else 0
+            interviewed = len(candidates[candidates['status'].str.contains('Interview', na=False)]) if not candidates.empty and 'status' in candidates.columns else 0
+        except:
+            total_candidates = 0
+            new_today = 0
+            shortlisted = 0
+            interviewed = 0
+        
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric("👥 Total Candidates", total_candidates)
+        with c2:
+            st.metric("🆕 New Today", new_today)
+        with c3:
+            st.metric("⭐ Shortlisted", shortlisted)
+        with c4:
+            st.metric("🎯 Interviewed", interviewed)
+        
+        st.markdown("---")
+        
+        # Sub-tabs for candidate management
+        cand_tab1, cand_tab2, cand_tab3 = st.tabs(["📋 All Candidates", "➕ Quick Add", "📱 Preview Career Page"])
+        
+        # ===== SUB-TAB 1: ALL CANDIDATES =====
+        with cand_tab1:
+            st.subheader("📋 Candidate Database")
+            
+            try:
+                candidates = db.get_all_candidates()
+                if not candidates.empty:
+                    # Filters
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        status_filter = st.selectbox("Status", ["All", "New", "Shortlisted", "Interview Scheduled", "Offered", "Hired", "Rejected"], key="cand_status")
+                    with col2:
+                        job_filter = st.selectbox("Job", ["All Jobs"] + list(candidates['job_id'].dropna().unique()) if 'job_id' in candidates.columns else ["All Jobs"], key="cand_job")
+                    with col3:
+                        sort_by = st.selectbox("Sort", ["Newest First", "Name A-Z", "Status"], key="cand_sort")
+                    with col4:
+                        search_cand = st.text_input("🔍 Search", placeholder="Name or email...", key="cand_search")
+                    
+                    # Apply filters
+                    display = candidates.copy()
+                    if status_filter != "All":
+                        display = display[display['status'] == status_filter]
+                    if job_filter != "All Jobs" and 'job_id' in display.columns:
+                        display = display[display['job_id'] == job_filter]
+                    if search_cand:
+                        s = search_cand.lower()
+                        display = display[display['first_name'].str.lower().str.contains(s, na=False) | display['last_name'].str.lower().str.contains(s, na=False) | display['email'].str.lower().str.contains(s, na=False)]
+                    
+                    st.markdown(f"**Showing {len(display)} candidates**")
+                    
+                    for _, cand in display.iterrows():
+                        initials = (str(cand.get('first_name', ''))[:1] + str(cand.get('last_name', ''))[:1]).upper()
+                        status = cand.get('status', 'New')
+                        status_color = {
+                            'New': '#3182ce', 'Shortlisted': '#d69e2e', 'Interview Scheduled': '#38a169',
+                            'Offered': '#805ad5', 'Hired': '#38a169', 'Rejected': '#CC0000'
+                        }.get(status, '#a0aec0')
+                        
+                        with st.expander(f"👤 {cand.get('first_name', '')} {cand.get('last_name', '')} | {cand.get('email', '')} | {status}", expanded=False):
+                            col1, col2 = st.columns([1, 3])
+                            with col1:
+                                st.markdown(f"""<div style="width:45px;height:45px;border-radius:50%;background:{status_color};display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
+                                st.markdown(f"<span style='background:{status_color};color:white;padding:0.1rem 0.5rem;border-radius:10px;font-size:0.7rem;'>{status}</span>", unsafe_allow_html=True)
+                            with col2:
+                                st.markdown(f"**📧** {cand.get('email', 'N/A')} | **📱** {cand.get('phone', 'N/A')}")
+                                st.markdown(f"**💼** {cand.get('current_position', 'N/A')} | **📅** {cand.get('years_of_experience', 'N/A')} yrs")
+                                st.markdown(f"**🔗** {cand.get('linkedin_url', 'N/A')[:40] if cand.get('linkedin_url') else 'N/A'}")
+                            
+                            # Quick actions
+                            c1, c2, c3, c4 = st.columns(4)
+                            with c1:
+                                new_status = st.selectbox("Update Status", ["New", "Shortlisted", "Interview Scheduled", "Offered", "Hired", "Rejected"], key=f"status_{cand.get('candidate_ref')}")
+                            with c2:
+                                if st.button("💾 Update", key=f"upd_{cand.get('candidate_ref')}"):
+                                    db._patch("candidates", {"status": new_status}, {"candidate_ref": cand.get('candidate_ref')})
+                                    st.success("✅ Updated!")
+                                    st.rerun()
+                            with c3:
+                                if cand.get('resume_text') and len(str(cand.get('resume_text'))) > 10:
+                                    with st.expander("📄 View CV"):
+                                        st.text_area("CV Content", str(cand.get('resume_text'))[:2000], height=200, key=f"cv_{cand.get('candidate_ref')}")
+                            with c4:
+                                if st.button("📧 Email", key=f"email_{cand.get('candidate_ref')}"):
+                                    st.info(f"Email queued to {cand.get('email')}")
+            except:
+                st.info("No candidates yet. Share the Careers Page link to start receiving applications.")
+        
+        # ===== SUB-TAB 2: QUICK ADD CANDIDATE =====
+        with cand_tab2:
+            st.subheader("➕ Quick Add Candidate")
+            st.info("Manually add a candidate from walk-in, referral, or external source.")
+            
+            with st.form("quick_add_candidate", clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                with c1:
+                    q_fn = st.text_input("First Name *")
+                    q_ln = st.text_input("Last Name *")
+                    q_em = st.text_input("Email *")
+                    q_ph = st.text_input("Phone")
+                with c2:
+                    q_pos = st.text_input("Position Applied For")
+                    q_src = st.selectbox("Source", ["Walk-in", "Employee Referral", "Career Page", "LinkedIn", "Indeed", "Glassdoor", "Agency", "Other"])
+                    q_job = st.text_input("Job Reference (if any)")
+                    q_linkedin = st.text_input("LinkedIn URL")
+                
+                st.markdown("---")
+                q_cv = st.file_uploader("Upload CV *", type=['pdf', 'docx'])
+                q_other = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png'], accept_multiple_files=True)
+                q_notes = st.text_area("Notes", height=80)
+                
+                if st.form_submit_button("➕ Add Candidate", use_container_width=True):
+                    if q_fn and q_ln and q_em and q_cv:
+                        tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
+                        try:
+                            cv_text = ""
+                            file_ext = "pdf"
+                            if q_cv.type == "application/pdf":
+                                import PyPDF2
+                                for page in PyPDF2.PdfReader(q_cv).pages:
+                                    cv_text += page.extract_text() + "\n"
+                            elif "word" in q_cv.type:
+                                import docx
+                                cv_text = "\n".join([p.text for p in docx.Document(q_cv).paragraphs])
+                                file_ext = "docx"
+                            
+                            # Upload CV
+                            cv_url = ""
+                            try:
+                                q_cv.seek(0)
+                                cv_url = db.upload_file("cvs", f"{tracking_id}_{q_fn}_{q_ln}.{file_ext}", q_cv.read(), q_cv.type)
+                            except:
+                                pass
+                            
+                            db._post("candidates", {
+                                "candidate_ref": tracking_id,
+                                "first_name": q_fn,
+                                "last_name": q_ln,
+                                "email": q_em,
+                                "phone": q_ph,
+                                "linkedin_url": q_linkedin,
+                                "current_position": q_pos,
+                                "resume_filename": f"CV_{q_fn}_{q_ln}.{file_ext}",
+                                "resume_text": cv_text[:10000],
+                                "cv_url": cv_url,
+                                "job_id": q_job,
+                                "source": q_src,
+                                "status": "New"
+                            })
+                            st.success(f"✅ Candidate {q_fn} {q_ln} added! (Ref: {tracking_id})")
+                            st.balloons()
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+                    else:
+                        st.error("❌ Name, email, and CV are required!")
+        
+        # ===== SUB-TAB 3: PREVIEW CAREER PAGE =====
+        with cand_tab3:
+            st.subheader("📱 Career Page Preview")
+            st.info("This is what candidates see on the live Careers Page.")
+            
+            # Quick preview of the actual career page
+            st.markdown("""
+            <div style="background:linear-gradient(135deg, #1a1a1a, #2d2a1f);padding:1.5rem;text-align:center;border-radius:8px;margin-bottom:1rem;">
+                <h2 style="color:#F5E6CC;margin:0;">🚀 Build Your Career at Churchgate Group</h2>
+                <p style="color:#c4b998;">Join a team of innovators, leaders, and changemakers.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Show active jobs preview
+            if st.session_state.active_jobs:
+                st.markdown(f"**🟢 {len(st.session_state.active_jobs)} Live Job(s) on Career Page**")
+                for job in st.session_state.active_jobs[:3]:
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.8rem;border-radius:6px;margin:0.3rem 0;border-left:4px solid #D4AF37;">
+                        <strong>{job['title']}</strong><br>
+                        <small>{job['department']} | {job['location']} | {job['type']}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            st.markdown(f"**🔗 Live Career Page:** [hris.churchgate.com/Careers](https://hris.churchgate.com/Careers)")
+            st.markdown(f"**📊 Application Form Preview:**")
+            
+            with st.expander("Preview Application Form", expanded=False):
+                st.text_input("First Name *", disabled=True, placeholder="Candidate fills this")
+                st.text_input("Last Name *", disabled=True)
+                st.text_input("Email *", disabled=True)
+                st.text_input("Phone *", disabled=True)
+                st.file_uploader("Upload CV *", disabled=True)
+                st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png'], disabled=True, accept_multiple_files=True)
+                st.text_area("Screening Questions", disabled=True, placeholder="Auto-generated per job role")
     
      # ============ TAB 4: AI SCREENING ============
     with tab4:
@@ -5340,7 +8175,7 @@ def recruitment_hub():
                     offer_name = st.text_input("Candidate Full Name *")
                     offer_email = st.text_input("Candidate Email *")
                     offer_position = st.text_input("Position *")
-                    offer_dept = st.selectbox("Department *", DEPARTMENTS)
+                    offer_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                 with c2:
                     offer_salary = st.text_input("Salary Package *", placeholder="e.g., ₦1,200,000 Gross per Annum")
                     offer_start = st.date_input("Start Date *")
@@ -5481,7 +8316,7 @@ def recruitment_hub():
                 with col1:
                     offer_status_filter = st.selectbox("Status", ["All", "Pending Acceptance", "Accepted", "Rejected", "Expired"])
                 with col2:
-                    offer_dept_filter = st.selectbox("Department", DEPARTMENTS_WITH_ALL)
+                    offer_dept_filter = st.selectbox("Department", ["All", 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                 
                 filtered = offers
                 if offer_status_filter != "All":
@@ -5568,7 +8403,7 @@ def recruitment_hub():
                 with c1:
                     nh_name = st.text_input("Employee Full Name *")
                     nh_email = st.text_input("Employee Email *")
-                    nh_dept = st.selectbox("Department *", DEPARTMENTS)
+                    nh_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                     nh_position = st.text_input("Position *")
                 with c2:
                     nh_start = st.date_input("Start Date *")
@@ -5794,7 +8629,7 @@ def recruitment_hub():
                 with c1:
                     bg_name = st.text_input("Candidate Name *")
                     bg_position = st.text_input("Position Applied For *")
-                    bg_department = st.selectbox("Department", DEPARTMENTS)
+                    bg_department = st.selectbox("Department", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                 with c2:
                     bg_type = st.multiselect("Check Type *", [
                         "Employment Verification",
@@ -7003,26 +9838,72 @@ def ai_recruitment_agent():
     # ============ LINKEDIN ============
     elif ai_section == "🔗 LinkedIn Parse":
         st.subheader("🔍 LinkedIn Profile Parser")
-        linkedin_url = st.text_input("Enter LinkedIn Profile URL")
-        if st.button("🔍 Parse Profile", use_container_width=True):
-            if linkedin_url:
-                with st.spinner("Parsing..."):
-                    time.sleep(1)
-                    profile = linkedin_parser.parse_profile(linkedin_url)
-                    st.success("✅ Profile Parsed!")
-                    st.json(profile)
-    
-    # ============ SAVE ============
-    elif ai_section == "💾 Save Results":
-        st.subheader("💾 Export & Save")
-        try:
-            candidates = db.get_all_candidates()
-            if not candidates.empty:
-                st.download_button("📥 Download All (CSV)", candidates.to_csv(index=False), "candidates.csv", "text/csv")
+        st.info("Paste a LinkedIn URL and optionally the profile text for AI analysis.")
+        
+        linkedin_url = st.text_input("LinkedIn Profile URL", placeholder="https://www.linkedin.com/in/username/")
+        
+        st.markdown("---")
+        st.markdown("### 📋 Optional: Paste Profile Text for Better Results")
+        st.caption("Copy and paste the visible text from the LinkedIn profile page for more accurate parsing.")
+        profile_text = st.text_area("Paste LinkedIn Profile Text", height=150, 
+            placeholder="Paste the text content from the LinkedIn profile page here...\n\nThis helps the AI extract more accurate information.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔍 Parse Profile", use_container_width=True, type="primary"):
+                if linkedin_url:
+                    with st.spinner("🤖 AI analyzing profile..."):
+                        if profile_text:
+                            result = linkedin_parser.parse_profile(linkedin_url, profile_text)
+                        else:
+                            result = linkedin_parser.parse_profile(linkedin_url)
+                        
+                        if result:
+                            st.session_state.parsed_profile = result
+                            st.success(f"✅ Profile analyzed! Parsed via: {result.get('parsed_via', 'unknown')}")
+                            st.rerun()
+                else:
+                    st.error("Please enter a LinkedIn URL")
+        
+        with col2:
+            cv_file = st.file_uploader("Or upload CV for enhanced parsing", type=['pdf', 'docx', 'txt'], key="linkedin_cv")
+            if cv_file and linkedin_url:
+                cv_text = save_uploaded_file(cv_file)
+                if st.button("🔍 Parse with CV", use_container_width=True):
+                    with st.spinner("🤖 Analyzing with CV..."):
+                        result = linkedin_parser.parse_with_cv_text(linkedin_url, cv_text)
+                        if result:
+                            st.session_state.parsed_profile = result
+                            st.success(f"✅ Profile analyzed with CV enhancement!")
+                            st.rerun()
+        
+        if 'parsed_profile' in st.session_state:
+            profile = st.session_state.parsed_profile
+            st.markdown("---")
+            st.markdown("### 📊 Parsed Profile Data")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown(f"**👤 Name:** {profile.get('name', 'N/A')}")
+                st.markdown(f"**💼 Headline:** {profile.get('headline', 'N/A')}")
+                st.markdown(f"**📍 Location:** {profile.get('location', 'N/A')}")
+            with col2:
+                st.markdown(f"**🏢 Current Company:** {profile.get('current_company', 'N/A')}")
+                st.markdown(f"**📋 Position:** {profile.get('current_position', 'N/A')}")
+                st.markdown(f"**📅 Experience:** {profile.get('experience_years', 0)} years")
+            with col3:
+                st.markdown(f"**🎓 Education:** {profile.get('education', 'N/A')}")
+                st.markdown(f"**🔑 Skills:** {', '.join(profile.get('skills', [])[:8])}")
+                st.markdown(f"**📊 Parsed via:** {profile.get('parsed_via', 'unknown')}")
+            
+            if profile.get('summary'):
                 st.markdown("---")
-                st.metric("Predicted Time-to-Hire", "12-15 days", "Based on current pipeline velocity")
-        except:
-            st.info("No data to export.")
+                st.markdown(f"**📝 Summary:** {profile.get('summary', '')}")
+            
+            # Use profile button
+            if st.button("📋 Use This Profile Data", use_container_width=True, type="primary"):
+                st.session_state['prefill_candidate'] = profile
+                st.success("✅ Profile data ready! Go to Candidate Portal or Add Candidate to use it.")
 
 def chat_communications():
     st.markdown("""<div class="churchgate-header"><h1>💬 Social Hub</h1><p>Team Chat | Direct Messages | Announcements | Kudos | Polls | Interest Groups | Smart HRIS Bot | Integrations</p></div>""", unsafe_allow_html=True)
@@ -7685,7 +10566,7 @@ def training_development():
         with c1:
             course_filter = st.selectbox("Category", ["All", "Technical", "Leadership", "Compliance", "Soft Skills", "Professional"])
         with c2:
-            dept_filter_course = st.selectbox("Department", DEPARTMENTS_WITH_ALL)
+            dept_filter_course = st.selectbox("Department", ["All", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations", "Engineering"])
         with c3:
             level_filter = st.selectbox("Level", ["All", "Beginner", "Intermediate", "Advanced", "Expert"])
         
@@ -9800,7 +12681,7 @@ def personal_goals():
 
 
 def requests_hub():
-    st.markdown("""<div class="churchgate-header"><h1>🔄 Enterprise Requests Hub</h1><p>Leave Requests | Training Requests | Loan Requests | Document Requests | Procurement | All Approvals</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>🔄 Enterprise Requests Hub</h1><p>Leave Management | Attendance | Training | Loan | Procurement | Approvals | Calendar | Analytics</p></div>""", unsafe_allow_html=True)
     
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
     user_id = st.session_state.user.get('employee_id', '') if st.session_state.user else ''
@@ -9811,31 +12692,44 @@ def requests_hub():
     is_hod = is_admin or user_role in ['Manager', 'HOD']
     is_team_lead = is_hod or user_role in ['Team Lead']
     
+    # Get employee's reports_to info
+    reports_to = ''
+    if not is_admin:
+        try:
+            emp_data = db._get("employees", {"employee_id": user_id})
+            if emp_data and len(emp_data) > 0:
+                reports_to = emp_data[0].get('reports_to', '')
+        except:
+            pass
+    
+    # ============================================================
+    # LEAVE TYPES & DEFAULTS
+    # ============================================================
+    LEAVE_TYPES = {
+        'Annual Leave': {'default_entitled': 30, 'color': '#38a169'},
+        'Sick Leave': {'default_entitled': 5, 'color': '#3182ce'},
+        'Compassionate Leave': {'default_entitled': 5, 'color': '#d69e2e'},
+        'Loss of Pay (LOP)': {'default_entitled': 15, 'color': '#CC0000'},
+        'Maternity Leave': {'default_entitled': 84, 'color': '#805ad5'},
+        'Paternity Leave': {'default_entitled': 10, 'color': '#dd6b20'},
+        'Study Leave': {'default_entitled': 14, 'color': '#319795'},
+        'Casual Leave': {'default_entitled': 7, 'color': '#718096'},
+    }
+    
     request_types = [
         "🏖️ Leave Request",
-        "📚 Training Request", 
+        "📚 Training Request",
         "💰 Loan/Salary Advance",
         "📄 Document Request",
         "🛒 Procurement Request",
         "🔧 Maintenance Request",
         "💻 IT Support Request",
-        "📅 Time-Off Request",
         "🔄 Other Request"
     ]
     
-    def load_requests(status_filter=None, req_type=None):
-        try:
-            data = db._get("employee_requests")
-            if data:
-                if status_filter and status_filter != "All":
-                    data = [r for r in data if r.get('status') == status_filter]
-                if req_type and req_type != "All":
-                    data = [r for r in data if r.get('request_type') == req_type]
-                return sorted(data, key=lambda x: x.get('submitted_at', ''), reverse=True)
-        except:
-            pass
-        return []
-    
+    # ============================================================
+    # HELPER FUNCTIONS
+    # ============================================================
     def generate_request_id():
         return f"REQ-{datetime.now().strftime('%Y%m%d%H%M')}-{random.randint(100,999)}"
     
@@ -9847,10 +12741,126 @@ def requests_hub():
         except:
             return False
     
-    # Top Stats
-    all_requests = load_requests()
+    def get_leave_balance(emp_id, leave_type=None):
+        """Get leave balance for an employee"""
+        try:
+            data = db._get("leave_balances", {"employee_id": emp_id})
+            if data:
+                if leave_type:
+                    return [b for b in data if b.get('leave_type') == leave_type]
+                return data
+        except:
+            pass
+        return []
+    
+    def sync_zkteco_attendance(device_ip, port=4370):
+        """Sync attendance data from ZKTeco biometric device"""
+        try:
+            from zk import ZK
+            
+            zk = ZK(device_ip, port=port, timeout=15)
+            conn = zk.connect()
+            
+            if conn:
+                print(f"✅ Connected to device at {device_ip}:{port}")
+                attendance_logs = conn.get_attendance()
+                print(f"📊 Found {len(attendance_logs)} attendance records")
+                
+                synced_count = 0
+                for log in attendance_logs:
+                    # Check if already synced
+                    existing = db._get("attendance", {
+                        "employee_id": str(log.user_id),
+                        "sync_date": log.timestamp.strftime('%Y-%m-%d')
+                    })
+                    
+                    if not existing or len(existing) == 0:
+                        # Get employee name from biometric_id mapping
+                        emp_name = f"User {log.user_id}"
+                        emp_id = str(log.user_id)
+                        try:
+                            emp = db._get("employees", {"biometric_id": str(log.user_id)})
+                            if emp and len(emp) > 0:
+                                emp_name = f"{emp[0].get('first_name', '')} {emp[0].get('last_name', '')}"
+                                emp_id = emp[0].get('employee_id', str(log.user_id))
+                        except:
+                            pass
+                        
+                        time_str = log.timestamp.strftime('%H:%M')
+                        
+                        today_records = db._get("attendance", {
+                            "employee_id": emp_id,
+                            "sync_date": log.timestamp.strftime('%Y-%m-%d')
+                        })
+                        
+                        if today_records and len(today_records) > 0:
+                            db._patch("attendance", {
+                                "out_time": time_str,
+                                "work_hours": 8.0
+                            }, {"id": today_records[0]['id']})
+                        else:
+                            db._post("attendance", {
+                                "employee_id": emp_id,
+                                "employee_name": emp_name,
+                                "sync_date": log.timestamp.strftime('%Y-%m-%d'),
+                                "in_time": time_str,
+                                "out_time": "",
+                                "source": "Biometric",
+                                "status": "Present"
+                            })
+                        synced_count += 1
+                
+                conn.disconnect()
+                return synced_count, f"✅ Synced {synced_count} new attendance records"
+            return 0, "❌ Could not connect to device"
+        except Exception as e:
+            return 0, f"❌ Error: {str(e)}"
+    
+    def get_approver_chain(emp_id):
+        """Get the approval chain for an employee based on reports_to"""
+        chain = {'team_lead': '', 'hod': '', 'hr': 'asakote@churchgate.com'}
+        try:
+            emp = db._get("employees", {"employee_id": emp_id})
+            if emp and len(emp) > 0:
+                reports_to_name = emp[0].get('reports_to', '')
+                if reports_to_name:
+                    tl = db._get("employees", {"first_name": reports_to_name.split()[0] if ' ' in reports_to_name else reports_to_name})
+                    if tl and len(tl) > 0:
+                        chain['team_lead'] = tl[0].get('email', '')
+                
+                dept = emp[0].get('department', '')
+                hod = db._get("employees", {"department": dept})
+                if hod:
+                    for h in hod:
+                        if h.get('role') in ['HOD', 'Manager', 'Admin']:
+                            chain['hod'] = h.get('email', '')
+                            break
+        except:
+            pass
+        return chain
+    
+    def check_leave_balance(emp_id, leave_type, requested_days):
+        """Check if employee has enough leave balance"""
+        balances = get_leave_balance(emp_id, leave_type)
+        if balances:
+            balance = balances[0].get('balance', 0)
+            return balance >= requested_days, balance
+        return False, 0
+    
+    # ============================================================
+    # TOP STATS
+    # ============================================================
+    all_requests = []
+    try:
+        data = db._get("employee_requests")
+        if data:
+            all_requests = sorted(data, key=lambda x: x.get('submitted_at', ''), reverse=True)
+    except:
+        pass
+    
     my_requests = [r for r in all_requests if r.get('employee_id') == user_id]
     pending_my_approval = []
+    
     if is_team_lead:
         pending_my_approval = [r for r in all_requests if r.get('status') == 'Submitted' and r.get('department') == user_dept]
     if is_hod:
@@ -9858,370 +12868,1217 @@ def requests_hub():
     if is_admin:
         pending_my_approval = [r for r in all_requests if r.get('status') in ['Submitted', 'Recommended by TL', 'Approved by HOD']]
     
-    approved_today = [r for r in all_requests if r.get('status') == 'Approved' and r.get('updated_at', '')[:10] == datetime.now().strftime('%Y-%m-%d')]
-    
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1, c2, c3, c4 = st.columns(4)
     c1.metric("📋 My Requests", len(my_requests))
     c2.metric("⏳ Pending", len([r for r in my_requests if r.get('status') not in ['Approved', 'Rejected', 'Completed']]))
-    c3.metric("✅ Approved", len([r for r in my_requests if r.get('status') == 'Approved']))
-    c4.metric("🔔 Needs My Action", len(pending_my_approval))
-    c5.metric("📊 All Requests", len(all_requests))
-    c6.metric("🎯 Today's Approvals", len(approved_today))
+    c3.metric("🔔 Needs Action", len(pending_my_approval))
+    c4.metric("✅ Approved", len([r for r in my_requests if r.get('status') == 'Approved']))
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📝 New Request", "📋 My Requests", "🔔 Approvals Board", "📊 Tracking Dashboard", "📈 Analytics"
+    # ============================================================
+    # MAIN TABS
+    # ============================================================
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+        "🏖️ Leave Requisition", "📋 My Requests", "📥 Inbox", "📤 Outbox", 
+        "📅 Leave Calendar", "⏰ Attendance", "🔔 Approvals Board", "📊 Analytics"
     ])
     
-    # ============ TAB 1: NEW REQUEST ============
+    # ============================================================
+    # TAB 1: LEAVE REQUISITION
+    # ============================================================
     with tab1:
-        st.subheader("📝 Submit New Request")
+        st.subheader("🏖️ Leave Requisition")
         
-        with st.form("new_request"):
-            req_type = st.selectbox("Request Type *", request_types)
-            req_title = st.text_input("Request Title *", placeholder="Brief title for your request")
-            req_priority = st.selectbox("Priority", ["Low", "Medium", "High", "Urgent"])
+        # Leave balance display
+        st.markdown("### 📊 My Leave Balance")
+        balances = get_leave_balance(user_id)
+        
+        if balances:
+            balance_data = []
+            for b in balances:
+                balance_data.append({
+                    'Leave Type': b.get('leave_type', 'N/A'),
+                    'Entitled': b.get('entitled', 0),
+                    'Carry Forward': b.get('carry_forward', 0),
+                    'Adjustment': b.get('adjustment', 0),
+                    'Total Taken': b.get('total_taken', 0),
+                    'Balance': b.get('balance', 0)
+                })
             
-            st.markdown("---")
-            req_description = st.text_area("Detailed Description *", height=150, 
-                placeholder="Describe your request in detail. Include dates, amounts, or any specific requirements.")
+            if balance_data:
+                df_balance = pd.DataFrame(balance_data)
+                
+                # Color-coded balance display
+                for _, row in df_balance.iterrows():
+                    bal = row['Balance']
+                    color = '#38a169' if bal > 5 else '#CC0000' if bal <= 0 else '#d69e2e'
+                    lt = row['Leave Type']
+                    lc = LEAVE_TYPES.get(lt, {}).get('color', '#CC0000')
+                    
+                    st.markdown(f"""
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem;margin:0.2rem 0;background:white;border-radius:6px;border-left:4px solid {lc};">
+                        <strong>{lt}</strong>
+                        <div style="display:flex;gap:1rem;font-size:0.85rem;">
+                            <span>Entitled: <strong>{row['Entitled']:.0f}</strong></span>
+                            <span>CF: <strong>{row['Carry Forward']:.0f}</strong></span>
+                            <span>Adj: <strong>{row['Adjustment']:.0f}</strong></span>
+                            <span>Taken: <strong>{row['Total Taken']:.0f}</strong></span>
+                            <span style="color:{color};font-weight:700;">Balance: <strong>{bal:.0f}</strong></span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info("No leave balance records found. Contact HR to set up your leave entitlement.")
+        
+        st.markdown("---")
+        
+        # Leave Request Form
+        st.markdown("### 📝 Submit Leave Request")
+        
+        # ALL inputs OUTSIDE form for real-time calculation
+        col1, col2 = st.columns(2)
+        with col1:
+            leave_type = st.selectbox("Leave Type *", list(LEAVE_TYPES.keys()), key="leave_type_out")
+            from_date = st.date_input("From Date *", key="from_date_out")
+            from_session = st.selectbox("From Session", ["First Session", "Second Session"], key="from_session_out")
+        with col2:
+            to_date = st.date_input("To Date *", key="to_date_out")
+            to_session = st.selectbox("To Session", ["First Session", "Second Session"], key="to_session_out")
+        
+        # Calculate days in real-time
+        if from_date and to_date:
+            no_of_days = (to_date - from_date).days + 1
+            if from_session == "Second Session":
+                no_of_days -= 0.5
+            if to_session == "First Session":
+                no_of_days -= 0.5
+            st.metric("📅 Number of Days", f"{no_of_days:.1f}")
+        else:
+            no_of_days = 0
+        
+        # Balance check in real-time
+        if leave_type and no_of_days > 0:
+            has_balance, available = check_leave_balance(user_id, leave_type, no_of_days)
+            if has_balance:
+                st.success(f"✅ You have sufficient balance ({available:.0f} days available)")
+            else:
+                st.error(f"❌ Insufficient balance! You only have {available:.0f} days. Requested: {no_of_days:.1f} days")
+        
+        st.markdown("---")
+        
+        # Form with just reason and submit
+        with st.form("leave_request_form"):
+            reason = st.text_area("Reason *", height=100, placeholder="Describe the reason for your leave...")
             
             col1, col2 = st.columns(2)
             with col1:
-                if "Leave" in req_type:
-                    leave_start = st.date_input("Start Date")
-                    leave_end = st.date_input("End Date")
-                    req_description += f"\n\nLeave Period: {leave_start} to {leave_end} ({(leave_end - leave_start).days + 1} days)"
-                elif "Loan" in req_type or "Advance" in req_type:
-                    loan_amount = st.text_input("Amount (₦)", placeholder="e.g., 500,000")
-                    loan_purpose = st.text_area("Purpose of Loan")
-                    req_description += f"\n\nAmount: ₦{loan_amount}\nPurpose: {loan_purpose}"
-                elif "Training" in req_type:
-                    training_name = st.text_input("Training/Course Name")
-                    training_cost = st.text_input("Cost (₦)")
-                    training_date = st.date_input("Training Date")
-                    req_description += f"\n\nTraining: {training_name}\nCost: ₦{training_cost}\nDate: {training_date}"
-            
+                save_draft = st.form_submit_button("💾 Save as Draft", use_container_width=True)
             with col2:
-                st.markdown("**Attachments (Optional)**")
-                st.caption("Upload supporting documents (PDF, JPG, PNG)")
-                attachment = st.file_uploader("Upload File", type=['pdf', 'jpg', 'png', 'docx'], key="req_attachment")
+                submit_leave = st.form_submit_button("📤 Submit for Approval", use_container_width=True)
             
-            st.markdown("---")
-            st.markdown("### 🔄 Approval Flow")
-            st.info(f"Your request will follow this flow: **You → Team Lead (Recommendation) → HOD (Approval) → HR (Processing)**")
-            
-            if st.form_submit_button("📤 Submit Request", use_container_width=True):
-                if req_title and req_description:
+            if save_draft or submit_leave:
+                if leave_type and from_date and to_date and reason:
                     req_id = generate_request_id()
+                    status = "Submitted" if submit_leave else "Draft"
                     
+                    # Save to leave_requests table
+                    db._post("leave_requests", {
+                        "request_id": req_id,
+                        "employee_id": user_id,
+                        "employee_name": user_name,
+                        "department": user_dept,
+                        "leave_type": leave_type,
+                        "from_date": from_date.strftime('%Y-%m-%d'),
+                        "to_date": to_date.strftime('%Y-%m-%d'),
+                        "from_session": from_session,
+                        "to_session": to_session,
+                        "no_of_days": no_of_days,
+                        "reason": reason,
+                        "status": status,
+                        "submitted_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M')
+                    })
+                    
+                    # Also save to employee_requests for the general approval workflow
                     db._post("employee_requests", {
                         "request_id": req_id,
                         "employee_id": user_id,
                         "employee_name": user_name,
                         "department": user_dept,
-                        "request_type": req_type,
-                        "title": req_title,
-                        "description": req_description,
-                        "priority": req_priority,
-                        "status": "Submitted",
+                        "request_type": "🏖️ Leave Request",
+                        "title": f"{leave_type} - {no_of_days:.1f} days",
+                        "description": f"Leave Type: {leave_type}\nDates: {from_date} to {to_date}\nSession: {from_session} to {to_session}\nDays: {no_of_days}\n\nReason: {reason}",
+                        "status": status,
+                        "priority": "Medium",
                         "submitted_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
                         "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
                     })
                     
-                    st.success(f"✅ Request {req_id} submitted! Your team lead will be notified.")
-                    st.balloons()
+                    if submit_leave:
+                        # Notify Team Lead for recommendation
+                        chain = get_approver_chain(user_id)
+                        if chain['team_lead']:
+                            send_status_email(chain['team_lead'], 
+                                f"🔔 Leave Request: {user_name}",
+                                f"{user_name} has submitted a leave request.\n\nType: {leave_type}\nDates: {from_date} to {to_date}\nDays: {no_of_days}\n\nPlease review at: https://hris.churchgate.com")
+                        
+                        st.success(f"✅ Leave request {req_id} submitted for approval!")
+                        st.balloons()
+                    else:
+                        st.success(f"✅ Draft saved! (ID: {req_id})")
                     st.rerun()
                 else:
-                    st.error("❌ Title and description are required!")
-    
-    # ============ TAB 2: MY REQUESTS ============
+                    st.error("❌ Please fill all required fields!")
+
+
+# ============================================================
+    # TAB 2: MY REQUESTS (INBOX/OUTBOX COMBINED)
+    # ============================================================
     with tab2:
         st.subheader("📋 My Requests")
         
-        my_filter = st.selectbox("Filter", ["All", "Submitted", "Recommended by TL", "Approved by HOD", "Approved", "Rejected", "Completed"], key="my_filter")
+        # Sub-tabs for Inbox/Outbox style
+        my_tabs = st.tabs(["📤 Outbox (My Requests)", "📥 Inbox (Pending My Approval)", "📜 Archive"])
         
-        filtered_my = my_requests if my_filter == "All" else [r for r in my_requests if r.get('status') == my_filter]
-        
-        if filtered_my:
-            for req in filtered_my:
-                status = req.get('status', 'Submitted')
-                priority = req.get('priority', 'Medium')
-                
-                status_colors = {
-                    'Submitted': '#a0aec0',
-                    'Recommended by TL': '#3182ce',
-                    'Approved by HOD': '#d69e2e',
-                    'Approved': '#38a169',
-                    'Rejected': '#CC0000',
-                    'Completed': '#38a169'
-                }
-                
-                priority_colors = {'Low': '#a0aec0', 'Medium': '#d69e2e', 'High': '#dd6b20', 'Urgent': '#CC0000'}
-                
-                color = status_colors.get(status, '#a0aec0')
-                
-                with st.expander(f"{req.get('request_type', '')} — {req.get('title', '')} | {status} | {req.get('submitted_at', '')[:10]}"):
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.markdown(f"**Request ID:** {req.get('request_id', 'N/A')}")
-                        st.markdown(f"**Description:** {req.get('description', '')}")
-                        st.markdown(f"**Priority:** <span style='color:{priority_colors.get(priority, '#888')};font-weight:600;'>{priority}</span>", unsafe_allow_html=True)
-                        
-                        # Show approval chain
-                        st.markdown("---")
-                        st.markdown("**🔄 Approval Progress:**")
-                        
-                        steps = [
-                            ("📝 Submitted", 'Submitted', req.get('submitted_at', '')),
-                            ("👔 Team Lead", 'Recommended by TL', req.get('team_lead_decision', '')),
-                            ("🏢 HOD", 'Approved by HOD', req.get('hod_decision', '')),
-                            ("✅ Final", 'Approved', req.get('hr_decision', ''))
-                        ]
-                        
-                        for step_name, step_status, step_value in steps:
-                            if status == step_status or (step_status == 'Submitted' and status in ['Submitted', 'Recommended by TL', 'Approved by HOD', 'Approved']):
-                                icon = "✅" if status in ['Approved by HOD', 'Approved', 'Completed'] and step_status != 'Approved' else "🔄" if step_status == status else "✅"
-                                st.markdown(f"{icon} **{step_name}** — {step_value if step_value else 'Pending'}")
-                            elif status == 'Rejected':
-                                icon = "✅" if step_status != 'Approved' else "❌"
-                                st.markdown(f"{icon} **{step_name}**")
-                            else:
-                                st.markdown(f"⏳ **{step_name}**")
-                        
-                        if req.get('team_lead_comment'):
-                            st.markdown(f"💬 **TL Comment:** {req['team_lead_comment']}")
-                        if req.get('hod_comment'):
-                            st.markdown(f"💬 **HOD Comment:** {req['hod_comment']}")
-                        if req.get('hr_comment'):
-                            st.markdown(f"💬 **HR Comment:** {req['hr_comment']}")
-                    
-                    with col2:
-                        st.markdown(f"<span style='background:{color};color:white;padding:0.3rem 0.8rem;border-radius:15px;font-size:0.85rem;'>{status}</span>", unsafe_allow_html=True)
-        else:
-            st.info("No requests found. Submit your first request in the 'New Request' tab.")
-    
-    # ============ TAB 3: APPROVALS BOARD ============
-    with tab3:
-        st.subheader("🔔 Approvals Board")
-        
-        if not (is_team_lead or is_hod or is_admin):
-            st.info("This section is for Team Leads, HODs, and HR/Admin only.")
-        else:
-            st.markdown(f"### {len(pending_my_approval)} Request(s) Awaiting Your Action")
+        # ----- OUTBOX -----
+        with my_tabs[0]:
+            st.markdown("### 📤 My Submitted Requests")
             
-            if pending_my_approval:
-                for req in pending_my_approval:
-                    priority = req.get('priority', 'Medium')
-                    border_color = "#CC0000" if priority == 'Urgent' else "#dd6b20" if priority == 'High' else "#d69e2e"
-                    
-                    with st.expander(f"{'🚨' if priority == 'Urgent' else '🔔'} {req.get('request_type', '')} — {req.get('title', '')} | {req.get('employee_name', '')} | {req.get('submitted_at', '')[:10]}", expanded=(priority == 'Urgent')):
-                        st.markdown(f"**Request ID:** {req.get('request_id', 'N/A')}")
-                        st.markdown(f"**Employee:** {req.get('employee_name', '')} ({req.get('department', '')})")
-                        st.markdown(f"**Priority:** {priority}")
-                        st.markdown(f"**Description:** {req.get('description', '')}")
-                        
-                        st.markdown("---")
-                        
-                        # Team Lead Action
-                        if is_team_lead and req.get('status') == 'Submitted':
-                            st.markdown("#### 👔 Team Lead Review")
-                            with st.form(key=f"tl_{req.get('id')}"):
-                                tl_comment = st.text_area("Your Comment *", key=f"tl_comment_{req.get('id')}")
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    if st.form_submit_button("✅ Recommend", use_container_width=True):
-                                        if tl_comment:
-                                            db._patch("employee_requests", {
-                                                "status": "Recommended by TL",
-                                                "team_lead_name": user_name,
-                                                "team_lead_comment": tl_comment,
-                                                "team_lead_decision": "Recommended",
-                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
-                                            }, {"id": req.get('id')})
-                                            send_status_email(user_email, f"Request Recommended: {req.get('request_id')}", f"Your request has been recommended by your Team Lead.\n\nComment: {tl_comment}")
-                                            st.success("✅ Recommended! Forwarded to HOD.")
-                                            st.rerun()
-                                with col2:
-                                    if st.form_submit_button("❌ Return for Revision", use_container_width=True):
-                                        if tl_comment:
-                                            db._patch("employee_requests", {
-                                                "status": "Submitted",
-                                                "team_lead_name": user_name,
-                                                "team_lead_comment": tl_comment,
-                                                "team_lead_decision": "Returned",
-                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
-                                            }, {"id": req.get('id')})
-                                            st.warning("🔄 Returned for revision.")
-                                            st.rerun()
-                        
-                        # HOD Action
-                        if is_hod and req.get('status') in ['Submitted', 'Recommended by TL']:
-                            st.markdown("#### 🏢 HOD Approval")
-                            with st.form(key=f"hod_{req.get('id')}"):
-                                hod_comment = st.text_area("Your Comment *", key=f"hod_comment_{req.get('id')}")
-                                col1, col2, col3 = st.columns(3)
-                                with col1:
-                                    if st.form_submit_button("✅ Approve", use_container_width=True):
-                                        if hod_comment:
-                                            db._patch("employee_requests", {
-                                                "status": "Approved by HOD",
-                                                "hod_name": user_name,
-                                                "hod_comment": hod_comment,
-                                                "hod_decision": "Approved",
-                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
-                                            }, {"id": req.get('id')})
-                                            send_status_email(user_email, f"Request Approved by HOD: {req.get('request_id')}", f"Your request has been approved by the HOD.\n\nComment: {hod_comment}")
-                                            st.success("✅ Approved! Sent to HR for processing.")
-                                            st.rerun()
-                                with col2:
-                                    if st.form_submit_button("❌ Reject", use_container_width=True):
-                                        if hod_comment:
-                                            db._patch("employee_requests", {
-                                                "status": "Rejected",
-                                                "hod_name": user_name,
-                                                "hod_comment": hod_comment,
-                                                "hod_decision": "Rejected",
-                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
-                                            }, {"id": req.get('id')})
-                                            st.error("❌ Rejected.")
-                                            st.rerun()
-                                with col3:
-                                    if st.form_submit_button("🔄 Revise", use_container_width=True):
-                                        if hod_comment:
-                                            db._patch("employee_requests", {
-                                                "status": "Submitted",
-                                                "hod_name": user_name,
-                                                "hod_comment": hod_comment,
-                                                "hod_decision": "Revision Requested",
-                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
-                                            }, {"id": req.get('id')})
-                                            st.warning("🔄 Revision requested.")
-                                            st.rerun()
-                        
-                        # HR Final Processing
-                        if is_admin and req.get('status') == 'Approved by HOD':
-                            st.markdown("#### 🔍 HR Final Processing")
-                            with st.form(key=f"hr_{req.get('id')}"):
-                                hr_comment = st.text_area("Processing Notes *", key=f"hr_comment_{req.get('id')}")
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    if st.form_submit_button("✅ Complete & Close", use_container_width=True):
-                                        if hr_comment:
-                                            db._patch("employee_requests", {
-                                                "status": "Completed",
-                                                "hr_comment": hr_comment,
-                                                "hr_decision": "Completed",
-                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
-                                            }, {"id": req.get('id')})
-                                            send_status_email(user_email, f"Request Completed: {req.get('request_id')}", f"Your request has been processed and completed.\n\nNotes: {hr_comment}")
-                                            st.success("✅ Request completed!")
-                                            st.balloons()
-                                            st.rerun()
-                                with col2:
-                                    if st.form_submit_button("❌ Reject", use_container_width=True):
-                                        if hr_comment:
-                                            db._patch("employee_requests", {
-                                                "status": "Rejected",
-                                                "hr_comment": hr_comment,
-                                                "hr_decision": "Rejected",
-                                                "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M')
-                                            }, {"id": req.get('id')})
-                                            st.error("❌ Rejected.")
-                                            st.rerun()
-            else:
-                st.success("🎉 No pending approvals! You're all caught up.")
-    
-    # ============ TAB 4: TRACKING DASHBOARD ============
-    with tab4:
-        st.subheader("📊 Request Tracking Dashboard")
-        
-        if is_admin or is_hod:
             col1, col2, col3 = st.columns(3)
             with col1:
-                track_status = st.selectbox("Status", ["All", "Submitted", "Recommended by TL", "Approved by HOD", "Approved", "Rejected", "Completed"], key="track_status")
+                my_type_filter = st.selectbox("Request Type", ["All"] + request_types, key="my_type")
             with col2:
-                track_type = st.selectbox("Type", ["All"] + request_types, key="track_type")
+                my_status_filter = st.selectbox("Status", ["All", "Draft", "Submitted", "Recommended by TL", "Approved by HOD", "Approved", "Rejected", "Completed"], key="my_status")
             with col3:
-                track_dept = st.selectbox("Department", ["All"] + list(set([r.get('department', '') for r in all_requests])), key="track_dept")
+                my_date_range = st.date_input("Date Range", [datetime.now() - timedelta(days=90), datetime.now()], key="my_date")
             
-            tracked = all_requests
-            if track_status != "All":
-                tracked = [r for r in tracked if r.get('status') == track_status]
-            if track_type != "All":
-                tracked = [r for r in tracked if r.get('request_type') == track_type]
-            if track_dept != "All":
-                tracked = [r for r in tracked if r.get('department') == track_dept]
+            filtered_my = my_requests
+            if my_type_filter != "All":
+                filtered_my = [r for r in filtered_my if my_type_filter.lower() in r.get('request_type', '').lower()]
+            if my_status_filter != "All":
+                filtered_my = [r for r in filtered_my if r.get('status') == my_status_filter]
             
-            st.markdown(f"**{len(tracked)} requests found**")
+            st.markdown(f"**{len(filtered_my)} request(s)**")
             
-            if tracked:
-                for req in tracked[:20]:
+            if filtered_my:
+                for req in filtered_my[:20]:
                     status = req.get('status', 'Submitted')
-                    color = {'Submitted': '#a0aec0', 'Recommended by TL': '#3182ce', 'Approved by HOD': '#d69e2e', 'Approved': '#38a169', 'Rejected': '#CC0000', 'Completed': '#38a169'}.get(status, '#a0aec0')
+                    priority = req.get('priority', 'Medium')
                     
+                    status_colors = {
+                        'Draft': '#a0aec0', 'Submitted': '#3182ce', 'Recommended by TL': '#d69e2e',
+                        'Approved by HOD': '#38a169', 'Approved': '#38a169', 'Rejected': '#CC0000', 'Completed': '#38a169'
+                    }
+                    color = status_colors.get(status, '#a0aec0')
+                    
+                    with st.expander(f"{'📝' if status == 'Draft' else '📤'} {req.get('request_type', '')} — {req.get('title', req.get('leave_type', 'Request'))} | {status} | {req.get('submitted_at', '')[:10]}"):
+                        st.markdown(f"**ID:** {req.get('request_id', 'N/A')}")
+                        
+                        # Leave-specific details
+                        if req.get('leave_type'):
+                            st.markdown(f"**Leave Type:** {req.get('leave_type')}")
+                            st.markdown(f"**Dates:** {req.get('from_date', '')} to {req.get('to_date', '')} ({req.get('no_of_days', 0)} days)")
+                            st.markdown(f"**Session:** {req.get('from_session', '')} - {req.get('to_session', '')}")
+                        
+                        st.markdown(f"**Description:** {req.get('description', req.get('reason', 'N/A'))}")
+                        st.markdown(f"**Priority:** {priority}")
+                        
+                        # Approval progress
+                        st.markdown("---")
+                        st.markdown("**🔄 Progress:**")
+                        steps = ["Submitted", "Recommended by TL", "Approved by HOD", "Approved", "Completed"]
+                        for step in steps:
+                            if status == step or steps.index(step) < steps.index(status) if status in steps else False:
+                                st.markdown(f"✅ {step}")
+                            elif status == 'Rejected' and step == 'Approved':
+                                st.markdown(f"❌ Rejected")
+                            else:
+                                st.markdown(f"⏳ {step}")
+                        
+                        if status == 'Draft':
+                            if st.button(f"📤 Submit Now", key=f"submit_draft_{req.get('id')}"):
+                                db._patch("employee_requests", {"status": "Submitted", "submitted_at": datetime.now().strftime('%Y-%m-%d %H:%M')}, {"id": req.get('id')})
+                                st.success("✅ Submitted!")
+                                st.rerun()
+            else:
+                st.info("No requests found.")
+        
+        # ----- INBOX -----
+        with my_tabs[1]:
+            st.markdown("### 📥 Requests Awaiting My Approval")
+            
+            if not (is_team_lead or is_hod or is_admin):
+                st.info("You don't have approval permissions.")
+            else:
+                if pending_my_approval:
+                    for req in pending_my_approval:
+                        priority = req.get('priority', 'Medium')
+                        border = "#CC0000" if priority == 'Urgent' else "#d69e2e"
+                        
+                        with st.expander(f"{'🚨' if priority == 'Urgent' else '🔔'} {req.get('employee_name', '')} — {req.get('request_type', '')} — {req.get('submitted_at', '')[:10]}", expanded=(priority == 'Urgent')):
+                            st.markdown(f"**ID:** {req.get('request_id', 'N/A')}")
+                            st.markdown(f"**Employee:** {req.get('employee_name', '')} ({req.get('department', '')})")
+                            
+                            if req.get('leave_type'):
+                                st.markdown(f"**Leave:** {req.get('leave_type')} | {req.get('from_date', '')} to {req.get('to_date', '')} | {req.get('no_of_days', 0)} days")
+                            
+                            st.markdown(f"**Reason:** {req.get('reason', req.get('description', 'N/A'))}")
+                            
+                            st.markdown("---")
+                            with st.form(key=f"approve_{req.get('id')}"):
+                                comment = st.text_area("Comment *", key=f"cmt_{req.get('id')}")
+                                c1, c2, c3 = st.columns(3)
+                                with c1:
+                                    if st.form_submit_button("✅ Approve", use_container_width=True):
+                                        if comment:
+                                            new_status = "Approved by HOD" if is_hod else "Recommended by TL"
+                                            db._patch("employee_requests", {"status": new_status, "hod_comment": comment, "approved_by": user_name, "approved_at": datetime.now().strftime('%Y-%m-%d %H:%M')}, {"id": req.get('id')})
+                                            send_status_email(req.get('employee_email', user_email), f"✅ Request Approved: {req.get('request_id')}", f"Your request has been approved.\n\nComment: {comment}")
+                                            st.success("✅ Approved!")
+                                            st.rerun()
+                                with c2:
+                                    if st.form_submit_button("❌ Reject", use_container_width=True):
+                                        if comment:
+                                            db._patch("employee_requests", {"status": "Rejected", "hod_comment": comment}, {"id": req.get('id')})
+                                            st.error("❌ Rejected")
+                                            st.rerun()
+                                with c3:
+                                    if st.form_submit_button("🔄 Revise", use_container_width=True):
+                                        if comment:
+                                            db._patch("employee_requests", {"status": "Draft", "hod_comment": comment}, {"id": req.get('id')})
+                                            st.warning("🔄 Returned for revision")
+                                            st.rerun()
+                else:
+                    st.success("🎉 No pending approvals!")
+        
+        # ----- ARCHIVE -----
+        with my_tabs[2]:
+            st.markdown("### 📜 Request History")
+            completed = [r for r in my_requests if r.get('status') in ['Approved', 'Rejected', 'Completed']]
+            if completed:
+                for req in completed[:20]:
                     st.markdown(f"""
-                    <div style="background:white;padding:0.6rem 1rem;border-radius:6px;margin-bottom:0.3rem;border-left:4px solid {color};">
-                        <strong>{req.get('request_type', '')}</strong> — {req.get('title', '')} | {req.get('employee_name', '')} ({req.get('department', '')})
-                        <span style="float:right;background:{color};color:white;padding:0.2rem 0.5rem;border-radius:10px;font-size:0.75rem;">{status}</span>
-                        <br><small>ID: {req.get('request_id', '')} | Submitted: {req.get('submitted_at', '')[:10]}</small>
+                    <div style="padding:0.4rem;margin:0.2rem 0;border-left:3px solid {'#38a169' if req.get('status') == 'Approved' else '#CC0000'};background:white;border-radius:4px;">
+                        <strong>{req.get('request_type', '')}</strong> — {req.get('title', req.get('leave_type', ''))} | 
+                        <span style="color:{'#38a169' if req.get('status')=='Approved' else '#CC0000'};font-weight:600;">{req.get('status')}</span>
+                        <br><small>{req.get('submitted_at', '')[:10]} | ID: {req.get('request_id', '')}</small>
                     </div>
                     """, unsafe_allow_html=True)
-        else:
-            st.info("Tracking dashboard is available for Managers, HODs, and HR/Admin.")
+            else:
+                st.info("No archived requests.")
     
-    # ============ TAB 5: ANALYTICS ============
-    with tab5:
-        st.subheader("📈 Request Analytics")
+    # ============================================================
+    # TAB 3: INBOX (All requests for approval)
+    # ============================================================
+    with tab3:
+        st.subheader("📥 Approval Inbox")
         
-        if all_requests:
-            total = len(all_requests)
-            by_type = {}
-            by_status = {}
-            by_dept = {}
-            for r in all_requests:
-                t = r.get('request_type', 'Other')
-                s = r.get('status', 'Submitted')
-                d = r.get('department', 'Unknown')
-                by_type[t] = by_type.get(t, 0) + 1
-                by_status[s] = by_status.get(s, 0) + 1
-                by_dept[d] = by_dept.get(d, 0) + 1
+        if not (is_team_lead or is_hod or is_admin):
+            st.info("You don't have approval permissions.")
+        else:
+            # Filters
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                inbox_type = st.selectbox("Request Type", ["All", "Leave", "Training", "Loan", "Document", "Procurement", "IT", "Maintenance", "Other"], key="inbox_type")
+            with col2:
+                inbox_status = st.selectbox("Status", ["All", "Submitted", "Recommended by TL", "Approved by HOD"], key="inbox_status")
+            with col3:
+                inbox_priority = st.selectbox("Priority", ["All", "Urgent", "High", "Medium", "Low"], key="inbox_priority")
+            
+            # Load leave requests too
+            leave_reqs = []
+            try:
+                lr = db._get("leave_requests")
+                if lr:
+                    for r in lr:
+                        if r.get('status') == 'Submitted':
+                            leave_reqs.append({
+                                'id': r.get('id'),
+                                'request_id': r.get('request_id'),
+                                'employee_name': r.get('employee_name'),
+                                'department': r.get('department'),
+                                'request_type': 'Leave Request',
+                                'leave_type': r.get('leave_type'),
+                                'from_date': r.get('from_date'),
+                                'to_date': r.get('to_date'),
+                                'no_of_days': r.get('no_of_days'),
+                                'reason': r.get('reason'),
+                                'status': r.get('status'),
+                                'submitted_at': r.get('submitted_at'),
+                                'priority': 'Medium'
+                            })
+            except:
+                pass
+            
+            all_pending = pending_my_approval + leave_reqs
+            
+            if all_pending:
+                st.markdown(f"**{len(all_pending)} request(s) awaiting your action**")
+                
+                for req in all_pending[:30]:
+                    with st.expander(f"{req.get('employee_name', '')} — {req.get('request_type', '')} — {req.get('submitted_at', '')[:10]}"):
+                        st.markdown(f"**ID:** {req.get('request_id', 'N/A')}")
+                        if req.get('leave_type'):
+                            st.markdown(f"**Leave:** {req.get('leave_type')} | {req.get('from_date', '')} to {req.get('to_date', '')} | {req.get('no_of_days', 0)} days")
+                        st.markdown(f"**Reason:** {req.get('reason', req.get('description', 'N/A'))}")
+                        
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button(f"✅ Approve", key=f"in_approve_{req.get('id')}"):
+                                db._patch("leave_requests" if req.get('leave_type') else "employee_requests", {"status": "Approved", "approved_by": user_name, "approved_at": datetime.now().strftime('%Y-%m-%d %H:%M')}, {"id": req.get('id')})
+                                # Update leave balance
+                                if req.get('leave_type') and req.get('no_of_days'):
+                                    try:
+                                        bal = db._get("leave_balances", {"employee_id": req.get('employee_id', ''), "leave_type": req.get('leave_type')})
+                                        if bal and len(bal) > 0:
+                                            new_taken = float(bal[0].get('total_taken', 0)) + float(req.get('no_of_days', 0))
+                                            new_balance = float(bal[0].get('balance', 0)) - float(req.get('no_of_days', 0))
+                                            db._patch("leave_balances", {"total_taken": new_taken, "balance": new_balance}, {"id": bal[0]['id']})
+                                    except:
+                                        pass
+                                st.success("✅ Approved!")
+                                st.rerun()
+                        with c2:
+                            if st.button(f"❌ Reject", key=f"in_reject_{req.get('id')}"):
+                                db._patch("leave_requests" if req.get('leave_type') else "employee_requests", {"status": "Rejected"}, {"id": req.get('id')})
+                                st.error("❌ Rejected")
+                                st.rerun()
+            else:
+                st.success("🎉 All caught up! No pending approvals.")
+    
+    # ============================================================
+    # TAB 4: OUTBOX
+    # ============================================================
+    with tab4:
+        st.subheader("📤 Outbox - All Submitted Requests")
+        
+        # Filters
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            ob_type = st.selectbox("Type", ["All", "Leave", "Training", "Loan", "Document", "Procurement"], key="ob_type")
+        with col2:
+            ob_status = st.selectbox("Status", ["All", "Draft", "Submitted", "Approved", "Rejected", "Completed"], key="ob_status")
+        with col3:
+            ob_from = st.date_input("From", datetime.now() - timedelta(days=90), key="ob_from")
+        with col4:
+            ob_to = st.date_input("To", datetime.now(), key="ob_to")
+        
+        all_outbox = all_requests
+        
+        if all_outbox:
+            # Show as table
+            outbox_data = []
+            for r in all_outbox[:50]:
+                outbox_data.append({
+                    'ID': r.get('request_id', ''),
+                    'Type': r.get('request_type', ''),
+                    'Submitted By': r.get('employee_name', ''),
+                    'Department': r.get('department', ''),
+                    'Status': r.get('status', ''),
+                    'Submitted On': r.get('submitted_at', '')[:10],
+                    'Priority': r.get('priority', '')
+                })
+            
+            if outbox_data:
+                df_out = pd.DataFrame(outbox_data)
+                st.dataframe(df_out, use_container_width=True, hide_index=True)
+                st.download_button("📥 Export CSV", df_out.to_csv(index=False), "outbox.csv", "text/csv")
+        else:
+            st.info("No requests in outbox.")
+    
+    # ============================================================
+    # TAB 5: LEAVE CALENDAR - MASSIVE UPGRADE
+    # ============================================================
+    with tab5:
+        st.subheader("📅 Leave Calendar")
+        st.markdown("*Interactive team leave visualization — color-coded by status*")
+        
+        # Legend
+        st.markdown("""
+        <div style="display:flex;gap:1.5rem;margin:1rem 0;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#3182ce;"></div><span style="font-size:0.85rem;">Submitted</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#38a169;"></div><span style="font-size:0.85rem;">Approved</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#805ad5;"></div><span style="font-size:0.85rem;">Processed</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#CC0000;"></div><span style="font-size:0.85rem;">Holiday</span></div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Filters
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            cal_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="cal_region")
+        with col2:
+            # Get unique departments
+            all_depts_cal = ["All"]
+            try:
+                lr_data = db._get("leave_requests")
+                if lr_data:
+                    all_depts_cal += sorted(list(set([r.get('department', '') for r in lr_data if r.get('department')])))
+            except:
+                pass
+            cal_dept = st.selectbox("🏢 Department", all_depts_cal, key="cal_dept")
+        with col3:
+            import calendar as cal_module
+            current_month = datetime.now().month
+            current_year = datetime.now().year
+            month_names = list(cal_module.month_name)[1:]
+            cal_month = st.selectbox("📅 Month", month_names, index=current_month - 1, key="cal_month_name")
+            cal_month_num = month_names.index(cal_month) + 1
+        with col4:
+            cal_year = st.selectbox("📆 Year", list(range(current_year - 1, current_year + 2)), index=1, key="cal_year")
+        
+        # Get leave data
+        leave_data = []
+        try:
+            lr = db._get("leave_requests")
+            if lr:
+                for r in lr:
+                    if r.get('status') in ['Submitted', 'Approved', 'Completed']:
+                        # Region/Dept filter
+                        if cal_region != "All":
+                            emp_region = "Lagos"
+                            try:
+                                emp = db._get("employees", {"employee_id": r.get('employee_id', '')})
+                                if emp and len(emp) > 0:
+                                    sub = emp[0].get('subsidiary', '')
+                                    emp_region = get_region(sub) if 'get_region' in dir() else "Lagos"
+                            except:
+                                pass
+                            if emp_region != cal_region:
+                                continue
+                        
+                        if cal_dept != "All" and r.get('department', '') != cal_dept:
+                            continue
+                        
+                        leave_data.append(r)
+        except:
+            pass
+        
+        # Nigerian public holidays 2026
+        holidays = {
+            f"{cal_year}-01-01": "New Year's Day",
+            f"{cal_year}-01-02": "New Year Holiday",
+            f"{cal_year}-03-08": "International Women's Day",
+            f"{cal_year}-04-03": "Good Friday",
+            f"{cal_year}-04-05": "Easter Sunday",
+            f"{cal_year}-04-06": "Easter Monday",
+            f"{cal_year}-05-01": "Workers' Day",
+            f"{cal_year}-05-27": "Children's Day",
+            f"{cal_year}-06-12": "Democracy Day",
+            f"{cal_year}-06-16": "Eid al-Adha (Estimated)",
+            f"{cal_year}-07-07": "Islamic New Year (Estimated)",
+            f"{cal_year}-09-15": "Eid el-Maulud (Estimated)",
+            f"{cal_year}-10-01": "Independence Day",
+            f"{cal_year}-12-25": "Christmas Day",
+            f"{cal_year}-12-26": "Boxing Day",
+        }
+        
+        # Generate calendar
+        cal = cal_module.TextCalendar(cal_module.SUNDAY)
+        month_days = cal.monthdayscalendar(cal_year, cal_month_num)
+        
+        # Calendar header
+        st.markdown(f"""
+        <h3 style="text-align:center;color:#1a1a1a;margin:1rem 0;">
+            {cal_module.month_name[cal_month_num]} {cal_year}
+        </h3>
+        """, unsafe_allow_html=True)
+        
+        # Day headers
+        day_names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        cols = st.columns(7)
+        for i, d in enumerate(day_names):
+            with cols[i]:
+                st.markdown(f'<div style="text-align:center;font-weight:700;font-size:0.7rem;padding:0.3rem;background:#1a1a1a;color:#D4AF37;border-radius:4px;">{d}</div>', unsafe_allow_html=True)
+        
+        today = datetime.now().date()
+        
+        # Calendar grid using st.columns
+        for week in month_days:
+            cols = st.columns(7)
+            for i, day in enumerate(week):
+                with cols[i]:
+                    if day == 0:
+                        st.markdown('<div style="min-height:55px;background:#faf9f6;border-radius:6px;"></div>', unsafe_allow_html=True)
+                    else:
+                        date_str = f"{cal_year}-{cal_month_num:02d}-{day:02d}"
+                        is_today = (date_str == today.strftime('%Y-%m-%d'))
+                        is_holiday = date_str in holidays
+                        on_leave = [l for l in leave_data if l.get('from_date', '') <= date_str <= l.get('to_date', '')]
+                        
+                        if is_holiday:
+                            bg = '#ffe6e6'
+                            border = '#CC0000'
+                        elif on_leave:
+                            has_approved = any(l.get('status') == 'Approved' for l in on_leave)
+                            bg = '#e6f9e6' if has_approved else '#e6f2ff'
+                            border = '#38a169' if has_approved else '#3182ce'
+                        else:
+                            bg = '#ffffff'
+                            border = '#e0e0e0'
+                        
+                        today_border = '2px solid #D4AF37' if is_today else f'1px solid {border}'
+                        font_weight = 'font-weight:700;' if is_today else ''
+                        
+                        holiday_text = f'<br><small style="color:#CC0000;">🎌 {holidays.get(date_str, "")}</small>' if is_holiday else ''
+                        leave_text = f'<br><small style="color:{border};">👥 {len(on_leave)} on leave</small>' if on_leave else ''
+                        
+                        st.markdown(f"""
+                        <div style="min-height:55px;background:{bg};border-radius:6px;border:{today_border};padding:3px;text-align:center;font-size:0.75rem;{font_weight}">
+                            {day}{holiday_text}{leave_text}
+                        </div>
+                        """, unsafe_allow_html=True)
+        
+        # Leave details below calendar
+        st.markdown("---")
+        
+        if leave_data:
+            st.markdown(f"### 👥 {len(leave_data)} Leave Record(s) for {cal_module.month_name[cal_month_num]} {cal_year}")
+            
+            # Group by status
+            for status, status_label, status_color in [
+                ('Approved', '✅ Approved Leaves', '#38a169'),
+                ('Submitted', '📝 Pending Leaves', '#3182ce'),
+                ('Completed', '✅ Completed Leaves', '#805ad5')
+            ]:
+                status_leaves = [l for l in leave_data if l.get('status') == status]
+                if status_leaves:
+                    st.markdown(f"#### {status_label} ({len(status_leaves)})")
+                    
+                    for leave in status_leaves[:10]:
+                        st.markdown(f"""
+                        <div style="padding:0.5rem;margin:0.2rem 0;border-left:4px solid {status_color};background:white;border-radius:4px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <div>
+                                    <strong>{leave.get('employee_name', '')}</strong> — {leave.get('leave_type', '')}
+                                    <br><small>{leave.get('from_date', '')} to {leave.get('to_date', '')} ({leave.get('no_of_days', 0)} days)</small>
+                                </div>
+                                <span style="color:{status_color};font-weight:600;">{leave.get('status', '')}</span>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+        else:
+            st.info(f"🎯 No leave records for {cal_module.month_name[cal_month_num]} {cal_year}.")
+    
+    # ============================================================
+    # TAB 6: ATTENDANCE
+    # ============================================================
+    with tab6:
+        st.subheader("⏰ Attendance Tracking")
+        
+        # Attendance sub-tabs
+        att_tabs = st.tabs(["📝 Manual Entry", "📊 My Attendance", "🔌 Biometric Sync"])
+        
+        # ----- Manual Entry -----
+        with att_tabs[0]:
+            st.markdown("### 📝 Record Attendance")
+            
+            with st.form("attendance_form"):
+                c1, c2 = st.columns(2)
+                with c1:
+                    att_date = st.date_input("Date *", value=datetime.now())
+                    in_time = st.text_input("In Time *", placeholder="e.g., 08:00 AM")
+                with c2:
+                    out_time = st.text_input("Out Time *", placeholder="e.g., 05:00 PM")
+                    att_remarks = st.text_input("Remarks", placeholder="Optional notes")
+                
+                if st.form_submit_button("📝 Record Attendance", use_container_width=True):
+                    if in_time and out_time:
+                        # Calculate work hours
+                        try:
+                            in_dt = datetime.strptime(in_time, '%H:%M') if ':' in in_time else datetime.strptime(in_time, '%I:%M %p')
+                            out_dt = datetime.strptime(out_time, '%H:%M') if ':' in out_time else datetime.strptime(out_time, '%I:%M %p')
+                            work_hours = round((out_dt - in_dt).total_seconds() / 3600, 2)
+                        except:
+                            work_hours = 0
+                        
+                        db._post("attendance", {
+                            "employee_id": user_id,
+                            "employee_name": user_name,
+                            "sync_date": att_date.strftime('%Y-%m-%d'),
+                            "in_time": in_time,
+                            "out_time": out_time,
+                            "work_hours": work_hours,
+                            "source": "Manual",
+                            "status": "Present",
+                            "remarks": att_remarks
+                        })
+                        st.success(f"✅ Attendance recorded! ({work_hours:.1f} hours)")
+                        st.rerun()
+                    else:
+                        st.error("❌ In Time and Out Time required!")
+        
+         # ----- My Attendance -----
+        with att_tabs[1]:
+            st.markdown("### 📊 My Attendance Records")
+            
+            try:
+                att_data = db._get("attendance")
+                if att_data:
+                    filtered = [a for a in att_data if a.get('employee_id', '').replace(' ', '').replace('-', '') == user_id.replace(' ', '').replace('-', '')]
+                    
+                    if filtered:
+                        att_df = pd.DataFrame([{
+                            'Employee': a.get('employee_name', user_name),
+                            'ID': a.get('employee_id', ''),
+                            'Date': a.get('sync_date', ''),
+                            'In': a.get('in_time', ''),
+                            'Out': a.get('out_time', ''),
+                            'Hours': a.get('work_hours', 0),
+                            'Source': a.get('source', 'Manual'),
+                            'Status': a.get('status', 'Present')
+                        } for a in filtered[-30:]])
+                        
+                        st.dataframe(att_df, use_container_width=True, hide_index=True)
+                        
+                        total_hours = sum(float(a.get('work_hours', 0) or 0) for a in filtered[-30:])
+                        days_present = len(set(a.get('sync_date', '') for a in filtered[-30:]))
+                        st.metric("📊 Hours This Month", f"{total_hours:.1f}")
+                        st.metric("📅 Days Present", days_present)
+                    else:
+                        st.info("No attendance records yet.")
+                else:
+                    st.info("No attendance records yet.")
+            except Exception as e:
+                st.info("Attendance data loading...")
+        
+        # ----- Admin Attendance Dashboard -----
+        if is_admin or user_role in ['HR Director']:
+            st.markdown("---")
+            st.markdown("### 👥 All Employee Attendance (Admin/HR)")
+            
+            try:
+                all_att = db._get("attendance")
+                if all_att:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        att_region = st.selectbox("Region", ["All", "Abuja", "Lagos", "Aba"], key="att_region")
+                    with col2:
+                        att_date_filter = st.date_input("Date", value=datetime.now(), key="att_date")
+                    with col3:
+                        att_source = st.selectbox("Source", ["All", "Biometric", "Manual"], key="att_source")
+                    
+                    display_att = all_att
+                    if att_source != "All":
+                        display_att = [a for a in display_att if a.get('source') == att_source]
+                    
+                    date_str = att_date_filter.strftime('%Y-%m-%d')
+                    display_att = [a for a in display_att if a.get('sync_date') == date_str]
+                    
+                    if display_att:
+                        st.markdown(f"**{len(display_att)} records for {date_str}**")
+                        
+                        df_all = pd.DataFrame([{
+                            'Employee': a.get('employee_name', ''),
+                            'ID': a.get('employee_id', ''),
+                            'Date': a.get('sync_date', ''),
+                            'In': a.get('in_time', ''),
+                            'Out': a.get('out_time', ''),
+                            'Hours': a.get('work_hours', 0),
+                            'Source': a.get('source', 'Manual'),
+                            'Status': a.get('status', 'Present')
+                        } for a in display_att])
+                        
+                        st.dataframe(df_all, use_container_width=True, hide_index=True)
+                        
+                        present = len(df_all)
+                        on_time = len(df_all[df_all['In'].notna()])
+                        
+                        c1, c2, c3 = st.columns(3)
+                        c1.metric("👥 Present Today", present)
+                        c2.metric("✅ Clocked In", on_time)
+                        c3.metric("📊 Avg Hours", f"{df_all['Hours'].mean():.1f}" if df_all['Hours'].sum() > 0 else "N/A")
+                        
+                        st.download_button("📥 Download Attendance CSV", df_all.to_csv(index=False), f"attendance_{date_str}.csv", "text/csv")
+                    else:
+                        st.info(f"No records for {date_str}")
+                else:
+                    st.info("No attendance data available.")
+            except Exception as e:
+                st.info("Attendance dashboard loading...")
+        
+        # ----- Biometric Sync -----
+        with att_tabs[2]:
+            st.subheader("🔌 Biometric Integration - ZKTeco")
+            
+            # Device status
+            st.markdown("### 📡 Device Status")
             
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("### By Type")
-                fig1 = px.pie(values=list(by_type.values()), names=list(by_type.keys()), hole=0.5)
-                fig1.update_layout(height=350)
-                st.plotly_chart(fig1, use_container_width=True)
+                device_ip = st.selectbox("Select Device", [
+                    "192.168.100.240 (Main Entrance)",
+                    "192.168.100.242 (Device 2)",
+                    "192.168.100.243 (Device 3)"
+                ])
+                # Extract IP
+                device_ip_clean = device_ip.split(" ")[0] if device_ip else "192.168.100.240"
+                device_name = device_ip.split("(", 1)[1].replace(")", "") if "(" in device_ip else "Main Entrance"
+                device_port = st.text_input("Port", value="4370")
             with col2:
-                st.markdown("### By Status")
-                status_colors = {'Submitted': '#a0aec0', 'Recommended by TL': '#3182ce', 'Approved by HOD': '#d69e2e', 'Approved': '#38a169', 'Rejected': '#CC0000', 'Completed': '#38a169'}
-                fig2 = px.pie(values=list(by_status.values()), names=list(by_status.keys()), hole=0.5,
-                            color_discrete_sequence=[status_colors.get(s, '#888') for s in by_status.keys()])
-                fig2.update_layout(height=350)
-                st.plotly_chart(fig2, use_container_width=True)
+                device_type = st.selectbox("Device Type", ["ZKTeco", "Suprema", "HID", "Other"])
+                sync_frequency = st.selectbox("Sync Frequency", ["Manual", "Every Hour", "Every 30 Minutes", "Every 15 Minutes"])
+            
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                if st.button("🔌 Test Connection", use_container_width=True):
+                    with st.spinner("Testing connection..."):
+                        try:
+                            from zk import ZK
+                            zk = ZK(device_ip_clean, port=int(device_port), timeout=5)
+                            conn = zk.connect()
+                            if conn:
+                                st.success(f"✅ Connected to {device_type} at {device_ip_clean}:{device_port}")
+                                device_info = conn.get_device_info()
+                                if device_info:
+                                    st.info(f"Device: {device_info}")
+                                conn.disconnect()
+                            else:
+                                st.error("❌ Could not connect")
+                        except Exception as e:
+                            st.error(f"❌ Connection failed: {str(e)}")
+            
+            with c2:
+                if st.button("🔄 Sync Now", use_container_width=True, type="primary"):
+                    with st.spinner("Syncing attendance data..."):
+                        synced, msg = sync_zkteco_attendance(device_ip_clean, int(device_port))
+                        if synced > 0:
+                            st.success(msg)
+                            st.balloons()
+                        else:
+                            st.warning(msg)
+            
+            with c3:
+                if st.button("📊 View Synced Records", use_container_width=True):
+                    try:
+                        synced = db._get("attendance", {"source": "Biometric"})
+                        if synced:
+                            st.markdown(f"**{len(synced)} biometric records synced**")
+                            df = pd.DataFrame([{
+                                'Date': s.get('sync_date', ''),
+                                'Employee': s.get('employee_name', ''),
+                                'Time': s.get('in_time', '') or s.get('out_time', ''),
+                                'Type': 'In' if s.get('in_time') else 'Out'
+                            } for s in synced[-20:]])
+                            st.dataframe(df, use_container_width=True, hide_index=True)
+                        else:
+                            st.info("No synced records yet.")
+                    except:
+                        st.info("No records found.")
             
             st.markdown("---")
-            st.markdown("### By Department")
-            fig3 = px.bar(x=list(by_dept.keys()), y=list(by_dept.values()), color=list(by_dept.values()),
-                        color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-            fig3.update_layout(height=350)
-            st.plotly_chart(fig3, use_container_width=True)
+            st.markdown("### 📋 Employee Biometric Mapping")
+            st.info("Map employee IDs to biometric device user IDs")
             
-            # Average processing time
-            st.markdown("---")
-            st.markdown("### ⏱️ Average Processing Time")
-            completed = [r for r in all_requests if r.get('status') in ['Approved', 'Completed']]
-            if completed:
-                st.metric("Avg Time to Approval", "2.3 days", delta="Based on completed requests")
+            try:
+                all_emp = db.get_all_employees()
+                if not all_emp.empty:
+                    mapping_data = []
+                    for _, emp in all_emp.iterrows():
+                        mapping_data.append({
+                            'Employee': f"{emp['first_name']} {emp['last_name']}",
+                            'HRIS ID': emp.get('employee_id', ''),
+                            'Biometric ID': emp.get('biometric_id', 'Not Mapped'),
+                            'Department': emp.get('department', '')
+                        })
+                    
+                    if mapping_data:
+                        df_map = pd.DataFrame(mapping_data)
+                        st.dataframe(df_map, use_container_width=True, hide_index=True)
+                        
+                        st.markdown("---")
+                        st.markdown("### 🔧 Update Biometric ID Mapping")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            map_emp = st.selectbox("Select Employee", [f"{e['Employee']} ({e['HRIS ID']})" for e in mapping_data])
+                        with col2:
+                            map_bio_id = st.text_input("Biometric Device User ID")
+                        
+                        if st.button("💾 Save Mapping", use_container_width=True):
+                            emp_id = map_emp.split('(')[-1].replace(')', '')
+                            # You need to add biometric_id column to employees table
+                            try:
+                                db._patch("employees", {"biometric_id": map_bio_id}, {"employee_id": emp_id})
+                                st.success("✅ Mapping saved!")
+                            except:
+                                st.error("Run: ALTER TABLE employees ADD COLUMN biometric_id TEXT;")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+
+
+# ============================================================
+    # TAB 7: APPROVALS BOARD (BULK + HR ADMIN)
+    # ============================================================
+    with tab7:
+        st.subheader("🔔 Approvals Board")
+        
+        if not (is_admin or is_hod):
+            st.info("This section is for HODs, HR, and Admin only.")
+        else:
+            board_tabs = st.tabs(["📋 Pending Approvals", "⚡ Bulk Actions", "👥 HR Leave Management", "📤 Bulk Leave Upload"])
             
-            st.download_button("📥 Export All Requests (CSV)", 
-                              pd.DataFrame([{
-                                  'ID': r.get('request_id'), 'Type': r.get('request_type'), 'Title': r.get('title'),
-                                  'Employee': r.get('employee_name'), 'Department': r.get('department'),
-                                  'Status': r.get('status'), 'Priority': r.get('priority'),
-                                  'Submitted': r.get('submitted_at', '')[:10]
-                              } for r in all_requests]).to_csv(index=False),
-                              "requests_report.csv", "text/csv")
+            # ----- Pending Approvals -----
+            with board_tabs[0]:
+                st.markdown("### 📋 All Pending Approvals")
+                
+                all_pending = []
+                try:
+                    # Employee requests
+                    er = db._get("employee_requests")
+                    if er:
+                        all_pending.extend([r for r in er if r.get('status') in ['Submitted', 'Recommended by TL']])
+                    
+                    # Leave requests
+                    lr = db._get("leave_requests")
+                    if lr:
+                        all_pending.extend([r for r in lr if r.get('status') == 'Submitted'])
+                except:
+                    pass
+                
+                if all_pending:
+                    # SLA tracking
+                    overdue = []
+                    for r in all_pending:
+                        try:
+                            submitted = datetime.strptime(r.get('submitted_at', '')[:10], '%Y-%m-%d')
+                            days_pending = (datetime.now() - submitted).days
+                            if days_pending > 3:
+                                overdue.append(r)
+                        except:
+                            pass
+                    
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("📋 Total Pending", len(all_pending))
+                    c2.metric("🚨 Overdue (>3 days)", len(overdue))
+                    c3.metric("⏱️ Avg Response", f"{sum((datetime.now() - datetime.strptime(r.get('submitted_at','')[:10],'%Y-%m-%d')).days for r in all_pending if r.get('submitted_at')) / max(len(all_pending), 1):.1f}d")
+                    
+                    st.markdown("---")
+                    
+                    for req in sorted(all_pending, key=lambda x: x.get('submitted_at', ''), reverse=True)[:30]:
+                        try:
+                            submitted = datetime.strptime(req.get('submitted_at', '')[:10], '%Y-%m-%d')
+                            days_pending = (datetime.now() - submitted).days
+                            sla_color = '#CC0000' if days_pending > 3 else '#d69e2e' if days_pending > 1 else '#38a169'
+                        except:
+                            days_pending = 0
+                            sla_color = '#a0aec0'
+                        
+                        with st.expander(f"{'🚨' if days_pending > 3 else '⏳'} {req.get('employee_name', '')} — {req.get('request_type', req.get('leave_type', 'Request'))} | {days_pending}d pending"):
+                            st.markdown(f"**ID:** {req.get('request_id', 'N/A')}")
+                            st.markdown(f"**Employee:** {req.get('employee_name', '')} ({req.get('department', '')})")
+                            
+                            if req.get('leave_type'):
+                                st.markdown(f"**Leave:** {req.get('leave_type')} | {req.get('from_date', '')} to {req.get('to_date', '')} | {req.get('no_of_days', 0)} days")
+                            
+                            st.markdown(f"**Reason:** {req.get('reason', req.get('description', 'N/A'))}")
+                            st.markdown(f"**⏱️ SLA:** <span style='color:{sla_color};font-weight:700;'>{days_pending} days pending</span>", unsafe_allow_html=True)
+                            
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                if st.button(f"✅ Approve", key=f"brd_app_{req.get('id')}"):
+                                    db._patch("leave_requests" if req.get('leave_type') else "employee_requests", 
+                                        {"status": "Approved", "approved_by": user_name, "approved_at": datetime.now().strftime('%Y-%m-%d %H:%M')}, 
+                                        {"id": req.get('id')})
+                                    
+                                    # Update leave balance
+                                    if req.get('leave_type') and req.get('no_of_days'):
+                                        try:
+                                            emp_id = req.get('employee_id', '')
+                                            bal = db._get("leave_balances", {"employee_id": emp_id, "leave_type": req.get('leave_type')})
+                                            if bal and len(bal) > 0:
+                                                new_taken = float(bal[0].get('total_taken', 0)) + float(req.get('no_of_days', 0))
+                                                new_balance = float(bal[0].get('balance', 0)) - float(req.get('no_of_days', 0))
+                                                db._patch("leave_balances", {"total_taken": new_taken, "balance": new_balance}, {"id": bal[0]['id']})
+                                        except:
+                                            pass
+                                    
+                                    st.success("✅ Approved!")
+                                    st.rerun()
+                            with col2:
+                                if st.button(f"❌ Reject", key=f"brd_rej_{req.get('id')}"):
+                                    db._patch("leave_requests" if req.get('leave_type') else "employee_requests", {"status": "Rejected"}, {"id": req.get('id')})
+                                    st.error("❌ Rejected")
+                                    st.rerun()
+                            with col3:
+                                if st.button(f"🔄 Revise", key=f"brd_rev_{req.get('id')}"):
+                                    db._patch("leave_requests" if req.get('leave_type') else "employee_requests", {"status": "Draft"}, {"id": req.get('id')})
+                                    st.warning("🔄 Returned")
+                                    st.rerun()
+                else:
+                    st.success("🎉 No pending approvals!")
+            
+            # ----- Bulk Actions -----
+            with board_tabs[1]:
+                st.markdown("### ⚡ Bulk Approval")
+                
+                bulk_pending = []
+                try:
+                    lr = db._get("leave_requests")
+                    if lr:
+                        bulk_pending = [r for r in lr if r.get('status') == 'Submitted']
+                except:
+                    pass
+                
+                if bulk_pending:
+                    st.markdown(f"**{len(bulk_pending)} leave requests pending bulk approval**")
+                    
+                    # Select all / individual
+                    selected = []
+                    for req in bulk_pending[:20]:
+                        if st.checkbox(f"{req.get('employee_name', '')} — {req.get('leave_type', '')} ({req.get('from_date', '')} to {req.get('to_date', '')} — {req.get('no_of_days', 0)}d)", key=f"bulk_{req.get('id')}"):
+                            selected.append(req)
+                    
+                    if selected:
+                        st.markdown(f"**{len(selected)} selected**")
+                        if st.button(f"✅ Bulk Approve {len(selected)} Requests", use_container_width=True, type="primary"):
+                            for req in selected:
+                                db._patch("leave_requests", {"status": "Approved", "approved_by": user_name, "approved_at": datetime.now().strftime('%Y-%m-%d %H:%M')}, {"id": req.get('id')})
+                                
+                                # Update balance
+                                if req.get('no_of_days'):
+                                    try:
+                                        bal = db._get("leave_balances", {"employee_id": req.get('employee_id', ''), "leave_type": req.get('leave_type')})
+                                        if bal and len(bal) > 0:
+                                            new_taken = float(bal[0].get('total_taken', 0)) + float(req.get('no_of_days', 0))
+                                            new_balance = float(bal[0].get('balance', 0)) - float(req.get('no_of_days', 0))
+                                            db._patch("leave_balances", {"total_taken": new_taken, "balance": new_balance}, {"id": bal[0]['id']})
+                                    except:
+                                        pass
+                            
+                            st.success(f"✅ {len(selected)} requests approved!")
+                            st.balloons()
+                            st.rerun()
+                else:
+                    st.info("No requests for bulk approval.")
+            
+            # ----- HR Leave Management -----
+            with board_tabs[2]:
+                st.markdown("### 👥 HR Leave Balance Management")
+                st.info("Assign and manage leave entitlements for employees.")
+                
+                # Select employee
+                try:
+                    all_emp = db.get_all_employees()
+                    if not all_emp.empty:
+                        emp_options = [f"{row['first_name']} {row['last_name']} ({row.get('employee_id', '')})" for _, row in all_emp.iterrows()]
+                        selected_emp_str = st.selectbox("Select Employee", ["Select..."] + emp_options)
+                        
+                        if selected_emp_str != "Select...":
+                            selected_emp_id = selected_emp_str.split('(')[-1].replace(')', '').strip()
+                            selected_emp_name = selected_emp_str.split('(')[0].strip()
+                            
+                            st.markdown(f"### Leave Balance: **{selected_emp_name}**")
+                            
+                            # Show current balances
+                            current_balances = get_leave_balance(selected_emp_id)
+                            
+                            # Editable balance table
+                            for leave_type, defaults in LEAVE_TYPES.items():
+                                existing = [b for b in current_balances if b.get('leave_type') == leave_type]
+                                current = existing[0] if existing else None
+                                
+                                with st.expander(f"{leave_type} — Balance: {current.get('balance', 0):.0f}" if current else f"{leave_type} — Not Set"):
+                                    col1, col2, col3, col4 = st.columns(4)
+                                    with col1:
+                                        entitled = st.number_input("Entitled", value=float(current.get('entitled', defaults['default_entitled'])) if current else defaults['default_entitled'], key=f"ent_{leave_type}_{selected_emp_id}")
+                                    with col2:
+                                        cf = st.number_input("Carry Forward", value=float(current.get('carry_forward', 0)) if current else 0.0, key=f"cf_{leave_type}_{selected_emp_id}")
+                                    with col3:
+                                        adj = st.number_input("Adjustment", value=float(current.get('adjustment', 0)) if current else 0.0, key=f"adj_{leave_type}_{selected_emp_id}")
+                                    with col4:
+                                        taken = st.number_input("Taken", value=float(current.get('total_taken', 0)) if current else 0.0, key=f"tkn_{leave_type}_{selected_emp_id}", disabled=True)
+                                    
+                                    balance = entitled + cf + adj - taken
+                                    st.metric("Current Balance", f"{balance:.1f} days")
+                                    
+                                    if st.button(f"💾 Save {leave_type}", key=f"save_{leave_type}_{selected_emp_id}"):
+                                        data = {
+                                            "employee_id": selected_emp_id,
+                                            "leave_type": leave_type,
+                                            "entitled": entitled,
+                                            "carry_forward": cf,
+                                            "adjustment": adj,
+                                            "total_taken": taken,
+                                            "balance": balance,
+                                            "year": datetime.now().year
+                                        }
+                                        
+                                        if current:
+                                            db._patch("leave_balances", data, {"id": current['id']})
+                                        else:
+                                            db._post("leave_balances", data)
+                                        
+                                        st.success(f"✅ {leave_type} balance updated!")
+                                        st.rerun()
+                except Exception as e:
+                    st.error(f"Error loading employees: {str(e)}")
+            
+            # ----- Bulk Leave Upload -----
+            with board_tabs[3]:
+                st.markdown("### 📤 Bulk Leave Balance Upload")
+                st.info("Upload a CSV file to set leave balances for multiple employees at once.")
+                
+                template_data = []
+                for leave_type, defaults in LEAVE_TYPES.items():
+                    template_data.append({
+                        'employee_id': 'AN00001',
+                        'leave_type': leave_type,
+                        'entitled': defaults['default_entitled'],
+                        'carry_forward': 0,
+                        'adjustment': 0
+                    })
+                
+                template_df = pd.DataFrame(template_data)
+                
+                st.markdown("#### 📥 Step 1: Download Template")
+                st.download_button("📥 Download Leave Template CSV", template_df.to_csv(index=False), "leave_balance_template.csv", "text/csv")
+                
+                st.markdown("---")
+                st.markdown("#### 📤 Step 2: Upload Completed CSV")
+                uploaded_leave = st.file_uploader("Upload Leave Balance CSV", type=['csv'], key="leave_upload")
+                
+                if uploaded_leave:
+                    try:
+                        df_leave = pd.read_csv(uploaded_leave)
+                        st.markdown(f"**{len(df_leave)} records**")
+                        st.dataframe(df_leave.head(10), use_container_width=True)
+                        
+                        if st.button(f"📤 Upload {len(df_leave)} Leave Balances", use_container_width=True, type="primary"):
+                            success, errors = 0, 0
+                            for _, row in df_leave.iterrows():
+                                try:
+                                    emp_id = str(row.get('employee_id', '')).strip()
+                                    leave_type = str(row.get('leave_type', '')).strip()
+                                    entitled = float(row.get('entitled', 0))
+                                    carry_forward = float(row.get('carry_forward', 0))
+                                    adjustment = float(row.get('adjustment', 0))
+                                    
+                                    if not emp_id or not leave_type: errors += 1; continue
+                                    
+                                    existing = db._get("leave_balances", {"employee_id": emp_id, "leave_type": leave_type})
+                                    total_taken = float(existing[0].get('total_taken', 0)) if existing and len(existing) > 0 else 0
+                                    balance = entitled + carry_forward + adjustment - total_taken
+                                    
+                                    data = {"employee_id": emp_id, "leave_type": leave_type, "entitled": entitled, "carry_forward": carry_forward, "adjustment": adjustment, "total_taken": total_taken, "balance": balance, "year": datetime.now().year}
+                                    
+                                    if existing and len(existing) > 0:
+                                        db._patch("leave_balances", data, {"id": existing[0]['id']})
+                                    else:
+                                        db._post("leave_balances", data)
+                                    success += 1
+                                except:
+                                    errors += 1
+                            
+                            st.success(f"✅ {success} uploaded! ({errors} skipped)")
+                            st.balloons()
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Error: {str(e)}")
+    
+    # ============================================================
+    # TAB 8: ANALYTICS
+    # ============================================================
+    with tab8:
+        st.subheader("📈 Request Analytics Dashboard")
+        
+        if all_requests or leave_data if 'leave_data' in dir() else False:
+            # Get all data
+            all_data = all_requests
+            try:
+                lr = db._get("leave_requests")
+                if lr:
+                    all_data = all_data + lr
+            except:
+                pass
+            
+            if all_data:
+                total = len(all_data)
+                
+                # Metrics
+                by_status = {}
+                by_type = {}
+                by_dept = {}
+                processing_times = []
+                
+                for r in all_data:
+                    s = r.get('status', 'Submitted')
+                    t = r.get('request_type', r.get('leave_type', 'Other'))
+                    d = r.get('department', 'Unknown')
+                    
+                    by_status[s] = by_status.get(s, 0) + 1
+                    by_type[t] = by_type.get(t, 0) + 1
+                    by_dept[d] = by_dept.get(d, 0) + 1
+                    
+                    # Calculate processing time
+                    if r.get('submitted_at') and r.get('approved_at'):
+                        try:
+                            sub = datetime.strptime(r['submitted_at'][:10], '%Y-%m-%d')
+                            app = datetime.strptime(r['approved_at'][:10], '%Y-%m-%d')
+                            processing_times.append((app - sub).days)
+                        except:
+                            pass
+                
+                avg_processing = sum(processing_times) / len(processing_times) if processing_times else 0
+                
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("📋 Total Requests", total)
+                m2.metric("⏱️ Avg Processing", f"{avg_processing:.1f} days")
+                m3.metric("✅ Approved", by_status.get('Approved', 0) + by_status.get('Completed', 0))
+                m4.metric("❌ Rejected", by_status.get('Rejected', 0))
+                
+                st.markdown("---")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("### By Status")
+                    status_colors = {
+                        'Draft': '#a0aec0', 'Submitted': '#3182ce', 'Recommended by TL': '#d69e2e',
+                        'Approved by HOD': '#38a169', 'Approved': '#38a169', 'Rejected': '#CC0000', 'Completed': '#38a169'
+                    }
+                    fig1 = px.pie(values=list(by_status.values()), names=list(by_status.keys()), hole=0.5,
+                                color_discrete_sequence=[status_colors.get(s, '#888') for s in by_status.keys()])
+                    fig1.update_layout(height=350)
+                    st.plotly_chart(fig1, use_container_width=True)
+                
+                with col2:
+                    st.markdown("### By Type")
+                    fig2 = px.pie(values=list(by_type.values()), names=list(by_type.keys()), hole=0.5)
+                    fig2.update_layout(height=350)
+                    st.plotly_chart(fig2, use_container_width=True)
+                
+                st.markdown("---")
+                st.markdown("### By Department")
+                fig3 = px.bar(x=list(by_dept.keys()), y=list(by_dept.values()), color=list(by_dept.values()),
+                            color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+                fig3.update_layout(height=350)
+                st.plotly_chart(fig3, use_container_width=True)
+                
+                # Bottleneck analysis
+                st.markdown("---")
+                st.markdown("### 🚨 Bottleneck Analysis")
+                pending_by_stage = {
+                    'Team Lead Queue': by_status.get('Submitted', 0),
+                    'HOD Queue': by_status.get('Recommended by TL', 0),
+                    'HR Queue': by_status.get('Approved by HOD', 0)
+                }
+                
+                for stage, count in pending_by_stage.items():
+                    color = '#CC0000' if count > 5 else '#d69e2e' if count > 2 else '#38a169'
+                    st.markdown(f"""
+                    <div style="display:flex;justify-content:space-between;padding:0.5rem;margin:0.3rem 0;background:white;border-radius:6px;border-left:4px solid {color};">
+                        <strong>{stage}</strong>
+                        <span style="font-size:1.2rem;font-weight:700;color:{color};">{count}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Export
+                st.markdown("---")
+                st.download_button("📥 Export Full Report (CSV)", 
+                    pd.DataFrame([{
+                        'ID': r.get('request_id'), 'Type': r.get('request_type', r.get('leave_type')),
+                        'Employee': r.get('employee_name'), 'Department': r.get('department'),
+                        'Status': r.get('status'), 'Submitted': r.get('submitted_at', '')[:10]
+                    } for r in all_data]).to_csv(index=False),
+                    "requests_analytics.csv", "text/csv")
         else:
             st.info("Analytics will appear once requests are submitted.")
 
@@ -10606,7 +14463,6 @@ def my_profile():
     emp_leave = int(emp_data.get('leave_balance', 20)) if emp_data else 20
     emp_status = emp_data.get('status', 'Active') if emp_data else 'Active'
     emp_region = emp_data.get('region', 'Abuja') if emp_data else 'Abuja'
-    emp_business = emp_data.get('subsidiary', '') if emp_data else ''
     emp_gender = emp_data.get('gender', 'Male') if emp_data else 'Male'
     
     time_in_company = "N/A"
@@ -10734,11 +14590,9 @@ def my_profile():
                     new_gender = st.selectbox("Gender", ['Male', 'Female'], index=0 if emp_gender == 'Male' else 1)
                 with c2:
                     new_last = st.text_input("Last Name", value=last_name)
-                    dept_list = DEPARTMENTS
+                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
                     dept_idx = dept_list.index(emp_dept) if emp_dept in dept_list else 0
                     new_dept = st.selectbox("Department", dept_list, index=dept_idx)
-                    _biz_opts = CHURCHGATE_BUSINESSES if emp_business in CHURCHGATE_BUSINESSES else [emp_business] + CHURCHGATE_BUSINESSES if emp_business else CHURCHGATE_BUSINESSES
-                    new_business = st.selectbox("Subsidiary", _biz_opts, index=(_biz_opts.index(emp_business) if emp_business in _biz_opts else 0))
                     new_region = st.selectbox("Region", ['Abuja', 'Lagos'], index=0 if emp_region == 'Abuja' else 1)
                 
                 # Date of Birth
@@ -10768,7 +14622,6 @@ def my_profile():
                             "first_name": new_first, "last_name": new_last,
                             "email": new_email, "phone": new_phone,
                             "department": new_dept, "region": new_region,
-                            "subsidiary": new_business,
                             "gender": new_gender,
                             "date_of_birth": new_dob.strftime('%Y-%m-%d'),
                             "emergency_name": emergency_name,
@@ -12114,34 +15967,6 @@ def send_browser_notification(title, body, user_email=None):
         'time': datetime.now().strftime('%H:%M')
     })
 
-def send_appraisal_cycle_email(event, cycle_name, recipient_email, recipient_name):
-    """Send appraisal-workflow notifications. Never raises — email failure must not block the workflow."""
-    if not recipient_email or '@' not in str(recipient_email):
-        return False
-    try:
-        from utils.email_service import EmailService
-        es = EmailService()
-        name = recipient_name or "Colleague"
-
-        if event == 'completed':
-            es.send_email(recipient_email,
-                f"🎉 Appraisal Complete — {cycle_name}",
-                f"Dear {name},\n\nYour appraisal for '{cycle_name}' is now complete and closed.\n\nYou can download your completion certificate from the Performance & OKRs module.\n\nThank you for your contributions.\nChurchgate Group HR")
-
-        elif event == 'revision_requested':
-            es.send_email(recipient_email,
-                f"🔄 Appraisal Revision Requested — {cycle_name}",
-                f"Dear {name},\n\nYour HOD has requested revisions to your self-assessment for '{cycle_name}'.\n\nPlease log in, review the HOD comments, update your self-assessment, and resubmit.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
-
-        elif event == 'rejected':
-            es.send_email(recipient_email,
-                f"⚠️ Appraisal Sent Back for Re-review — {cycle_name}",
-                f"Dear {name},\n\nAn employee has declined the HOD review for '{cycle_name}' and requested a re-review.\n\nPlease log in to the HRIS to re-review the appraisal.\n\nhttps://churchgate-hris.streamlit.app\n\nChurchgate Group HR")
-
-        return True
-    except:
-        return False
-
 def main():
     if 'user' not in st.session_state:
         st.session_state.user = None
@@ -12207,9 +16032,11 @@ def main():
             "👥 Employee Management": employee_management,
             "📈 Performance & OKRs": performance_okrs,
             "📈 My Performance & OKRs": performance_okrs,
+            "✅ Staff Confirmation": staff_confirmation,
             "🚀 Promotions": promotions,
             "💼 Recruitment Hub": recruitment_hub,
             "🤖 AI Recruitment Agent": ai_recruitment_agent,
+            "🔄 Requests Hub": requests_hub,
             "📊 Reports & Analytics": reports_analytics,
             "💬 Chat & Communications": chat_communications,
             "🎓 Training & Development": training_development,
@@ -12218,12 +16045,11 @@ def main():
             "💡 Ideas Box": ideas_box,
             "📅 Calendar": company_calendar,
             "🎯 My Goals": personal_goals,
-            "🔄 Requests Hub": requests_hub,
             "🌐 Directory": employee_directory_readonly,
             "📚 Knowledge Base": knowledge_base,
             "🎉 Wellness & Perks": wellness_perks,
             "🎓 LMS": lms_dashboard,
-           "📋 Audit Log": audit_log_viewer,
+            "📋 Audit Log": audit_log_viewer,
             "📊 Advanced Analytics": advanced_analytics,
             "👤 My Profile": my_profile,
         }
