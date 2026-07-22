@@ -63,8 +63,6 @@ from utils.linkedin_parser import LinkedInParser
 from utils.email_service import EmailService
 from utils.chat_service import ChatService
 from utils.training_service import TrainingService
-import utils.recruitment_agent_client as rac
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from streamlit_quill import st_quill
 
 # ============================================================
@@ -374,13 +372,10 @@ def save_uploaded_file(uploaded_file):
             return text
         elif uploaded_file.type == "text/plain":
             return uploaded_file.read().decode('utf-8')
-        elif "wordprocessingml" in uploaded_file.type or uploaded_file.name.lower().endswith(".docx"):
-            # Modern Word (.docx) only — python-docx cannot read legacy binary .doc.
+        elif "word" in uploaded_file.type or "docx" in uploaded_file.type:
             import docx
             doc = docx.Document(uploaded_file)
             return "\n".join([p.text for p in doc.paragraphs])
-        elif uploaded_file.type == "application/msword" or uploaded_file.name.lower().endswith(".doc"):
-            return "[Error: Legacy .doc not supported — please re-save as PDF or DOCX and re-upload.]"
         else:
             return uploaded_file.read().decode('utf-8', errors='ignore')
     except Exception as e:
@@ -1043,13 +1038,93 @@ def employee_dashboard():
     
     show_churchgate_mission()
     
-    # ============ NEWS TICKER ============
-    announcements = [
-        "📢 Q2 Performance Reviews due by June 30, 2026",
-        "🎓 New training courses available in Learning Hub",
-        "🏢 Churchgate Tower 2 renovation project starting July",
-        "🎉 Employee Appreciation Day coming up - June 15"
-    ]
+    # ============ NEWS TICKER - DYNAMIC ============
+    import random
+    
+    # Dynamic announcements based on real data
+    announcements = []
+    
+    try:
+        # Upcoming birthdays this month
+        current_month = datetime.now().month
+        birthday_count = 0
+        birthday_names = []
+        employees = db.get_all_employees()
+        if not employees.empty:
+            for _, emp in employees.iterrows():
+                dob = emp.get('date_of_birth', '')
+                if dob and pd.notna(dob):
+                    try:
+                        if isinstance(dob, str):
+                            dob_date = datetime.strptime(str(dob)[:10], '%Y-%m-%d')
+                        else:
+                            dob_date = pd.to_datetime(dob)
+                        if dob_date.month == current_month:
+                            birthday_count += 1
+                            birthday_names.append(f"{emp['first_name']} {emp['last_name']}")
+                    except:
+                        pass
+        if birthday_count > 0:
+            announcements.append(f"🎂 {birthday_count} team member(s) celebrating birthdays this month")
+    except:
+        pass
+    
+    try:
+        # Probation ending soon
+        probation_ending = 0
+        if not employees.empty:
+            for _, emp in employees.iterrows():
+                if emp.get('status') == 'Probation':
+                    join_date = emp.get('join_date', '')
+                    if join_date and pd.notna(join_date):
+                        try:
+                            jd = pd.to_datetime(join_date)
+                            end_date = jd + timedelta(days=180)
+                            days_left = (end_date - datetime.now()).days
+                            if 0 <= days_left <= 14:
+                                probation_ending += 1
+                        except:
+                            pass
+        if probation_ending > 0:
+            announcements.append(f"📋 {probation_ending} employee(s) probation ending within 14 days")
+    except:
+        pass
+    
+    try:
+        # Open positions
+        all_reqs = db.get_all_job_requisitions()
+        live_jobs = len([r for r in all_reqs if r.get('status') == 'Approved - Live'])
+        if live_jobs > 0:
+            announcements.append(f"💼 {live_jobs} open position(s) - Apply now on Careers page")
+    except:
+        pass
+    
+    try:
+        # Pending leave requests
+        leave_reqs = db._get("leave_requests")
+        pending_leaves = len([r for r in leave_reqs if r.get('status') == 'Submitted']) if leave_reqs else 0
+        if pending_leaves > 0:
+            announcements.append(f"📝 {pending_leaves} leave request(s) pending approval")
+    except:
+        pass
+    
+    try:
+        # Confirmation reviews pending
+        confirmations = db._get("confirmation_reviews")
+        pending_confirm = len([r for r in confirmations if r.get('status') == 'Pending COO Approval']) if confirmations else 0
+        if pending_confirm > 0:
+            announcements.append(f"✅ {pending_confirm} staff confirmation(s) awaiting COO approval")
+    except:
+        pass
+    
+    # Fallback if no dynamic announcements
+    if not announcements:
+        announcements = [
+            "📢 Welcome to Churchgate Group HRIS",
+            "💡 Check the Requests Hub for leave and attendance",
+            "📊 Performance reviews available in the Performance module"
+        ]
+    
     ticker_text = " • ".join(announcements)
     st.markdown(f"""
     <div style="background:#d5d5d5;color:#333;padding:0.6rem 1.5rem;border-radius:8px;margin-bottom:1rem;overflow:hidden;white-space:nowrap;">
@@ -8978,7 +9053,7 @@ APPLY NOW: {public_url}
 def ai_recruitment_agent():
     st.markdown("""<div class="churchgate-header"><h1>🤖 AI Recruitment Agent</h1><p>AI-Powered CV-JD Matching | Verbatim Detection | Inconsistency Flags | Skills Gap Matrix | Bias Detection | Interview Generator | Executive Reports</p></div>""", unsafe_allow_html=True)
     
-    options = ["📥 Load Applications", "📥 Bulk CV Shortlisting", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results", "💬 AI Assistant"]
+    options = ["📥 Load Applications", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results", "💬 AI Assistant"]
     
     if 'ai_section' not in st.session_state:
         st.session_state.ai_section = "📥 Load Applications"
@@ -8992,210 +9067,6 @@ def ai_recruitment_agent():
     ai_section = st.radio("Select Function:", options, index=default_index, horizontal=True)
     st.session_state.ai_section = ai_section
     
-    # ============ BULK CV SHORTLISTING ============
-    if ai_section == "📥 Bulk CV Shortlisting":
-        st.subheader("📥 Bulk CV Shortlisting")
-        st.caption("Upload many CVs for a role — the recruitment agent screens each one and proposes a shortlist with reasons.")
-
-        bulk_user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
-
-        if 'bulk_screen_active_role' not in st.session_state:
-            st.session_state.bulk_screen_active_role = None
-
-        role_source = st.radio(
-            "Role",
-            ["Select an existing requisition", "➕ Add a new role (screening only — not submitted for approval)"],
-            horizontal=True,
-        )
-
-        if role_source == "Select an existing requisition":
-            try:
-                all_reqs = db.get_all_job_requisitions()
-            except Exception as e:
-                all_reqs = []
-                st.error(f"Could not load job requisitions: {e}")
-
-            if not all_reqs:
-                st.warning("No job requisitions found yet. Use '➕ Add a new role' below to screen candidates without creating a full requisition.")
-            else:
-                req_by_title = {
-                    f"{r.get('title','(untitled)')} ({r.get('req_id','')}) — {r.get('status','')}": r
-                    for r in all_reqs
-                }
-                selected_label = st.selectbox("Select the role to screen candidates against:", list(req_by_title.keys()))
-                selected_req = req_by_title[selected_label]
-                st.session_state.bulk_screen_active_role = {
-                    'job_id': selected_req.get('req_id', ''),
-                    'title': selected_req.get('title', '(untitled)'),
-                    'jd': selected_req.get('jd', '') or '',
-                }
-        else:
-            st.info("This creates a lightweight, unapproved role for screening only. It will **not** appear on the public careers page and does **not** enter the LM → Admin → COO approval chain.")
-            with st.form("bulk_screen_new_role_form"):
-                new_title = st.text_input("Role title *", placeholder="e.g., Facilities Officer")
-                col1, col2 = st.columns(2)
-                with col1:
-                    new_department = st.text_input("Department (optional)")
-                with col2:
-                    new_location = st.text_input("Location (optional)")
-                new_jd = st.text_area("Job description *", height=200, placeholder="Paste or write the JD to screen candidates against…")
-                create_role = st.form_submit_button("Use this role for screening", use_container_width=True)
-
-            if create_role:
-                if not new_title or not new_jd:
-                    st.error("Role title and job description are required.")
-                else:
-                    screen_ref = f"SCR-{datetime.now().strftime('%Y%m%d%H%M')}-{random.randint(100,999)}"
-                    try:
-                        db.save_job_requisition(
-                            screen_ref, new_title, new_department, new_location,
-                            None, None, None, None, None,
-                            new_jd, [], {}, "Screening Only — Not Submitted",
-                            bulk_user_name, datetime.now().strftime('%Y-%m-%d %H:%M'),
-                            '', '', ''
-                        )
-                        st.session_state.bulk_screen_active_role = {
-                            'job_id': screen_ref, 'title': new_title, 'jd': new_jd,
-                        }
-                        st.success(f"✅ Ready to screen against **{new_title}** ({screen_ref}). Not submitted for approval.")
-                    except Exception as e:
-                        st.error(f"Could not save the draft role: {e}")
-
-        active_role = st.session_state.bulk_screen_active_role
-        if active_role:
-            job_id = active_role['job_id']
-            jd_text = active_role['jd']
-            role_title = active_role['title']
-
-            if not jd_text:
-                st.warning("This role has no job description text — the agent needs a JD to screen against.")
-            else:
-                with st.expander("Job description used for screening"):
-                    st.write(jd_text)
-
-                col1, col2 = st.columns(2)
-                with col1:
-                    shortlist_rule = st.radio("Shortlist rule", ["Tier 1 & 2 (score ≥ 70)", "Top N"], horizontal=True)
-                with col2:
-                    top_n = st.number_input("N", min_value=1, max_value=50, value=5, disabled=(shortlist_rule != "Top N"))
-
-                uploaded_files = st.file_uploader(
-                    "Upload CVs (PDF or DOCX — legacy .doc is not supported, please re-save as PDF/DOCX)",
-                    type=['pdf', 'docx', 'doc', 'txt'],
-                    accept_multiple_files=True,
-                )
-
-                if uploaded_files and len(uploaded_files) > 50:
-                    st.warning(f"{len(uploaded_files)} files selected — batches above ~50 will take a while and may hit request limits. Consider splitting into smaller batches.")
-
-                if uploaded_files and st.button(f"🤖 Screen {len(uploaded_files)} CVs", type="primary", use_container_width=True):
-                    # Extract text first; files that fail extraction never reach the agent.
-                    to_screen = []
-                    failures = []
-                    for f in uploaded_files:
-                        cv_text = save_uploaded_file(f)
-                        if not cv_text or cv_text.startswith("[Error:"):
-                            failures.append((f.name, cv_text or "No text could be extracted."))
-                        else:
-                            to_screen.append((f, cv_text))
-
-                    results = []
-                    if to_screen:
-                        progress = st.progress(0.0, text=f"Screening 0/{len(to_screen)}…")
-                        done_count = 0
-
-                        def _screen_one(item):
-                            f, cv_text = item
-                            last_err = None
-                            for attempt in range(2):  # one retry
-                                try:
-                                    screening = rac.screen_cv(cv_text=cv_text, jd_text=jd_text, candidate_name=f.name)
-                                    return (f, cv_text, screening, None)
-                                except Exception as e:
-                                    last_err = e
-                            return (f, cv_text, None, str(last_err))
-
-                        with ThreadPoolExecutor(max_workers=5) as executor:
-                            futures = [executor.submit(_screen_one, item) for item in to_screen]
-                            for future in as_completed(futures):
-                                f, cv_text, screening, err = future.result()
-                                done_count += 1
-                                progress.progress(done_count / len(to_screen), text=f"Screening {done_count}/{len(to_screen)}…")
-                                if err:
-                                    failures.append((f.name, err))
-                                else:
-                                    results.append((f, cv_text, screening))
-
-                        progress.empty()
-
-                    if results:
-                        results.sort(key=lambda r: r[2].get('overall_score', 0), reverse=True)
-
-                        if shortlist_rule == "Top N":
-                            shortlisted_names = {r[0].name for r in results[:int(top_n)]}
-                        else:
-                            shortlisted_names = {r[0].name for r in results if r[2].get('overall_score', 0) >= 70}
-
-                        st.success(f"✅ Screened {len(results)} candidates — {len(shortlisted_names)} shortlisted.")
-
-                        # Persist ALL screened candidates.
-                        saved = 0
-                        for i, (f, cv_text, screening) in enumerate(results):
-                            try:
-                                candidate_ref = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}-{i}"
-                                is_shortlisted = f.name in shortlisted_names
-                                cv_url = ""
-                                try:
-                                    f.seek(0)
-                                    cv_url = db.upload_file("cvs", f"{candidate_ref}_{f.name}", f.read(), f.type)
-                                except Exception:
-                                    pass
-
-                                full_name = screening.get('candidate_name') or f.name
-                                name_parts = full_name.split(None, 1)
-                                first_name = name_parts[0] if name_parts else f.name
-                                last_name = name_parts[1] if len(name_parts) > 1 else ""
-
-                                db._post("candidates", {
-                                    "candidate_ref": candidate_ref,
-                                    "first_name": first_name, "last_name": last_name,
-                                    "email": screening.get('candidate_email') or "",
-                                    "phone": screening.get('candidate_phone') or "",
-                                    "resume_filename": f.name,
-                                    "resume_text": cv_text[:10000],
-                                    "cv_url": cv_url,
-                                    "job_id": job_id,
-                                    "source": "Bulk Upload",
-                                    "status": "Shortlisted" if is_shortlisted else "Screened",
-                                    "ai_score": int(screening.get('overall_score', 0)),
-                                    "ai_tier": screening.get('tier', 'Pending'),
-                                    "ai_screening": json.dumps(screening),
-                                })
-                                saved += 1
-                            except Exception as e:
-                                st.warning(f"Could not save {f.name}: {e}")
-                        st.info(f"💾 Saved {saved}/{len(results)} candidates to the pipeline for {role_title}.")
-
-                        # Ranked table with reasons.
-                        table_rows = []
-                        for rank, (f, cv_text, screening) in enumerate(results, start=1):
-                            table_rows.append({
-                                "Rank": rank,
-                                "Shortlisted": "⭐" if f.name in shortlisted_names else "",
-                                "Candidate": screening.get('candidate_name') or f.name,
-                                "Score": screening.get('overall_score', 0),
-                                "Tier": screening.get('tier', ''),
-                                "Top Strengths": "; ".join((screening.get('strengths') or [])[:2]),
-                                "Gaps": "; ".join((screening.get('gaps') or [])[:2]),
-                                "Recommendation": screening.get('recommendation', ''),
-                            })
-                        st.dataframe(pd.DataFrame(table_rows), use_container_width=True, hide_index=True)
-
-                    if failures:
-                        with st.expander(f"⚠️ {len(failures)} file(s) could not be screened"):
-                            for name, reason in failures:
-                                st.write(f"**{name}**: {reason}")
-
     # ============ LOAD APPLICATIONS ============
     if ai_section == "📥 Load Applications":
         st.subheader("🚀 Recruitment Pipeline & Bulk Screening")
