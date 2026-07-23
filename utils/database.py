@@ -57,7 +57,9 @@ class DatabaseManager:
         for k, v in filters.items():
             url += f"{k}=eq.{v}&"
         r = requests.delete(url, headers=self._headers())
-        return r.status_code in [200, 201]
+        if r.status_code not in [200, 204]:
+            st.error(f"Supabase DELETE Error [{r.status_code}]: {r.text[:200]}")
+        return r.status_code in [200, 204]
     
     def create_tables(self):
         pass

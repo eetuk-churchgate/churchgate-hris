@@ -2380,12 +2380,19 @@ def employee_management():
                                     db._patch("employees", {"status": "Archived"}, {"employee_id": emp['employee_id']})
                                     st.success(f"📦 Archived!"); st.cache_data.clear(); time.sleep(1); st.rerun()
                         with action_col3:
+                            del_pending_key = f"del_pending_{emp['employee_id']}_{st.session_state.dir_page}"
                             if st.button("🗑️ Delete", key=f"del_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
+                                st.session_state[del_pending_key] = True
+                            if st.session_state.get(del_pending_key):
                                 st.error("Permanently delete?")
                                 if st.button("⚠️ Yes, Delete", key=f"confirm_del_{emp['employee_id']}_{st.session_state.dir_page}"):
                                     try:
-                                        db._delete("employees", {"employee_id": emp['employee_id']})
-                                        st.success("🗑️ Deleted!"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                                        ok = db._delete("employees", {"employee_id": emp['employee_id']})
+                                        del st.session_state[del_pending_key]
+                                        if ok:
+                                            st.success("🗑️ Deleted!"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                                        else:
+                                            st.error("Delete failed — the employee may still be referenced by other records (appraisals, documents, etc).")
                                     except Exception as e: st.error(f"Failed: {str(e)}")
         else:
             st.info("No employees match your search criteria.")
