@@ -2080,7 +2080,7 @@ def employee_management():
         'Senior Management': '#CC0000', 'Technology Group': '#3182ce', 'Facility Management': '#38a169',
         'Human Resources': '#d69e2e', 'Accounts & Finance': '#805ad5', 'Sales & Marketing': '#dd6b20',
         'Procurement': '#2b6cb0', 'Security': '#718096', 'Legal': '#e53e3e', 'Operations': '#319795',
-        'Engineering': '#d53f8c', 'Administration': '#FF6B35'
+        'Engineering': '#d53f8c'
     }
     
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
@@ -2121,11 +2121,58 @@ def employee_management():
         
         st.markdown("---")
         st.markdown("### 🎂 Birthdays & Anniversaries This Month")
+        
+        current_month = datetime.now().month
+        birthdays_this_month = []
+        anniversaries_this_month = []
+        
+        if not employees_df.empty:
+            for _, emp in employees_df.iterrows():
+                # Check birthdays
+                dob = emp.get('date_of_birth', '')
+                if dob and pd.notna(dob):
+                    try:
+                        if isinstance(dob, str):
+                            dob_date = datetime.strptime(str(dob)[:10], '%Y-%m-%d')
+                        else:
+                            dob_date = pd.to_datetime(dob)
+                        if dob_date.month == current_month:
+                            name = f"{emp['first_name']} {emp['last_name']}"
+                            day = dob_date.day
+                            birthdays_this_month.append((name, day))
+                    except:
+                        pass
+                
+                # Check work anniversaries
+                join_date = emp.get('join_date', '')
+                if join_date and pd.notna(join_date):
+                    try:
+                        if isinstance(join_date, str):
+                            jd = datetime.strptime(str(join_date)[:10], '%Y-%m-%d')
+                        else:
+                            jd = pd.to_datetime(join_date)
+                        if jd.month == current_month:
+                            name = f"{emp['first_name']} {emp['last_name']}"
+                            years = datetime.now().year - jd.year
+                            if years > 0:
+                                anniversaries_this_month.append((name, years))
+                    except:
+                        pass
+        
         bday_col1, bday_col2 = st.columns(2)
         with bday_col1:
-            st.markdown("**🎂 Birthdays:** Chika Ikwuegbu (May 13), Francis Asuquo (May 19), Rhoda Ajibola (May 25), Alice Agbo (May 28)")
+            if birthdays_this_month:
+                bday_list = ', '.join([f"{name} ({day})" for name, day in sorted(birthdays_this_month, key=lambda x: x[1])])
+                st.markdown(f"**🎂 Birthdays:** {bday_list}")
+            else:
+                st.markdown("**🎂 Birthdays:** None this month")
+        
         with bday_col2:
-            st.markdown("**⭐ Anniversaries:** Augustine Oleh (4 yrs), Shem Waziri (3 yrs), Charles Okere (7 yrs), Chika Ikwuegbu (3 yrs)")
+            if anniversaries_this_month:
+                anniv_list = ', '.join([f"{name} ({yrs} yrs)" for name, yrs in sorted(anniversaries_this_month, key=lambda x: x[1], reverse=True)])
+                st.markdown(f"**⭐ Anniversaries:** {anniv_list}")
+            else:
+                st.markdown("**⭐ Anniversaries:** None this month")
         
         st.markdown("---")
         
@@ -2187,6 +2234,9 @@ def employee_management():
             
             start_idx = (st.session_state.dir_page - 1) * items_per_page
             end_idx = min(start_idx + items_per_page, len(filtered_df))
+            
+            # Sort alphabetically by first name
+            filtered_df = filtered_df.sort_values('first_name', ascending=True)
             
             for _, emp in filtered_df.iloc[start_idx:end_idx].iterrows():
                 initials = generate_initials(f"{emp['first_name']} {emp['last_name']}")
@@ -2250,7 +2300,7 @@ def employee_management():
                             ec1, ec2, ec3 = st.columns(3)
                             with ec1:
                                 current_dept = str(emp.get('department', 'Technology Group'))
-                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Administration']
+                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
                                 dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 1
                                 new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -2265,6 +2315,16 @@ def employee_management():
                                 status_options = ['Active', 'On Leave', 'Probation', 'Terminated', 'Archived', 'Inactive']
                                 status_idx = status_options.index(current_status) if current_status in status_options else 0
                                 new_status = st.selectbox("Status", status_options, index=status_idx, key=f"sts_{emp['employee_id']}_{st.session_state.dir_page}")
+                                
+                                current_join_date = emp.get('join_date', '')
+                                if current_join_date and str(current_join_date) != 'None' and str(current_join_date) != 'nan':
+                                    try:
+                                        current_join_date_val = pd.to_datetime(current_join_date).date()
+                                    except:
+                                        current_join_date_val = date.today()
+                                else:
+                                    current_join_date_val = date.today()
+                                new_join_date = st.date_input("Join Date", value=current_join_date_val, key=f"join_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
                                 current_gender = str(emp.get('gender', 'Male'))
                                 gender_options = ['Male', 'Female']
@@ -2293,6 +2353,7 @@ def employee_management():
                                         "email": new_email, "gender": new_gender,
                                         "leave_balance": new_leave,
                                         "date_of_birth": new_dob.strftime('%Y-%m-%d'),
+                                        "join_date": new_join_date.strftime('%Y-%m-%d'),
                                         "region": new_region, "subsidiary": new_subsidiary,
                                         "reports_to": new_reports_to if new_reports_to != 'None' else ''
                                     }, {"employee_id": emp['employee_id']})
@@ -2358,29 +2419,15 @@ def employee_management():
                 email = st.text_input("Email *")
                 phone = st.text_input("Phone")
             with c2:
-                # Auto-generate employee ID
-                try:
-                    existing_ids = employees_df['employee_id'].dropna().tolist()
-                    max_num = 0
-                    for eid in existing_ids:
-                        nums = ''.join(filter(str.isdigit, str(eid)))
-                        if nums: max_num = max(max_num, int(nums))
-                    suggested_id = f"AN{str(max_num + 1).zfill(5)}"
-                except:
-                    suggested_id = "AN00001"
-                employee_id = st.text_input("Employee ID *", value=suggested_id, placeholder="e.g., AN00001")
-                
-                # Department with Administration added
-                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Administration'])
+                employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
+                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                 position = st.text_input("Position *")
                 grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'])
             with c3:
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
-                # Join Date - extended to 1980
-                join_date = st.date_input("Join Date", min_value=date(1980, 1, 1), max_value=date.today())
-                # Date of Birth - extended to 1920
+                join_date = st.date_input("Join Date")
                 date_of_birth = st.date_input("Date of Birth *", min_value=date(1920, 1, 1), max_value=date(2026, 12, 31), value=date(1990, 1, 1))
-                system_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'])
+                system_role = st.selectbox("System Role *", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], index=4)
                 status = st.selectbox("Status", ['Active', 'Probation'])
             
             if st.form_submit_button("✅ Add Employee", use_container_width=True):
@@ -2402,8 +2449,32 @@ def employee_management():
                                 "status": status
                             })
                             if result:
+                                # Also create user account with correct system role
+                                try:
+                                    import hashlib
+                                    default_pw = hashlib.sha256("churchgate2026".encode()).hexdigest()
+                                    db._post("users", {
+                                        "employee_id": employee_id,
+                                        "name": f"{first_name} {last_name}",
+                                        "email": email,
+                                        "password": default_pw,
+                                        "role": system_role,
+                                        "department": department,
+                                        "position": position
+                                    })
+                                except:
+                                    pass
+                                
                                 st.success(f"✅ {first_name} {last_name} added!")
                                 st.balloons()
+                                # Send welcome email
+                                if email and '@' in email:
+                                    try:
+                                        from utils.email_service import EmailService
+                                        EmailService().send_welcome_email(f"{first_name} {last_name}", email, "https://hris.churchgate.com")
+                                        st.info(f"📧 Welcome email sent to {email}")
+                                    except:
+                                        pass
                                 st.cache_data.clear()
                                 time.sleep(0.5)
                                 st.rerun()
@@ -2421,8 +2492,8 @@ def employee_management():
     # ============ TAB 3: BULK UPLOAD ============
     with tab3:
         st.subheader("📤 Bulk Employee Upload")
-        st.info("Upload CSV with: employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date, region, subsidiary, reports_to")
-        template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'region', 'subsidiary', 'reports_to'])
+        st.info("Upload CSV with columns: employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date, date_of_birth, region, subsidiary, reports_to, gender, status, system_role")
+        template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'date_of_birth', 'region', 'subsidiary', 'reports_to', 'gender', 'status', 'system_role'])
         st.download_button("📥 Download Template", template_df.to_csv(index=False), "employee_template.csv", "text/csv")
         uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
         if uploaded_file:
@@ -2433,20 +2504,72 @@ def employee_management():
                 success, fail = 0, 0
                 for _, row in df.iterrows():
                     try:
+                        # Convert dates from DD/MM/YYYY to YYYY-MM-DD
+                        join_date = str(row.get('join_date', ''))
+                        dob = str(row.get('date_of_birth', ''))
+                        
+                        # Try to convert date formats
+                        try:
+                            if '/' in join_date:
+                                parts = join_date.split('/')
+                                if len(parts[2]) == 4:  # DD/MM/YYYY
+                                    join_date = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        except:
+                            pass
+                        
+                        try:
+                            if '/' in dob:
+                                parts = dob.split('/')
+                                if len(parts[2]) == 4:  # DD/MM/YYYY
+                                    dob = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        except:
+                            pass
+                        
+                        # Check for duplicate employee ID
+                        emp_id = str(row.get('employee_id', ''))
+                        existing = db._get("employees", {"employee_id": emp_id})
+                        if existing and len(existing) > 0:
+                            # Skip duplicates
+                            fail += 1
+                            continue
+                        
                         db._post("employees", {
-                            "employee_id": str(row.get('employee_id', '')), "first_name": str(row.get('first_name', '')),
-                            "last_name": str(row.get('last_name', '')), "email": str(row.get('email', '')),
-                            "phone": str(row.get('phone', '')), "department": str(row.get('department', '')),
-                            "position": str(row.get('position', '')), "grade": str(row.get('grade', 'Junior')),
+                            "employee_id": emp_id,
+                            "first_name": str(row.get('first_name', '')),
+                            "last_name": str(row.get('last_name', '')),
+                            "email": str(row.get('email', '')),
+                            "phone": str(row.get('phone', '')),
+                            "department": str(row.get('department', '')),
+                            "position": str(row.get('position', '')),
+                            "grade": str(row.get('grade', 'Junior')),
                             "employment_type": str(row.get('employment_type', 'Full-time')),
-                            "join_date": str(row.get('join_date', '')), "status": "Active",
+                            "join_date": join_date,
+                            "date_of_birth": dob,
+                            "status": str(row.get('status', 'Active')),
                             "region": str(row.get('region', 'Lagos')),
                             "subsidiary": str(row.get('subsidiary', '')),
-                            "reports_to": str(row.get('reports_to', ''))
+                            "reports_to": str(row.get('reports_to', '')),
+                            "gender": str(row.get('gender', 'Male'))
                         })
+                        
+                        # Send welcome email
+                        emp_email = str(row.get('email', ''))
+                        emp_name = f"{str(row.get('first_name', ''))} {str(row.get('last_name', ''))}"
+                        if emp_email and '@' in emp_email:
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_welcome_email(emp_name, emp_email, "https://hris.churchgate.com")
+                            except:
+                                pass
+                        
                         success += 1
-                    except: fail += 1
-                st.success(f"✅ {success} uploaded! ({fail} skipped)"); st.balloons(); st.cache_data.clear()
+                    except:
+                        fail += 1
+                st.success(f"✅ {success} uploaded! ({fail} skipped - duplicates or errors)")
+                if success > 0:
+                    st.info(f"📧 Welcome emails sent to {success} employees")
+                st.balloons()
+                st.cache_data.clear()
     
     # ============ TAB 4: GENERATE LOGINS ============
     with tab4:
@@ -2459,16 +2582,28 @@ def employee_management():
                 single_name = st.text_input("Full Name *")
                 single_pw = st.text_input("Password", value="churchgate2026")
             with c2:
-                single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Administration'], key="single_dept")
+                single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], key="single_dept")
                 single_role = st.selectbox("Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key="single_role")
                 single_id = st.text_input("Employee ID", placeholder="e.g., AN00001")
+            
             if st.form_submit_button("🔑 Create Single Login", use_container_width=True):
                 if single_email and single_name:
                     try:
                         db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, 'Staff')
-                        st.success(f"✅ Login created!"); st.balloons()
-                    except: st.warning("User may already exist.")
-                else: st.error("❌ Email and Name required!")
+                        st.success(f"✅ Login created for {single_name}!")
+                        st.info(f"🔗 Login at: https://hris.churchgate.com")
+                        # Send welcome email
+                        try:
+                            from utils.email_service import EmailService
+                            EmailService().send_welcome_email(single_name, single_email, "https://hris.churchgate.com")
+                            st.info(f"📧 Welcome email sent to {single_email}")
+                        except:
+                            pass
+                        st.balloons()
+                    except:
+                        st.warning(f"⚠️ A login for {single_email} may already exist.")
+                else:
+                    st.error("❌ Email and Name required!")
         
         st.markdown("---")
         st.markdown("### 👥 Bulk Generate for All Employees")
@@ -2484,12 +2619,21 @@ def employee_management():
                     if emp['Email'] and emp['Email'] != 'N/A':
                         try:
                             db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, 'Team Member', emp['Department'], 'Staff')
+                            # Send welcome email
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_welcome_email(emp['Name'], emp['Email'], "https://hris.churchgate.com")
+                            except:
+                                pass
                             count += 1
-                        except: pass
+                        except:
+                            pass
                 st.success(f"✅ {count} logins generated!")
-                st.info(f"Default password: **{default_pw}**")
+                st.info(f"🔗 Login URL: https://hris.churchgate.com")
+                st.info(f"🔑 Default password: **{default_pw}**")
                 st.download_button("📥 Download Login List", pd.DataFrame(emp_list).to_csv(index=False), "logins.csv", "text/csv")
-        else: st.info("No employees found.")
+        else:
+            st.info("No employees found.")
     
     # ============ TAB 5: DEPARTMENTS ============
     with tab5:
@@ -2520,14 +2664,14 @@ def employee_management():
         st.markdown("### 🔗 Group Reporting Hierarchy")
         st.info("GMD → COO (All Depts) / VP Sales (Sales & Mkt) / GEA | Regions: Abuja, Lagos & Aba")
         
-        labels = ['GMD', 'COO', 'VP Sales', 'GEA', 'Technology (Abuja)', 'Technology (Lagos)', 'Facility Mgmt (Abuja)', 'Facility Mgmt (Lagos)', 'Engineering/MEP', 'HR', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Administration', 'Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members']
-        colors = ['#CC0000', '#e53e3e', '#dd6b20', '#805ad5', '#3182ce', '#3182ce', '#38a169', '#38a169', '#d53f8c', '#d69e2e', '#805ad5', '#dd6b20', '#2b6cb0', '#718096', '#e53e3e', '#319795', '#FF6B35', '#FF6B35', '#38a169', '#d69e2e', '#2b6cb0', '#718096']
-        sources = [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3]
-        targets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 11, 16]
-        values = [1]*16
-        for i in range(4, 17): sources.append(i); targets.append(17); values.append(1)
-        sources.append(17); targets.append(18); values.append(12)
-        sources += [18, 18, 19, 19]; targets += [19, 20, 20, 21]; values += [10, 5, 12, 30]
+        labels = ['GMD', 'COO', 'VP Sales', 'GEA', 'Technology (Abuja)', 'Technology (Lagos)', 'Facility Mgmt (Abuja)', 'Facility Mgmt (Lagos)', 'Engineering/MEP', 'HR', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Heads of Department', 'Sr. Managers', 'Managers', 'Team Leads', 'Team Members']
+        colors = ['#CC0000', '#e53e3e', '#dd6b20', '#805ad5', '#3182ce', '#3182ce', '#38a169', '#38a169', '#d53f8c', '#d69e2e', '#805ad5', '#dd6b20', '#2b6cb0', '#718096', '#e53e3e', '#319795', '#FF6B35', '#38a169', '#d69e2e', '#2b6cb0', '#718096']
+        sources = [0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3]
+        targets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 11, 15]
+        values = [1]*15
+        for i in range(4, 16): sources.append(i); targets.append(16); values.append(1)
+        sources.append(16); targets.append(17); values.append(11)
+        sources += [17, 17, 18, 18]; targets += [18, 19, 19, 20]; values += [10, 5, 12, 30]
         
         fig = go.Figure(data=[go.Sankey(node=dict(pad=20, thickness=18, label=labels, color=colors), link=dict(source=sources, target=targets, value=values, color=['rgba(204,0,0,0.2)']*len(sources)))])
         fig.update_layout(height=600)
@@ -2537,10 +2681,10 @@ def employee_management():
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("### 🏢 Abuja Region — Department Heads")
-            st.dataframe(pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Administration'], 'HOD': ['Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'Adebayo Sakote', 'Jeff Arikawe', 'Ahmed Karim (VP)', 'Anand Bora', 'Usman Sani', 'David Aiyedun', 'Ibukun Adeogun', 'TBD'], 'Team': [12, 20, 8, 6, 8, 12, 6, 15, 3, 10, 'TBD']}), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'], 'HOD': ['Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'Adebayo Sakote', 'Jeff Arikawe', 'Ahmed Karim (VP)', 'Anand Bora', 'Usman Sani', 'David Aiyedun', 'Ibukun Adeogun'], 'Team': [12, 20, 8, 6, 8, 12, 6, 15, 3, 10]}), use_container_width=True, hide_index=True)
         with col2:
             st.markdown("### 🏢 Lagos Region — Department Heads")
-            st.dataframe(pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Administration'], 'HOD': ['Lawal Mohammed', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD'], 'Team': ['TBD']*11}), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'], 'HOD': ['Lawal Mohammed', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD'], 'Team': ['TBD']*10}), use_container_width=True, hide_index=True)
         
         st.markdown("---")
         st.markdown("### 👥 Span of Control")
@@ -2582,7 +2726,7 @@ def employee_management():
         fig.update_layout(height=350); st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---"); st.markdown("### 🏢 Department Gender Split")
-        dept_gender = pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Human Resources', 'Sales & Marketing', 'Accounts & Finance', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Administration'], 'Male': [10, 10, 3, 6, 4, 3, 10, 1, 4, 3, 0], 'Female': [4, 3, 5, 4, 2, 2, 2, 1, 1, 1, 0]})
+        dept_gender = pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Human Resources', 'Sales & Marketing', 'Accounts & Finance', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], 'Male': [10, 10, 3, 6, 4, 3, 10, 1, 4, 3], 'Female': [4, 3, 5, 4, 2, 2, 2, 1, 1, 1]})
         fig2 = px.bar(dept_gender, x='Department', y=['Male', 'Female'], barmode='group', color_discrete_sequence=['#3182ce', '#CC0000'])
         fig2.update_layout(height=400); st.plotly_chart(fig2, use_container_width=True)
         
