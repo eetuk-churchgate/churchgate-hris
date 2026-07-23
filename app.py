@@ -2300,7 +2300,7 @@ def employee_management():
                             ec1, ec2, ec3 = st.columns(3)
                             with ec1:
                                 current_dept = str(emp.get('department', 'Technology Group'))
-                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
+                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
                                 dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 1
                                 new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -2324,7 +2324,7 @@ def employee_management():
                                         current_join_date_val = date.today()
                                 else:
                                     current_join_date_val = date.today()
-                                new_join_date = st.date_input("Join Date", value=current_join_date_val, key=f"join_{emp['employee_id']}_{st.session_state.dir_page}")
+                                new_join_date = st.date_input("Join Date", value=current_join_date_val, min_value=date(1970, 1, 1), max_value=date.today(), key=f"join_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
                                 current_gender = str(emp.get('gender', 'Male'))
                                 gender_options = ['Male', 'Female']
@@ -2420,12 +2420,12 @@ def employee_management():
                 phone = st.text_input("Phone")
             with c2:
                 employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
-                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
                 position = st.text_input("Position *")
                 grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'])
             with c3:
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
-                join_date = st.date_input("Join Date")
+                join_date = st.date_input("Join Date", min_value=date(1970, 1, 1), max_value=date.today())
                 date_of_birth = st.date_input("Date of Birth *", min_value=date(1920, 1, 1), max_value=date(2026, 12, 31), value=date(1990, 1, 1))
                 system_role = st.selectbox("System Role *", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], index=4)
                 status = st.selectbox("Status", ['Active', 'Probation'])
@@ -2582,7 +2582,7 @@ def employee_management():
                 single_name = st.text_input("Full Name *")
                 single_pw = st.text_input("Password", value="churchgate2026")
             with c2:
-                single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], key="single_dept")
+                single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'], key="single_dept")
                 single_role = st.selectbox("Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key="single_role")
                 single_id = st.text_input("Employee ID", placeholder="e.g., AN00001")
             
@@ -2857,9 +2857,9 @@ def performance_okrs():
     is_team_lead_or_manager = user_role in ['Manager', 'Team Lead', 'HOD', 'Admin', 'HR Director']
     is_super_admin = user_email == 'admin@churchgate.com' or user_role in ['Admin', 'HR Director']
     
-    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 
-                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 
-                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
+    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
+                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal',
+                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services', 'Admin']
     
     SUBSIDIARY_REGIONS = {
         'World Trade Center(WTC)': 'Abuja', 'World Trade Center': 'Abuja', 'WTC': 'Abuja',
@@ -6397,9 +6397,9 @@ def promotions():
     except:
         pass
     
-    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 
-                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 
-                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
+    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
+                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal',
+                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services', 'Admin']
     for dept in all_depts:
         if dept not in aplayers_data:
             aplayers_data[dept] = []
@@ -7188,7 +7188,7 @@ APPLY NOW: {public_url}
             c1, c2 = st.columns(2)
             with c1:
                 job_title = st.text_input("Job Title *", placeholder="e.g., Senior Network Engineer")
-                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services'])
+                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services', 'Admin'])
                 location = st.selectbox("Location", ["World Trade Center Abuja", "Churchgate Tower 1 Lagos", "Churchgate Tower 2 Lagos", "Churchgate Plaza Abuja", "Remote/Hybrid"])
                 employment_type = st.selectbox("Employment Type", ["Full-time", "Contract", "Part-time", "Intern"])
             with c2:
@@ -8254,7 +8254,7 @@ APPLY NOW: {public_url}
                     offer_name = st.text_input("Candidate Full Name *")
                     offer_email = st.text_input("Candidate Email *")
                     offer_position = st.text_input("Position *")
-                    offer_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                    offer_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
                 with c2:
                     offer_salary = st.text_input("Salary Package *", placeholder="e.g., ₦1,200,000 Gross per Annum")
                     offer_start = st.date_input("Start Date *")
@@ -8395,7 +8395,7 @@ APPLY NOW: {public_url}
                 with col1:
                     offer_status_filter = st.selectbox("Status", ["All", "Pending Acceptance", "Accepted", "Rejected", "Expired"])
                 with col2:
-                    offer_dept_filter = st.selectbox("Department", ["All", 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                    offer_dept_filter = st.selectbox("Department", ["All", 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
                 
                 filtered = offers
                 if offer_status_filter != "All":
@@ -8482,7 +8482,7 @@ APPLY NOW: {public_url}
                 with c1:
                     nh_name = st.text_input("Employee Full Name *")
                     nh_email = st.text_input("Employee Email *")
-                    nh_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                    nh_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
                     nh_position = st.text_input("Position *")
                 with c2:
                     nh_start = st.date_input("Start Date *")
@@ -8708,7 +8708,7 @@ APPLY NOW: {public_url}
                 with c1:
                     bg_name = st.text_input("Candidate Name *")
                     bg_position = st.text_input("Position Applied For *")
-                    bg_department = st.selectbox("Department", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
+                    bg_department = st.selectbox("Department", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
                 with c2:
                     bg_type = st.multiselect("Check Type *", [
                         "Employment Verification",
@@ -10496,7 +10496,7 @@ def training_development():
         with c1:
             course_filter = st.selectbox("Category", ["All", "Technical", "Leadership", "Compliance", "Soft Skills", "Professional"])
         with c2:
-            dept_filter_course = st.selectbox("Department", ["All", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations", "Engineering"])
+            dept_filter_course = st.selectbox("Department", ["All", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations", "Engineering", "Admin"])
         with c3:
             level_filter = st.selectbox("Level", ["All", "Beginner", "Intermediate", "Advanced", "Expert"])
         
@@ -14520,7 +14520,7 @@ def my_profile():
                     new_gender = st.selectbox("Gender", ['Male', 'Female'], index=0 if emp_gender == 'Male' else 1)
                 with c2:
                     new_last = st.text_input("Last Name", value=last_name)
-                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
+                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
                     dept_idx = dept_list.index(emp_dept) if emp_dept in dept_list else 0
                     new_dept = st.selectbox("Department", dept_list, index=dept_idx)
                     new_region = st.selectbox("Region", ['Abuja', 'Lagos'], index=0 if emp_region == 'Abuja' else 1)
