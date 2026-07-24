@@ -3016,31 +3016,35 @@ def performance_okrs():
             pillar_data[pillar] = {'weight': 0, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': [], 'submission_status': 'Draft'}
         
         if not user_perf.empty:
-            # Combine all KPIs across duplicate rows
             seen_kpis = {p: set() for p in pillar_data}
             
             for _, row in user_perf.iterrows():
                 p_name = row.get('pillar_name', '')
                 if p_name in pillar_data:
                     kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                    # Add only new KPIs (avoid duplicates by title)
+                    
+                    # Add only unique KPIs
                     for kpi in kpi_list:
                         kpi_title = kpi.get('kpi', '')
                         if kpi_title and kpi_title not in seen_kpis[p_name]:
                             seen_kpis[p_name].add(kpi_title)
                             pillar_data[p_name]['kpis'].append(kpi)
                     
-                    # Take the best status
-                    current_status = row.get('submission_status', 'Draft')
-                    if current_status == 'Approved':
-                        pillar_data[p_name]['submission_status'] = 'Approved'
-                    elif current_status == 'Submitted' and pillar_data[p_name]['submission_status'] != 'Approved':
-                        pillar_data[p_name]['submission_status'] = 'Submitted'
+                    # Take the BEST values across all rows
+                    pillar_data[p_name]['weight'] = max(pillar_data[p_name]['weight'], row.get('weight', 0))
+                    pillar_data[p_name]['progress'] = max(pillar_data[p_name]['progress'], row.get('progress', 0))
                     
-                    pillar_data[p_name]['weight'] = row.get('weight', pillar_data[p_name]['weight'])
-                    pillar_data[p_name]['progress'] = row.get('progress', pillar_data[p_name]['progress'])
-                    pillar_data[p_name]['status'] = row.get('status', pillar_data[p_name]['status'])
-                    pillar_data[p_name]['deadline'] = row.get('deadline', pillar_data[p_name]['deadline'])
+                    # Take the best status
+                    row_status = row.get('status', 'Not Started')
+                    if row_status in ['Completed', 'Exceeding', 'On Track']:
+                        pillar_data[p_name]['status'] = row_status
+                    
+                    # Take the best submission status
+                    current_sub = row.get('submission_status', 'Draft')
+                    if current_sub == 'Approved':
+                        pillar_data[p_name]['submission_status'] = 'Approved'
+                    elif current_sub == 'Submitted' and pillar_data[p_name]['submission_status'] != 'Approved':
+                        pillar_data[p_name]['submission_status'] = 'Submitted'
         
         return pillar_data
     
@@ -3385,25 +3389,45 @@ def performance_okrs():
                 st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
                 with st.form("self_assessment_form"):
                     scores, pillar_comments, evidence_files = {}, {}, {}
-                    for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                    pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                    for pillar_name in pillar_order:
                         pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
                         if not pillar_rows.empty:
-                            kpi_list = json.loads(pillar_rows.iloc[0].get('kpi_data', '[]')) if pillar_rows.iloc[0].get('kpi_data') else []
-                            if kpi_list:
-                                st.markdown(f"### {pillar_name}")
+                            # Combine ALL KPIs from ALL rows for this pillar
+                            all_kpi_list = []
+                            seen = set()
+                            total_weight = 0
+                            for _, pr in pillar_rows.iterrows():
+                                total_weight = max(total_weight, pr.get('weight', 0))
+                                kpi_list = json.loads(pr.get('kpi_data', '[]')) if pr.get('kpi_data') else []
+                                for kpi in kpi_list:
+                                    title = kpi.get('kpi', '')
+                                    if title and title not in seen:
+                                        seen.add(title)
+                                        all_kpi_list.append(kpi)
+                            
+                            if all_kpi_list:
+                                st.markdown(f"### {pillar_name} (Weight: {total_weight}%)")
                                 st.caption("📎 Evidence (Optional — up to 5 files)")
-                                ev_cols = st.columns(5); pillar_files = []
+                                ev_cols = st.columns(5)
+                                pillar_files = []
                                 for j in range(5):
                                     with ev_cols[j]:
                                         ev = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_{pillar_name}_{j}", label_visibility="collapsed")
-                                        if ev: pillar_files.append(ev)
+                                        if ev:
+                                            pillar_files.append(ev)
                                 evidence_files[pillar_name] = pillar_files if pillar_files else None
-                                for i, kpi in enumerate(kpi_list):
+                                
+                                for i, kpi in enumerate(all_kpi_list):
                                     score_key = f"{pillar_name}_{i}"
                                     col1, col2 = st.columns([3, 1])
-                                    with col1: st.markdown(f"**{kpi.get('kpi', 'KPI')[:80]}**"); st.caption(f"Target: {kpi.get('target', 'N/A')}")
-                                    with col2: scores[score_key] = st.number_input("Score %", 0, 100, 50, 1, key=f"score_{pillar_name}_{i}")
-                                pillar_comments[pillar_name] = st.text_area(f"Justification *", key=f"just_{pillar_name}")
+                                    with col1:
+                                        st.markdown(f"**{kpi.get('kpi', 'KPI')}**")
+                                        st.caption(f"Target: {kpi.get('target', 'N/A')} | Weight: {kpi.get('weight', 'N/A')}%")
+                                    with col2:
+                                        scores[score_key] = st.number_input("Score %", 0, 100, 50, 1, key=f"score_{pillar_name}_{i}")
+                                
+                                pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", key=f"just_{pillar_name}", placeholder="Explain your performance in this pillar...")
                                 st.markdown("---")
                     overall_comments = st.text_area("Overall Comments *")
                     if st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True, type="primary"):
@@ -3527,20 +3551,30 @@ def performance_okrs():
                             team_submissions[clean_name].append({'pillar': row.get('pillar_name', ''), 'kpis': json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else [], 'row_id': row.get('id')})
                 if team_submissions:
                     st.success(f"📋 {len(team_submissions)} team member(s)")
+                    pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
                     for emp_name, submissions in team_submissions.items():
                         with st.expander(f"👤 {emp_name}", expanded=False):
-                            for sub in submissions:
-                                st.markdown(f"**{sub['pillar']}**")
-                                for kpi in sub['kpis']: st.markdown(f"• {kpi.get('kpi', 'N/A')}")
+                            ordered_subs = sorted(submissions, key=lambda x: pillar_order.index(x['pillar']) if x['pillar'] in pillar_order else 99)
+                            for sub in ordered_subs:
+                                total_weight = sum(kpi.get('weight', 0) for kpi in sub['kpis'])
+                                st.markdown(f"**{sub['pillar']} (Weight: {total_weight}%)**")
+                                for kpi in sub['kpis']:
+                                    st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')} — Weight: {kpi.get('weight', 'N/A')}%")
+                                st.markdown("")
                             hod_comment = st.text_area(f"💬 Comment", key=f"hod_comment_{emp_name}")
                             c1, c2 = st.columns(2)
                             with c1:
                                 if st.button(f"✅ Approve", key=f"app_{emp_name}", type="primary"):
-                                    for sub in submissions: db._patch("performance_data", {"submission_status": "Approved"}, {"id": sub['row_id']})
+                                    for sub in submissions:
+                                        db._patch("performance_data", {"submission_status": "Approved"}, {"id": sub['row_id']})
                                     emp_email_addr = get_employee_email(emp_name)
-                                    if emp_email_addr: send_kpi_notification('approved', emp_name, emp_email_addr)
+                                    if emp_email_addr:
+                                        send_kpi_notification('approved', emp_name, emp_email_addr)
                                     log_audit("KPIs Approved", f"HOD approved KPIs for {emp_name}")
-                                    st.success("✅ Approved!"); st.balloons(); time.sleep(1); st.rerun()
+                                    st.success("✅ Approved!")
+                                    st.balloons()
+                                    time.sleep(1)
+                                    st.rerun()
                             with c2:
                                 if st.button(f"🔄 Revise", key=f"rev_{emp_name}"):
                                     if hod_comment:
@@ -3579,13 +3613,31 @@ def performance_okrs():
                             })
                 if team_approved:
                     st.success(f"✅ {len(team_approved)} team member(s) with approved KPIs")
+                    pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
                     for emp_name, kpi_data in team_approved.items():
                         with st.expander(f"✅ {emp_name} — {len(kpi_data)} pillar(s) approved", expanded=False):
+                            # Combine duplicate pillars by summing their KPIs
+                            combined = {}
                             for entry in kpi_data:
-                                st.markdown(f"**{entry['pillar']}** (Weight: {entry['weight']}%)")
+                                p_name = entry['pillar']
+                                if p_name not in combined:
+                                    combined[p_name] = {'kpis': [], 'weight': 0, 'seen_kpis': set()}
+                                combined[p_name]['weight'] = max(combined[p_name]['weight'], entry['weight'])
                                 for kpi in entry['kpis']:
-                                    st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')} — Weight: {kpi.get('weight', 'N/A')}%")
-                                st.markdown("")
+                                    kpi_title = kpi.get('kpi', '')
+                                    if kpi_title and kpi_title not in combined[p_name]['seen_kpis']:
+                                        combined[p_name]['seen_kpis'].add(kpi_title)
+                                        combined[p_name]['kpis'].append(kpi)
+                            
+                            # Display ordered by pillar
+                            for p_name in pillar_order:
+                                if p_name in combined:
+                                    data = combined[p_name]
+                                    total_weight = sum(k.get('weight', 0) for k in data['kpis'])
+                                    st.markdown(f"**{p_name} (Weight: {total_weight}%)**")
+                                    for kpi in data['kpis']:
+                                        st.markdown(f"• {kpi.get('kpi', 'N/A')} — Target: {kpi.get('target', 'N/A')} — Weight: {kpi.get('weight', 'N/A')}%")
+                                    st.markdown("")
                 else:
                     st.info("No team members have approved KPIs yet.")
             except:
