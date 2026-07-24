@@ -3143,7 +3143,6 @@ def performance_okrs():
                 st.success("✅ All KPIs submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         
          pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
-        
         for pillar_name in pillar_order:
             pd_data = pillar_data[pillar_name]
             status_text, color = get_kpi_status(pd_data['progress'])
@@ -3152,16 +3151,12 @@ def performance_okrs():
                 st.progress(pd_data['progress'] / 100)
                 if pd_data['kpis']:
                     kpi_names = [f"{k.get('kpi', 'Untitled')[:50]} (Target: {k.get('target', 'N/A')})" for k in pd_data['kpis']]
-                    
                     if not is_locked:
                         selected_kpi = st.selectbox("Select KPI to manage:", ["Select..."] + kpi_names, key=f"sel_{pillar_name.replace(' ', '')}")
-                        
                         if selected_kpi != "Select...":
                             idx = kpi_names.index(selected_kpi)
                             kpi = pd_data['kpis'][idx]
-                            
                             st.markdown(f"""<div class="kpi-card" style="border-left-color:#CC0000;"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small></div>""", unsafe_allow_html=True)
-                            
                             c1, c2 = st.columns(2)
                             with c1:
                                 if st.button("✏️ Edit Selected", key=f"editsel_{pillar_name.replace(' ', '')}_{idx}"):
