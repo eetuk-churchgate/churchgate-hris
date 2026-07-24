@@ -3199,13 +3199,6 @@ def performance_okrs():
                         st.cache_data.clear(); st.success("✅ KPI saved!")
                         if save_done: st.rerun()
                         else: time.sleep(0.5); st.rerun()
-                        else: pillar_data[pillar_choice]['kpis'].append(new_kpi); log_audit("KPI Added", f"KPI '{kpi_title}' added")
-                        total_weight = sum(k.get('weight', 0) for k in pillar_data[pillar_choice]['kpis'])
-                        if total_weight > 0: pillar_data[pillar_choice]['weight'] = total_weight
-                        db.save_performance_data(user_name, pillar_choice, pillar_data[pillar_choice]['weight'], pillar_data[pillar_choice]['progress'], pillar_data[pillar_choice]['status'], pillar_data[pillar_choice]['deadline'], pillar_data[pillar_choice]['kpis'])
-                        st.cache_data.clear(); st.success("✅ KPI saved!")
-                        if save_done: st.rerun()
-                        else: time.sleep(0.5); st.rerun()
     
     # ============================================================
     # TAB 3: SELF-ASSESSMENT
