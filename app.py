@@ -3151,7 +3151,6 @@ def performance_okrs():
             with st.expander(f"📌 {pillar_name} | {pd_data['progress']}% | {pd_data['status']} | {len(pd_data['kpis'])} KPI(s)", expanded=not is_locked):
                 st.progress(pd_data['progress'] / 100)
                 if pd_data['kpis']:
-                    # Show list of KPIs with dropdown action
                     kpi_names = [f"{k.get('kpi', 'Untitled')[:50]} (Target: {k.get('target', 'N/A')})" for k in pd_data['kpis']]
                     
                     if not is_locked:
@@ -3178,7 +3177,6 @@ def performance_okrs():
                                     st.success("✅ Deleted!")
                                     st.rerun()
                     else:
-                        # Just display locked KPIs
                         for kpi in pd_data['kpis']:
                             try:
                                 kpi_prog = int(float(str(kpi.get('current', '0')).replace('%', '')))
