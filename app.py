@@ -3142,7 +3142,7 @@ def performance_okrs():
                 st.cache_data.clear()
                 st.success("✅ All KPIs submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         
-        for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+        for pillar_name in pillar_order:
             pd_data = pillar_data[pillar_name]
             status_text, color = get_kpi_status(pd_data['progress'])
             is_locked = pd_data['submission_status'] != 'Draft'
