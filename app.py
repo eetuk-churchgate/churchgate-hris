@@ -3014,12 +3014,34 @@ def performance_okrs():
         pillar_data = {}
         for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
             pillar_data[pillar] = {'weight': 0, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': [], 'submission_status': 'Draft'}
+        
         if not user_perf.empty:
+            # Combine all KPIs across duplicate rows
+            seen_kpis = {p: set() for p in pillar_data}
+            
             for _, row in user_perf.iterrows():
                 p_name = row.get('pillar_name', '')
                 if p_name in pillar_data:
                     kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                    pillar_data[p_name] = {'weight': row.get('weight', 25), 'progress': row.get('progress', 0), 'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'), 'kpis': kpi_list, 'submission_status': row.get('submission_status', 'Draft')}
+                    # Add only new KPIs (avoid duplicates by title)
+                    for kpi in kpi_list:
+                        kpi_title = kpi.get('kpi', '')
+                        if kpi_title and kpi_title not in seen_kpis[p_name]:
+                            seen_kpis[p_name].add(kpi_title)
+                            pillar_data[p_name]['kpis'].append(kpi)
+                    
+                    # Take the best status
+                    current_status = row.get('submission_status', 'Draft')
+                    if current_status == 'Approved':
+                        pillar_data[p_name]['submission_status'] = 'Approved'
+                    elif current_status == 'Submitted' and pillar_data[p_name]['submission_status'] != 'Approved':
+                        pillar_data[p_name]['submission_status'] = 'Submitted'
+                    
+                    pillar_data[p_name]['weight'] = row.get('weight', pillar_data[p_name]['weight'])
+                    pillar_data[p_name]['progress'] = row.get('progress', pillar_data[p_name]['progress'])
+                    pillar_data[p_name]['status'] = row.get('status', pillar_data[p_name]['status'])
+                    pillar_data[p_name]['deadline'] = row.get('deadline', pillar_data[p_name]['deadline'])
+        
         return pillar_data
     
     # Employee lookup maps
