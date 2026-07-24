@@ -3180,7 +3180,25 @@ def performance_okrs():
                     if not kpi_title or not kpi_target: st.error("❌ Title and Target are required!")
                     else:
                         new_kpi = {'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current, 'weight': kpi_weight, 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'cycle': kpi_cycle, 'owner': user_name, 'status': 'In Progress'}
-                        if editing: pillar_data[pillar_choice]['kpis'][editing['index']] = new_kpi; st.session_state.editing_kpi = None; log_audit("KPI Updated", f"KPI '{kpi_title}' updated")
+                        if editing:
+                            # Reload pillar data to ensure we have the latest
+                            pillar_data = load_user_pillar_data()
+                            if editing['pillar'] in pillar_data:
+                                kpi_list = pillar_data[editing['pillar']]['kpis']
+                                if editing['index'] < len(kpi_list):
+                                    kpi_list[editing['index']] = new_kpi
+                                    db.save_performance_data(user_name, editing['pillar'], pillar_data[editing['pillar']]['weight'], pillar_data[editing['pillar']]['progress'], pillar_data[editing['pillar']]['status'], pillar_data[editing['pillar']]['deadline'], kpi_list)
+                            st.session_state.editing_kpi = None
+                            log_audit("KPI Updated", f"KPI '{kpi_title}' updated")
+                        else:
+                            pillar_data[pillar_choice]['kpis'].append(new_kpi)
+                            log_audit("KPI Added", f"KPI '{kpi_title}' added")
+                            total_weight = sum(k.get('weight', 0) for k in pillar_data[pillar_choice]['kpis'])
+                            if total_weight > 0: pillar_data[pillar_choice]['weight'] = total_weight
+                            db.save_performance_data(user_name, pillar_choice, pillar_data[pillar_choice]['weight'], pillar_data[pillar_choice]['progress'], pillar_data[pillar_choice]['status'], pillar_data[pillar_choice]['deadline'], pillar_data[pillar_choice]['kpis'])
+                        st.cache_data.clear(); st.success("✅ KPI saved!")
+                        if save_done: st.rerun()
+                        else: time.sleep(0.5); st.rerun()
                         else: pillar_data[pillar_choice]['kpis'].append(new_kpi); log_audit("KPI Added", f"KPI '{kpi_title}' added")
                         total_weight = sum(k.get('weight', 0) for k in pillar_data[pillar_choice]['kpis'])
                         if total_weight > 0: pillar_data[pillar_choice]['weight'] = total_weight
