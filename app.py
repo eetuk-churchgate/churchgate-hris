@@ -3197,12 +3197,24 @@ def performance_okrs():
                                         st.rerun()
                                 with c2:
                                     if st.button("🗑️ Delete", key=f"del_{pillar_name}_{kpi_index}"):
-                                        del pd_data['kpis'][kpi_index]
-                                        db.save_performance_data(user_name, pillar_name, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
-                                        st.cache_data.clear()
-                                        st.success("✅ KPI deleted!")
-                                        time.sleep(0.5)
-                                        st.rerun()
+                                        all_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_name})
+                                        deleted = False
+                                        for row in (all_rows or []):
+                                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                            if kpi_index < len(kpi_list):
+                                                kpi_list.pop(kpi_index)
+                                                remaining_weight = sum(k.get('weight', 0) for k in kpi_list)
+                                                db._patch("performance_data", {
+                                                    "kpi_data": json.dumps(kpi_list),
+                                                    "weight": remaining_weight
+                                                }, {"id": row['id']})
+                                                deleted = True
+                                                break
+                                        if deleted:
+                                            st.cache_data.clear()
+                                            st.success("✅ KPI deleted!")
+                                            time.sleep(0.5)
+                                            st.rerun()
                             else:
                                 st.info("🔒 KPIs are locked after submission")
                                 st.markdown(f"**Target:** {kpi.get('target', 'N/A')}")
