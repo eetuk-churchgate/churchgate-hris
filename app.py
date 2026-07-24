@@ -3080,8 +3080,17 @@ def performance_okrs():
     
     def find_hod_email_for_dept(dept):
         if not employees_df.empty:
-            hod_rows = employees_df[(employees_df['department'] == dept) & (employees_df['role'].isin(['HOD', 'Admin', 'HR Director']))]
-            if not hod_rows.empty: return hod_rows.iloc[0].get('email', '')
+            # Check if 'role' column exists, otherwise use position or fallback
+            if 'role' in employees_df.columns:
+                hod_rows = employees_df[(employees_df['department'] == dept) & (employees_df['role'].isin(['HOD', 'Admin', 'HR Director']))]
+            elif 'position' in employees_df.columns:
+                hod_rows = employees_df[(employees_df['department'] == dept) & (employees_df['position'].str.contains('HOD|Manager|Head|Director', case=False, na=False))]
+            else:
+                # Fallback - just get anyone in the department
+                hod_rows = employees_df[employees_df['department'] == dept]
+            
+            if not hod_rows.empty:
+                return hod_rows.iloc[0].get('email', '')
         return ''
     
     # ============================================================
