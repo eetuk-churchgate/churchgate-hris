@@ -3142,7 +3142,9 @@ def performance_okrs():
                 st.cache_data.clear()
                 st.success("✅ All KPIs submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         
-        for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+        pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+        
+        for pillar_name in pillar_order:
             pd_data = pillar_data[pillar_name]
             status_text, color = get_kpi_status(pd_data['progress'])
             is_locked = pd_data['submission_status'] != 'Draft'
@@ -3155,30 +3157,38 @@ def performance_okrs():
                         except:
                             kpi_prog = 0
                         kpi_stat, kpi_col = get_kpi_status(kpi_prog)
-                        
-                        # Display KPI card with action buttons using columns
                         st.markdown(f"""<div class="kpi-card" style="border-left-color:{kpi_col};"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small><br><small style="color:{kpi_col};">● {kpi_stat}</small></div>""", unsafe_allow_html=True)
                         
                         if not is_locked:
+                            # Use a unique key that changes on each action
+                            unique_key = f"{pillar_name.replace(' ', '').replace('.', '')}_{i}_{len(pd_data['kpis'])}"
                             ec1, ec2 = st.columns([1, 1])
                             with ec1:
-                                if st.button("✏️ Edit", key=f"editbtn_{pillar_name.replace(' ', '')}_{i}"):
-                                    st.session_state.editing_kpi = {'pillar': pillar_name, 'index': i, 'data': kpi.copy()}
+                                if st.button("✏️ Edit", key=f"e_{unique_key}"):
+                                    st.session_state.editing_kpi = {
+                                        'pillar': pillar_name, 
+                                        'index': i, 
+                                        'data': dict(kpi)
+                                    }
                                     st.rerun()
                             with ec2:
-                                if st.button("🗑️ Delete", key=f"delbtn_{pillar_name.replace(' ', '')}_{i}"):
-                                    # Delete directly from database
-                                    fresh_pillar = load_user_pillar_data()
-                                    if pillar_name in fresh_pillar and i < len(fresh_pillar[pillar_name]['kpis']):
-                                        fresh_pillar[pillar_name]['kpis'].pop(i)
-                                        # Recalculate weight
-                                        total_w = sum(k.get('weight', 0) for k in fresh_pillar[pillar_name]['kpis'])
-                                        fresh_pillar[pillar_name]['weight'] = total_w
-                                        db.save_performance_data(user_name, pillar_name, fresh_pillar[pillar_name]['weight'], fresh_pillar[pillar_name]['progress'], fresh_pillar[pillar_name]['status'], fresh_pillar[pillar_name]['deadline'], fresh_pillar[pillar_name]['kpis'])
+                                if st.button("🗑️ Delete", key=f"d_{unique_key}"):
+                                    try:
+                                        # Delete from database directly
+                                        all_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_name})
+                                        if all_rows:
+                                            for row in all_rows:
+                                                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                                if i < len(kpi_list):
+                                                    kpi_list.pop(i)
+                                                    db._patch("performance_data", {"kpi_data": json.dumps(kpi_list)}, {"id": row['id']})
+                                                    break
                                         st.cache_data.clear()
-                                        st.success("✅ Deleted!")
+                                        st.success("✅ KPI deleted!")
                                         time.sleep(0.5)
                                         st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Delete failed: {str(e)}")
                 else:
                     st.info("No KPIs in this pillar yet. Go to '✏️ My KPIs' tab to add some.")
     
