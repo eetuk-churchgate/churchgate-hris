@@ -24,17 +24,36 @@ import calendar
 
 sys.path.append(str(Path(__file__).parent))
 
+# ============================================
+# RESTRICT HUGGING FACE TO ADMIN ONLY
+# ============================================
+ALLOWED_EMAILS = ["admin@churchgate.com", "eetuk@churchgate.com"]
+
+# Check if user is logged in and restrict access
+if 'user' in st.session_state and st.session_state.user:
+    user_email = st.session_state.user.get('email', '')
+    if user_email not in ALLOWED_EMAILS:
+        st.error("⛔ Access Restricted")
+        st.warning("This is a test environment. Admin access only.")
+        st.info("🔗 Please use the live HRIS at [hris.churchgate.com](https://hris.churchgate.com)")
+        st.stop()
+
 # =============================================
 # FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
 # =============================================
+# This wraps st.secrets to also check environment variables
 class HuggingFaceSecrets:
     def __getitem__(self, key):
+        # Try st.secrets first
         try:
+            # Check if st.secrets has the key
             if hasattr(st, 'secrets') and hasattr(st.secrets, '_secrets'):
                 if key in st.secrets._secrets:
                     return st.secrets._secrets[key]
         except:
             pass
+        
+        # Fallback to environment variables
         return os.environ.get(key)
     
     def get(self, key, default=None):
@@ -50,10 +69,12 @@ class HuggingFaceSecrets:
         except:
             return False
 
+# Backup the original secrets if it exists
 _original_secrets = None
 if hasattr(st, 'secrets') and st.secrets:
     _original_secrets = st.secrets
 
+# Replace st.secrets with our wrapper
 st.secrets = HuggingFaceSecrets()
 # =============================================
 
@@ -64,85 +85,16 @@ from utils.email_service import EmailService
 from utils.chat_service import ChatService
 from utils.training_service import TrainingService
 from streamlit_quill import st_quill
-
 # ============================================================
-# PAGE CONFIG
+# SECTION 4: REST OF YOUR CODE (logo, page config, etc)
 # ============================================================
 logo_icon = Path(__file__).parent / "churchgate-logo.jpeg"
 
+logo_icon = Path(__file__).parent / "churchgate-logo.jpeg"
 if logo_icon.exists():
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon=str(logo_icon), layout="wide", initial_sidebar_state="expanded")
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
-
-# ============================================================
-# PWA - Service Worker & Install Prompt
-# ============================================================
-st.markdown("""
-<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png">
-<link rel="apple-touch-icon" sizes="192x192" href="https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png">
-<link rel="apple-touch-icon" sizes="512x512" href="https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-512.png">
-
-<script>
-// Register Service Worker (inline - no static file needed)
-if ('serviceWorker' in navigator) {
-    const swCode = `
-self.addEventListener('install', (e) => {
-    console.log('HRIS PWA: Installed');
-    self.skipWaiting();
-});
-self.addEventListener('activate', (e) => {
-    console.log('HRIS PWA: Activated');
-    clients.claim();
-});
-self.addEventListener('fetch', (e) => {
-    e.respondWith(
-        caches.match(e.request).then(r => r || fetch(e.request))
-    );
-});
-    `;
-    const blob = new Blob([swCode], {type: 'application/javascript'});
-    const swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl)
-        .then(reg => console.log('HRIS PWA: SW registered'))
-        .catch(err => console.log('HRIS PWA: SW failed', err));
-}
-
-// Install Prompt
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    
-    const btn = document.createElement('button');
-    btn.textContent = '📱 Install Churchgate HRIS';
-    btn.style.cssText = 'position:fixed;bottom:20px;right:20px;background:linear-gradient(135deg,#CC0000,#aa0000);color:white;border:none;padding:14px 24px;border-radius:10px;font-weight:700;z-index:9999;cursor:pointer;box-shadow:0 4px 20px rgba(204,0,0,0.5);font-family:Inter,sans-serif;font-size:14px;animation:pulse 2s infinite;';
-    btn.onclick = async () => {
-        deferredPrompt.prompt();
-        const result = await deferredPrompt.userChoice;
-        if (result.outcome === 'accepted') {
-            console.log('HRIS installed!');
-            btn.remove();
-        }
-        deferredPrompt = null;
-    };
-    document.body.appendChild(btn);
-});
-
-// Hide Streamlit header on mobile
-window.addEventListener('load', () => {
-    const header = document.querySelector('header[data-testid="stHeader"]');
-    if (header) header.style.display = 'none';
-});
-
-// Add PWA animation
-const style = document.createElement('style');
-style.textContent = '@keyframes pulse { 0%,100% { box-shadow:0 4px 20px rgba(204,0,0,0.5); } 50% { box-shadow:0 4px 30px rgba(204,0,0,0.8); } }';
-document.head.appendChild(style);
-</script>
-
-<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkNodXJjaGdhdGUgR3JvdXAgSFJJUyIsCiAgInNob3J0X25hbWUiOiAiQ2h1cmNoZ2F0ZSBIUklTIiwKICAiZGVzY3JpcHRpb24iOiAiRW50ZXJwcmlzZSBIdW1hbiBSZXNvdXJjZSBJbmZvcm1hdGlvbiBTeXN0ZW0gLSBDaHVyY2hnYXRlIEdyb3VwIiwKICAic3RhcnRfdXJsIjogImh0dHBzOi8vaHJpcy5jaHVyY2hnYXRlLmNvbSIsCiAgInNjb3BlIjogImh0dHBzOi8vaHJpcy5jaHVyY2hnYXRlLmNvbSIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzFhMWExYSIsCiAgInRoZW1lX2NvbG9yIjogIiNDQzAwMDAiLAogICJvcmllbnRhdGlvbiI6ICJwb3J0cmFpdC1wcmltYXJ5IiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly9ocmlzLmNodXJjaGdhdGUuY29tL3N0YXRpYy9jaHVyY2hnYXRlLWxvZ28tMTkyLnBuZyIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIiwKICAgICAgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIgogICAgfSwKICAgIHsKICAgICAgInNyYyI6ICJodHRwczovL2hyaXMuY2h1cmNoZ2F0ZS5jb20vc3RhdGljL2NodXJjaGdhdGUtbG9nby01MTIucG5nIiwKICAgICAgInNpemVzIjogIjUxMng1MTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciLAogICAgICAicHVycG9zZSI6ICJhbnkgbWFza2FibGUiCiAgICB9CiAgXSwKICAiY2F0ZWdvcmllcyI6IFsiYnVzaW5lc3MiLCAicHJvZHVjdGl2aXR5IiwgImh1bWFuIHJlc291cmNlcyJdLAogICJsYW5nIjogImVuLU5HIiwKICAiZGlyIjogImx0ciIsCiAgInByZWZlcl9yZWxhdGVkX2FwcGxpY2F0aW9ucyI6IGZhbHNlLAogICJyZWxhdGVkX2FwcGxpY2F0aW9ucyI6IFtdCn0=">
-""", unsafe_allow_html=True)
 
 # Browser Notification Setup
 st.markdown("""
@@ -156,8 +108,8 @@ function showNotification(title, body) {
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(title, {
             body: body,
-            icon: '/static/churchgate-logo-192.png',
-            badge: '/static/churchgate-logo-192.png',
+            icon: 'https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png',
+            badge: 'https://raw.githubusercontent.com/eetuk-churchgate/churchgate-hris/main/churchgate-logo-192.png',
             vibrate: [200, 100, 200]
         });
     }
@@ -741,6 +693,9 @@ def login_section():
                 st.image(logo, width=300)
         st.markdown("""<div style="text-align: center; padding: 1rem 0;"><h1 style="color: #1a1a1a; font-size: 2rem; font-weight: 700;">HRIS Portal</h1><p style="color: #666666; font-size: 0.9rem;">Human Resource Information System</p></div>""", unsafe_allow_html=True)
         
+        # TEST ENVIRONMENT BANNER
+        st.info("🔧 **Test Environment** — Admin access only. All other users please visit [hris.churchgate.com](https://hris.churchgate.com)")
+        
         # WTC Abuja Image
         wtc_path = Path(__file__).parent / "WTC Abuja 7 (1).jpg"
         if wtc_path.exists():
@@ -1038,93 +993,13 @@ def employee_dashboard():
     
     show_churchgate_mission()
     
-    # ============ NEWS TICKER - DYNAMIC ============
-    import random
-    
-    # Dynamic announcements based on real data
-    announcements = []
-    
-    try:
-        # Upcoming birthdays this month
-        current_month = datetime.now().month
-        birthday_count = 0
-        birthday_names = []
-        employees = db.get_all_employees()
-        if not employees.empty:
-            for _, emp in employees.iterrows():
-                dob = emp.get('date_of_birth', '')
-                if dob and pd.notna(dob):
-                    try:
-                        if isinstance(dob, str):
-                            dob_date = datetime.strptime(str(dob)[:10], '%Y-%m-%d')
-                        else:
-                            dob_date = pd.to_datetime(dob)
-                        if dob_date.month == current_month:
-                            birthday_count += 1
-                            birthday_names.append(f"{emp['first_name']} {emp['last_name']}")
-                    except:
-                        pass
-        if birthday_count > 0:
-            announcements.append(f"🎂 {birthday_count} team member(s) celebrating birthdays this month")
-    except:
-        pass
-    
-    try:
-        # Probation ending soon
-        probation_ending = 0
-        if not employees.empty:
-            for _, emp in employees.iterrows():
-                if emp.get('status') == 'Probation':
-                    join_date = emp.get('join_date', '')
-                    if join_date and pd.notna(join_date):
-                        try:
-                            jd = pd.to_datetime(join_date)
-                            end_date = jd + timedelta(days=180)
-                            days_left = (end_date - datetime.now()).days
-                            if 0 <= days_left <= 14:
-                                probation_ending += 1
-                        except:
-                            pass
-        if probation_ending > 0:
-            announcements.append(f"📋 {probation_ending} employee(s) probation ending within 14 days")
-    except:
-        pass
-    
-    try:
-        # Open positions
-        all_reqs = db.get_all_job_requisitions()
-        live_jobs = len([r for r in all_reqs if r.get('status') == 'Approved - Live'])
-        if live_jobs > 0:
-            announcements.append(f"💼 {live_jobs} open position(s) - Apply now on Careers page")
-    except:
-        pass
-    
-    try:
-        # Pending leave requests
-        leave_reqs = db._get("leave_requests")
-        pending_leaves = len([r for r in leave_reqs if r.get('status') == 'Submitted']) if leave_reqs else 0
-        if pending_leaves > 0:
-            announcements.append(f"📝 {pending_leaves} leave request(s) pending approval")
-    except:
-        pass
-    
-    try:
-        # Confirmation reviews pending
-        confirmations = db._get("confirmation_reviews")
-        pending_confirm = len([r for r in confirmations if r.get('status') == 'Pending COO Approval']) if confirmations else 0
-        if pending_confirm > 0:
-            announcements.append(f"✅ {pending_confirm} staff confirmation(s) awaiting COO approval")
-    except:
-        pass
-    
-    # Fallback if no dynamic announcements
-    if not announcements:
-        announcements = [
-            "📢 Welcome to Churchgate Group HRIS",
-            "💡 Check the Requests Hub for leave and attendance",
-            "📊 Performance reviews available in the Performance module"
-        ]
-    
+    # ============ NEWS TICKER ============
+    announcements = [
+        "📢 Q2 Performance Reviews due by June 30, 2026",
+        "🎓 New training courses available in Learning Hub",
+        "🏢 Churchgate Tower 2 renovation project starting July",
+        "🎉 Employee Appreciation Day coming up - June 15"
+    ]
     ticker_text = " • ".join(announcements)
     st.markdown(f"""
     <div style="background:#d5d5d5;color:#333;padding:0.6rem 1.5rem;border-radius:8px;margin-bottom:1rem;overflow:hidden;white-space:nowrap;">
@@ -2300,7 +2175,7 @@ def employee_management():
                             ec1, ec2, ec3 = st.columns(3)
                             with ec1:
                                 current_dept = str(emp.get('department', 'Technology Group'))
-                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
+                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
                                 dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 1
                                 new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -2324,7 +2199,7 @@ def employee_management():
                                         current_join_date_val = date.today()
                                 else:
                                     current_join_date_val = date.today()
-                                new_join_date = st.date_input("Join Date", value=current_join_date_val, min_value=date(1970, 1, 1), max_value=date.today(), key=f"join_{emp['employee_id']}_{st.session_state.dir_page}")
+                                new_join_date = st.date_input("Join Date", value=current_join_date_val, key=f"join_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
                                 current_gender = str(emp.get('gender', 'Male'))
                                 gender_options = ['Male', 'Female']
@@ -2380,19 +2255,12 @@ def employee_management():
                                     db._patch("employees", {"status": "Archived"}, {"employee_id": emp['employee_id']})
                                     st.success(f"📦 Archived!"); st.cache_data.clear(); time.sleep(1); st.rerun()
                         with action_col3:
-                            del_pending_key = f"del_pending_{emp['employee_id']}_{st.session_state.dir_page}"
                             if st.button("🗑️ Delete", key=f"del_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
-                                st.session_state[del_pending_key] = True
-                            if st.session_state.get(del_pending_key):
                                 st.error("Permanently delete?")
                                 if st.button("⚠️ Yes, Delete", key=f"confirm_del_{emp['employee_id']}_{st.session_state.dir_page}"):
                                     try:
-                                        ok = db._delete("employees", {"employee_id": emp['employee_id']})
-                                        del st.session_state[del_pending_key]
-                                        if ok:
-                                            st.success("🗑️ Deleted!"); st.cache_data.clear(); time.sleep(1); st.rerun()
-                                        else:
-                                            st.error("Delete failed — the employee may still be referenced by other records (appraisals, documents, etc).")
+                                        db._delete("employees", {"employee_id": emp['employee_id']})
+                                        st.success("🗑️ Deleted!"); st.cache_data.clear(); time.sleep(1); st.rerun()
                                     except Exception as e: st.error(f"Failed: {str(e)}")
         else:
             st.info("No employees match your search criteria.")
@@ -2427,12 +2295,12 @@ def employee_management():
                 phone = st.text_input("Phone")
             with c2:
                 employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
-                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
+                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                 position = st.text_input("Position *")
                 grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'])
             with c3:
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
-                join_date = st.date_input("Join Date", min_value=date(1970, 1, 1), max_value=date.today())
+                join_date = st.date_input("Join Date")
                 date_of_birth = st.date_input("Date of Birth *", min_value=date(1920, 1, 1), max_value=date(2026, 12, 31), value=date(1990, 1, 1))
                 system_role = st.selectbox("System Role *", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], index=4)
                 status = st.selectbox("Status", ['Active', 'Probation'])
@@ -2589,7 +2457,7 @@ def employee_management():
                 single_name = st.text_input("Full Name *")
                 single_pw = st.text_input("Password", value="churchgate2026")
             with c2:
-                single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'], key="single_dept")
+                single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], key="single_dept")
                 single_role = st.selectbox("Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key="single_role")
                 single_id = st.text_input("Employee ID", placeholder="e.g., AN00001")
             
@@ -2611,6 +2479,7 @@ def employee_management():
                         st.warning(f"⚠️ A login for {single_email} may already exist.")
                 else:
                     st.error("❌ Email and Name required!")
+
         
         st.markdown("---")
         st.markdown("### 👥 Bulk Generate for All Employees")
@@ -2641,6 +2510,7 @@ def employee_management():
                 st.download_button("📥 Download Login List", pd.DataFrame(emp_list).to_csv(index=False), "logins.csv", "text/csv")
         else:
             st.info("No employees found.")
+
     
     # ============ TAB 5: DEPARTMENTS ============
     with tab5:
@@ -2864,9 +2734,9 @@ def performance_okrs():
     is_team_lead_or_manager = user_role in ['Manager', 'Team Lead', 'HOD', 'Admin', 'HR Director']
     is_super_admin = user_email == 'admin@churchgate.com' or user_role in ['Admin', 'HR Director']
     
-    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
-                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal',
-                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services', 'Admin']
+    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 
+                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 
+                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     
     SUBSIDIARY_REGIONS = {
         'World Trade Center(WTC)': 'Abuja', 'World Trade Center': 'Abuja', 'WTC': 'Abuja',
@@ -3014,34 +2884,12 @@ def performance_okrs():
         pillar_data = {}
         for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
             pillar_data[pillar] = {'weight': 0, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': [], 'submission_status': 'Draft'}
-        
         if not user_perf.empty:
-            # Combine all KPIs across duplicate rows
-            seen_kpis = {p: set() for p in pillar_data}
-            
             for _, row in user_perf.iterrows():
                 p_name = row.get('pillar_name', '')
                 if p_name in pillar_data:
                     kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                    # Add only new KPIs (avoid duplicates by title)
-                    for kpi in kpi_list:
-                        kpi_title = kpi.get('kpi', '')
-                        if kpi_title and kpi_title not in seen_kpis[p_name]:
-                            seen_kpis[p_name].add(kpi_title)
-                            pillar_data[p_name]['kpis'].append(kpi)
-                    
-                    # Take the best status
-                    current_status = row.get('submission_status', 'Draft')
-                    if current_status == 'Approved':
-                        pillar_data[p_name]['submission_status'] = 'Approved'
-                    elif current_status == 'Submitted' and pillar_data[p_name]['submission_status'] != 'Approved':
-                        pillar_data[p_name]['submission_status'] = 'Submitted'
-                    
-                    pillar_data[p_name]['weight'] = row.get('weight', pillar_data[p_name]['weight'])
-                    pillar_data[p_name]['progress'] = row.get('progress', pillar_data[p_name]['progress'])
-                    pillar_data[p_name]['status'] = row.get('status', pillar_data[p_name]['status'])
-                    pillar_data[p_name]['deadline'] = row.get('deadline', pillar_data[p_name]['deadline'])
-        
+                    pillar_data[p_name] = {'weight': row.get('weight', 25), 'progress': row.get('progress', 0), 'status': row.get('status', 'Not Started'), 'deadline': row.get('deadline', '2026-12-31'), 'kpis': kpi_list, 'submission_status': row.get('submission_status', 'Draft')}
         return pillar_data
     
     # Employee lookup maps
@@ -3142,45 +2990,28 @@ def performance_okrs():
                 st.cache_data.clear()
                 st.success("✅ All KPIs submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         
-        pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
-        for pillar_name in pillar_order:
+        for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
             pd_data = pillar_data[pillar_name]
             status_text, color = get_kpi_status(pd_data['progress'])
             is_locked = pd_data['submission_status'] != 'Draft'
-            with st.expander(f"📌 {pillar_name} | {pd_data['progress']}% | {pd_data['status']} | {len(pd_data['kpis'])} KPI(s)", expanded=not is_locked):
+            with st.expander(f"📌 {pillar_name} | {pd_data['progress']}% | {pd_data['status']}", expanded=not is_locked):
                 st.progress(pd_data['progress'] / 100)
                 if pd_data['kpis']:
-                    kpi_names = [f"{k.get('kpi', 'Untitled')[:50]} (Target: {k.get('target', 'N/A')})" for k in pd_data['kpis']]
-                    if not is_locked:
-                        selected_kpi = st.selectbox("Select KPI to manage:", ["Select..."] + kpi_names, key=f"sel_{pillar_name.replace(' ', '')}")
-                        if selected_kpi != "Select...":
-                            idx = kpi_names.index(selected_kpi)
-                            kpi = pd_data['kpis'][idx]
-                            st.markdown(f"""<div class="kpi-card" style="border-left-color:#CC0000;"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small></div>""", unsafe_allow_html=True)
-                            c1, c2 = st.columns(2)
+                    for i, kpi in enumerate(pd_data['kpis']):
+                        try: kpi_prog = int(float(str(kpi.get('current', '0')).replace('%', '')))
+                        except: kpi_prog = 0
+                        kpi_stat, kpi_col = get_kpi_status(kpi_prog)
+                        st.markdown(f"""<div class="kpi-card" style="border-left-color:{kpi_col};"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small><br><small style="color:{kpi_col};">● {kpi_stat}</small></div>""", unsafe_allow_html=True)
+                        if not is_locked:
+                            c1, c2 = st.columns([1, 1])
                             with c1:
-                                if st.button("✏️ Edit Selected", key=f"editsel_{pillar_name.replace(' ', '')}_{idx}"):
-                                    st.session_state.editing_kpi = {'pillar': pillar_name, 'index': idx, 'data': dict(kpi)}
-                                    st.rerun()
+                                if st.button("✏️ Edit", key=f"qedit_{pillar_name}_{i}"): st.session_state.editing_kpi = {'pillar': pillar_name, 'index': i, 'data': kpi}; st.rerun()
                             with c2:
-                                if st.button("🗑️ Delete Selected", key=f"delsel_{pillar_name.replace(' ', '')}_{idx}"):
-                                    pd_data['kpis'].pop(idx)
-                                    total_w = sum(k.get('weight', 0) for k in pd_data['kpis'])
-                                    pd_data['weight'] = total_w
+                                if st.button("🗑️ Delete", key=f"qdel_{pillar_name}_{i}"):
+                                    pd_data['kpis'].pop(i)
                                     db.save_performance_data(user_name, pillar_name, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
-                                    st.cache_data.clear()
-                                    st.success("✅ Deleted!")
-                                    st.rerun()
-                    else:
-                        for kpi in pd_data['kpis']:
-                            try:
-                                kpi_prog = int(float(str(kpi.get('current', '0')).replace('%', '')))
-                            except:
-                                kpi_prog = 0
-                            kpi_stat, kpi_col = get_kpi_status(kpi_prog)
-                            st.markdown(f"""<div class="kpi-card" style="border-left-color:{kpi_col};"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small><br><small style="color:{kpi_col};">● {kpi_stat}</small></div>""", unsafe_allow_html=True)
-                else:
-                    st.info("No KPIs in this pillar yet. Go to '✏️ My KPIs' tab to add some.")
+                                    st.cache_data.clear(); st.success("Deleted!"); st.rerun()
+                else: st.info("No KPIs in this pillar yet.")
     
     # ============================================================
     # TAB 2: MY KPIs
@@ -3216,47 +3047,17 @@ def performance_okrs():
                 with c2: save_done = st.form_submit_button("✅ Save & Finish", use_container_width=True)
                 
                 if save_add or save_done:
-                    if not kpi_title or not kpi_target:
-                        st.error("❌ Title and Target are required!")
+                    if not kpi_title or not kpi_target: st.error("❌ Title and Target are required!")
                     else:
                         new_kpi = {'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current, 'weight': kpi_weight, 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'cycle': kpi_cycle, 'owner': user_name, 'status': 'In Progress'}
-                        
-                        # Reload fresh pillar data from database
-                        fresh_data = load_user_pillar_data()
-                        
-                        if editing:
-                            edit_pillar = editing['pillar']
-                            edit_index = editing['index']
-                            if edit_pillar in fresh_data and edit_index < len(fresh_data[edit_pillar]['kpis']):
-                                fresh_data[edit_pillar]['kpis'][edit_index] = new_kpi
-                                # Save to database
-                                total_w = sum(k.get('weight', 0) for k in fresh_data[edit_pillar]['kpis'])
-                                if total_w > 0:
-                                    fresh_data[edit_pillar]['weight'] = total_w
-                                db.save_performance_data(user_name, edit_pillar, fresh_data[edit_pillar]['weight'], fresh_data[edit_pillar]['progress'], fresh_data[edit_pillar]['status'], fresh_data[edit_pillar]['deadline'], fresh_data[edit_pillar]['kpis'])
-                                st.session_state.editing_kpi = None
-                                log_audit("KPI Updated", f"KPI '{kpi_title}' updated in {edit_pillar}")
-                            else:
-                                st.error("❌ Edit failed - KPI not found. Please try again.")
-                        else:
-                            # Add new KPI
-                            if pillar_choice not in fresh_data:
-                                fresh_data[pillar_choice] = {'weight': 0, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': [], 'submission_status': 'Draft'}
-                            fresh_data[pillar_choice]['kpis'].append(new_kpi)
-                            # Save to database
-                            total_w = sum(k.get('weight', 0) for k in fresh_data[pillar_choice]['kpis'])
-                            if total_w > 0:
-                                fresh_data[pillar_choice]['weight'] = total_w
-                            db.save_performance_data(user_name, pillar_choice, fresh_data[pillar_choice]['weight'], fresh_data[pillar_choice]['progress'], fresh_data[pillar_choice]['status'], fresh_data[pillar_choice]['deadline'], fresh_data[pillar_choice]['kpis'])
-                            log_audit("KPI Added", f"KPI '{kpi_title}' added to {pillar_choice}")
-                        
-                        st.cache_data.clear()
-                        st.success("✅ KPI saved!")
-                        if save_done:
-                            st.rerun()
-                        else:
-                            time.sleep(0.5)
-                            st.rerun()
+                        if editing: pillar_data[pillar_choice]['kpis'][editing['index']] = new_kpi; st.session_state.editing_kpi = None; log_audit("KPI Updated", f"KPI '{kpi_title}' updated")
+                        else: pillar_data[pillar_choice]['kpis'].append(new_kpi); log_audit("KPI Added", f"KPI '{kpi_title}' added")
+                        total_weight = sum(k.get('weight', 0) for k in pillar_data[pillar_choice]['kpis'])
+                        if total_weight > 0: pillar_data[pillar_choice]['weight'] = total_weight
+                        db.save_performance_data(user_name, pillar_choice, pillar_data[pillar_choice]['weight'], pillar_data[pillar_choice]['progress'], pillar_data[pillar_choice]['status'], pillar_data[pillar_choice]['deadline'], pillar_data[pillar_choice]['kpis'])
+                        st.cache_data.clear(); st.success("✅ KPI saved!")
+                        if save_done: st.rerun()
+                        else: time.sleep(0.5); st.rerun()
     
     # ============================================================
     # TAB 3: SELF-ASSESSMENT
@@ -5580,6 +5381,7 @@ def performance_okrs():
                     st.info("No appraisal data available for recommendations.")
 
 
+
 def staff_confirmation():
     """
     Churchgate Group HRIS - Staff Confirmation Module v2.0
@@ -6438,7 +6240,6 @@ def staff_confirmation():
             st.info("Dashboard loading...")
 
 
-
 def promotions():
     """
     Churchgate Group HRIS - Promotions & 360° Feedback Module v2.0
@@ -6473,9 +6274,9 @@ def promotions():
     except:
         pass
     
-    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
-                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal',
-                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services', 'Admin']
+    all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 
+                 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 
+                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services']
     for dept in all_depts:
         if dept not in aplayers_data:
             aplayers_data[dept] = []
@@ -7063,6 +6864,7 @@ def promotions():
             except:
                 pass
 
+
 def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
     
@@ -7264,7 +7066,7 @@ APPLY NOW: {public_url}
             c1, c2 = st.columns(2)
             with c1:
                 job_title = st.text_input("Job Title *", placeholder="e.g., Senior Network Engineer")
-                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services', 'Admin'])
+                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services'])
                 location = st.selectbox("Location", ["World Trade Center Abuja", "Churchgate Tower 1 Lagos", "Churchgate Tower 2 Lagos", "Churchgate Plaza Abuja", "Remote/Hybrid"])
                 employment_type = st.selectbox("Employment Type", ["Full-time", "Contract", "Part-time", "Intern"])
             with c2:
@@ -8330,7 +8132,7 @@ APPLY NOW: {public_url}
                     offer_name = st.text_input("Candidate Full Name *")
                     offer_email = st.text_input("Candidate Email *")
                     offer_position = st.text_input("Position *")
-                    offer_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
+                    offer_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                 with c2:
                     offer_salary = st.text_input("Salary Package *", placeholder="e.g., ₦1,200,000 Gross per Annum")
                     offer_start = st.date_input("Start Date *")
@@ -8471,7 +8273,7 @@ APPLY NOW: {public_url}
                 with col1:
                     offer_status_filter = st.selectbox("Status", ["All", "Pending Acceptance", "Accepted", "Rejected", "Expired"])
                 with col2:
-                    offer_dept_filter = st.selectbox("Department", ["All", 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
+                    offer_dept_filter = st.selectbox("Department", ["All", 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                 
                 filtered = offers
                 if offer_status_filter != "All":
@@ -8558,7 +8360,7 @@ APPLY NOW: {public_url}
                 with c1:
                     nh_name = st.text_input("Employee Full Name *")
                     nh_email = st.text_input("Employee Email *")
-                    nh_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
+                    nh_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                     nh_position = st.text_input("Position *")
                 with c2:
                     nh_start = st.date_input("Start Date *")
@@ -8784,7 +8586,7 @@ APPLY NOW: {public_url}
                 with c1:
                     bg_name = st.text_input("Candidate Name *")
                     bg_position = st.text_input("Position Applied For *")
-                    bg_department = st.selectbox("Department", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
+                    bg_department = st.selectbox("Department", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'])
                 with c2:
                     bg_type = st.multiselect("Check Type *", [
                         "Employment Verification",
@@ -10572,7 +10374,7 @@ def training_development():
         with c1:
             course_filter = st.selectbox("Category", ["All", "Technical", "Leadership", "Compliance", "Soft Skills", "Professional"])
         with c2:
-            dept_filter_course = st.selectbox("Department", ["All", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations", "Engineering", "Admin"])
+            dept_filter_course = st.selectbox("Department", ["All", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations", "Engineering"])
         with c3:
             level_filter = st.selectbox("Level", ["All", "Beginner", "Intermediate", "Advanced", "Expert"])
         
@@ -13856,7 +13658,7 @@ def requests_hub():
                 else:
                     st.info("No requests for bulk approval.")
             
-            # ----- HR Leave Management -----
+           # ----- HR Leave Management -----
             with board_tabs[2]:
                 st.markdown("### 👥 HR Leave Balance Management")
                 st.info("Assign and manage leave entitlements for employees.")
@@ -14596,7 +14398,7 @@ def my_profile():
                     new_gender = st.selectbox("Gender", ['Male', 'Female'], index=0 if emp_gender == 'Male' else 1)
                 with c2:
                     new_last = st.text_input("Last Name", value=last_name)
-                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
+                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
                     dept_idx = dept_list.index(emp_dept) if emp_dept in dept_list else 0
                     new_dept = st.selectbox("Department", dept_list, index=dept_idx)
                     new_region = st.selectbox("Region", ['Abuja', 'Lagos'], index=0 if emp_region == 'Abuja' else 1)
@@ -16061,6 +15863,7 @@ def main():
         }
         page_func = page_routes.get(page, employee_dashboard)
         page_func()
+
 
 # Show pending browser notifications
     if st.session_state.get('pending_notifications'):
