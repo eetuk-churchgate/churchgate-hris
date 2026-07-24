@@ -3160,35 +3160,33 @@ def performance_okrs():
                         st.markdown(f"""<div class="kpi-card" style="border-left-color:{kpi_col};"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small><br><small style="color:{kpi_col};">● {kpi_stat}</small></div>""", unsafe_allow_html=True)
                         
                         if not is_locked:
-                            # Use a unique key that changes on each action
-                            unique_key = f"{pillar_name.replace(' ', '').replace('.', '')}_{i}_{len(pd_data['kpis'])}"
-                            ec1, ec2 = st.columns([1, 1])
-                            with ec1:
-                                if st.button("✏️ Edit", key=f"e_{unique_key}"):
-                                    st.session_state.editing_kpi = {
-                                        'pillar': pillar_name, 
-                                        'index': i, 
-                                        'data': dict(kpi)
-                                    }
+                            # Use radio button instead of button for edit/delete choice
+                            action = st.radio(
+                                f"Action for: {kpi.get('kpi', 'KPI')[:30]}...",
+                                ["View", "✏️ Edit", "🗑️ Delete"],
+                                horizontal=True,
+                                key=f"action_{pillar_name.replace(' ', '')}_{i}",
+                                label_visibility="collapsed"
+                            )
+                            
+                            if action == "✏️ Edit":
+                                st.session_state.editing_kpi = {'pillar': pillar_name, 'index': i, 'data': dict(kpi)}
+                                st.rerun()
+                            
+                            if action == "🗑️ Delete":
+                                if st.button(f"Confirm Delete", key=f"confirm_del_{pillar_name.replace(' ', '')}_{i}"):
+                                    all_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_name})
+                                    if all_rows:
+                                        for row in all_rows:
+                                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                            if i < len(kpi_list):
+                                                kpi_list.pop(i)
+                                                db._patch("performance_data", {"kpi_data": json.dumps(kpi_list)}, {"id": row['id']})
+                                                break
+                                    st.cache_data.clear()
+                                    st.success("✅ Deleted!")
+                                    time.sleep(0.5)
                                     st.rerun()
-                            with ec2:
-                                if st.button("🗑️ Delete", key=f"d_{unique_key}"):
-                                    try:
-                                        # Delete from database directly
-                                        all_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_name})
-                                        if all_rows:
-                                            for row in all_rows:
-                                                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                                if i < len(kpi_list):
-                                                    kpi_list.pop(i)
-                                                    db._patch("performance_data", {"kpi_data": json.dumps(kpi_list)}, {"id": row['id']})
-                                                    break
-                                        st.cache_data.clear()
-                                        st.success("✅ KPI deleted!")
-                                        time.sleep(0.5)
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Delete failed: {str(e)}")
                 else:
                     st.info("No KPIs in this pillar yet. Go to '✏️ My KPIs' tab to add some.")
     
