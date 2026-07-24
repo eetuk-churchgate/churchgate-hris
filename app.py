@@ -3146,24 +3146,39 @@ def performance_okrs():
             pd_data = pillar_data[pillar_name]
             status_text, color = get_kpi_status(pd_data['progress'])
             is_locked = pd_data['submission_status'] != 'Draft'
-            with st.expander(f"📌 {pillar_name} | {pd_data['progress']}% | {pd_data['status']}", expanded=not is_locked):
+            with st.expander(f"📌 {pillar_name} | {pd_data['progress']}% | {pd_data['status']} | {len(pd_data['kpis'])} KPI(s)", expanded=not is_locked):
                 st.progress(pd_data['progress'] / 100)
                 if pd_data['kpis']:
                     for i, kpi in enumerate(pd_data['kpis']):
-                        try: kpi_prog = int(float(str(kpi.get('current', '0')).replace('%', '')))
-                        except: kpi_prog = 0
+                        try:
+                            kpi_prog = int(float(str(kpi.get('current', '0')).replace('%', '')))
+                        except:
+                            kpi_prog = 0
                         kpi_stat, kpi_col = get_kpi_status(kpi_prog)
                         st.markdown(f"""<div class="kpi-card" style="border-left-color:{kpi_col};"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small><br><small style="color:{kpi_col};">● {kpi_stat}</small></div>""", unsafe_allow_html=True)
                         if not is_locked:
-                            c1, c2 = st.columns([1, 1])
-                            with c1:
-                                if st.button("✏️ Edit", key=f"qedit_{pillar_name}_{i}"): st.session_state.editing_kpi = {'pillar': pillar_name, 'index': i, 'data': kpi}; st.rerun()
-                            with c2:
-                                if st.button("🗑️ Delete", key=f"qdel_{pillar_name}_{i}"):
-                                    pd_data['kpis'].pop(i)
-                                    db.save_performance_data(user_name, pillar_name, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
-                                    st.cache_data.clear(); st.success("Deleted!"); st.rerun()
-                else: st.info("No KPIs in this pillar yet.")
+                            col1, col2, col3 = st.columns([3, 1, 1])
+                            with col2:
+                                if st.button("✏️", key=f"edit_{pillar_name}_{i}_{st.session_state.get('edit_counter', 0)}", help="Edit this KPI"):
+                                    st.session_state.editing_kpi = {'pillar': pillar_name, 'index': i, 'data': kpi}
+                                    st.session_state.edit_counter = st.session_state.get('edit_counter', 0) + 1
+                                    st.rerun()
+                            with col3:
+                                if st.button("🗑️", key=f"del_{pillar_name}_{i}_{st.session_state.get('del_counter', 0)}", help="Delete this KPI"):
+                                    # Reload fresh data
+                                    fresh = load_user_pillar_data()
+                                    if pillar_name in fresh and i < len(fresh[pillar_name]['kpis']):
+                                        fresh[pillar_name]['kpis'].pop(i)
+                                        db.save_performance_data(user_name, pillar_name, fresh[pillar_name]['weight'], fresh[pillar_name]['progress'], fresh[pillar_name]['status'], fresh[pillar_name]['deadline'], fresh[pillar_name]['kpis'])
+                                        st.cache_data.clear()
+                                        st.session_state.del_counter = st.session_state.get('del_counter', 0) + 1
+                                        st.success("✅ KPI deleted!")
+                                        time.sleep(0.3)
+                                        st.rerun()
+                                    else:
+                                        st.error("Delete failed - please try again")
+                else:
+                    st.info("No KPIs in this pillar yet. Go to '✏️ My KPIs' tab to add some.")
     
     # ============================================================
     # TAB 2: MY KPIs
