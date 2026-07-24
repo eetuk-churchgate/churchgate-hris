@@ -3155,28 +3155,30 @@ def performance_okrs():
                         except:
                             kpi_prog = 0
                         kpi_stat, kpi_col = get_kpi_status(kpi_prog)
+                        
+                        # Display KPI card with action buttons using columns
                         st.markdown(f"""<div class="kpi-card" style="border-left-color:{kpi_col};"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small><br><small style="color:{kpi_col};">● {kpi_stat}</small></div>""", unsafe_allow_html=True)
+                        
                         if not is_locked:
-                            col1, col2, col3 = st.columns([3, 1, 1])
-                            with col2:
-                                if st.button("✏️", key=f"edit_{pillar_name}_{i}_{st.session_state.get('edit_counter', 0)}", help="Edit this KPI"):
-                                    st.session_state.editing_kpi = {'pillar': pillar_name, 'index': i, 'data': kpi}
-                                    st.session_state.edit_counter = st.session_state.get('edit_counter', 0) + 1
+                            ec1, ec2 = st.columns([1, 1])
+                            with ec1:
+                                if st.button("✏️ Edit", key=f"editbtn_{pillar_name.replace(' ', '')}_{i}"):
+                                    st.session_state.editing_kpi = {'pillar': pillar_name, 'index': i, 'data': kpi.copy()}
                                     st.rerun()
-                            with col3:
-                                if st.button("🗑️", key=f"del_{pillar_name}_{i}_{st.session_state.get('del_counter', 0)}", help="Delete this KPI"):
-                                    # Reload fresh data
-                                    fresh = load_user_pillar_data()
-                                    if pillar_name in fresh and i < len(fresh[pillar_name]['kpis']):
-                                        fresh[pillar_name]['kpis'].pop(i)
-                                        db.save_performance_data(user_name, pillar_name, fresh[pillar_name]['weight'], fresh[pillar_name]['progress'], fresh[pillar_name]['status'], fresh[pillar_name]['deadline'], fresh[pillar_name]['kpis'])
+                            with ec2:
+                                if st.button("🗑️ Delete", key=f"delbtn_{pillar_name.replace(' ', '')}_{i}"):
+                                    # Delete directly from database
+                                    fresh_pillar = load_user_pillar_data()
+                                    if pillar_name in fresh_pillar and i < len(fresh_pillar[pillar_name]['kpis']):
+                                        fresh_pillar[pillar_name]['kpis'].pop(i)
+                                        # Recalculate weight
+                                        total_w = sum(k.get('weight', 0) for k in fresh_pillar[pillar_name]['kpis'])
+                                        fresh_pillar[pillar_name]['weight'] = total_w
+                                        db.save_performance_data(user_name, pillar_name, fresh_pillar[pillar_name]['weight'], fresh_pillar[pillar_name]['progress'], fresh_pillar[pillar_name]['status'], fresh_pillar[pillar_name]['deadline'], fresh_pillar[pillar_name]['kpis'])
                                         st.cache_data.clear()
-                                        st.session_state.del_counter = st.session_state.get('del_counter', 0) + 1
-                                        st.success("✅ KPI deleted!")
-                                        time.sleep(0.3)
+                                        st.success("✅ Deleted!")
+                                        time.sleep(0.5)
                                         st.rerun()
-                                    else:
-                                        st.error("Delete failed - please try again")
                 else:
                     st.info("No KPIs in this pillar yet. Go to '✏️ My KPIs' tab to add some.")
     
