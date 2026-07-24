@@ -3153,15 +3153,25 @@ def performance_okrs():
             with st.expander(f"{pillar_name} | {pd_data['progress']}% | {pd_data['status']}", expanded=False):
                 st.progress(pd_data['progress'] / 100)
                 
-                if pd_data['kpis']:
-                    is_locked = pd_data.get('submission_status', 'Draft') != 'Draft'
-                    
-                    # Reload fresh data from DB for this pillar
-                    fresh_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_name})
-                    all_kpis = []
-                    for row in (fresh_rows or []):
-                        kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                # Get ALL performance data and filter manually
+                all_perf_rows = db._get("performance_data")
+                all_kpis = []
+                for row in (all_perf_rows or []):
+                    if row.get('user_name') == user_name and row.get('pillar_name') == pillar_name:
+                        kpi_data = row.get('kpi_data', '[]')
+                        if isinstance(kpi_data, str):
+                            try:
+                                kpi_list = json.loads(kpi_data)
+                            except:
+                                kpi_list = []
+                        elif isinstance(kpi_data, list):
+                            kpi_list = kpi_data
+                        else:
+                            kpi_list = []
                         all_kpis.extend(kpi_list)
+                
+                if all_kpis:
+                    is_locked = pd_data.get('submission_status', 'Draft') != 'Draft'
                     
                     for kpi_index, kpi in enumerate(all_kpis):
                         try:
@@ -3180,22 +3190,27 @@ def performance_okrs():
                                     st.rerun()
                             with c2:
                                 if st.button("🗑️", key=f"delbtn_{pillar_name.replace(' ', '').replace('.', '')}_{kpi_index}"):
-                                    # Delete from all rows
-                                    for row in (fresh_rows or []):
-                                        row_kpis = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                        if kpi_index < len(row_kpis):
-                                            row_kpis.pop(kpi_index)
-                                            new_weight = sum(k.get('weight', 0) for k in row_kpis)
-                                            db._patch("performance_data", {
-                                                "kpi_data": json.dumps(row_kpis),
-                                                "weight": new_weight
-                                            }, {"id": row['id']})
-                                            st.cache_data.clear()
-                                            st.success("✅ Deleted!")
-                                            time.sleep(0.3)
-                                            st.rerun()
+                                    for row in (all_perf_rows or []):
+                                        if row.get('user_name') == user_name and row.get('pillar_name') == pillar_name:
+                                            kpi_data = row.get('kpi_data', '[]')
+                                            if isinstance(kpi_data, str):
+                                                try:
+                                                    row_kpis = json.loads(kpi_data)
+                                                except:
+                                                    row_kpis = []
+                                            elif isinstance(kpi_data, list):
+                                                row_kpis = kpi_data
+                                            else:
+                                                row_kpis = []
+                                            if kpi_index < len(row_kpis):
+                                                row_kpis.pop(kpi_index)
+                                                new_weight = sum(k.get('weight', 0) for k in row_kpis)
+                                                db._patch("performance_data", {"kpi_data": json.dumps(row_kpis), "weight": new_weight}, {"id": row['id']})
+                                                st.cache_data.clear()
+                                                st.success("✅ Deleted!")
+                                                time.sleep(0.3)
+                                                st.rerun()
                             
-                            # Show edit form
                             if st.session_state.get(f'show_edit_{pillar_name}_{kpi_index}'):
                                 col1, col2 = st.columns(2)
                                 with col1:
@@ -3215,21 +3230,25 @@ def performance_okrs():
                                             'owner': kpi.get('owner', user_name), 'weight': edit_weight,
                                             'cycle': kpi.get('cycle', 'Half-Year Appraisal')
                                         }
-                                        # Update in the first row that has this KPI
-                                        for row in (fresh_rows or []):
-                                            row_kpis = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                            if kpi_index < len(row_kpis):
-                                                row_kpis[kpi_index] = updated_kpi
-                                                new_weight = sum(k.get('weight', 0) for k in row_kpis)
-                                                db._patch("performance_data", {
-                                                    "kpi_data": json.dumps(row_kpis),
-                                                    "weight": new_weight
-                                                }, {"id": row['id']})
-                                                st.session_state[f'show_edit_{pillar_name}_{kpi_index}'] = False
-                                                st.cache_data.clear()
-                                                st.success("✅ Updated!")
-                                                time.sleep(0.3)
-                                                st.rerun()
+                                        for row in (all_perf_rows or []):
+                                            if row.get('user_name') == user_name and row.get('pillar_name') == pillar_name:
+                                                kpi_data = row.get('kpi_data', '[]')
+                                                if isinstance(kpi_data, str):
+                                                    try:
+                                                        row_kpis = json.loads(kpi_data)
+                                                    except:
+                                                        row_kpis = []
+                                                else:
+                                                    row_kpis = kpi_data if isinstance(kpi_data, list) else []
+                                                if kpi_index < len(row_kpis):
+                                                    row_kpis[kpi_index] = updated_kpi
+                                                    new_weight = sum(k.get('weight', 0) for k in row_kpis)
+                                                    db._patch("performance_data", {"kpi_data": json.dumps(row_kpis), "weight": new_weight}, {"id": row['id']})
+                                                    st.session_state[f'show_edit_{pillar_name}_{kpi_index}'] = False
+                                                    st.cache_data.clear()
+                                                    st.success("✅ Updated!")
+                                                    time.sleep(0.3)
+                                                    st.rerun()
                                 with b2:
                                     if st.button("Cancel", key=f"cancelbtn_{pillar_name}_{kpi_index}"):
                                         st.session_state[f'show_edit_{pillar_name}_{kpi_index}'] = False
