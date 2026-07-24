@@ -3156,75 +3156,86 @@ def performance_okrs():
                 if pd_data['kpis']:
                     is_locked = pd_data.get('submission_status', 'Draft') != 'Draft'
                     
-                    for kpi_index, kpi in enumerate(pd_data['kpis']):
+                    # Reload fresh data from DB for this pillar
+                    fresh_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_name})
+                    all_kpis = []
+                    for row in (fresh_rows or []):
+                        kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                        all_kpis.extend(kpi_list)
+                    
+                    for kpi_index, kpi in enumerate(all_kpis):
                         try:
                             kpi_progress = int(float(str(kpi.get('current', '0')).replace('%', '')))
                         except:
                             kpi_progress = 0
                         kpi_status, kpi_color = get_kpi_status(kpi_progress)
                         
-                        # KPI card with action buttons OUTSIDE inner expander
                         st.markdown(f"""<div class="kpi-card" style="border-left-color:{kpi_color};"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}% | {kpi_status}</small></div>""", unsafe_allow_html=True)
                         
                         if not is_locked:
-                            # Edit/Delete buttons at the top level of the outer expander
-                            c1, c2, c3 = st.columns([2, 1, 1])
+                            c1, c2 = st.columns([3, 1])
+                            with c1:
+                                if st.button("✏️ Edit", key=f"editbtn_{pillar_name.replace(' ', '').replace('.', '')}_{kpi_index}"):
+                                    st.session_state[f'show_edit_{pillar_name}_{kpi_index}'] = True
+                                    st.rerun()
                             with c2:
-                                if st.button("✏️ Edit", key=f"editbtn_{pillar_name.replace(' ', '')}_{kpi_index}"):
-                                    st.session_state[f'edit_open_{pillar_name}_{kpi_index}'] = True
-                                    st.rerun()
-                            with c3:
-                                if st.button("🗑️ Del", key=f"delbtn_{pillar_name.replace(' ', '')}_{kpi_index}"):
-                                    all_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_name})
-                                    for row in (all_rows or []):
-                                        kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                        if kpi_index < len(kpi_list):
-                                            kpi_list.pop(kpi_index)
-                                            remaining_weight = sum(k.get('weight', 0) for k in kpi_list)
-                                            db._patch("performance_data", {"kpi_data": json.dumps(kpi_list), "weight": remaining_weight}, {"id": row['id']})
-                                            break
-                                    st.cache_data.clear()
-                                    st.success("✅ Deleted!")
-                                    time.sleep(0.3)
-                                    st.rerun()
-                            
-                            # Show edit form if edit button was clicked
-                            if st.session_state.get(f'edit_open_{pillar_name}_{kpi_index}', False):
-                                with st.expander("✏️ Editing...", expanded=True):
-                                    col1, col2 = st.columns(2)
-                                    with col1:
-                                        edit_title = st.text_input("Title", value=kpi.get('kpi', ''), key=f"et_{pillar_name}_{kpi_index}")
-                                        edit_target = st.text_input("Target", value=kpi.get('target', ''), key=f"etgt_{pillar_name}_{kpi_index}")
-                                        edit_weight = st.number_input("Weight (%)", value=int(kpi.get('weight', 0)) if kpi.get('weight') else 0, min_value=0, max_value=100, key=f"ew_{pillar_name}_{kpi_index}")
-                                    with col2:
-                                        edit_current = st.text_input("Current Progress", value=kpi.get('current', '0'), key=f"ec_{pillar_name}_{kpi_index}")
-                                        edit_deadline = st.date_input("Deadline", value=datetime.strptime(kpi.get('deadline', '2026-12-31'), '%Y-%m-%d') if kpi.get('deadline') else datetime.now(), key=f"ed_{pillar_name}_{kpi_index}")
-                                    
-                                    b1, b2 = st.columns(2)
-                                    with b1:
-                                        if st.button("💾 Save", key=f"save_{pillar_name}_{kpi_index}"):
-                                            updated_kpi = {
-                                                'kpi': edit_title, 'target': edit_target, 'current': edit_current,
-                                                'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'),
-                                                'owner': kpi.get('owner', user_name), 'weight': edit_weight,
-                                                'cycle': kpi.get('cycle', 'Half-Year Appraisal')
-                                            }
-                                            pd_data['kpis'][kpi_index] = updated_kpi
-                                            total_w = sum(k.get('weight', 0) for k in pd_data['kpis'])
-                                            pd_data['weight'] = total_w
-                                            db.save_performance_data(user_name, pillar_name, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'], pd_data.get('submission_status', 'Draft'))
-                                            st.session_state[f'edit_open_{pillar_name}_{kpi_index}'] = False
+                                if st.button("🗑️", key=f"delbtn_{pillar_name.replace(' ', '').replace('.', '')}_{kpi_index}"):
+                                    # Delete from all rows
+                                    for row in (fresh_rows or []):
+                                        row_kpis = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                        if kpi_index < len(row_kpis):
+                                            row_kpis.pop(kpi_index)
+                                            new_weight = sum(k.get('weight', 0) for k in row_kpis)
+                                            db._patch("performance_data", {
+                                                "kpi_data": json.dumps(row_kpis),
+                                                "weight": new_weight
+                                            }, {"id": row['id']})
                                             st.cache_data.clear()
-                                            st.success("✅ Saved!")
+                                            st.success("✅ Deleted!")
                                             time.sleep(0.3)
                                             st.rerun()
-                                    with b2:
-                                        if st.button("❌ Cancel", key=f"cancel_{pillar_name}_{kpi_index}"):
-                                            st.session_state[f'edit_open_{pillar_name}_{kpi_index}'] = False
-                                            st.rerun()
+                            
+                            # Show edit form
+                            if st.session_state.get(f'show_edit_{pillar_name}_{kpi_index}'):
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    edit_title = st.text_input("Title", value=kpi.get('kpi', ''), key=f"ett_{pillar_name}_{kpi_index}")
+                                    edit_target = st.text_input("Target", value=kpi.get('target', ''), key=f"etgt_{pillar_name}_{kpi_index}")
+                                    edit_weight = st.number_input("Weight (%)", value=int(kpi.get('weight', 0)) if kpi.get('weight') else 0, min_value=0, max_value=100, key=f"eww_{pillar_name}_{kpi_index}")
+                                with col2:
+                                    edit_current = st.text_input("Current", value=kpi.get('current', '0'), key=f"ecc_{pillar_name}_{kpi_index}")
+                                    edit_deadline = st.date_input("Deadline", value=datetime.strptime(kpi.get('deadline', '2026-12-31'), '%Y-%m-%d') if kpi.get('deadline') else datetime.now(), key=f"edd_{pillar_name}_{kpi_index}")
+                                
+                                b1, b2 = st.columns(2)
+                                with b1:
+                                    if st.button("💾 Save", key=f"savebtn_{pillar_name}_{kpi_index}"):
+                                        updated_kpi = {
+                                            'kpi': edit_title, 'target': edit_target, 'current': edit_current,
+                                            'status': 'In Progress', 'deadline': edit_deadline.strftime('%Y-%m-%d'),
+                                            'owner': kpi.get('owner', user_name), 'weight': edit_weight,
+                                            'cycle': kpi.get('cycle', 'Half-Year Appraisal')
+                                        }
+                                        # Update in the first row that has this KPI
+                                        for row in (fresh_rows or []):
+                                            row_kpis = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                            if kpi_index < len(row_kpis):
+                                                row_kpis[kpi_index] = updated_kpi
+                                                new_weight = sum(k.get('weight', 0) for k in row_kpis)
+                                                db._patch("performance_data", {
+                                                    "kpi_data": json.dumps(row_kpis),
+                                                    "weight": new_weight
+                                                }, {"id": row['id']})
+                                                st.session_state[f'show_edit_{pillar_name}_{kpi_index}'] = False
+                                                st.cache_data.clear()
+                                                st.success("✅ Updated!")
+                                                time.sleep(0.3)
+                                                st.rerun()
+                                with b2:
+                                    if st.button("Cancel", key=f"cancelbtn_{pillar_name}_{kpi_index}"):
+                                        st.session_state[f'show_edit_{pillar_name}_{kpi_index}'] = False
+                                        st.rerun()
                         else:
                             st.info("🔒 KPIs are locked after submission")
-                            st.markdown(f"**Target:** {kpi.get('target', 'N/A')} | **Current:** {kpi.get('current', '0')} | **Deadline:** {kpi.get('deadline', 'N/A')}")
                 else:
                     st.info("No KPIs in this pillar yet. Go to '✏️ My KPIs' tab to add some.")
     
