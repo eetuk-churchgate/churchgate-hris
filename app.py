@@ -3142,7 +3142,7 @@ def performance_okrs():
                 st.cache_data.clear()
                 st.success("✅ All KPIs submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         
-        pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+         pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
         
         for pillar_name in pillar_order:
             pd_data = pillar_data[pillar_name]
@@ -3151,42 +3151,41 @@ def performance_okrs():
             with st.expander(f"📌 {pillar_name} | {pd_data['progress']}% | {pd_data['status']} | {len(pd_data['kpis'])} KPI(s)", expanded=not is_locked):
                 st.progress(pd_data['progress'] / 100)
                 if pd_data['kpis']:
-                    for i, kpi in enumerate(pd_data['kpis']):
-                        try:
-                            kpi_prog = int(float(str(kpi.get('current', '0')).replace('%', '')))
-                        except:
-                            kpi_prog = 0
-                        kpi_stat, kpi_col = get_kpi_status(kpi_prog)
-                        st.markdown(f"""<div class="kpi-card" style="border-left-color:{kpi_col};"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small><br><small style="color:{kpi_col};">● {kpi_stat}</small></div>""", unsafe_allow_html=True)
+                    # Show list of KPIs with dropdown action
+                    kpi_names = [f"{k.get('kpi', 'Untitled')[:50]} (Target: {k.get('target', 'N/A')})" for k in pd_data['kpis']]
+                    
+                    if not is_locked:
+                        selected_kpi = st.selectbox("Select KPI to manage:", ["Select..."] + kpi_names, key=f"sel_{pillar_name.replace(' ', '')}")
                         
-                        if not is_locked:
-                            # Use radio button instead of button for edit/delete choice
-                            action = st.radio(
-                                f"Action for: {kpi.get('kpi', 'KPI')[:30]}...",
-                                ["View", "✏️ Edit", "🗑️ Delete"],
-                                horizontal=True,
-                                key=f"action_{pillar_name.replace(' ', '')}_{i}",
-                                label_visibility="collapsed"
-                            )
+                        if selected_kpi != "Select...":
+                            idx = kpi_names.index(selected_kpi)
+                            kpi = pd_data['kpis'][idx]
                             
-                            if action == "✏️ Edit":
-                                st.session_state.editing_kpi = {'pillar': pillar_name, 'index': i, 'data': dict(kpi)}
-                                st.rerun()
+                            st.markdown(f"""<div class="kpi-card" style="border-left-color:#CC0000;"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small></div>""", unsafe_allow_html=True)
                             
-                            if action == "🗑️ Delete":
-                                if st.button(f"Confirm Delete", key=f"confirm_del_{pillar_name.replace(' ', '')}_{i}"):
-                                    all_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_name})
-                                    if all_rows:
-                                        for row in all_rows:
-                                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                            if i < len(kpi_list):
-                                                kpi_list.pop(i)
-                                                db._patch("performance_data", {"kpi_data": json.dumps(kpi_list)}, {"id": row['id']})
-                                                break
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                if st.button("✏️ Edit Selected", key=f"editsel_{pillar_name.replace(' ', '')}_{idx}"):
+                                    st.session_state.editing_kpi = {'pillar': pillar_name, 'index': idx, 'data': dict(kpi)}
+                                    st.rerun()
+                            with c2:
+                                if st.button("🗑️ Delete Selected", key=f"delsel_{pillar_name.replace(' ', '')}_{idx}"):
+                                    pd_data['kpis'].pop(idx)
+                                    total_w = sum(k.get('weight', 0) for k in pd_data['kpis'])
+                                    pd_data['weight'] = total_w
+                                    db.save_performance_data(user_name, pillar_name, pd_data['weight'], pd_data['progress'], pd_data['status'], pd_data['deadline'], pd_data['kpis'])
                                     st.cache_data.clear()
                                     st.success("✅ Deleted!")
-                                    time.sleep(0.5)
                                     st.rerun()
+                    else:
+                        # Just display locked KPIs
+                        for kpi in pd_data['kpis']:
+                            try:
+                                kpi_prog = int(float(str(kpi.get('current', '0')).replace('%', '')))
+                            except:
+                                kpi_prog = 0
+                            kpi_stat, kpi_col = get_kpi_status(kpi_prog)
+                            st.markdown(f"""<div class="kpi-card" style="border-left-color:{kpi_col};"><strong>{kpi.get('kpi', 'Untitled')}</strong><br><small>🎯 Target: {kpi.get('target', 'N/A')} | 📊 Current: {kpi.get('current', '0')} | ⚖️ Weight: {kpi.get('weight', 0)}%</small><br><small style="color:{kpi_col};">● {kpi_stat}</small></div>""", unsafe_allow_html=True)
                 else:
                     st.info("No KPIs in this pillar yet. Go to '✏️ My KPIs' tab to add some.")
     
