@@ -3415,60 +3415,62 @@ def performance_okrs():
                 with c2: save_done = st.form_submit_button("✅ Save & Finish", use_container_width=True)
                 
                 if save_add or save_done:
-                            if not kpi_title or not kpi_target:
-                                st.error("❌ Title and Target are required!")
+                    if not kpi_title or not kpi_target:
+                        st.error("❌ Title and Target are required!")
+                    else:
+                        new_kpi = {'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current, 'weight': kpi_weight, 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'cycle': kpi_cycle, 'owner': user_name, 'status': 'In Progress'}
+                        
+                        if editing:
+                            edit_pillar = editing['pillar']
+                            edit_index = editing['index']
+                            existing_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": edit_pillar})
+                            updated = False
+                            for row in (existing_rows or []):
+                                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                if edit_index < len(kpi_list):
+                                    kpi_list[edit_index] = new_kpi
+                                    total_w = sum(k.get('weight', 0) for k in kpi_list)
+                                    db._patch("performance_data", {"kpi_data": json.dumps(kpi_list), "weight": total_w}, {"id": row['id']})
+                                    updated = True
+                                    break
+                            if updated:
+                                st.session_state.editing_kpi = None
+                                log_audit("KPI Updated", f"KPI '{kpi_title}' updated in {edit_pillar}")
                             else:
-                                new_kpi = {'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current, 'weight': kpi_weight, 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'cycle': kpi_cycle, 'owner': user_name, 'status': 'In Progress'}
-                                
-                                if editing:
-                                    edit_pillar = editing['pillar']
-                                    edit_index = editing['index']
-                                    existing_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": edit_pillar})
-                                    updated = False
-                                    for row in (existing_rows or []):
-                                        kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                        if edit_index < len(kpi_list):
-                                            kpi_list[edit_index] = new_kpi
-                                            total_w = sum(k.get('weight', 0) for k in kpi_list)
-                                            db._patch("performance_data", {"kpi_data": json.dumps(kpi_list), "weight": total_w}, {"id": row['id']})
-                                            updated = True
-                                            break
-                                    if updated:
-                                        st.session_state.editing_kpi = None
-                                        log_audit("KPI Updated", f"KPI '{kpi_title}' updated in {edit_pillar}")
-                                    else:
-                                        st.error("❌ Edit failed - KPI not found.")
-                                else:
-                                    # Add new KPI
-                                    existing_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_choice})
-                                    if existing_rows and len(existing_rows) > 0:
-                                        for row in existing_rows:
-                                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                            kpi_list.append(new_kpi)
-                                            total_w = sum(k.get('weight', 0) for k in kpi_list)
-                                            db._patch("performance_data", {"kpi_data": json.dumps(kpi_list), "weight": total_w}, {"id": row['id']})
-                                            break
-                                    else:
-                                        db._post("performance_data", {
-                                            "user_name": user_name,
-                                            "department": user_dept,
-                                            "pillar_name": pillar_choice,
-                                            "weight": kpi_weight,
-                                            "progress": 0,
-                                            "status": "Not Started",
-                                            "deadline": kpi_deadline.strftime('%Y-%m-%d'),
-                                            "kpi_data": json.dumps([new_kpi]),
-                                            "submission_status": "Draft"
-                                        })
-                                    log_audit("KPI Added", f"KPI '{kpi_title}' added to {pillar_choice}")
-                                
-                                st.cache_data.clear()
-                                st.success("✅ KPI saved!")
-                                if save_done:
-                                    st.rerun()
-                                else:
-                                    time.sleep(0.5)
-                                    st.rerun()
+                                st.error("❌ Edit failed - KPI not found.")
+                        else:
+                            # Add new KPI - ONE ROW PER PILLAR
+                            existing_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_choice})
+                            if existing_rows and len(existing_rows) > 0:
+                                first_row = existing_rows[0]
+                                kpi_list = json.loads(first_row.get('kpi_data', '[]')) if first_row.get('kpi_data') else []
+                                kpi_list.append(new_kpi)
+                                total_w = sum(k.get('weight', 0) for k in kpi_list)
+                                db._patch("performance_data", {"kpi_data": json.dumps(kpi_list), "weight": total_w}, {"id": first_row['id']})
+                                if len(existing_rows) > 1:
+                                    for dup in existing_rows[1:]:
+                                        db._delete("performance_data", {"id": dup['id']})
+                            else:
+                                db._post("performance_data", {
+                                    "user_name": user_name,
+                                    "department": user_dept,
+                                    "pillar_name": pillar_choice,
+                                    "weight": kpi_weight,
+                                    "progress": 0,
+                                    "status": "Not Started",
+                                    "deadline": kpi_deadline.strftime('%Y-%m-%d'),
+                                    "kpi_data": json.dumps([new_kpi]),
+                                    "submission_status": "Draft"
+                                })
+                            log_audit("KPI Added", f"KPI '{kpi_title}' added to {pillar_choice}")
+                        
+                        st.cache_data.clear()
+                        st.success("✅ KPI saved!")
+                        if save_done:
+                            st.rerun()
+                        else:
+                            time.sleep(0.5)
+                            st.rerun()
     
     # ============================================================
     # TAB 3: SELF-ASSESSMENT
