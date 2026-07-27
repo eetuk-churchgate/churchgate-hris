@@ -2071,6 +2071,25 @@ def employee_management():
     
     employees_df = load_employees()
     
+    # Merge role from users table into employees dataframe
+    try:
+        users_data = db._get("users")
+        if users_data:
+            role_map = {}
+            for u in users_data:
+                email = u.get('email', '')
+                role = u.get('role', 'Team Member')
+                if email:
+                    role_map[email] = role
+            if 'email' in employees_df.columns and not employees_df.empty:
+                employees_df['role'] = employees_df['email'].map(role_map).fillna('Team Member')
+            else:
+                employees_df['role'] = 'Team Member'
+        else:
+            employees_df['role'] = 'Team Member'
+    except:
+        employees_df['role'] = 'Team Member'
+    
     # Build list of all employee names for Reports To dropdown
     all_employee_names = []
     if not employees_df.empty:
@@ -2331,7 +2350,12 @@ def employee_management():
                                 gender_idx = 0 if current_gender == 'Male' else 1
                                 new_gender = st.selectbox("Gender", gender_options, index=gender_idx, key=f"gen_{emp['employee_id']}_{st.session_state.dir_page}")
                             with ec3:
-                                new_role = st.selectbox("System Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
+                                # Get current role, default to Team Member
+                                current_role = str(emp.get('role', 'Team Member'))
+                                role_options = ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin']
+                                role_idx = role_options.index(current_role) if current_role in role_options else 0
+                                new_role = st.selectbox("System Role", role_options, index=role_idx,
+                                    key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_leave = st.number_input("Leave Days", value=int(emp.get('leave_balance', 20) or 20), min_value=0, max_value=365, key=f"leave_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -2556,7 +2580,8 @@ def employee_management():
                             "region": str(row.get('region', 'Lagos')),
                             "subsidiary": str(row.get('subsidiary', '')),
                             "reports_to": str(row.get('reports_to', '')),
-                            "gender": str(row.get('gender', 'Male'))
+                            "gender": str(row.get('gender', 'Male')),
+                            "role": str(row.get('system_role', 'Team Member'))
                         })
                         
                         # Send welcome email
@@ -2590,7 +2615,7 @@ def employee_management():
                 single_pw = st.text_input("Password", value="churchgate2026")
             with c2:
                 single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'], key="single_dept")
-                single_role = st.selectbox("Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key="single_role")
+                single_role = st.selectbox("Role", ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin'], key="single_role")
                 single_id = st.text_input("Employee ID", placeholder="e.g., AN00001")
             
             if st.form_submit_button("🔑 Create Single Login", use_container_width=True):
@@ -2599,7 +2624,6 @@ def employee_management():
                         db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, 'Staff')
                         st.success(f"✅ Login created for {single_name}!")
                         st.info(f"🔗 Login at: https://hris.churchgate.com")
-                        # Send welcome email
                         try:
                             from utils.email_service import EmailService
                             EmailService().send_welcome_email(single_name, single_email, "https://hris.churchgate.com")
@@ -2613,20 +2637,75 @@ def employee_management():
                     st.error("❌ Email and Name required!")
         
         st.markdown("---")
-        st.markdown("### 👥 Bulk Generate for All Employees")
+        st.markdown("### 👥 Bulk Generate Logins")
         if not employees_df.empty:
             default_pw = st.text_input("Default Password for Bulk", value="churchgate2026")
+            
+            # Build employee list with current login status
             emp_list = []
+            try:
+                existing_users = db._get("users")
+                existing_emails = {u.get('email', '') for u in (existing_users or [])}
+            except:
+                existing_emails = set()
+            
             for _, emp in employees_df.iterrows():
-                emp_list.append({'Name': f"{emp['first_name']} {emp['last_name']}", 'ID': emp['employee_id'], 'Email': emp.get('email', 'N/A'), 'Department': emp.get('department', ''), 'Role': 'Team Member'})
-            st.dataframe(pd.DataFrame(emp_list), use_container_width=True, hide_index=True)
-            if st.button("🔑 Generate Logins for All", use_container_width=True):
+                emp_email = str(emp.get('email', ''))
+                has_login = emp_email in existing_emails
+                emp_list.append({
+                    'Select': False,
+                    'Name': f"{emp['first_name']} {emp['last_name']}",
+                    'ID': emp['employee_id'],
+                    'Email': emp_email,
+                    'Department': emp.get('department', ''),
+                    'Role': str(emp.get('role', 'Team Member')),
+                    'Has Login': '✅ Yes' if has_login else '❌ No'
+                })
+            
+            # Display with checkboxes for selection
+            st.markdown("**Select employees to generate logins:**")
+            
+            # Select all / Deselect all
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ Select All Without Login", use_container_width=True):
+                    for emp in emp_list:
+                        if emp['Has Login'] == '❌ No':
+                            emp['Select'] = True
+                    st.rerun()
+            with col2:
+                if st.button("🔄 Deselect All", use_container_width=True):
+                    for emp in emp_list:
+                        emp['Select'] = False
+                    st.rerun()
+            
+            # Show table with checkboxes
+            for i, emp in enumerate(emp_list):
+                cols = st.columns([0.5, 2, 1, 2, 1, 1, 1])
+                with cols[0]:
+                    emp['Select'] = st.checkbox("", value=emp['Select'], key=f"sel_{i}", label_visibility="collapsed")
+                with cols[1]:
+                    st.markdown(f"<small>{emp['Name'][:25]}</small>", unsafe_allow_html=True)
+                with cols[2]:
+                    st.markdown(f"<small>{emp['Department'][:15]}</small>", unsafe_allow_html=True)
+                with cols[3]:
+                    st.markdown(f"<small>{emp['Email'][:25]}</small>", unsafe_allow_html=True)
+                with cols[4]:
+                    st.markdown(f"<small>{emp['Role']}</small>", unsafe_allow_html=True)
+                with cols[5]:
+                    st.markdown(f"<small>{emp['Has Login']}</small>", unsafe_allow_html=True)
+                with cols[6]:
+                    st.markdown(f"<small>{emp['ID']}</small>", unsafe_allow_html=True)
+            
+            selected = [e for e in emp_list if e['Select']]
+            st.markdown(f"**{len(selected)} employee(s) selected**")
+            
+            if st.button(f"🔑 Generate Logins for {len(selected)} Selected", use_container_width=True, disabled=len(selected)==0):
                 count = 0
-                for emp in emp_list:
-                    if emp['Email'] and emp['Email'] != 'N/A':
+                for emp in selected:
+                    if emp['Email'] and emp['Email'] != 'N/A' and '@' in emp['Email']:
                         try:
-                            db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, 'Team Member', emp['Department'], 'Staff')
-                            # Send welcome email
+                            db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, emp['Role'], emp['Department'], 'Staff')
                             try:
                                 from utils.email_service import EmailService
                                 EmailService().send_welcome_email(emp['Name'], emp['Email'], "https://hris.churchgate.com")
@@ -2638,7 +2717,10 @@ def employee_management():
                 st.success(f"✅ {count} logins generated!")
                 st.info(f"🔗 Login URL: https://hris.churchgate.com")
                 st.info(f"🔑 Default password: **{default_pw}**")
-                st.download_button("📥 Download Login List", pd.DataFrame(emp_list).to_csv(index=False), "logins.csv", "text/csv")
+                
+                # Download list for generated logins
+                login_df = pd.DataFrame(selected)
+                st.download_button("📥 Download Login List", login_df[['Name', 'Email', 'ID', 'Department', 'Role']].to_csv(index=False), "logins.csv", "text/csv")
         else:
             st.info("No employees found.")
     
@@ -3769,8 +3851,24 @@ def performance_okrs():
                                                     f"Dear Committee Member,\n\n{staff_name}'s appraisal has been escalated.\n\nHOD: {user_name}\nHOD Comments: {hod_overall}\n\nPlease review in the Appraisal Committee Board.\n\nChurchgate Group HR")
                                     except: pass
                                     
+                                    # NOTIFY EMPLOYEE
+                                    emp_email = get_employee_email(staff_name)
+                                    if emp_email:
+                                        try:
+                                            EmailService().send_email(emp_email,
+                                                f"🚨 Appraisal Escalated to Committee - {st.session_state.appraisal_cycle_name}",
+                                                f"Dear {staff_name},\n\n"
+                                                f"Your appraisal has been escalated to the Appraisal Committee for final review.\n\n"
+                                                f"HOD Comments: {hod_overall}\n\n"
+                                                f"Status: Awaiting Committee Verdict\n\n"
+                                                f"The committee will review all evidence and make a final decision. You will be notified of the outcome.\n\n"
+                                                f"Churchgate Group HR")
+                                        except: pass
+                                    
                                     log_audit('HOD Escalated to Committee', f'{staff_name} sent to committee by HOD {user_name}')
-                                    st.warning("✋ Escalated to Appraisal Committee!"); time.sleep(1.5); st.rerun()
+                                    st.warning("✋ Escalated to Appraisal Committee! Employee notified.")
+                                    time.sleep(1.5)
+                                    st.rerun()
                             
                             with c3:
                                 if st.button(f"💬 Request Staff Revision", key=f"request_rev_{staff_name}"):
@@ -3984,14 +4082,32 @@ def performance_okrs():
                                                     f"The team member rejected the Team Lead's review.\n"
                                                     f"Rejection reason: {assessment.get('rejection_comment', 'No comment')}\n\n"
                                                     f"Please review and make the final decision.\n\n"
-                                                    f"https://churchgate-churchgate-hris.hf.space\n\n"
+                                                    f"https://hris.churchgate.com\n\n"
+                                                    f"Churchgate Group HR"
+                                                )
+                                            except:
+                                                pass
+                                        
+                                        # NOTIFY EMPLOYEE
+                                        member_email = get_employee_email(member_name)
+                                        if member_email:
+                                            try:
+                                                EmailService().send_email(
+                                                    member_email,
+                                                    f"📋 Appraisal Escalated to HOD - {st.session_state.appraisal_cycle_name}",
+                                                    f"Dear {member_name},\n\n"
+                                                    f"Your Team Lead has escalated your appraisal to the HOD for review.\n\n"
+                                                    f"Your Rejection Reason: {assessment.get('rejection_comment', 'No comment')}\n"
+                                                    f"Team Lead Comments: {tl_comments or assessment.get('tl_comments', 'N/A')}\n\n"
+                                                    f"Status: Awaiting HOD Decision\n\n"
+                                                    f"The HOD will review all evidence and make a decision. You will be notified.\n\n"
                                                     f"Churchgate Group HR"
                                                 )
                                             except:
                                                 pass
                                         
                                         log_audit('TL Escalated to HOD', f'{member_name} escalated to HOD by Team Lead {user_name}')
-                                        st.warning(f"🚨 Escalated to HOD for final decision!")
+                                        st.warning(f"🚨 Escalated to HOD! Both parties notified.")
                                         time.sleep(1.5)
                                         st.rerun()
                                 
@@ -5449,101 +5565,278 @@ def performance_okrs():
                             st.download_button("📥 Download CSV", dept_avg_df.to_csv(index=False), "department_summary.csv", "text/csv")
             
             # ============================================================
-            # TAB 2: SUBMISSIONS
+            # COMMITTEE TAB 2: SUBMISSIONS - By Region/Subsidiary/Dept
             # ============================================================
             with committee_tabs[2]:
                 st.subheader("📝 All Submitted Appraisals")
-                sub = {k: v for k, v in all_assessments.items() if v.get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review']}
+                st.markdown("*Organized by Region → Subsidiary → Department*")
+                
+                sub = {k: v for k, v in all_assessments.items() if v.get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review', 'Escalated from TL', 'Escalated to HOD from TL']}
+                
                 if sub:
-                    st.success(f"📋 {len(sub)} pending appraisal(s)")
-                    for en, a in sub.items():
-                        sc = get_emp_score(en)
+                    # Build hierarchy
+                    from collections import defaultdict
+                    sub_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+                    
+                    for emp_name, assessment in sub.items():
+                        dept = get_employee_dept(emp_name)
+                        subsidiary = get_employee_subsidiary(emp_name)
+                        region = get_region(subsidiary)
+                        
+                        sc = get_emp_score(emp_name)
                         cl, co = get_classification(sc) if sc > 0 else ('N/A', '#a0aec0')
-                        with st.expander(f"📋 {en} | {get_employee_dept(en)} | {get_region(get_employee_subsidiary(en))} | {cl}", expanded=False):
-                            c1, c2, c3 = st.columns(3)
-                            c1.metric("Score", f"{sc:.1f}%" if sc else "N/A")
-                            c2.metric("Status", a.get('status', 'N/A'))
-                            c3.metric("Reviewer", a.get('reviewer_type', 'N/A'))
-                            if a.get('rejection_comment'):
-                                st.warning(f"💬 Rejection: {a['rejection_comment'][:200]}")
+                        
+                        sub_hierarchy[region][subsidiary or 'Unassigned'][dept].append({
+                            'name': emp_name,
+                            'score': sc,
+                            'class': cl,
+                            'color': co,
+                            'status': assessment.get('status', 'N/A'),
+                            'reviewer': assessment.get('reviewer_type', 'N/A'),
+                            'comments': assessment.get('comments', 'N/A'),
+                            'hod_comments': assessment.get('hod_comments', ''),
+                            'tl_comments': assessment.get('tl_comments', ''),
+                            'rejection': assessment.get('rejection_comment', ''),
+                            'reject_count': assessment.get('reject_count', 0),
+                            'date': assessment.get('date', ''),
+                            'dept': dept
+                        })
+                    
+                    st.success(f"📋 {len(sub)} pending appraisal(s)")
+                    
+                    # Display by Region
+                    for region in ['Abuja', 'Lagos', 'Aba']:
+                        if region not in sub_hierarchy: continue
+                        region_color = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#1a1a1a')
+                        region_count = sum(len(v) for s in sub_hierarchy[region].values() for v in s.values())
+                        
+                        st.markdown(f"""<div class="region-header" style="background:linear-gradient(135deg, {region_color}, #2d2d2d);">🌍 {region} Region — {region_count} appraisal(s)</div>""", unsafe_allow_html=True)
+                        
+                        for subsidiary in sorted(sub_hierarchy[region].keys()):
+                            depts = sub_hierarchy[region][subsidiary]
+                            sub_count = sum(len(v) for v in depts.values())
+                            
+                            sub_key = f"cmtsub_{region}_{subsidiary}".replace(' ', '_').replace('(', '').replace(')', '').replace('.', '')
+                            if sub_key not in st.session_state: st.session_state[sub_key] = False
+                            expand_icon = "▼" if st.session_state[sub_key] else "▶"
+                            
+                            col1, col2 = st.columns([1, 20])
+                            with col1:
+                                if st.button(expand_icon, key=f"cmtsubbtn_{sub_key}"):
+                                    st.session_state[sub_key] = not st.session_state[sub_key]
+                                    st.rerun()
+                            with col2:
+                                st.markdown(f"""<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {subsidiary} — {len(depts)} depts | {sub_count} appraisal(s)</div>""", unsafe_allow_html=True)
+                            
+                            if st.session_state[sub_key]:
+                                for department in sorted(depts.keys()):
+                                    emps = depts[department]
+                                    with st.expander(f"🏭 {department} — {len(emps)} appraisal(s)", expanded=False):
+                                        for e in emps:
+                                            status_badge = {
+                                                'Submitted': 'badge-yellow',
+                                                'Approved': 'badge-green',
+                                                'Escalated from TL': 'badge-red',
+                                                'Escalated to HOD from TL': 'badge-escalated',
+                                                'Awaiting HOD Re-review': 'badge-yellow'
+                                            }.get(e['status'], 'badge-gray')
+                                            
+                                            st.markdown(f"""
+                                            <div class="kpi-card" style="border-left-color:{e['color']};">
+                                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                                    <div>
+                                                        <strong>👤 {e['name']}</strong>
+                                                        <br><small>📊 Score: {e['score']:.1f}% | 🏅 {e['class']} | Reviewer: {e['reviewer']}</small>
+                                                        <br><small>Status: <span class="badge {status_badge}">{e['status']}</span> | Rejections: {e['reject_count']}</small>
+                                                    </div>
+                                                </div>
+                                                {f'<small style="color:#CC0000;">💬 Employee: {e["comments"][:100]}...</small><br>' if e['comments'] and e['comments'] != 'N/A' else ''}
+                                                {f'<small style="color:#3182ce;">👔 HOD: {e["hod_comments"][:100]}...</small><br>' if e.get('hod_comments') else ''}
+                                                {f'<small style="color:#d69e2e;">👥 TL: {e["tl_comments"][:100]}...</small><br>' if e.get('tl_comments') else ''}
+                                                {f'<small style="color:#CC0000;">🚫 Rejection: {e["rejection"][:100]}...</small>' if e.get('rejection') else ''}
+                                            </div>
+                                            """, unsafe_allow_html=True)
                 else:
                     st.info("No pending submissions.")
             
             # ============================================================
-            # TAB 3: ESCALATED (FIXED - UPHOLD/OVERTURN WITH PROPER STATE UPDATE)
+            # COMMITTEE TAB 3: ESCALATED - By Region/Subsidiary/Dept
             # ============================================================
             with committee_tabs[3]:
                 st.subheader("🚨 Escalated Appraisals")
-                esc = {k: v for k, v in all_assessments.items() if v.get('status') == 'Escalated from TL' or (v.get('acceptance') == 'Rejected' and v.get('status') != 'Awaiting HOD Re-review')}
+                st.markdown("*Organized by Region → Subsidiary → Department*")
+                
+                esc = {k: v for k, v in all_assessments.items() if v.get('status') == 'Escalated from TL' or (v.get('acceptance') == 'Rejected' and v.get('status') not in ['Awaiting HOD Re-review', 'Awaiting TL Re-review'])}
+                
                 if esc:
-                    for en, a in esc.items():
-                        with st.expander(f"🚨 {en} | {get_employee_dept(en)} | Rejections: {a.get('reject_count', 1)}", expanded=True):
-                            st.markdown(f"**Staff Comments:** {a.get('comments', 'N/A')}")
-                            st.markdown(f"**Reviewer Comments:** {a.get('hod_comments', a.get('tl_comments', 'N/A'))}")
-                            st.markdown(f"**Rejection Reason:** {a.get('rejection_comment', 'N/A')}")
+                    esc_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+                    
+                    for emp_name, assessment in esc.items():
+                        dept = get_employee_dept(emp_name)
+                        subsidiary = get_employee_subsidiary(emp_name)
+                        region = get_region(subsidiary)
+                        
+                        sc = get_emp_score(emp_name)
+                        cl, co = get_classification(sc) if sc > 0 else ('N/A', '#a0aec0')
+                        
+                        # Get all comments
+                        hod_comments = assessment.get('hod_comments', '')
+                        tl_comments = assessment.get('tl_comments', '')
+                        emp_comments = assessment.get('comments', '')
+                        rejection_reason = assessment.get('rejection_comment', '')
+                        
+                        esc_hierarchy[region][subsidiary or 'Unassigned'][dept].append({
+                            'name': emp_name,
+                            'score': sc,
+                            'class': cl,
+                            'color': co,
+                            'status': assessment.get('status', 'N/A'),
+                            'reviewer': assessment.get('reviewer_type', 'N/A'),
+                            'emp_comments': emp_comments,
+                            'hod_comments': hod_comments,
+                            'tl_comments': tl_comments,
+                            'rejection': rejection_reason,
+                            'reject_count': assessment.get('reject_count', 1),
+                            'sr_decision': assessment.get('sr_decision', ''),
+                            'date': assessment.get('date', ''),
+                            'dept': dept,
+                            'email': assessment.get('email', '')
+                        })
+                    
+                    st.warning(f"🚨 {len(esc)} escalated appraisal(s) requiring committee decision")
+                    
+                    for region in ['Abuja', 'Lagos', 'Aba']:
+                        if region not in esc_hierarchy: continue
+                        region_color = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#1a1a1a')
+                        region_count = sum(len(v) for s in esc_hierarchy[region].values() for v in s.values())
+                        
+                        st.markdown(f"""<div class="region-header" style="background:linear-gradient(135deg, {region_color}, #2d2d2d);">🌍 {region} Region — {region_count} escalated</div>""", unsafe_allow_html=True)
+                        
+                        for subsidiary in sorted(esc_hierarchy[region].keys()):
+                            depts = esc_hierarchy[region][subsidiary]
+                            sub_count = sum(len(v) for v in depts.values())
                             
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                if st.button(f"✅ Uphold Reviewer", key=f"cmt_up_{en}"):
-                                    # Update employee's session state so certificate shows
-                                    st.session_state.self_assessments[en].update({
-                                        'acceptance': 'Accepted',
-                                        'status': 'Completed',
-                                        'sr_decision': 'Upheld by Committee'
-                                    })
-                                    try:
-                                        db.archive_appraisal(en, a.get('email', ''), a.get('department', ''),
-                                            st.session_state.appraisal_cycle_name, 'Accepted - Committee Upheld',
-                                            a['scores'], a.get('hod_scores', a.get('tl_scores', {})),
-                                            a.get('comments', ''), a.get('hod_comments', ''),
-                                            now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                                        db._patch("appraisals", 
-                                            {"status": "Completed", "acceptance": "Accepted", "sr_decision": "Upheld by Committee"},
-                                            {"user_name": en, "cycle_name": st.session_state.appraisal_cycle_name})
-                                    except: pass
-                                    emp_email = get_employee_email(en)
-                                    if emp_email:
-                                        try:
-                                            EmailService().send_email(emp_email,
-                                                f"📋 Appraisal Decision: {st.session_state.appraisal_cycle_name}",
-                                                f"Dear {en},\n\nThe Appraisal Committee has upheld the reviewer's decision.\n\n"
-                                                f"Your appraisal is now complete. Log in to download your certificate.\n\n"
-                                                f"https://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
-                                        except: pass
-                                    log_audit('Committee Upheld', f'{en} upheld by committee')
-                                    st.success("✅ Upheld! Staff notified and certificate available."); st.balloons(); time.sleep(1.5); st.rerun()
+                            sub_key = f"cmtesc_{region}_{subsidiary}".replace(' ', '_').replace('(', '').replace(')', '').replace('.', '')
+                            if sub_key not in st.session_state: st.session_state[sub_key] = False
+                            expand_icon = "▼" if st.session_state[sub_key] else "▶"
                             
-                            with c2:
-                                if st.button(f"🔄 Overturn - Favor Staff", key=f"cmt_ov_{en}"):
-                                    # Update employee's session state so certificate shows immediately
-                                    st.session_state.self_assessments[en].update({
-                                        'acceptance': 'Accepted',
-                                        'hod_scores': a['scores'],  # Use staff scores as final
-                                        'status': 'Completed',
-                                        'sr_decision': 'Overturned by Committee',
-                                        'reviewer_type': 'Committee (Overturned)'
-                                    })
-                                    try:
-                                        db.archive_appraisal(en, a.get('email', ''), a.get('department', ''),
-                                            st.session_state.appraisal_cycle_name, 'Accepted - Overturned',
-                                            a['scores'], a['scores'],  # Staff scores become final
-                                            a.get('comments', ''), a.get('hod_comments', ''),
-                                            now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                                        db._patch("appraisals", 
-                                            {"status": "Completed", "acceptance": "Accepted", "sr_decision": "Overturned by Committee"},
-                                            {"user_name": en, "cycle_name": st.session_state.appraisal_cycle_name})
-                                    except: pass
-                                    emp_email = get_employee_email(en)
-                                    if emp_email:
-                                        try:
-                                            EmailService().send_email(emp_email,
-                                                f"🎉 Appraisal Overturned: {st.session_state.appraisal_cycle_name}",
-                                                f"Dear {en},\n\nGreat news! The Appraisal Committee has overturned the decision in your favor.\n\n"
-                                                f"Your appraisal is now complete. Log in to download your certificate.\n\n"
-                                                f"https://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
-                                        except: pass
-                                    log_audit('Committee Overturned', f'{en} overturned by committee')
-                                    st.success("🔄 Overturned! Staff notified and certificate available."); st.balloons(); time.sleep(1.5); st.rerun()
+                            col1, col2 = st.columns([1, 20])
+                            with col1:
+                                if st.button(expand_icon, key=f"cmtescbtn_{sub_key}"):
+                                    st.session_state[sub_key] = not st.session_state[sub_key]
+                                    st.rerun()
+                            with col2:
+                                st.markdown(f"""<div class="subsidiary-header" style="margin:0.3rem 0;">🏢 {subsidiary} — {len(depts)} depts | {sub_count} escalated</div>""", unsafe_allow_html=True)
+                            
+                            if st.session_state[sub_key]:
+                                for department in sorted(depts.keys()):
+                                    emps = depts[department]
+                                    for e in emps:
+                                        with st.expander(f"🚨 {e['name']} | {department} | {e['class']} | Rejections: {e['reject_count']}", expanded=True):
+                                            # FULL AUDIT TRAIL
+                                            st.markdown("### 📋 Full Audit Trail")
+                                            
+                                            if e['emp_comments'] and e['emp_comments'] != 'N/A':
+                                                st.markdown(f"**👤 Employee Comments:** {e['emp_comments']}")
+                                            
+                                            if e.get('tl_comments'):
+                                                st.markdown(f"**👥 Team Lead Comments:** {e['tl_comments']}")
+                                            
+                                            if e.get('hod_comments'):
+                                                st.markdown(f"**👔 HOD Comments:** {e['hod_comments']}")
+                                            
+                                            if e.get('rejection'):
+                                                st.markdown(f"**🚫 Rejection Reason:** {e['rejection']}")
+                                            
+                                            st.markdown(f"**Reviewer:** {e['reviewer']} | **Rejections:** {e['reject_count']}")
+                                            
+                                            # Attachments
+                                            assessment_data = all_assessments.get(e['name'], {})
+                                            if assessment_data.get('evidence_files'):
+                                                try:
+                                                    evidence = json.loads(assessment_data['evidence_files']) if isinstance(assessment_data['evidence_files'], str) else assessment_data['evidence_files']
+                                                    if evidence:
+                                                        st.markdown("**📎 Attachments:**")
+                                                        for p_name, urls in evidence.items():
+                                                            for url in urls:
+                                                                st.markdown(f"- [{p_name}]({url})")
+                                                except: pass
+                                            
+                                            if assessment_data.get('rejection_docs'):
+                                                try:
+                                                    docs = json.loads(assessment_data['rejection_docs']) if isinstance(assessment_data['rejection_docs'], str) else assessment_data['rejection_docs']
+                                                    if docs:
+                                                        st.markdown("**📎 Rejection Documents:**")
+                                                        for url in docs:
+                                                            st.markdown(f"- [View Document]({url})")
+                                                except: pass
+                                            
+                                            st.markdown("---")
+                                            
+                                            # COMMITTEE ACTION BUTTONS
+                                            c1, c2 = st.columns(2)
+                                            with c1:
+                                                if st.button(f"✅ Uphold Reviewer - {e['name']}", key=f"cmt_up_{e['name']}"):
+                                                    st.session_state.self_assessments[e['name']].update({
+                                                        'acceptance': 'Accepted',
+                                                        'status': 'Completed',
+                                                        'sr_decision': 'Upheld by Committee'
+                                                    })
+                                                    try:
+                                                        db.archive_appraisal(e['name'], e.get('email', ''), e.get('dept', ''),
+                                                            st.session_state.appraisal_cycle_name, 'Accepted - Committee Upheld',
+                                                            assessment_data.get('scores', {}), assessment_data.get('hod_scores', assessment_data.get('tl_scores', {})),
+                                                            e.get('emp_comments', ''), e.get('hod_comments', ''),
+                                                            datetime.now().strftime('%Y-%m-%d %H:%M WAT'))
+                                                    except: pass
+                                                    
+                                                    emp_email = e.get('email', '')
+                                                    if emp_email:
+                                                        try:
+                                                            EmailService().send_email(emp_email,
+                                                                f"📋 Committee Decision - {st.session_state.appraisal_cycle_name}",
+                                                                f"Dear {e['name']},\n\nThe Appraisal Committee has reviewed your case and upheld the reviewer's decision.\n\n"
+                                                                f"Your appraisal is now complete. Log in to download your certificate.\n\n"
+                                                                f"Churchgate Group HR")
+                                                        except: pass
+                                                    
+                                                    log_audit('Committee Upheld', f'{e["name"]} upheld by committee')
+                                                    st.success("✅ Upheld! Employee notified.")
+                                                    st.balloons()
+                                                    time.sleep(1.5)
+                                                    st.rerun()
+                                            
+                                            with c2:
+                                                if st.button(f"🔄 Overturn - Favor {e['name']}", key=f"cmt_ov_{e['name']}"):
+                                                    st.session_state.self_assessments[e['name']].update({
+                                                        'acceptance': 'Accepted',
+                                                        'hod_scores': assessment_data.get('scores', {}),
+                                                        'status': 'Completed',
+                                                        'sr_decision': 'Overturned by Committee'
+                                                    })
+                                                    try:
+                                                        db.archive_appraisal(e['name'], e.get('email', ''), e.get('dept', ''),
+                                                            st.session_state.appraisal_cycle_name, 'Accepted - Overturned',
+                                                            assessment_data.get('scores', {}), assessment_data.get('scores', {}),
+                                                            e.get('emp_comments', ''), e.get('hod_comments', ''),
+                                                            datetime.now().strftime('%Y-%m-%d %H:%M WAT'))
+                                                    except: pass
+                                                    
+                                                    emp_email = e.get('email', '')
+                                                    if emp_email:
+                                                        try:
+                                                            EmailService().send_email(emp_email,
+                                                                f"🎉 Committee Decision Overturned - {st.session_state.appraisal_cycle_name}",
+                                                                f"Dear {e['name']},\n\nGreat news! The Appraisal Committee has overturned the decision in your favor.\n\n"
+                                                                f"Your appraisal is now complete. Log in to download your certificate.\n\n"
+                                                                f"Churchgate Group HR")
+                                                        except: pass
+                                                    
+                                                    log_audit('Committee Overturned', f'{e["name"]} overturned by committee')
+                                                    st.success("🔄 Overturned! Employee notified.")
+                                                    st.balloons()
+                                                    time.sleep(1.5)
+                                                    st.rerun()
                 else:
                     st.info("No escalated appraisals.")
             
