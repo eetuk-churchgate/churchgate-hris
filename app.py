@@ -1377,7 +1377,7 @@ def employee_dashboard():
     try:
         emp_df = db.get_all_employees()
         if not emp_df.empty:
-            hod_df = emp_df[emp_df['grade'].isin(['Manager', 'HOD', 'C-Level'])]
+            hod_df = emp_df[emp_df['grade'].isin(['Manager', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level'])]
             dept_list = hod_df['department'].unique()
             cols = st.columns(min(len(dept_list), 5))
             for i, dept in enumerate(dept_list[:10]):
@@ -1440,7 +1440,7 @@ def employee_dashboard():
         try:
             emp_df = db.get_all_employees()
             if not emp_df.empty:
-                hod_df = emp_df[emp_df['grade'].isin(['Manager', 'HOD', 'C-Level'])]
+                hod_df = emp_df[emp_df['grade'].isin(['Manager', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level'])]
                 hod_data = []
                 for _, row in hod_df.iterrows():
                     hod_data.append({
@@ -2324,7 +2324,7 @@ def employee_management():
                                 new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
                                 current_grade = str(emp.get('grade', 'Junior'))
-                                grade_options = ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level']
+                                grade_options = ['Junior', 'Intermediate', 'Mid-Senior', 'Senior', 'Manager', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level']
                                 grade_idx = grade_options.index(current_grade) if current_grade in grade_options else 0
                                 new_grade = st.selectbox("Grade", grade_options, index=grade_idx, key=f"grd_{emp['employee_id']}_{st.session_state.dir_page}")
                             with ec2:
@@ -2453,7 +2453,7 @@ def employee_management():
                 employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
                 department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
                 position = st.text_input("Position *")
-                grade = st.selectbox("Grade", ['Junior', 'Senior', 'Manager', 'HOD', 'C-Level'])
+                grade = st.selectbox("Grade", ['Junior', 'Intermediate', 'Mid-Senior', 'Senior', 'Manager', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level'])
             with c3:
                 employment_type = st.selectbox("Employment Type", ['Full-time', 'Contract', 'Part-time', 'Intern'])
                 join_date = st.date_input("Join Date", min_value=date(1970, 1, 1), max_value=date.today())
