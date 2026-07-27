@@ -2580,14 +2580,30 @@ def employee_management():
                             "region": str(row.get('region', 'Lagos')),
                             "subsidiary": str(row.get('subsidiary', '')),
                             "reports_to": str(row.get('reports_to', '')),
-                            "gender": str(row.get('gender', 'Male')),
-                            "role": str(row.get('system_role', 'Team Member'))
+                            "gender": str(row.get('gender', 'Male'))
                         })
                         
-                        # Send welcome email
+                        # Create user login with role
                         emp_email = str(row.get('email', ''))
                         emp_name = f"{str(row.get('first_name', ''))} {str(row.get('last_name', ''))}"
+                        emp_role = str(row.get('system_role', 'Team Member'))
+                        
                         if emp_email and '@' in emp_email:
+                            try:
+                                import hashlib
+                                default_pw = hashlib.sha256("churchgate2026".encode()).hexdigest()
+                                db._post("users", {
+                                    "employee_id": emp_id,
+                                    "name": emp_name,
+                                    "email": emp_email,
+                                    "password": default_pw,
+                                    "role": emp_role,
+                                    "department": str(row.get('department', '')),
+                                    "position": str(row.get('position', ''))
+                                })
+                            except:
+                                pass
+                            
                             try:
                                 from utils.email_service import EmailService
                                 EmailService().send_welcome_email(emp_name, emp_email, "https://hris.churchgate.com")
