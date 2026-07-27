@@ -5042,17 +5042,37 @@ def performance_okrs():
             ])
             
             # ============================================================
-            # TAB 0: 9-BOX MATRIX
+            # COMMITTEE TAB 0: 9-BOX MATRIX - By Region/Subsidiary/Dept
             # ============================================================
             with committee_tabs[0]:
                 st.subheader("📊 9-Box Talent Matrix")
-                st.markdown("*Performance vs Potential — Data-driven talent assessment*")
+                st.markdown("*Performance vs Potential — Filtered by Region/Subsidiary/Department*")
+                
+                # Filters
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    matrix_region = st.selectbox("🌍 Region", ['All Regions', 'Abuja', 'Lagos', 'Aba'], key="matrix_region")
+                with col2:
+                    all_subs = sorted(set(get_employee_subsidiary(e['name']) for e in all_emps_scored if get_employee_subsidiary(e['name'])))
+                    matrix_sub = st.selectbox("🏢 Subsidiary", ['All'] + [s for s in all_subs if s], key="matrix_sub")
+                with col3:
+                    all_depts_list = sorted(set(e['dept'] for e in all_emps_scored))
+                    matrix_dept = st.selectbox("🏭 Department", ['All'] + all_depts_list, key="matrix_dept")
+                
+                # Filter employees
+                filtered_emps = all_emps_scored
+                if matrix_region != 'All Regions':
+                    filtered_emps = [e for e in filtered_emps if e['region'] == matrix_region]
+                if matrix_sub != 'All':
+                    filtered_emps = [e for e in filtered_emps if get_employee_subsidiary(e['name']) == matrix_sub]
+                if matrix_dept != 'All':
+                    filtered_emps = [e for e in filtered_emps if e['dept'] == matrix_dept]
                 
                 box_data = defaultdict(list)
-                for e in all_emps_scored:
+                for e in filtered_emps:
                     box_data[f"{e['potential']}_{e['performance']}"].append(e)
                 
-                total_in_matrix = len(all_emps_scored)
+                total_in_matrix = len(filtered_emps)
                 stars = len(box_data.get('High_High', [])) + len(box_data.get('Moderate_High', []))
                 at_risk = len(box_data.get('Low_Low', [])) + len(box_data.get('Moderate_Low', []))
                 
@@ -5060,7 +5080,7 @@ def performance_okrs():
                 m1.metric("👥 Total", total_in_matrix)
                 m2.metric("⭐ Top Talent", stars)
                 m3.metric("⚠️ At Risk", at_risk)
-                m4.metric("📊 Avg Score", f"{sum(e['score'] for e in all_emps_scored) / total_in_matrix:.1f}%" if total_in_matrix > 0 else "N/A")
+                m4.metric("📊 Avg Score", f"{sum(e['score'] for e in filtered_emps) / total_in_matrix:.1f}%" if total_in_matrix > 0 else "N/A")
                 
                 st.markdown("---")
                 
@@ -5091,9 +5111,11 @@ def performance_okrs():
                             action = emps[0]['position_action']
                         else:
                             pos_name, color, desc, action = 'Empty', '#e0e0e0', 'No employees', 'N/A'
+                        
                         initials_html = ''
                         for e in emps[:12]:
                             initials_html += f'<span style="display:inline-block;width:26px;height:26px;border-radius:50%;background:{e["position_color"]};color:white;text-align:center;line-height:26px;font-size:0.6rem;font-weight:700;margin:2px;cursor:pointer;" title="{e["name"]} — {e["score"]:.0f}% — {e["dept"]}">{e["initials"]}</span>'
+                        
                         with [c1, c2, c3][i]:
                             st.markdown(f"""
                             <div style="border:2px solid {color};border-radius:12px;padding:0.8rem;text-align:center;min-height:130px;background:linear-gradient(135deg, {color}08, {color}15);">
@@ -5105,10 +5127,11 @@ def performance_okrs():
                             </div>
                             """, unsafe_allow_html=True)
                 
+                # Classification Summary
                 st.markdown("---")
-                st.subheader("🏆 Employee Classifications")
+                st.subheader("🏆 Classification Breakdown")
                 class_counts = defaultdict(int)
-                for e in all_emps_scored:
+                for e in filtered_emps:
                     class_counts[e['class']] += 1
                 
                 class_cols = st.columns(6)
@@ -5841,39 +5864,104 @@ def performance_okrs():
                     st.info("No escalated appraisals.")
             
             # ============================================================
-            # TAB 4: COMPLETED
+            # COMMITTEE TAB 4: COMPLETED - By Region/Subsidiary/Dept
             # ============================================================
             with committee_tabs[4]:
                 st.subheader("🎉 Completed Appraisals")
+                st.markdown("*Organized by Region → Subsidiary → Department*")
+                
                 comp = {k: v for k, v in all_assessments.items() if v.get('acceptance') == 'Accepted'}
+                
                 if comp:
-                    st.success(f"🎉 {len(comp)} completed appraisal(s)")
-                    for en, a in comp.items():
-                        sc = get_emp_score(en)
+                    comp_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+                    
+                    for emp_name, assessment in comp.items():
+                        dept = get_employee_dept(emp_name)
+                        subsidiary = get_employee_subsidiary(emp_name)
+                        region = get_region(subsidiary)
+                        sc = get_emp_score(emp_name)
                         cl, co = get_classification(sc)
-                        st.markdown(f"""
-                        <div class="kpi-card" style="border-left-color:{co};">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <div>
-                                    <strong>👤 {en}</strong><br>
-                                    <small>{get_employee_dept(en)} | {get_region(get_employee_subsidiary(en))}</small>
-                                </div>
-                                <div style="text-align:right;">
-                                    <span style="font-size:1.2rem;font-weight:700;color:{co};">{sc:.1f}%</span><br>
-                                    <span style="color:{co};font-weight:600;">{cl}</span>
-                                </div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        
+                        comp_hierarchy[region][subsidiary or 'Unassigned'][dept].append({
+                            'name': emp_name, 'score': sc, 'class': cl, 'color': co,
+                            'sr_decision': assessment.get('sr_decision', ''),
+                            'date': assessment.get('date', ''),
+                            'dept': dept
+                        })
+                    
+                    # Region filter
+                    comp_regions = sorted(comp_hierarchy.keys())
+                    comp_region_filter = st.selectbox("🌍 Region", ['All Regions'] + comp_regions, key="comp_region")
+                    regions_to_show = comp_regions if comp_region_filter == 'All Regions' else [comp_region_filter]
+                    
+                    st.success(f"🎉 {len(comp)} completed appraisal(s)")
+                    
+                    for region in sorted(regions_to_show):
+                        if region not in comp_hierarchy: continue
+                        region_color = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#1a1a1a')
+                        region_count = sum(len(v) for s in comp_hierarchy[region].values() for v in s.values())
+                        
+                        st.markdown(f"""<div class="region-header" style="background:linear-gradient(135deg, {region_color}, #2d2d2d);">🌍 {region} — {region_count} completed</div>""", unsafe_allow_html=True)
+                        
+                        for subsidiary in sorted(comp_hierarchy[region].keys()):
+                            depts = comp_hierarchy[region][subsidiary]
+                            for department in sorted(depts.keys()):
+                                emps = depts[department]
+                                with st.expander(f"🏢 {subsidiary} → 🏭 {department} — {len(emps)} completed", expanded=False):
+                                    for e in emps:
+                                        st.markdown(f"""
+                                        <div class="kpi-card" style="border-left-color:{e['color']};">
+                                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                                <div>
+                                                    <strong>👤 {e['name']}</strong>
+                                                    <br><small>{e['dept']} | {e.get('sr_decision', 'Standard')}</small>
+                                                </div>
+                                                <div style="text-align:right;">
+                                                    <span style="font-size:1.2rem;font-weight:700;color:{e['color']};">{e['score']:.1f}%</span>
+                                                    <br><span style="color:{e['color']};font-weight:600;">{e['class']}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        """, unsafe_allow_html=True)
                 else:
                     st.info("No completed appraisals yet.")
             
             # ============================================================
-            # TAB 5: RANKINGS
+            # COMMITTEE TAB 5: RANKINGS - By Region/Subsidiary/Dept
             # ============================================================
             with committee_tabs[5]:
                 st.subheader("🏆 Performance Rankings")
-                sorted_emps = sorted(all_emps_scored, key=lambda x: x['score'], reverse=True)
+                st.markdown("*Top & Bottom Performers by Region/Subsidiary/Department*")
+                
+                # Filters
+                col1, col2 = st.columns(2)
+                with col1:
+                    rank_region = st.selectbox("🌍 Region", ['All Regions', 'Abuja', 'Lagos', 'Aba'], key="rank_region")
+                with col2:
+                    rank_dept = st.selectbox("🏭 Department", ['All'] + all_depts_list, key="rank_dept")
+                
+                ranked_emps = all_emps_scored
+                if rank_region != 'All Regions':
+                    ranked_emps = [e for e in ranked_emps if e['region'] == rank_region]
+                if rank_dept != 'All':
+                    ranked_emps = [e for e in ranked_emps if e['dept'] == rank_dept]
+                
+                sorted_emps = sorted(ranked_emps, key=lambda x: x['score'], reverse=True)
+                
+                # Summary stats
+                if sorted_emps:
+                    avg_score = sum(e['score'] for e in sorted_emps) / len(sorted_emps)
+                    top_quartile = sorted_emps[:max(1, len(sorted_emps)//4)]
+                    bottom_quartile = sorted_emps[-max(1, len(sorted_emps)//4):]
+                    
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("👥 Total", len(sorted_emps))
+                    m2.metric("📊 Avg Score", f"{avg_score:.1f}%")
+                    m3.metric("🏆 Top Score", f"{sorted_emps[0]['score']:.1f}%")
+                    m4.metric("📉 Lowest", f"{sorted_emps[-1]['score']:.1f}%")
+                
+                st.markdown("---")
+                
                 c1, c2 = st.columns(2)
                 with c1:
                     st.markdown("### 🏆 Top 10 Performers")
@@ -5881,43 +5969,67 @@ def performance_okrs():
                         for i, e in enumerate(sorted_emps[:10]):
                             st.markdown(f"""
                             <div class="kpi-card" style="border-left-color:#38a169;">
-                                <strong>#{i+1} {e['name']}</strong> | {e['dept']} | 
+                                <strong>#{i+1} {e['name']}</strong> | {e['dept']} | {e['region']} | 
                                 <span style="font-weight:700;color:#38a169;">{e['score']:.1f}%</span> | {e['class']}
                             </div>
                             """, unsafe_allow_html=True)
-                    else: st.info("No data.")
+                    else:
+                        st.info("No data.")
+                
                 with c2:
                     st.markdown("### ⚠️ Bottom 10 Performers")
                     if sorted_emps:
                         for i, e in enumerate(sorted_emps[-10:]):
                             st.markdown(f"""
                             <div class="kpi-card" style="border-left-color:#CC0000;">
-                                <strong>#{len(sorted_emps)-9+i} {e['name']}</strong> | {e['dept']} | 
+                                <strong>#{len(sorted_emps)-9+i} {e['name']}</strong> | {e['dept']} | {e['region']} | 
                                 <span style="font-weight:700;color:#CC0000;">{e['score']:.1f}%</span> | {e['class']}
                             </div>
                             """, unsafe_allow_html=True)
-                    else: st.info("No data.")
+                    else:
+                        st.info("No data.")
+                
+                # Performance Distribution Chart
+                st.markdown("---")
+                st.subheader("📊 Performance Distribution")
+                if sorted_emps:
+                    sc_df = pd.DataFrame(sorted_emps)
+                    fig = px.histogram(sc_df, x='score', nbins=10, color_discrete_sequence=['#CC0000'],
+                                     title="Score Distribution")
+                    fig.add_vline(x=avg_score, line_dash="dash", line_color="#d69e2e", 
+                                 annotation_text=f"Avg: {avg_score:.1f}%")
+                    fig.update_layout(height=300)
+                    st.plotly_chart(fig, use_container_width=True)
             
             # ============================================================
-            # COMMITTEE TAB 6: RECOMMENDATIONS (FROM ACTUAL REVIEWS)
+            # COMMITTEE TAB 6: RECOMMENDATIONS - By Region/Subsidiary/Dept
             # ============================================================
             with committee_tabs[6]:
-                st.subheader("📋 Appraisal Recommendations")
-                st.markdown("*Based on actual reviewer feedback and committee decisions*")
+                st.subheader("📋 Talent Recommendations")
+                st.markdown("*Based on appraisal scores and potential assessment — Filtered by Region/Subsidiary/Department*")
+                
+                # Filters
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    rec_region = st.selectbox("🌍 Region", ['All Regions', 'Abuja', 'Lagos', 'Aba'], key="rec_region")
+                with col2:
+                    rec_sub = st.selectbox("🏢 Subsidiary", ['All'] + [s for s in all_subs if s], key="rec_sub")
+                with col3:
+                    rec_dept = st.selectbox("🏭 Department", ['All'] + all_depts_list, key="rec_dept")
+                
+                # Filter employees
+                rec_emps = all_emps_scored
+                if rec_region != 'All Regions':
+                    rec_emps = [e for e in rec_emps if e['region'] == rec_region]
+                if rec_sub != 'All':
+                    rec_emps = [e for e in rec_emps if get_employee_subsidiary(e['name']) == rec_sub]
+                if rec_dept != 'All':
+                    rec_emps = [e for e in rec_emps if e['dept'] == rec_dept]
                 
                 # Collect real recommendations from assessments
                 recommendations = []
-                
-                for emp_name, assessment in all_assessments.items():
-                    sc = get_emp_score(emp_name)
-                    if sc == 0:
-                        continue
-                    
-                    cl, co = get_classification(sc)
-                    dept = get_employee_dept(emp_name)
-                    region = get_region(get_employee_subsidiary(emp_name))
-                    
-                    # Get the actual reviewer recommendation from comments
+                for e in rec_emps:
+                    assessment = all_assessments.get(e['name'], {})
                     hod_comments = assessment.get('hod_comments', '')
                     tl_comments = assessment.get('tl_comments', '')
                     sr_decision = assessment.get('sr_decision', '')
@@ -5935,7 +6047,6 @@ def performance_okrs():
                         recommendation = "UPHELD BY COMMITTEE - Reviewer decision stands"
                         recommendation_source = "Appraisal Committee"
                     elif acceptance == 'Accepted':
-                        # Check reviewer comments for recommendation
                         comments = hod_comments or tl_comments or ''
                         if 'promot' in comments.lower():
                             recommendation = "PROMOTE - " + comments[:100]
@@ -5945,10 +6056,8 @@ def performance_okrs():
                             recommendation = "TRAINING & DEVELOPMENT - " + comments[:100]
                         elif 'pip' in comments.lower() or 'improve' in comments.lower():
                             recommendation = "PERFORMANCE IMPROVEMENT PLAN - " + comments[:100]
-                        elif 'consistent' in comments.lower() or 'good' in comments.lower() or 'solid' in comments.lower():
-                            recommendation = "MAINTAIN - Consistent Performer"
                         else:
-                            recommendation = "REVIEW COMPLETED - " + (comments[:80] if comments else "No specific recommendation")
+                            recommendation = "REVIEW COMPLETED"
                         recommendation_source = f"{reviewer_type} Review"
                     elif acceptance == 'Rejected':
                         recommendation = "DISPUTED - Awaiting resolution"
@@ -5957,28 +6066,24 @@ def performance_okrs():
                         recommendation = "ESCALATED - Pending Committee Decision"
                         recommendation_source = "Pending Committee"
                     else:
-                        recommendation = "IN PROGRESS - Review not yet complete"
+                        recommendation = "IN PROGRESS"
                         recommendation_source = "Pending"
                     
                     recommendations.append({
-                        'Employee': emp_name,
-                        'Department': dept,
-                        'Region': region,
-                        'Score': sc,
-                        'Classification': cl,
-                        'Reviewer': reviewer_type,
-                        'Recommendation': recommendation,
-                        'Source': recommendation_source,
+                        'Employee': e['name'], 'Department': e['dept'], 'Region': e['region'],
+                        'Subsidiary': get_employee_subsidiary(e['name']) or 'N/A',
+                        'Score': e['score'], 'Classification': e['class'],
+                        '9-Box': e['position_name'], 'Potential': e['potential'],
+                        'Recommendation': recommendation, 'Source': recommendation_source,
                         'Status': acceptance or assessment.get('status', 'Pending')
                     })
                 
                 if recommendations:
                     # Summary by recommendation type
                     st.subheader("📊 Recommendation Summary")
-                    
                     rec_categories = defaultdict(list)
                     for r in recommendations:
-                        cat = r['Recommendation'].split(' - ')[0] if ' - ' in r['Recommendation'] else r['Recommendation'][:50]
+                        cat = r['Recommendation'].split(' - ')[0]
                         rec_categories[cat].append(r)
                     
                     c1, c2 = st.columns(2)
@@ -5992,45 +6097,52 @@ def performance_okrs():
                             st.plotly_chart(fig, use_container_width=True)
                     
                     with c2:
-                        st.subheader("👥 By Status")
-                        status_counts = defaultdict(int)
+                        # Region breakdown
+                        region_recs = defaultdict(int)
                         for r in recommendations:
-                            status_counts[r['Source']] += 1
-                        for source, count in status_counts.items():
-                            st.markdown(f"""
-                            <div class="kpi-card">
-                                <strong>{source}</strong>
-                                <span style="float:right;font-size:1.3rem;font-weight:700;">{count}</span>
-                                <br><small style="color:#888;">employees</small>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            region_recs[r['Region']] += 1
+                        if region_recs:
+                            region_df = pd.DataFrame({'Region': list(region_recs.keys()), 'Count': list(region_recs.values())})
+                            fig2 = px.bar(region_df, x='Region', y='Count', color='Region',
+                                         color_discrete_sequence=['#CC0000', '#1a1a1a', '#38a169'])
+                            fig2.update_layout(height=350, title="Recommendations by Region")
+                            st.plotly_chart(fig2, use_container_width=True)
                     
                     st.markdown("---")
                     st.subheader("📋 Detailed Recommendations by Employee")
                     
-                    for r in sorted(recommendations, key=lambda x: x['Score'], reverse=True):
-                        border_color = '#38a169' if r['Status'] == 'Accepted' else '#CC0000' if r['Status'] == 'Rejected' else '#d69e2e'
-                        source_badge = {
-                            'Appraisal Committee': 'badge-green',
-                            'HOD Review': 'badge-green',
-                            'Team Lead Review': 'badge-green',
-                            'Pending': 'badge-yellow',
-                            'Pending Committee': 'badge-red'
-                        }.get(r['Source'], 'badge-gray')
+                    # Group by Region → Subsidiary → Department
+                    rec_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+                    for r in recommendations:
+                        rec_hierarchy[r['Region']][r['Subsidiary']][r['Department']].append(r)
+                    
+                    for region in ['Abuja', 'Lagos', 'Aba']:
+                        if region not in rec_hierarchy: continue
+                        region_color = {'Abuja': '#CC0000', 'Lagos': '#1a1a1a', 'Aba': '#38a169'}.get(region, '#1a1a1a')
+                        st.markdown(f"""<div class="region-header" style="background:linear-gradient(135deg, {region_color}, #2d2d2d);">🌍 {region}</div>""", unsafe_allow_html=True)
                         
-                        with st.expander(f"{r['Classification']} {r['Employee']} — {r['Score']:.1f}% — {r['Source']}", expanded=False):
-                            st.markdown(f"""
-                            <div style="padding:0.5rem;border-left:4px solid {border_color};margin:0.3rem 0;">
-                                <strong>👤 {r['Employee']}</strong><br>
-                                <small>🏢 {r['Department']} | 🌍 {r['Region']} | 🏅 {r['Classification']}</small><br>
-                                <small>📊 Score: {r['Score']:.1f}% | Reviewer: {r['Reviewer']}</small><br>
-                                <small>Status: {r['Status']} | Source: <span class="badge {source_badge}">{r['Source']}</span></small>
-                                <div style="margin-top:0.5rem;padding:0.5rem;background:#f8f9fa;border-radius:6px;">
-                                    <strong>💡 Recommendation:</strong><br>
-                                    <span style="color:#CC0000;">{r['Recommendation']}</span>
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                        for sub in sorted(rec_hierarchy[region].keys()):
+                            st.markdown(f"""<div class="subsidiary-header">🏢 {sub}</div>""", unsafe_allow_html=True)
+                            for dept in sorted(rec_hierarchy[region][sub].keys()):
+                                dept_recs = rec_hierarchy[region][sub][dept]
+                                with st.expander(f"🏭 {dept} — {len(dept_recs)} recommendation(s)", expanded=False):
+                                    for r in sorted(dept_recs, key=lambda x: x['Score'], reverse=True):
+                                        border_color = '#38a169' if r['Status'] == 'Accepted' else '#CC0000' if r['Status'] == 'Rejected' else '#d69e2e'
+                                        source_badge = {
+                                            'Appraisal Committee': 'badge-green',
+                                            'HOD Review': 'badge-green',
+                                            'Team Lead Review': 'badge-green',
+                                            'Pending': 'badge-yellow',
+                                            'Pending Committee': 'badge-red'
+                                        }.get(r['Source'], 'badge-gray')
+                                        
+                                        st.markdown(f"""
+                                        <div style="padding:0.5rem;border-left:4px solid {border_color};margin:0.3rem 0;">
+                                            <strong>👤 {r['Employee']}</strong> — {r['Score']:.1f}% | {r['Classification']} | 9-Box: {r['9-Box']}<br>
+                                            <small>Source: <span class="badge {source_badge}">{r['Source']}</span></small><br>
+                                            <small style="color:#CC0000;">💡 {r['Recommendation']}</small>
+                                        </div>
+                                        """, unsafe_allow_html=True)
                 else:
                     st.info("No appraisal data available for recommendations.")
 
