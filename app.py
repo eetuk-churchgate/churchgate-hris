@@ -3605,7 +3605,7 @@ def performance_okrs():
                             reviewer_email = find_hod_email_for_dept(user_dept) if reviewer_type == 'HOD' else get_employee_email(user_name)
                             if reviewer_email:
                                 try: 
-                                    EmailService().send_email(reviewer_email, f"🔄 Appraisal Rejected by {user_name}", f"Dear {reviewer_type},\n\n{user_name} has rejected your review.\n\nReason: {rejection_comment}\n\nPlease log in to review.\n\nhttps://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
+                                    EmailService().send_email(reviewer_email, f"🔄 Appraisal Rejected by {user_name}", f"Dear {reviewer_type},\n\n{user_name} has rejected your review.\n\nReason: {rejection_comment}\n\nPlease log in to review.\n\nhttps://hris.churchgate.com\n\nChurchgate Group HR")
                                 except: pass
                             
                             log_audit('Appraisal Rejected', f'{user_name} rejected {reviewer_type} review')
@@ -4028,7 +4028,7 @@ def performance_okrs():
                                                         f"Dear {member_name},\n\n"
                                                         f"Your Team Lead ({user_name}) has completed your performance review.\n\n"
                                                         f"Please log in to the HRIS to view your scores and accept or reject the review.\n\n"
-                                                        f"https://churchgate-churchgate-hris.hf.space\n\n"
+                                                        f"https://hris.churchgate.com\n\n"
                                                         f"Churchgate Group HR"
                                                     )
                                                 except:
@@ -4123,7 +4123,7 @@ def performance_okrs():
                                                     f"Dear {member_name},\n\n"
                                                     f"Your Team Lead ({user_name}) has requested a revision to your self-assessment.\n\n"
                                                     f"Please review and update your submission.\n\n"
-                                                    f"https://churchgate-churchgate-hris.hf.space\n\n"
+                                                    f"https://hris.churchgate.com\n\n"
                                                     f"Churchgate Group HR"
                                                 )
                                             except:
@@ -4232,7 +4232,7 @@ def performance_okrs():
                             if emp_email_addr and '@' in str(emp_email_addr):
                                 emp_perf = db.get_performance_data(emp_name)
                                 if not emp_perf.empty and any(row.get('submission_status') == 'Approved' for _, row in emp_perf.iterrows()):
-                                    es.send_email(emp_email_addr, f"📊 Appraisal Cycle Open: {st.session_state.appraisal_cycle_name}", f"Dear {emp_name},\n\nThe appraisal cycle is now active.\n\nPeriod: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}\n\nPlease complete your self-assessment.\n\nhttps://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
+                                    es.send_email(emp_email_addr, f"📊 Appraisal Cycle Open: {st.session_state.appraisal_cycle_name}", f"Dear {emp_name},\n\nThe appraisal cycle is now active.\n\nPeriod: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}\n\nPlease complete your self-assessment.\n\nhttps://hris.churchgate.com\n\nChurchgate Group HR")
                                     sent_count += 1
                         st.success(f"📧 Emails sent to {sent_count} employees.")
                     except: pass
@@ -7643,7 +7643,7 @@ APPLY NOW: {public_url}
     except:
         employees_df = pd.DataFrame()
     
-    STREAMLIT_URL = "https://churchgate-churchgate-hris.hf.space"
+    STREAMLIT_URL = "https://hris.churchgate.com"
     
     # CHANGE 1: Load from database
     if 'job_requisitions' not in st.session_state:
@@ -7811,7 +7811,7 @@ APPLY NOW: {public_url}
                         EmailService().send_email(
                             lm_email,
                             f"🔔 New Job Requisition Awaiting Authorization: {job_title}",
-                            f"A new job requisition for '{job_title}' ({department}) has been submitted by {user_name}.\n\nPlease review and authorize in the HRIS: https://churchgate-churchgate-hris.hf.space\n\nRequisition ID: {req['id']}"
+                            f"A new job requisition for '{job_title}' ({department}) has been submitted by {user_name}.\n\nPlease review and authorize in the HRIS: https://hris.churchgate.com\n\nRequisition ID: {req['id']}"
                         )
                         st.info(f"📧 Authorization request sent to Line Manager")
                     except:
@@ -7907,7 +7907,7 @@ APPLY NOW: {public_url}
                                                     email_svc.send_email(
                                                         hr_email,
                                                         f"🔔 Job Requisition Authorized by LM: {req['title']}",
-                                                        f"Line Manager has authorized '{req['title']}' ({req['department']}).\n\nValidate at: https://churchgate-churchgate-hris.hf.space\n\nRequisition ID: {req['id']}"
+                                                        f"Line Manager has authorized '{req['title']}' ({req['department']}).\n\nValidate at: https://hris.churchgate.com\n\nRequisition ID: {req['id']}"
                                                     )
                                                 st.info("📧 HR team notified")
                                             except:
@@ -7958,7 +7958,7 @@ APPLY NOW: {public_url}
                                                 email_svc.send_email(
                                                     "jeromedas@churchgate.com",
                                                     f"🔔 Job Requisition Ready for Final Approval: {req['title']}",
-                                                    f"HR has validated '{req['title']}' ({req['department']}).\n\nApprove at: https://churchgate-churchgate-hris.hf.space\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}"
+                                                    f"HR has validated '{req['title']}' ({req['department']}).\n\nApprove at: https://hris.churchgate.com\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}"
                                                 )
                                                 st.info("📧 Email sent to COO (Jerome Das)")
                                             except:
@@ -7989,7 +7989,7 @@ APPLY NOW: {public_url}
                                         st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
                                         st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
                                         job_ref = req['id']
-                                        STREAMLIT_URL = "https://churchgate-churchgate-hris.hf.space"
+                                        STREAMLIT_URL = "https://hris.churchgate.com"
                                         public_url = f"{STREAMLIT_URL}/Careers?job={job_ref}"
                                         
                                         st.session_state.active_jobs.append({
@@ -8732,7 +8732,7 @@ APPLY NOW: {public_url}
         
         else:
             st.info("🤖 No applications yet. Share the Careers Page URL to start building your talent pipeline.")
-            st.code("https://churchgate-churchgate-hris.hf.space/Careers", language=None)
+            st.code("https://hris.churchgate.com/Careers", language=None)
     
     # ============ TAB 5: INTERVIEWS ============
     with tab5:
@@ -9278,7 +9278,7 @@ APPLY NOW: {public_url}
                                 EmailService().send_email(
                                     hr_email,
                                     f"🔍 New Background Check: {bg_name} — {bg_position}",
-                                    f"A new background check has been requested for {bg_name} ({bg_position}, {bg_department}).\n\nCheck Type: {', '.join(bg_type)}\nPriority: {bg_priority}\n\nPlease process in the HRIS: https://churchgate-churchgate-hris.hf.space"
+                                    f"A new background check has been requested for {bg_name} ({bg_position}, {bg_department}).\n\nCheck Type: {', '.join(bg_type)}\nPriority: {bg_priority}\n\nPlease process in the HRIS: https://hris.churchgate.com"
                                 )
                             st.info("📧 HR team notified via email")
                         except:
@@ -9373,7 +9373,7 @@ APPLY NOW: {public_url}
                             <p style="background:#f5f5f5;padding:1rem;border-radius:6px;">{ext_message}</p>
                             <p>Please reply to this email with your detailed response. Include the Reference ID ({ref_id}) in your reply.</p>
                             <p>Alternatively, you can submit your response directly at:</p>
-                            <p><a href="https://churchgate-churchgate-hris.hf.space/Careers?ref={ref_id}" style="color:#CC0000;">Submit Verification Response</a></p>
+                            <p><a href="https://hris.churchgate.com/Careers?ref={ref_id}" style="color:#CC0000;">Submit Verification Response</a></p>
                             <p>Thank you for your time and honest assessment.</p>
                             <p style="color:#888;">Churchgate Group HR Team<br>hr@churchgate.com</p>
                             """
@@ -12891,7 +12891,7 @@ def company_calendar():
         
         st.markdown("---")
         st.markdown("### 📋 iCal Feed URL")
-        st.code("https://churchgate-churchgate-hris.hf.space/api/calendar.ics", language=None)
+        st.code("https://hris.churchgate.com/api/calendar.ics", language=None)
         st.caption("Use this URL to subscribe to the Churchgate calendar from any calendar app.")
     
     # ============ BIRTHDAYS ============
@@ -16401,7 +16401,7 @@ def send_kpi_notification(action, employee_name, employee_email, hod_email=None)
         if action == 'submitted_to_hod' and hod_email:
             es.send_email(hod_email,
                 f"📊 KPIs Ready for Review — {employee_name}",
-                f"Dear HOD,\n\n{employee_name} has submitted their KPIs and they are ready for your review.\n\nPlease log in to the HRIS to review, approve, or request revisions.\n\nhttps://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
+                f"Dear HOD,\n\n{employee_name} has submitted their KPIs and they are ready for your review.\n\nPlease log in to the HRIS to review, approve, or request revisions.\n\nhttps://hris.churchgate.com\n\nChurchgate Group HR")
         
         if action == 'approved':
             es.send_email(employee_email,
@@ -16411,7 +16411,7 @@ def send_kpi_notification(action, employee_name, employee_email, hod_email=None)
         if action == 'revision_requested':
             es.send_email(employee_email,
                 "🔄 KPI Revision Requested",
-                f"Dear {employee_name},\n\nYour HOD has requested revisions to your KPIs. Your KPIs have been unlocked for editing.\n\nPlease log in, review the HOD comments, update your KPIs, and resubmit.\n\nhttps://churchgate-churchgate-hris.hf.space\n\nChurchgate Group HR")
+                f"Dear {employee_name},\n\nYour HOD has requested revisions to your KPIs. Your KPIs have been unlocked for editing.\n\nPlease log in, review the HOD comments, update your KPIs, and resubmit.\n\nhttps://hris.churchgate.com\n\nChurchgate Group HR")
         
         return True
     except:
