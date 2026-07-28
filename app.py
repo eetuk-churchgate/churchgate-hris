@@ -3517,15 +3517,16 @@ def performance_okrs():
                             # Combine ALL KPIs from ALL rows for this pillar
                             all_kpi_list = []
                             seen = set()
-                            total_weight = 0
                             for _, pr in pillar_rows.iterrows():
-                                total_weight = max(total_weight, pr.get('weight', 0))
                                 kpi_list = json.loads(pr.get('kpi_data', '[]')) if pr.get('kpi_data') else []
                                 for kpi in kpi_list:
                                     title = kpi.get('kpi', '')
                                     if title and title not in seen:
                                         seen.add(title)
                                         all_kpi_list.append(kpi)
+                            
+                            # Sum all KPI weights for total pillar weight
+                            total_weight = sum(k.get('weight', 0) for k in all_kpi_list)
                             
                             if all_kpi_list:
                                 st.markdown(f"### {pillar_name} (Weight: {total_weight}%)")
