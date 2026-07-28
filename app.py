@@ -3760,50 +3760,88 @@ def performance_okrs():
                 pass
             
             # ===== SECTION 2: APPRAISAL REVIEW (FIXED) =====
-            st.markdown("---")
-            st.markdown("### 📝 Appraisal Review")
+            st.markdown("---"); st.markdown("### 📝 Appraisal Review")
             
+            # Admin sees ALL appraisals, HOD sees their department
             if is_admin:
                 submitted_appraisals = {k: v for k, v in st.session_state.self_assessments.items() 
-                                       if v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL']}
+                                       if v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL', 'Escalated to HOD from TL']}
             else:
                 submitted_appraisals = {k: v for k, v in st.session_state.self_assessments.items() 
-                                       if get_employee_dept(k) == user_dept and v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL']}
+                                       if get_employee_dept(k) == user_dept and v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL', 'Escalated to HOD from TL']}
             
             if submitted_appraisals:
                 st.success(f"📋 {len(submitted_appraisals)} appraisal(s) for review")
                 
                 for staff_name, assessment in submitted_appraisals.items():
-                    is_escalated = assessment.get('status') == 'Escalated from TL'
+                    is_escalated = 'Escalated' in assessment.get('status', '')
                     is_re_review = assessment.get('status') == 'Awaiting HOD Re-review'
                     
                     expander_title = f"{'🚨 ESCALATED: ' if is_escalated else '🔄 RE-REVIEW: ' if is_re_review else '📋 '}{staff_name} | {get_employee_dept(staff_name)}"
                     
                     with st.expander(expander_title, expanded=True):
-                        if is_escalated: 
-                            st.warning(f"🚨 Escalated from Team Lead. TL scores available for reference.")
-                            if assessment.get('tl_scores'):
-                                st.markdown("**Team Lead Scores:**")
-                                for k, v in assessment['tl_scores'].items():
-                                    st.markdown(f"- {k[:60]}: {v}%")
-                        
-                        if is_re_review: 
+                        # SHOW REJECTION DETAILS FOR RE-REVIEW
+                        if is_re_review:
                             st.warning(f"⚠️ Staff rejected your review (Rejection #{assessment.get('reject_count', 1)})")
                             st.markdown(f"**Staff Rejection Reason:** {assessment.get('rejection_comment', 'No comment provided')}")
+                            
+                            # Show rejection documents
+                            if assessment.get('rejection_docs'):
+                                try:
+                                    docs = json.loads(assessment['rejection_docs']) if isinstance(assessment['rejection_docs'], str) else assessment['rejection_docs']
+                                    if docs:
+                                        st.markdown("**📎 Staff Rejection Documents:**")
+                                        for doc_url in docs:
+                                            st.markdown(f"- [📄 View Document]({doc_url})")
+                                except:
+                                    pass
+                            else:
+                                st.caption("📎 No rejection documents attached")
                         
-                        st.markdown(f"**Staff Overall Comments:** {assessment.get('comments', 'N/A')}")
+                        # SHOW EMPLOYEE OVERALL COMMENTS
+                        st.markdown(f"**👤 Staff Overall Comments:** {assessment.get('comments', 'N/A')}")
                         
+                        # SHOW EVIDENCE FILES PER PILLAR
                         st.markdown("---")
-                        st.markdown("### 📊 Your Review Scores")
+                        st.markdown("### 📎 Evidence Files by Pillar")
+                        if assessment.get('evidence_files'):
+                            try:
+                                evidence = json.loads(assessment['evidence_files']) if isinstance(assessment['evidence_files'], str) else assessment['evidence_files']
+                                if evidence:
+                                    for pillar, urls in evidence.items():
+                                        st.markdown(f"**{pillar}**")
+                                        if urls:
+                                            for url in urls:
+                                                st.markdown(f"- [📄 {url.split('/')[-1][:30]}...]({url})")
+                                        else:
+                                            st.caption("No evidence for this pillar")
+                                else:
+                                    st.info("📎 No evidence files attached to this appraisal")
+                            except:
+                                st.info("📎 No evidence files available")
+                        else:
+                            st.info("📎 No evidence files attached to this appraisal")
+                        
+                        # SHOW PER-KPI COMMENTS AND SCORES
+                        st.markdown("---")
+                        st.markdown("### 📊 Detailed Score Review with Per-KPI Comments")
                         
                         hod_scores = {}
+                        pillar_comments = assessment.get('pillar_comments', {})
+                        
                         for score_key, staff_score in sorted(assessment['scores'].items(), key=natural_sort_key):
+                            # Extract pillar name from score key
+                            pillar_part = score_key.rsplit('_', 1)[0] if '_' in score_key else score_key
+                            kpi_comment = pillar_comments.get(pillar_part, '')
+                            
+                            st.markdown(f"<small style='color:#888;'>{score_key[:80]}</small>", unsafe_allow_html=True)
+                            
                             c1, c2 = st.columns(2)
-                            with c1: 
-                                st.markdown(f"**Staff Score:** {staff_score}%")
-                                st.caption(score_key[:80])
+                            with c1:
+                                st.markdown(f"<span style='font-size:0.85rem;'>**Staff:** {staff_score}%</span>", unsafe_allow_html=True)
+                                if kpi_comment:
+                                    st.markdown(f"<small style='color:#666;'>💬 {kpi_comment[:100]}</small>", unsafe_allow_html=True)
                             with c2:
-                                # Show previous HOD score for re-reviews
                                 prev_hod = assessment.get('hod_scores', {}).get(score_key, staff_score) if is_re_review else staff_score
                                 hod_scores[score_key] = st.number_input(
                                     "Your Score",
@@ -3821,7 +3859,7 @@ def performance_okrs():
                             placeholder="Provide detailed feedback..."
                         )
                         
-                        # BUTTONS: Submit + Stand Firm (for re-reviews)
+                        # BUTTONS
                         if is_re_review or is_escalated:
                             c1, c2, c3 = st.columns(3)
                             with c1:
@@ -3840,13 +3878,12 @@ def performance_okrs():
                                                 assessment.get('pillar_comments', {}), hod_scores, hod_overall, 
                                                 {}, None, None, assessment.get('date', ''))
                                         except: pass
-                                        # Notify employee
                                         emp_email = get_employee_email(staff_name)
                                         if emp_email:
                                             try:
                                                 EmailService().send_email(emp_email, 
                                                     f"📝 Updated HOD Review - {st.session_state.appraisal_cycle_name}",
-                                                    f"Dear {staff_name},\n\nYour HOD has submitted an updated review.\n\nPlease log in to accept or reject.\n\nChurchgate Group HR")
+                                                    f"Dear {staff_name},\n\nYour HOD has submitted an updated review.\n\nHOD Comments: {hod_overall}\n\nPlease log in to accept or reject.\n\nChurchgate Group HR")
                                             except: pass
                                         log_audit('HOD Revised Review', f'{staff_name} review revised by HOD {user_name}')
                                         st.success("✅ Revised review submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
@@ -3854,7 +3891,6 @@ def performance_okrs():
                             with c2:
                                 if st.button(f"✋ Stand Firm - Send to Committee", key=f"standfirm_{staff_name}"):
                                     if not hod_overall:
-                                        # Use existing HOD comments if no new ones
                                         hod_overall = assessment.get('hod_comments', 'Standing firm on original review.')
                                     
                                     st.session_state.self_assessments[staff_name].update({
@@ -3885,24 +3921,17 @@ def performance_okrs():
                                                     f"Dear Committee Member,\n\n{staff_name}'s appraisal has been escalated.\n\nHOD: {user_name}\nHOD Comments: {hod_overall}\n\nPlease review in the Appraisal Committee Board.\n\nChurchgate Group HR")
                                     except: pass
                                     
-                                    # NOTIFY EMPLOYEE
+                                    # Notify Employee
                                     emp_email = get_employee_email(staff_name)
                                     if emp_email:
                                         try:
                                             EmailService().send_email(emp_email,
                                                 f"🚨 Appraisal Escalated to Committee - {st.session_state.appraisal_cycle_name}",
-                                                f"Dear {staff_name},\n\n"
-                                                f"Your appraisal has been escalated to the Appraisal Committee for final review.\n\n"
-                                                f"HOD Comments: {hod_overall}\n\n"
-                                                f"Status: Awaiting Committee Verdict\n\n"
-                                                f"The committee will review all evidence and make a final decision. You will be notified of the outcome.\n\n"
-                                                f"Churchgate Group HR")
+                                                f"Dear {staff_name},\n\nYour appraisal has been escalated to the Appraisal Committee for final review.\n\nHOD Comments: {hod_overall}\n\nStatus: Awaiting Committee Verdict\n\nChurchgate Group HR")
                                         except: pass
                                     
                                     log_audit('HOD Escalated to Committee', f'{staff_name} sent to committee by HOD {user_name}')
-                                    st.warning("✋ Escalated to Appraisal Committee! Employee notified.")
-                                    time.sleep(1.5)
-                                    st.rerun()
+                                    st.warning("✋ Escalated to Appraisal Committee! Both parties notified."); time.sleep(1.5); st.rerun()
                             
                             with c3:
                                 if st.button(f"💬 Request Staff Revision", key=f"request_rev_{staff_name}"):
@@ -3912,12 +3941,11 @@ def performance_okrs():
                                         try:
                                             EmailService().send_email(emp_email,
                                                 f"🔄 Revision Requested - {st.session_state.appraisal_cycle_name}",
-                                                f"Dear {staff_name},\n\nYour HOD has requested additional information.\n\nComments: {hod_overall}\n\nPlease update your self-assessment.\n\nChurchgate Group HR")
+                                                f"Dear {staff_name},\n\nYour HOD has requested additional information.\n\nComments: {hod_overall}\n\nChurchgate Group HR")
                                         except: pass
                                     log_audit('HOD Requested Revision', f'{staff_name} revision requested by HOD')
                                     st.info("💬 Revision requested from staff"); time.sleep(1.5); st.rerun()
                         else:
-                            # First-time review
                             if st.button(f"✅ Submit HOD Review for {staff_name}", key=f"submit_{staff_name}", type="primary"):
                                 if not hod_overall: 
                                     st.error("❌ Comments required!")
@@ -3933,13 +3961,12 @@ def performance_okrs():
                                             assessment.get('pillar_comments', {}), hod_scores, hod_overall, 
                                             {}, None, None, assessment.get('date', ''))
                                     except: pass
-                                    # Notify employee
                                     emp_email = get_employee_email(staff_name)
                                     if emp_email:
                                         try:
                                             EmailService().send_email(emp_email,
                                                 f"📝 HOD Review Complete - {st.session_state.appraisal_cycle_name}",
-                                                f"Dear {staff_name},\n\nYour HOD has completed your performance review.\n\nPlease log in to accept or reject.\n\nChurchgate Group HR")
+                                                f"Dear {staff_name},\n\nYour HOD has completed your performance review.\n\nHOD Comments: {hod_overall}\n\nPlease log in to accept or reject.\n\nChurchgate Group HR")
                                         except: pass
                                     log_audit('HOD Review Submitted', f'{staff_name} reviewed by HOD {user_name}')
                                     st.success("✅ Review submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
@@ -4790,8 +4817,10 @@ def performance_okrs():
         else:
             # ===== NON-ADMIN EMPLOYEE VIEW =====
             st.subheader("📈 My Performance Summary")
+            
             user_assessment = st.session_state.self_assessments.get(user_name, {})
             
+            # Certificate for accepted appraisals
             if user_assessment.get('acceptance') == 'Accepted':
                 st.success("🎉 Congratulations! Your appraisal has been accepted!")
                 final_scores = user_assessment.get('hod_scores') or user_assessment.get('tl_scores') or user_assessment.get('scores', {})
@@ -4913,6 +4942,31 @@ def performance_okrs():
                     except Exception as e:
                         st.error(f"PDF error: {str(e)}")
             
+            # Show HOD/TL comments after review
+            if user_assessment.get('hod_scores') or user_assessment.get('tl_scores'):
+                reviewer_type = user_assessment.get('reviewer_type', 'HOD')
+                reviewer_comments = user_assessment.get('hod_comments') or user_assessment.get('tl_comments', '')
+                
+                if reviewer_comments:
+                    st.markdown("---")
+                    st.markdown(f"### 💬 {reviewer_type} Comments")
+                    st.info(reviewer_comments)
+                
+                st.markdown("---")
+                st.markdown(f"### 📊 Score Comparison")
+                
+                for score_key, staff_score in sorted(user_assessment.get('scores', {}).items(), key=natural_sort_key):
+                    reviewer_scores = user_assessment.get('hod_scores') or user_assessment.get('tl_scores') or {}
+                    reviewer_score = reviewer_scores.get(score_key, 'N/A')
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.markdown(f"<small style='color:#888;'>{score_key[:60]}</small>", unsafe_allow_html=True)
+                        st.markdown(f"<span style='font-size:0.9rem;'>Your Score: <strong>{staff_score}%</strong></span>", unsafe_allow_html=True)
+                    with c2:
+                        st.markdown(f"<span style='font-size:0.9rem;'>{reviewer_type} Score: <strong>{reviewer_score}%</strong></span>", unsafe_allow_html=True)
+            
+            # Progress tracker
             if st.session_state.appraisal_cycle_active:
                 current_status = user_assessment.get('status', 'Not Started')
                 acceptance = user_assessment.get('acceptance', '')
@@ -5203,7 +5257,9 @@ def performance_okrs():
                     completed = len([v for v in all_assessments.values() if v.get('acceptance') == 'Accepted'])
                     pending_review = len([v for v in all_assessments.values() if v.get('status') in ['Submitted', 'Approved']])
                     pending_acceptance = len([v for v in all_assessments.values() if v.get('status') == 'Approved' and not v.get('acceptance')])
-                    escalated = len([v for v in all_assessments.values() if v.get('status') == 'Escalated from TL'])
+                    escalated = len([v for v in all_assessments.values() 
+                               if v.get('status') in ['Escalated from TL', 'Escalated to HOD from TL']
+                               or (v.get('acceptance') == 'Rejected' and v.get('sr_decision') == 'Pending Committee')])
                     rejected = len([v for v in all_assessments.values() if v.get('acceptance') == 'Rejected'])
                     not_started = len([v for v in all_assessments.values() if v.get('status') == 'Not Started' or not v.get('status')])
                     in_progress = len([v for v in all_assessments.values() if v.get('status') == 'Submitted'])
@@ -5717,13 +5773,16 @@ def performance_okrs():
                     st.info("No pending submissions.")
             
             # ============================================================
-            # COMMITTEE TAB 3: ESCALATED - By Region/Subsidiary/Dept
+            # COMMITTEE TAB 3: ESCALATED - FIXED
             # ============================================================
             with committee_tabs[3]:
                 st.subheader("🚨 Escalated Appraisals")
                 st.markdown("*Organized by Region → Subsidiary → Department*")
                 
-                esc = {k: v for k, v in all_assessments.items() if v.get('status') == 'Escalated from TL' or (v.get('acceptance') == 'Rejected' and v.get('status') not in ['Awaiting HOD Re-review', 'Awaiting TL Re-review'])}
+                esc = {k: v for k, v in all_assessments.items() 
+                       if v.get('status') in ['Escalated from TL', 'Escalated to HOD from TL'] 
+                       or (v.get('acceptance') == 'Rejected' and v.get('sr_decision') == 'Pending Committee')
+                       or (v.get('acceptance') == 'Rejected' and v.get('status') not in ['Awaiting HOD Re-review', 'Awaiting TL Re-review', 'Completed'])}
                 
                 if esc:
                     esc_hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
@@ -5736,28 +5795,25 @@ def performance_okrs():
                         sc = get_emp_score(emp_name)
                         cl, co = get_classification(sc) if sc > 0 else ('N/A', '#a0aec0')
                         
-                        # Get all comments
-                        hod_comments = assessment.get('hod_comments', '')
-                        tl_comments = assessment.get('tl_comments', '')
-                        emp_comments = assessment.get('comments', '')
-                        rejection_reason = assessment.get('rejection_comment', '')
-                        
                         esc_hierarchy[region][subsidiary or 'Unassigned'][dept].append({
-                            'name': emp_name,
-                            'score': sc,
-                            'class': cl,
-                            'color': co,
+                            'name': emp_name, 'score': sc, 'class': cl, 'color': co,
                             'status': assessment.get('status', 'N/A'),
                             'reviewer': assessment.get('reviewer_type', 'N/A'),
-                            'emp_comments': emp_comments,
-                            'hod_comments': hod_comments,
-                            'tl_comments': tl_comments,
-                            'rejection': rejection_reason,
+                            'emp_comments': assessment.get('comments', ''),
+                            'hod_comments': assessment.get('hod_comments', ''),
+                            'tl_comments': assessment.get('tl_comments', ''),
+                            'rejection': assessment.get('rejection_comment', ''),
                             'reject_count': assessment.get('reject_count', 1),
                             'sr_decision': assessment.get('sr_decision', ''),
                             'date': assessment.get('date', ''),
                             'dept': dept,
-                            'email': assessment.get('email', '')
+                            'email': assessment.get('email', ''),
+                            'scores': assessment.get('scores', {}),
+                            'hod_scores': assessment.get('hod_scores', {}),
+                            'tl_scores': assessment.get('tl_scores', {}),
+                            'pillar_comments': assessment.get('pillar_comments', {}),
+                            'evidence_files': assessment.get('evidence_files', ''),
+                            'rejection_docs': assessment.get('rejection_docs', '')
                         })
                     
                     st.warning(f"🚨 {len(esc)} escalated appraisal(s) requiring committee decision")
@@ -5793,47 +5849,79 @@ def performance_okrs():
                                             # FULL AUDIT TRAIL
                                             st.markdown("### 📋 Full Audit Trail")
                                             
-                                            if e['emp_comments'] and e['emp_comments'] != 'N/A':
-                                                st.markdown(f"**👤 Employee Comments:** {e['emp_comments']}")
+                                            if e['emp_comments']:
+                                                st.markdown("**👤 Employee Comments:**")
+                                                st.info(e['emp_comments'])
                                             
                                             if e.get('tl_comments'):
-                                                st.markdown(f"**👥 Team Lead Comments:** {e['tl_comments']}")
+                                                st.markdown("**👥 Team Lead Comments:**")
+                                                st.warning(e['tl_comments'])
                                             
                                             if e.get('hod_comments'):
-                                                st.markdown(f"**👔 HOD Comments:** {e['hod_comments']}")
+                                                st.markdown("**👔 HOD Comments:**")
+                                                st.error(e['hod_comments'])
                                             
                                             if e.get('rejection'):
                                                 st.markdown(f"**🚫 Rejection Reason:** {e['rejection']}")
                                             
-                                            st.markdown(f"**Reviewer:** {e['reviewer']} | **Rejections:** {e['reject_count']}")
+                                            # Per-KPI Comments
+                                            pillar_comments = e.get('pillar_comments', {})
+                                            if pillar_comments:
+                                                st.markdown("---")
+                                                st.markdown("### 💬 Per-Pillar Justifications")
+                                                for pillar, comment in pillar_comments.items():
+                                                    if comment:
+                                                        st.markdown(f"**{pillar}:** {comment}")
                                             
-                                            # Attachments
-                                            assessment_data = all_assessments.get(e['name'], {})
-                                            if assessment_data.get('evidence_files'):
+                                            # Evidence Files
+                                            if e.get('evidence_files'):
                                                 try:
-                                                    evidence = json.loads(assessment_data['evidence_files']) if isinstance(assessment_data['evidence_files'], str) else assessment_data['evidence_files']
+                                                    evidence = json.loads(e['evidence_files']) if isinstance(e['evidence_files'], str) else e['evidence_files']
                                                     if evidence:
-                                                        st.markdown("**📎 Attachments:**")
-                                                        for p_name, urls in evidence.items():
-                                                            for url in urls:
-                                                                st.markdown(f"- [{p_name}]({url})")
+                                                        st.markdown("---")
+                                                        st.markdown("### 📎 Employee Evidence Files")
+                                                        for pillar, urls in evidence.items():
+                                                            st.markdown(f"**{pillar}**")
+                                                            if urls:
+                                                                for url in urls:
+                                                                    st.markdown(f"- [📄 View]({url})")
+                                                            else:
+                                                                st.caption("No files")
                                                 except: pass
                                             
-                                            if assessment_data.get('rejection_docs'):
+                                            # Rejection Documents
+                                            if e.get('rejection_docs'):
                                                 try:
-                                                    docs = json.loads(assessment_data['rejection_docs']) if isinstance(assessment_data['rejection_docs'], str) else assessment_data['rejection_docs']
+                                                    docs = json.loads(e['rejection_docs']) if isinstance(e['rejection_docs'], str) else e['rejection_docs']
                                                     if docs:
-                                                        st.markdown("**📎 Rejection Documents:**")
+                                                        st.markdown("---")
+                                                        st.markdown("### 📎 Rejection Documents")
                                                         for url in docs:
-                                                            st.markdown(f"- [View Document]({url})")
+                                                            st.markdown(f"- [📄 View]({url})")
                                                 except: pass
+                                            
+                                            # Score Comparison
+                                            scores = e.get('scores', {})
+                                            hod_scores = e.get('hod_scores', {})
+                                            if scores:
+                                                st.markdown("---")
+                                                st.markdown("### 📊 Score Comparison")
+                                                for score_key, staff_score in scores.items():
+                                                    hod_score = hod_scores.get(score_key, 'N/A')
+                                                    c1, c2 = st.columns(2)
+                                                    with c1:
+                                                        st.markdown(f"<small>{score_key[:50]}</small>", unsafe_allow_html=True)
+                                                        st.markdown(f"Staff: **{staff_score}%**")
+                                                    with c2:
+                                                        st.markdown(f"HOD: **{hod_score}%**" if hod_score != 'N/A' else "HOD: N/A")
                                             
                                             st.markdown("---")
+                                            st.markdown(f"**Reviewer:** {e['reviewer']} | **Rejections:** {e['reject_count']}")
                                             
                                             # COMMITTEE ACTION BUTTONS
                                             c1, c2 = st.columns(2)
                                             with c1:
-                                                if st.button(f"✅ Uphold Reviewer - {e['name']}", key=f"cmt_up_{e['name']}"):
+                                                if st.button(f"✅ Uphold Reviewer", key=f"cmt_up_{e['name']}"):
                                                     st.session_state.self_assessments[e['name']].update({
                                                         'acceptance': 'Accepted',
                                                         'status': 'Completed',
@@ -5842,9 +5930,12 @@ def performance_okrs():
                                                     try:
                                                         db.archive_appraisal(e['name'], e.get('email', ''), e.get('dept', ''),
                                                             st.session_state.appraisal_cycle_name, 'Accepted - Committee Upheld',
-                                                            assessment_data.get('scores', {}), assessment_data.get('hod_scores', assessment_data.get('tl_scores', {})),
+                                                            scores, hod_scores or e.get('tl_scores', {}),
                                                             e.get('emp_comments', ''), e.get('hod_comments', ''),
                                                             datetime.now().strftime('%Y-%m-%d %H:%M WAT'))
+                                                        db._patch("appraisals", 
+                                                            {"status": "Completed", "acceptance": "Accepted", "sr_decision": "Upheld by Committee"},
+                                                            {"user_name": e['name'], "cycle_name": st.session_state.appraisal_cycle_name})
                                                     except: pass
                                                     
                                                     emp_email = e.get('email', '')
@@ -5852,31 +5943,34 @@ def performance_okrs():
                                                         try:
                                                             EmailService().send_email(emp_email,
                                                                 f"📋 Committee Decision - {st.session_state.appraisal_cycle_name}",
-                                                                f"Dear {e['name']},\n\nThe Appraisal Committee has reviewed your case and upheld the reviewer's decision.\n\n"
+                                                                f"Dear {e['name']},\n\nThe Appraisal Committee has upheld the reviewer's decision.\n\n"
                                                                 f"Your appraisal is now complete. Log in to download your certificate.\n\n"
-                                                                f"Churchgate Group HR")
+                                                                f"https://hris.churchgate.com\n\nChurchgate Group HR")
                                                         except: pass
                                                     
                                                     log_audit('Committee Upheld', f'{e["name"]} upheld by committee')
-                                                    st.success("✅ Upheld! Employee notified.")
+                                                    st.success("✅ Upheld! Dashboard updated. Employee notified.")
                                                     st.balloons()
-                                                    time.sleep(1.5)
+                                                    time.sleep(2)
                                                     st.rerun()
                                             
                                             with c2:
-                                                if st.button(f"🔄 Overturn - Favor {e['name']}", key=f"cmt_ov_{e['name']}"):
+                                                if st.button(f"🔄 Overturn - Favor Staff", key=f"cmt_ov_{e['name']}"):
                                                     st.session_state.self_assessments[e['name']].update({
                                                         'acceptance': 'Accepted',
-                                                        'hod_scores': assessment_data.get('scores', {}),
+                                                        'hod_scores': scores,
                                                         'status': 'Completed',
                                                         'sr_decision': 'Overturned by Committee'
                                                     })
                                                     try:
                                                         db.archive_appraisal(e['name'], e.get('email', ''), e.get('dept', ''),
                                                             st.session_state.appraisal_cycle_name, 'Accepted - Overturned',
-                                                            assessment_data.get('scores', {}), assessment_data.get('scores', {}),
+                                                            scores, scores,
                                                             e.get('emp_comments', ''), e.get('hod_comments', ''),
                                                             datetime.now().strftime('%Y-%m-%d %H:%M WAT'))
+                                                        db._patch("appraisals", 
+                                                            {"status": "Completed", "acceptance": "Accepted", "sr_decision": "Overturned by Committee", "hod_scores": json.dumps(scores)},
+                                                            {"user_name": e['name'], "cycle_name": st.session_state.appraisal_cycle_name})
                                                     except: pass
                                                     
                                                     emp_email = e.get('email', '')
@@ -5886,13 +5980,13 @@ def performance_okrs():
                                                                 f"🎉 Committee Decision Overturned - {st.session_state.appraisal_cycle_name}",
                                                                 f"Dear {e['name']},\n\nGreat news! The Appraisal Committee has overturned the decision in your favor.\n\n"
                                                                 f"Your appraisal is now complete. Log in to download your certificate.\n\n"
-                                                                f"Churchgate Group HR")
+                                                                f"https://hris.churchgate.com\n\nChurchgate Group HR")
                                                         except: pass
                                                     
                                                     log_audit('Committee Overturned', f'{e["name"]} overturned by committee')
-                                                    st.success("🔄 Overturned! Employee notified.")
+                                                    st.success("🔄 Overturned! Dashboard updated. Employee notified.")
                                                     st.balloons()
-                                                    time.sleep(1.5)
+                                                    time.sleep(2)
                                                     st.rerun()
                 else:
                     st.info("No escalated appraisals.")
