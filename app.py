@@ -3420,17 +3420,26 @@ def performance_okrs():
                     else:
                         new_kpi = {'kpi': kpi_title, 'target': kpi_target, 'current': kpi_current, 'weight': kpi_weight, 'deadline': kpi_deadline.strftime('%Y-%m-%d'), 'cycle': kpi_cycle, 'owner': user_name, 'status': 'In Progress'}
                         
+                        # Use direct Supabase API for reliability
+                        import requests as req_api
+                        supabase_url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+                        supabase_key = os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+                        headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+                        
                         if editing:
                             edit_pillar = editing['pillar']
                             edit_index = editing['index']
-                            existing_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": edit_pillar})
+                            check_url = f"{supabase_url}/rest/v1/performance_data?user_name=eq.{user_name}&pillar_name=eq.{edit_pillar}&select=*"
+                            r = req_api.get(check_url, headers=headers)
+                            existing_rows = r.json() if r.status_code == 200 else []
+                            
                             updated = False
-                            for row in (existing_rows or []):
-                                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                            for row in existing_rows:
+                                kpi_list = json.loads(row.get('kpi_data', '[]')) if isinstance(row.get('kpi_data'), str) else row.get('kpi_data', [])
                                 if edit_index < len(kpi_list):
                                     kpi_list[edit_index] = new_kpi
                                     total_w = sum(k.get('weight', 0) for k in kpi_list)
-                                    db._patch("performance_data", {"kpi_data": json.dumps(kpi_list), "weight": total_w}, {"id": row['id']})
+                                    req_api.patch(f"{supabase_url}/rest/v1/performance_data?id=eq.{row['id']}", headers={**headers, "Prefer": "return=representation"}, json={"kpi_data": json.dumps(kpi_list), "weight": total_w})
                                     updated = True
                                     break
                             if updated:
@@ -3439,28 +3448,26 @@ def performance_okrs():
                             else:
                                 st.error("❌ Edit failed - KPI not found.")
                         else:
-                            # Add new KPI - ONE ROW PER PILLAR
-                            existing_rows = db._get("performance_data", {"user_name": user_name, "pillar_name": pillar_choice})
+                            # Get existing rows for this pillar
+                            check_url = f"{supabase_url}/rest/v1/performance_data?user_name=eq.{user_name}&pillar_name=eq.{pillar_choice}&select=*"
+                            r = req_api.get(check_url, headers=headers)
+                            existing_rows = r.json() if r.status_code == 200 else []
+                            
                             if existing_rows and len(existing_rows) > 0:
                                 first_row = existing_rows[0]
-                                kpi_list = json.loads(first_row.get('kpi_data', '[]')) if first_row.get('kpi_data') else []
+                                kpi_list = json.loads(first_row.get('kpi_data', '[]')) if isinstance(first_row.get('kpi_data'), str) else first_row.get('kpi_data', [])
                                 kpi_list.append(new_kpi)
                                 total_w = sum(k.get('weight', 0) for k in kpi_list)
-                                db._patch("performance_data", {"kpi_data": json.dumps(kpi_list), "weight": total_w}, {"id": first_row['id']})
+                                req_api.patch(f"{supabase_url}/rest/v1/performance_data?id=eq.{first_row['id']}", headers={**headers, "Prefer": "return=representation"}, json={"kpi_data": json.dumps(kpi_list), "weight": total_w})
+                                
                                 if len(existing_rows) > 1:
                                     for dup in existing_rows[1:]:
-                                        db._delete("performance_data", {"id": dup['id']})
+                                        req_api.delete(f"{supabase_url}/rest/v1/performance_data?id=eq.{dup['id']}", headers=headers)
                             else:
-                                db._post("performance_data", {
-                                    "user_name": user_name,
-                                    "department": user_dept,
-                                    "pillar_name": pillar_choice,
-                                    "weight": kpi_weight,
-                                    "progress": 0,
-                                    "status": "Not Started",
-                                    "deadline": kpi_deadline.strftime('%Y-%m-%d'),
-                                    "kpi_data": json.dumps([new_kpi]),
-                                    "submission_status": "Draft"
+                                req_api.post(f"{supabase_url}/rest/v1/performance_data", headers={**headers, "Prefer": "return=representation"}, json={
+                                    "user_name": user_name, "department": user_dept, "pillar_name": pillar_choice,
+                                    "weight": kpi_weight, "progress": 0, "status": "Not Started",
+                                    "deadline": kpi_deadline.strftime('%Y-%m-%d'), "kpi_data": json.dumps([new_kpi]), "submission_status": "Draft"
                                 })
                             log_audit("KPI Added", f"KPI '{kpi_title}' added to {pillar_choice}")
                         
