@@ -3553,16 +3553,27 @@ def performance_okrs():
                             empty_just = [k for k, v in pillar_comments.items() if v is not None and not v]
                             if empty_just: st.error(f"❌ Justification required for: {', '.join(empty_just)}")
                             else:
+                                # Upload evidence using direct Supabase storage
                                 evidence_urls = {}
-                                for p_name, files in evidence_files.items():
-                                    if files:
-                                        urls = []
-                                        for f in files:
-                                            try:
-                                                url = db.upload_file("evidence", f"{user_name}_{p_name}_{f.name}", f.read(), f.type)
-                                                if url: urls.append(url)
-                                            except: pass
-                                        if urls: evidence_urls[p_name] = urls
+                                try:
+                                    from supabase import create_client
+                                    supabase_client = create_client(
+                                        os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
+                                        os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+                                    )
+                                    for p_name, files in evidence_files.items():
+                                        if files:
+                                            urls = []
+                                            for f in files:
+                                                try:
+                                                    file_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.name}"
+                                                    f.seek(0)
+                                                    supabase_client.storage.from_("evidence").upload(file_name, f.read(), {"content-type": f.type})
+                                                    url = supabase_client.storage.from_("evidence").get_public_url(file_name)
+                                                    if url: urls.append(url)
+                                                except: pass
+                                            if urls: evidence_urls[p_name] = urls
+                                except: pass
                                 
                                 try:
                                     db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
@@ -3618,7 +3629,6 @@ def performance_okrs():
                         st.session_state.self_assessments[user_name]['status'] = 'Completed'
                         try: 
                             db.archive_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Accepted', a['scores'], reviewer_scores or {}, a.get('comments', ''), a.get('hod_comments', ''), now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                            # Also update appraisals table
                             db._patch("appraisals", {"status": "Completed", "acceptance": "Accepted"}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
                         except Exception as e: 
                             st.error(f"Save error: {str(e)}")
@@ -3629,24 +3639,35 @@ def performance_okrs():
                         if not rejection_comment.strip(): 
                             st.error("❌ You MUST provide comments when rejecting!")
                         else:
+                            # Upload rejection documents using direct Supabase storage
                             rej_urls = []
-                            for doc in rejection_docs:
-                                try:
-                                    url = db.upload_file("rejection_evidence", f"reject_{user_name}_{doc.name}", doc.read(), doc.type)
-                                    if url: rej_urls.append(url)
-                                except: pass
+                            try:
+                                from supabase import create_client
+                                supabase_client = create_client(
+                                    os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
+                                    os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+                                )
+                                for doc in rejection_docs:
+                                    try:
+                                        file_name = f"reject_{user_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{doc.name}"
+                                        doc.seek(0)
+                                        supabase_client.storage.from_("rejection_evidence").upload(file_name, doc.read(), {"content-type": doc.type})
+                                        url = supabase_client.storage.from_("rejection_evidence").get_public_url(file_name)
+                                        if url: rej_urls.append(url)
+                                    except: pass
+                            except: pass
+                            
                             st.session_state.self_assessments[user_name]['acceptance'] = 'Rejected'
                             st.session_state.self_assessments[user_name]['status'] = f'Awaiting {reviewer_type} Re-review'
                             st.session_state.self_assessments[user_name]['rejection_comment'] = rejection_comment
                             st.session_state.self_assessments[user_name]['rejection_docs'] = json.dumps(rej_urls)
                             st.session_state.self_assessments[user_name]['reject_count'] = a.get('reject_count', 0) + 1
                             
-                            # Save to DB
                             try:
                                 db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, f'Awaiting {reviewer_type} Re-review', a['scores'], a.get('comments', ''), a.get('pillar_comments', {}), a.get('hod_scores'), a.get('hod_comments', ''), a.get('hod_pillar_comments', {}), 'Rejected', None, a.get('date', ''))
+                                db._patch("appraisals", {"rejection_docs": json.dumps(rej_urls), "rejection_comment": rejection_comment}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
                             except: pass
                             
-                            # Notify reviewer
                             reviewer_email = find_hod_email_for_dept(user_dept) if reviewer_type == 'HOD' else get_employee_email(user_name)
                             if reviewer_email:
                                 try: 
@@ -3876,50 +3897,96 @@ def performance_okrs():
                         if is_re_review or is_escalated:
                             c1, c2, c3 = st.columns(3)
                             with c1:
-                                if st.button(f"✅ Submit Revised", key=f"submit_{staff_name}", type="primary"):
-                                    if not hod_overall: st.error("❌ Comments required!")
+                                if st.button(f"✅ Submit Revised Review", key=f"submit_{staff_name}", type="primary"):
+                                    if not hod_overall: 
+                                        st.error("❌ Comments required!")
                                     else:
                                         st.session_state.self_assessments[staff_name].update({
-                                            'status': 'Approved', 'hod_scores': hod_scores, 'hod_comments': hod_overall, 'acceptance': None, 'reviewer_type': 'HOD'
+                                            'status': 'Approved', 'hod_scores': hod_scores, 
+                                            'hod_comments': hod_overall, 'acceptance': None, 'reviewer_type': 'HOD'
                                         })
                                         try:
-                                            db.save_appraisal(staff_name, assessment.get('email', ''), get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 'Approved', assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}), hod_scores, hod_overall, {}, None, None, assessment.get('date', ''))
+                                            db.save_appraisal(staff_name, assessment.get('email', ''), 
+                                                get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 
+                                                'Approved', assessment['scores'], assessment.get('comments', ''),
+                                                assessment.get('pillar_comments', {}), hod_scores, hod_overall, 
+                                                {}, None, None, assessment.get('date', ''))
                                         except: pass
                                         emp_email = get_employee_email(staff_name)
                                         if emp_email:
                                             try:
-                                                EmailService().send_email(emp_email, f"📝 Updated HOD Review", f"Dear {staff_name},\n\nYour HOD has submitted an updated review.\n\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
+                                                EmailService().send_email(emp_email, 
+                                                    f"📝 Updated HOD Review - {st.session_state.appraisal_cycle_name}",
+                                                    f"Dear {staff_name},\n\nYour HOD has submitted an updated review.\n\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
                                             except: pass
-                                        log_audit('HOD Revised', f'{staff_name} revised by HOD')
+                                        log_audit('HOD Revised Review', f'{staff_name} revised by HOD')
                                         st.success("✅ Submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
                             
                             with c2:
-                                if st.button(f"✋ Escalate to Committee", key=f"standfirm_{staff_name}"):
-                                    hod_overall = hod_overall or assessment.get('hod_comments', 'Standing firm.')
+                                if st.button(f"✋ Stand Firm - Escalate", key=f"standfirm_{staff_name}"):
+                                    hod_overall = hod_overall or assessment.get('hod_comments', 'Standing firm on original review.')
+                                    
                                     st.session_state.self_assessments[staff_name].update({
                                         'status': 'Escalated from TL' if is_escalated else 'Approved',
-                                        'acceptance': 'Rejected', 'hod_scores': hod_scores or assessment.get('hod_scores', {}),
-                                        'hod_comments': hod_overall, 'sr_decision': 'Pending Committee'
+                                        'acceptance': 'Rejected',
+                                        'hod_scores': hod_scores if hod_scores else assessment.get('hod_scores', {}),
+                                        'hod_comments': hod_overall,
+                                        'sr_decision': 'Pending Committee'
                                     })
                                     try:
-                                        db.save_appraisal(staff_name, assessment.get('email', ''), get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 'Escalated from TL' if is_escalated else 'Approved', assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}), st.session_state.self_assessments[staff_name].get('hod_scores', {}), hod_overall, {}, 'Rejected', 'Pending Committee', assessment.get('date', ''))
+                                        db.save_appraisal(staff_name, assessment.get('email', ''), 
+                                            get_employee_dept(staff_name), st.session_state.appraisal_cycle_name,
+                                            'Escalated from TL' if is_escalated else 'Approved',
+                                            assessment['scores'], assessment.get('comments', ''),
+                                            assessment.get('pillar_comments', {}),
+                                            st.session_state.self_assessments[staff_name].get('hod_scores', {}),
+                                            hod_overall, {}, 'Rejected', 'Pending Committee',
+                                            assessment.get('date', ''))
                                     except: pass
                                     
-                                    # Notify committee
                                     try:
                                         sr_emails = employees_df[employees_df['department'] == 'Senior Management']['email'].dropna().tolist() if not employees_df.empty else []
                                         for sr_email in sr_emails:
                                             if sr_email and '@' in str(sr_email):
-                                                EmailService().send_email(sr_email, f"🚨 Escalated: {staff_name}", f"Dear Committee,\n\n{staff_name}'s appraisal escalated.\n\nHOD: {user_name}\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
+                                                EmailService().send_email(sr_email,
+                                                    f"🚨 Appraisal Escalated to Committee: {staff_name}",
+                                                    f"Dear Committee Member,\n\n{staff_name}'s appraisal has been escalated.\n\nHOD: {user_name}\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
                                     except: pass
-                                    # Notify employee
+                                    
                                     emp_email = get_employee_email(staff_name)
                                     if emp_email:
                                         try:
-                                            EmailService().send_email(emp_email, f"🚨 Escalated to Committee", f"Dear {staff_name},\n\nYour appraisal has been escalated.\n\nStatus: Awaiting Committee Verdict\n\nChurchgate Group HR")
+                                            EmailService().send_email(emp_email,
+                                                f"🚨 Appraisal Escalated to Committee",
+                                                f"Dear {staff_name},\n\nYour appraisal has been escalated to the Appraisal Committee.\n\nStatus: Awaiting Committee Verdict\n\nChurchgate Group HR")
                                         except: pass
-                                    log_audit('Escalated to Committee', f'{staff_name} escalated by HOD')
+                                    
+                                    log_audit('HOD Escalated', f'{staff_name} escalated to committee')
                                     st.warning("✋ Escalated!"); time.sleep(1.5); st.rerun()
+                            
+                            with c3:
+                                if st.button(f"💬 Request Staff Revision", key=f"sendback_{staff_name}"):
+                                    st.session_state.self_assessments[staff_name]['status'] = 'Revision Requested by HOD'
+                                    try:
+                                        db.save_appraisal(staff_name, assessment.get('email', ''), 
+                                            get_employee_dept(staff_name), st.session_state.appraisal_cycle_name,
+                                            'Revision Requested by HOD',
+                                            assessment['scores'], assessment.get('comments', ''),
+                                            assessment.get('pillar_comments', {}),
+                                            assessment.get('hod_scores', {}), assessment.get('hod_comments', ''),
+                                            {}, None, None, assessment.get('date', ''))
+                                    except: pass
+                                    emp_email = get_employee_email(staff_name)
+                                    if emp_email:
+                                        try:
+                                            EmailService().send_email(emp_email,
+                                                f"🔄 Revision Requested",
+                                                f"Dear {staff_name},\n\nYour HOD has requested revisions.\n\nPlease update and resubmit.\n\nChurchgate Group HR")
+                                        except: pass
+                                    log_audit('HOD Requested Revision', f'{staff_name} sent back by HOD')
+                                    st.info("💬 Revision requested from staff")
+                                    time.sleep(1.5)
+                                    st.rerun()
                         else:
                             if st.button(f"✅ Submit HOD Review", key=f"submit_{staff_name}", type="primary"):
                                 if not hod_overall: st.error("❌ Comments required!")
@@ -4909,29 +4976,50 @@ def performance_okrs():
                     except Exception as e:
                         st.error(f"PDF error: {str(e)}")
             
-            # Show HOD/TL comments after review
+            # Show HOD/TL comments and scores by pillar with KPI names
             if user_assessment.get('hod_scores') or user_assessment.get('tl_scores'):
                 reviewer_type = user_assessment.get('reviewer_type', 'HOD')
                 reviewer_comments = user_assessment.get('hod_comments') or user_assessment.get('tl_comments', '')
                 
+                st.markdown("---")
+                st.markdown(f"### 💬 {reviewer_type} Comments")
                 if reviewer_comments:
-                    st.markdown("---")
-                    st.markdown(f"### 💬 {reviewer_type} Comments")
                     st.info(reviewer_comments)
+                else:
+                    st.caption("No comments provided")
                 
                 st.markdown("---")
-                st.markdown(f"### 📊 Score Comparison")
+                st.markdown(f"### 📊 Score Review")
                 
-                for score_key, staff_score in sorted(user_assessment.get('scores', {}).items(), key=natural_sort_key):
-                    reviewer_scores = user_assessment.get('hod_scores') or user_assessment.get('tl_scores') or {}
-                    reviewer_score = reviewer_scores.get(score_key, 'N/A')
-                    
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.markdown(f"<small style='color:#888;'>{score_key[:60]}</small>", unsafe_allow_html=True)
-                        st.markdown(f"<span style='font-size:0.9rem;'>Your Score: <strong>{staff_score}%</strong></span>", unsafe_allow_html=True)
-                    with c2:
-                        st.markdown(f"<span style='font-size:0.9rem;'>{reviewer_type} Score: <strong>{reviewer_score}%</strong></span>", unsafe_allow_html=True)
+                pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                
+                for pillar in pillar_order:
+                    pillar_scores = {k: v for k, v in sorted(user_assessment.get('scores', {}).items(), key=natural_sort_key) if k.startswith(pillar)}
+                    if pillar_scores:
+                        st.markdown(f"**{pillar}**")
+                        for score_key, staff_score in pillar_scores.items():
+                            reviewer_scores = user_assessment.get('hod_scores') or user_assessment.get('tl_scores') or {}
+                            reviewer_score = reviewer_scores.get(score_key, 'N/A')
+                            kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
+                            kpi_name = f"KPI {kpi_index + 1}"
+                            
+                            try:
+                                all_p = db._get("performance_data")
+                                for row in (all_p or []):
+                                    if row.get('user_name') == user_name and row.get('pillar_name') == pillar:
+                                        kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                        if kpi_index < len(kpi_list):
+                                            kpi_name = kpi_list[kpi_index].get('kpi', kpi_name)
+                                            break
+                            except: pass
+                            
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.markdown(f"**{kpi_name}**")
+                                st.markdown(f"<small>Your Score: {staff_score}%</small>", unsafe_allow_html=True)
+                            with c2:
+                                st.markdown(f"<small>{reviewer_type}: {reviewer_score}%</small>", unsafe_allow_html=True)
+                        st.markdown("")
             
             # Progress tracker
             if st.session_state.appraisal_cycle_active:
