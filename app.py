@@ -14142,6 +14142,8 @@ def requests_hub():
                     
                     if unique_filtered:
                         att_df = pd.DataFrame([{
+                            'Employee': a.get('employee_name', ''),
+                            'ID': a.get('employee_id', ''),
                             'Date': a.get('sync_date', ''),
                             'In': a.get('in_time', ''),
                             'Out': a.get('out_time', ''),
