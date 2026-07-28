@@ -3451,27 +3451,21 @@ def performance_okrs():
                             else:
                                 st.error("❌ Edit failed - KPI not found.")
                         else:
-                            # Get all rows for this user and pillar
                             check_url = f"{supabase_url}/rest/v1/performance_data?select=*&user_name=eq.{urllib.parse.quote(user_name)}&pillar_name=eq.{urllib.parse.quote(pillar_choice)}"
                             r = req_api.get(check_url, headers=headers)
                             existing_rows = r.json() if r.status_code == 200 else []
                             
-                            # Combine ALL KPIs into one list
+                            # Combine ALL KPIs - NO DUPLICATE REMOVAL
                             all_kpis = []
-                            seen = set()
                             for row in (existing_rows or []):
                                 kpi_list = json.loads(row.get('kpi_data', '[]')) if isinstance(row.get('kpi_data'), str) else row.get('kpi_data', [])
                                 for kpi in kpi_list:
-                                    title = kpi.get('kpi', '')
-                                    if title and title not in seen:
-                                        seen.add(title)
-                                        all_kpis.append(kpi)
+                                    all_kpis.append(kpi)
                             
                             all_kpis.append(new_kpi)
                             total_w = sum(k.get('weight', 0) for k in all_kpis)
                             
                             if existing_rows and len(existing_rows) > 0:
-                                # Update first row, delete rest
                                 first_id = existing_rows[0]['id']
                                 req_api.patch(f"{supabase_url}/rest/v1/performance_data?id=eq.{first_id}", headers={**headers, "Prefer": "return=representation"}, json={"kpi_data": json.dumps(all_kpis), "weight": total_w})
                                 for dup in existing_rows[1:]:
