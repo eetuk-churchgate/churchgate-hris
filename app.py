@@ -3751,7 +3751,11 @@ def performance_okrs():
                             log_audit('Appraisal Rejected', f'{user_name} rejected {reviewer_type} review')
                             st.warning(f"⚠️ Rejected! {reviewer_type} notified."); time.sleep(2); st.rerun()
             elif a.get('acceptance') == 'Accepted': st.success("🎉 Appraisal Complete!")
-            elif a.get('acceptance') == 'Rejected': st.warning(f"🔄 Awaiting {reviewer_type} re-review")
+            elif a.get('acceptance') == 'Rejected':
+                if a.get('sr_decision') == 'Pending Committee' or a.get('status') in ['Escalated from TL', 'Escalated to HOD from TL']:
+                    st.warning("🚨 Escalated - Awaiting Committee Final Verdict")
+                else:
+                    st.warning(f"🔄 Awaiting {reviewer_type} re-review")
     
     # ============================================================
     # TAB 4: HOD REVIEW (FIXED - Stand Firm + Admin sees ALL)
@@ -6011,9 +6015,10 @@ def performance_okrs():
                                         
                                         db_evidence = None
                                         try:
-                                            db_appraisal = db._get("appraisals", {"user_name": e['name'], "cycle_name": st.session_state.appraisal_cycle_name})
-                                            if db_appraisal and len(db_appraisal) > 0:
-                                                db_evidence = db_appraisal[0].get('evidence_files', '')
+                                            all_apps = db._get("appraisals", {"user_name": e['name']})
+                                            if all_apps and len(all_apps) > 0:
+                                                latest = all_apps[-1]
+                                                db_evidence = latest.get('evidence_files', '')
                                         except:
                                             db_evidence = e.get('evidence_files', '')
                                         
@@ -6047,9 +6052,10 @@ def performance_okrs():
                                         
                                         db_rej_docs = None
                                         try:
-                                            db_appraisal = db._get("appraisals", {"user_name": e['name'], "cycle_name": st.session_state.appraisal_cycle_name})
-                                            if db_appraisal and len(db_appraisal) > 0:
-                                                db_rej_docs = db_appraisal[0].get('rejection_docs', '')
+                                            all_apps = db._get("appraisals", {"user_name": e['name']})
+                                            if all_apps and len(all_apps) > 0:
+                                                latest = all_apps[-1]
+                                                db_rej_docs = latest.get('rejection_docs', '')
                                         except:
                                             db_rej_docs = e.get('rejection_docs', '')
                                         
