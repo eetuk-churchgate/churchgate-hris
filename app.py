@@ -2881,21 +2881,7 @@ def performance_okrs():
     Churchgate Group HRIS - Performance & OKRs Module v7.0
     """
     
-    # TEMP TEST: Check Supabase storage access
-    import os
-    try:
-        from supabase import create_client
-        test_client = create_client(
-            os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
-            os.environ.get("SUPABASE_SERVICE_KEY", os.environ.get("SUPABASE_KEY", ""))
-        )
-        files = test_client.storage.from_("evidence").list()
-        st.success(f"Storage connected! Files in evidence: {len(files)}")
-        test_client.storage.from_("evidence").upload("test_connection.txt", b"test", {"content-type": "text/plain"})
-        url = test_client.storage.from_("evidence").get_public_url("test_connection.txt")
-        st.success(f"Test upload URL: {url}")
-    except Exception as e:
-        st.error(f"Storage test failed: {str(e)}")
+    
     
     # ============================================================
     # CSS INJECTION
@@ -3579,10 +3565,11 @@ def performance_okrs():
                                 evidence_urls = {}
                                 if evidence_files:
                                     try:
+                                        import os as _os
                                         from supabase import create_client
                                         supabase_client = create_client(
-                                            os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
-                                            os.environ.get("SUPABASE_SERVICE_KEY", os.environ.get("SUPABASE_KEY", ""))
+                                            _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
+                                            _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
                                         )
                                         for p_name, files in evidence_files.items():
                                             urls = []
@@ -3595,7 +3582,8 @@ def performance_okrs():
                                                     if url: urls.append(url)
                                                 except: pass
                                             if urls: evidence_urls[p_name] = urls
-                                    except: pass
+                                    except Exception as ex:
+                                        st.error(f"Upload error: {str(ex)}")
                                 
                                 try:
                                     db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
