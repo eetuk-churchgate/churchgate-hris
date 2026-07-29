@@ -3503,24 +3503,7 @@ def performance_okrs():
             else:
                 st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
                 
-                # FILE UPLOADERS OUTSIDE FORM
-                pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
-                evidence_files = {}
                 
-                st.markdown("### 📎 Upload Evidence Files (Optional)")
-                for pillar_name in pillar_order:
-                    pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
-                    if not pillar_rows.empty:
-                        st.markdown(f"**{pillar_name}** (up to 5 files)")
-                        ev_cols = st.columns(5)
-                        pillar_files = []
-                        for j in range(5):
-                            with ev_cols[j]:
-                                ev = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_out_{pillar_name}_{j}")
-                                if ev: pillar_files.append(ev)
-                        if pillar_files: evidence_files[pillar_name] = pillar_files
-                
-                st.markdown("---")
                 
                 # FORM FOR SCORES AND COMMENTS
                 with st.form("self_assessment_form"):
