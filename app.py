@@ -6016,13 +6016,17 @@ def performance_okrs():
                                         db_evidence = None
                                         try:
                                             all_apps = db._get("appraisals", {"user_name": e['name']})
+                                            st.write(f"DEBUG: Found {len(all_apps) if all_apps else 0} appraisal records for {e['name']}")
                                             if all_apps and len(all_apps) > 0:
                                                 for app in reversed(all_apps):
                                                     ev = app.get('evidence_files', '')
+                                                    st.write(f"DEBUG: id={app.get('id')}, ev={str(ev)[:80]}")
                                                     if ev and ev != '{}' and ev != '':
                                                         db_evidence = ev
+                                                        st.write(f"DEBUG: USING this record for evidence")
                                                         break
-                                        except:
+                                        except Exception as ex:
+                                            st.write(f"DEBUG: Error getting evidence: {str(ex)}")
                                             db_evidence = e.get('evidence_files', '')
                                         
                                         if not db_evidence:
@@ -6081,7 +6085,7 @@ def performance_okrs():
                                                 pass
                                         
                                         if not has_rej:
-                                            st.info("No rejection documents attached"
+                                            st.info("No rejection documents attached")
                                         
                                         # SCORES BY PILLAR
                                         st.markdown("---")
