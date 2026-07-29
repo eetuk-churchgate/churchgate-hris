@@ -3504,28 +3504,28 @@ def performance_okrs():
             else:
                 st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
                 
+                # Initialize evidence storage
+                if 'evidence_files_store' not in st.session_state:
+                    st.session_state.evidence_files_store = {}
+                
                 # FILE UPLOADERS OUTSIDE FORM
                 pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
                 st.markdown("### 📎 Upload Evidence (Optional)")
-                if 'evidence_uploads' not in st.session_state:
-                    st.session_state.evidence_uploads = {}
                 
                 for pillar_name in pillar_order:
                     pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
                     if not pillar_rows.empty:
                         with st.expander(f"{pillar_name}", expanded=False):
                             cols = st.columns(5)
-                            if pillar_name not in st.session_state.evidence_uploads:
-                                st.session_state.evidence_uploads[pillar_name] = {}
                             for j in range(5):
                                 with cols[j]:
-                                    uploaded = st.file_uploader(f"File", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_{pillar_name}_{j}")
+                                    uploaded = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"file_{pillar_name}_{j}")
                                     if uploaded:
-                                        st.session_state.evidence_uploads[pillar_name][j] = uploaded
+                                        st.session_state.evidence_files_store[f"{pillar_name}_{j}"] = uploaded
                 
                 st.markdown("---")
                 
-                # FORM FOR SCORES AND COMMENTS
+                # FORM
                 with st.form("self_assessment_form"):
                     scores, pillar_comments = {}, {}
                     
@@ -3542,9 +3542,8 @@ def performance_okrs():
                                         seen.add(title)
                                         all_kpi_list.append(kpi)
                             
-                            total_weight = sum(k.get('weight', 0) for k in all_kpi_list)
-                            
                             if all_kpi_list:
+                                total_weight = sum(k.get('weight', 0) for k in all_kpi_list)
                                 st.markdown(f"### {pillar_name} (Weight: {total_weight}%)")
                                 
                                 for i, kpi in enumerate(all_kpi_list):
@@ -3554,66 +3553,63 @@ def performance_okrs():
                                         st.markdown(f"**{kpi.get('kpi', 'KPI')}**")
                                         st.caption(f"Target: {kpi.get('target', 'N/A')} | Weight: {kpi.get('weight', 'N/A')}%")
                                     with col2:
-                                        scores[score_key] = st.number_input("Score %", 0, 100, 50, 1, key=f"score_{pillar_name}_{i}")
+                                        scores[score_key] = st.number_input("Score %", 0, 100, 50, 1, key=f"sc_{pillar_name}_{i}")
                                 
-                                pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", key=f"just_{pillar_name}", placeholder="Explain your performance...")
+                                pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", key=f"just_{pillar_name}")
                                 st.markdown("---")
                     
-                    overall_comments = st.text_area("Overall Comments *", placeholder="Summarize your overall performance...")
-                    
+                    overall_comments = st.text_area("Overall Comments *")
                     submitted = st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True, type="primary")
                     
                     if submitted:
                         if not scores: st.error("❌ Please score at least one KPI!")
                         elif not overall_comments: st.error("❌ Overall comments required!")
                         else:
-                            empty_just = [k for k, v in pillar_comments.items() if v is not None and not v]
-                            if empty_just: st.error(f"❌ Justification required for: {', '.join(empty_just)}")
-                            else:
-                                # Get files from session state
-                                evidence_files = {}
-                                for p_name, files_dict in st.session_state.evidence_uploads.items():
-                                    file_list = [f for f in files_dict.values() if f is not None]
-                                    if file_list:
-                                        evidence_files[p_name] = file_list
+                            # Group files by pillar from session state
+                            evidence_files = {}
+                            for key, file_obj in st.session_state.evidence_files_store.items():
+                                pillar = key.rsplit('_', 1)[0]
+                                if pillar not in evidence_files:
+                                    evidence_files[pillar] = []
+                                evidence_files[pillar].append(file_obj)
+                            
+                            # Upload to Supabase
+                            evidence_urls = {}
+                            if evidence_files:
+                                import os as _os
+                                from supabase import create_client as _cc
+                                _url = _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+                                _key = _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
+                                _sc = _cc(_url, _key)
                                 
-                                # Upload evidence
-                                evidence_urls = {}
-                                if evidence_files:
-                                    import os as _os
-                                    from supabase import create_client as _cc
-                                    _url = _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
-                                    _key = _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
-                                    _sc = _cc(_url, _key)
-                                    
-                                    for p_name, files in evidence_files.items():
-                                        urls = []
-                                        for f in files:
-                                            file_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.name}"
-                                            f.seek(0)
-                                            _sc.storage.from_("evidence").upload(file_name, f.read(), {"content-type": f.type})
-                                            url = _sc.storage.from_("evidence").get_public_url(file_name)
-                                            urls.append(url)
-                                        evidence_urls[p_name] = urls
-                                
-                                # Clear session state
-                                st.session_state.evidence_uploads = {}
-                                
-                                try:
-                                    db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                                    db._patch("appraisals", {"evidence_files": json.dumps(evidence_urls)}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
-                                except: pass
-                                
-                                st.session_state.self_assessments[user_name] = {
-                                    'scores': scores, 'comments': overall_comments,
-                                    'pillar_comments': pillar_comments,
-                                    'evidence_files': json.dumps(evidence_urls),
-                                    'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
-                                    'status': 'Submitted', 'department': user_dept, 'email': user_email,
-                                    'hod_scores': None, 'hod_comments': None, 'acceptance': None
-                                }
-                                log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
-                                st.success("✅ Submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
+                                for p_name, files in evidence_files.items():
+                                    urls = []
+                                    for f in files:
+                                        file_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.name}"
+                                        f.seek(0)
+                                        _sc.storage.from_("evidence").upload(file_name, f.read(), {"content-type": f.type})
+                                        url = _sc.storage.from_("evidence").get_public_url(file_name)
+                                        urls.append(url)
+                                    evidence_urls[p_name] = urls
+                            
+                            # Clear session state
+                            st.session_state.evidence_files_store = {}
+                            
+                            try:
+                                db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                db._patch("appraisals", {"evidence_files": json.dumps(evidence_urls)}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                            except: pass
+                            
+                            st.session_state.self_assessments[user_name] = {
+                                'scores': scores, 'comments': overall_comments,
+                                'pillar_comments': pillar_comments,
+                                'evidence_files': json.dumps(evidence_urls),
+                                'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
+                                'status': 'Submitted', 'department': user_dept, 'email': user_email,
+                                'hod_scores': None, 'hod_comments': None, 'acceptance': None
+                            }
+                            log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
+                            st.success("✅ Submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         else: st.info("⏳ No active appraisal cycle.")
         
         # Acceptance/Rejection
