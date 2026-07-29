@@ -3506,7 +3506,7 @@ def performance_okrs():
                 
                 pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
                 
-                # STEP 1: Upload files FIRST (not in a form)
+                # STEP 1: Upload files
                 st.markdown("### 📎 Step 1: Upload Evidence (Optional)")
                 if 'uploaded_files_data' not in st.session_state:
                     st.session_state.uploaded_files_data = {}
@@ -3525,12 +3525,13 @@ def performance_okrs():
                                         st.session_state.uploaded_files_data[f"{pillar_name}|||{f.name}|||{f.type}"] = base64.b64encode(f.read()).decode('utf-8')
                                         st.success(f"✅ {f.name}")
                 
-                if st.button("📤 Upload Files & Continue"):
-                    st.rerun()
+                # Show what's attached
+                if st.session_state.uploaded_files_data:
+                    st.success(f"📎 {len(st.session_state.uploaded_files_data)} file(s) attached and ready for submission")
                 
                 st.markdown("---")
                 
-                # STEP 2: Scores and submit
+                # STEP 2: Scores
                 st.markdown("### 📝 Step 2: Score Your KPIs")
                 
                 scores, pillar_comments = {}, {}
@@ -3557,67 +3558,75 @@ def performance_okrs():
                                 col1, col2 = st.columns([3, 1])
                                 with col1:
                                     st.markdown(f"**{kpi.get('kpi', 'KPI')}**")
+                                    st.caption(f"Target: {kpi.get('target', 'N/A')} | Weight: {kpi.get('weight', 'N/A')}%")
                                 with col2:
                                     scores[score_key] = st.number_input("Score %", 0, 100, 50, 1, key=f"sc_{pillar_name}_{i}")
                             
-                            pillar_comments[pillar_name] = st.text_area(f"Justification *", key=f"just_{pillar_name}")
+                            pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", key=f"just_{pillar_name}", placeholder="Explain your performance...")
                             st.markdown("---")
                 
-                overall_comments = st.text_area("Overall Comments *")
+                overall_comments = st.text_area("Overall Comments *", placeholder="Summarize your overall performance...")
                 
                 if st.button("📤 Submit Self-Assessment", type="primary", use_container_width=True):
-                    if not scores: st.error("❌ Please score at least one KPI!")
-                    elif not overall_comments: st.error("❌ Overall comments required!")
+                    if not scores:
+                        st.error("❌ Please score at least one KPI!")
+                    elif not overall_comments:
+                        st.error("❌ Overall comments required!")
                     else:
-                        # Group files from session state
-                        evidence_files = {}
-                        for key, b64_data in st.session_state.uploaded_files_data.items():
-                            parts = key.split('|||')
-                            pillar = parts[0]
-                            file_name = parts[1]
-                            file_type = parts[2]
-                            file_bytes = base64.b64decode(b64_data)
+                        empty_just = [k for k, v in pillar_comments.items() if v is not None and not v]
+                        if empty_just:
+                            st.error(f"❌ Justification required for: {', '.join(empty_just)}")
+                        else:
+                            # Group files from session state
+                            evidence_files = {}
+                            for key, b64_data in st.session_state.uploaded_files_data.items():
+                                parts = key.split('|||')
+                                pillar = parts[0]
+                                file_name = parts[1]
+                                file_type = parts[2]
+                                file_bytes = base64.b64decode(b64_data)
+                                
+                                if pillar not in evidence_files:
+                                    evidence_files[pillar] = []
+                                evidence_files[pillar].append({'name': file_name, 'type': file_type, 'bytes': file_bytes})
                             
-                            if pillar not in evidence_files:
-                                evidence_files[pillar] = []
-                            evidence_files[pillar].append({'name': file_name, 'type': file_type, 'bytes': file_bytes})
-                        
-                        # Upload
-                        evidence_urls = {}
-                        if evidence_files:
-                            import os as _os
-                            from supabase import create_client as _cc
-                            _url = _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
-                            _key = _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
-                            _sc = _cc(_url, _key)
+                            # Upload to Supabase
+                            evidence_urls = {}
+                            if evidence_files:
+                                import os as _os
+                                from supabase import create_client as _cc
+                                _url = _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+                                _key = _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
+                                _sc = _cc(_url, _key)
+                                
+                                for p_name, files in evidence_files.items():
+                                    urls = []
+                                    for f in files:
+                                        upload_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f['name']}"
+                                        _sc.storage.from_("evidence").upload(upload_name, f['bytes'], {"content-type": f['type']})
+                                        url = _sc.storage.from_("evidence").get_public_url(upload_name)
+                                        urls.append(url)
+                                    evidence_urls[p_name] = urls
                             
-                            for p_name, files in evidence_files.items():
-                                urls = []
-                                for f in files:
-                                    file_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f['name']}"
-                                    _sc.storage.from_("evidence").upload(file_name, f['bytes'], {"content-type": f['type']})
-                                    url = _sc.storage.from_("evidence").get_public_url(file_name)
-                                    urls.append(url)
-                                evidence_urls[p_name] = urls
-                        
-                        st.session_state.uploaded_files_data = {}
-                        
-                        try:
-                            db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                            db._patch("appraisals", {"evidence_files": json.dumps(evidence_urls)}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
-                        except: pass
-                        
-                        st.session_state.self_assessments[user_name] = {
-                            'scores': scores, 'comments': overall_comments,
-                            'pillar_comments': pillar_comments,
-                            'evidence_files': json.dumps(evidence_urls),
-                            'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
-                            'status': 'Submitted',
-                            'department': user_dept, 'email': user_email,
-                            'hod_scores': None, 'hod_comments': None, 'acceptance': None
-                        }
-                        log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
-                        st.success("✅ Submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
+                            # Clear uploaded files
+                            st.session_state.uploaded_files_data = {}
+                            
+                            # Save appraisal
+                            try:
+                                db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                db._patch("appraisals", {"evidence_files": json.dumps(evidence_urls)}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                            except: pass
+                            
+                            st.session_state.self_assessments[user_name] = {
+                                'scores': scores, 'comments': overall_comments,
+                                'pillar_comments': pillar_comments,
+                                'evidence_files': json.dumps(evidence_urls),
+                                'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
+                                'status': 'Submitted', 'department': user_dept, 'email': user_email,
+                                'hod_scores': None, 'hod_comments': None, 'acceptance': None
+                            }
+                            log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
+                            st.success("✅ Submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         else: st.info("⏳ No active appraisal cycle.")
         
         # Acceptance/Rejection
