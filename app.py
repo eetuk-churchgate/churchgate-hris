@@ -3555,6 +3555,7 @@ def performance_okrs():
                             else:
                                 # Upload evidence using direct Supabase storage
                                 evidence_urls = {}
+                                upload_errors = []
                                 try:
                                     from supabase import create_client
                                     supabase_client = create_client(
@@ -3568,12 +3569,26 @@ def performance_okrs():
                                                 try:
                                                     file_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.name}"
                                                     f.seek(0)
-                                                    supabase_client.storage.from_("evidence").upload(file_name, f.read(), {"content-type": f.type})
+                                                    file_bytes = f.read()
+                                                    supabase_client.storage.from_("evidence").upload(file_name, file_bytes, {"content-type": f.type})
                                                     url = supabase_client.storage.from_("evidence").get_public_url(file_name)
-                                                    if url: urls.append(url)
-                                                except: pass
-                                            if urls: evidence_urls[p_name] = urls
-                                except: pass
+                                                    if url: 
+                                                        urls.append(url)
+                                                    else:
+                                                        upload_errors.append(f"No URL for {f.name}")
+                                                except Exception as e:
+                                                    upload_errors.append(f"Upload error {f.name}: {str(e)}")
+                                            if urls: 
+                                                evidence_urls[p_name] = urls
+                                except Exception as e:
+                                    upload_errors.append(f"Storage connection: {str(e)}")
+                                
+                                if upload_errors:
+                                    for err in upload_errors:
+                                        st.error(err)
+                                
+                                if evidence_urls:
+                                    st.success(f"✅ {sum(len(v) for v in evidence_urls.values())} files uploaded")
                                 
                                 try:
                                     db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
@@ -3601,11 +3616,42 @@ def performance_okrs():
             if a.get('status') == 'Submitted': st.info("📝 Your self-assessment has been submitted and is awaiting review.")
             elif reviewer_scores and not a.get('acceptance'):
                 st.markdown("---"); st.success(f"✅ {reviewer_type} review complete — awaiting your acceptance")
-                with st.expander("📊 Score Comparison", expanded=True):
-                    for score_key, staff_score in sorted(a['scores'].items(), key=natural_sort_key):
-                        r_score = reviewer_scores.get(score_key, 'N/A') if reviewer_scores else 'N/A'
-                        c1, c2 = st.columns(2)
-                        c1.metric("Your Score", f"{staff_score}%"); c2.metric(f"{reviewer_type} Score", f"{r_score}%" if r_score != 'N/A' else 'N/A')
+                
+                # Show reviewer comments
+                reviewer_comments = a.get('hod_comments') or a.get('tl_comments', '')
+                st.markdown(f"### 💬 {reviewer_type} Comments")
+                if reviewer_comments:
+                    st.info(reviewer_comments)
+                else:
+                    st.caption("No comments provided")
+                
+                # Show scores by pillar with KPI names
+                with st.expander("📊 Score Review by Pillar", expanded=True):
+                    pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                    for pillar in pillar_order:
+                        pillar_scores = {k: v for k, v in sorted(a['scores'].items(), key=natural_sort_key) if k.startswith(pillar)}
+                        if pillar_scores:
+                            st.markdown(f"**{pillar}**")
+                            for score_key, staff_score in pillar_scores.items():
+                                r_score = reviewer_scores.get(score_key, 'N/A') if reviewer_scores else 'N/A'
+                                kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
+                                kpi_name = f"KPI {kpi_index + 1}"
+                                try:
+                                    all_p = db._get("performance_data")
+                                    for row in (all_p or []):
+                                        if row.get('user_name') == user_name and row.get('pillar_name') == pillar:
+                                            kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                            if kpi_index < len(kpi_list):
+                                                kpi_name = kpi_list[kpi_index].get('kpi', kpi_name)
+                                                break
+                                except: pass
+                                c1, c2 = st.columns(2)
+                                with c1:
+                                    st.markdown(f"**{kpi_name}**")
+                                    st.markdown(f"<small>Your Score: {staff_score}%</small>", unsafe_allow_html=True)
+                                with c2:
+                                    st.markdown(f"<small>{reviewer_type}: {r_score}%</small>", unsafe_allow_html=True)
+                            st.markdown("")
                 
                 st.markdown("---"); st.markdown(f"### 🔍 Accept or Reject {reviewer_type} Review")
                 with st.form(f"accept_reject_form_{user_name}", clear_on_submit=True):
