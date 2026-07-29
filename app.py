@@ -3593,20 +3593,26 @@ def performance_okrs():
                             # Upload to Supabase
                             evidence_urls = {}
                             if evidence_files:
-                                import os as _os
-                                from supabase import create_client as _cc
-                                _url = _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
-                                _key = _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
-                                _sc = _cc(_url, _key)
-                                
-                                for p_name, files in evidence_files.items():
-                                    urls = []
-                                    for f in files:
-                                        upload_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f['name']}"
-                                        _sc.storage.from_("evidence").upload(upload_name, f['bytes'], {"content-type": f['type']})
-                                        url = _sc.storage.from_("evidence").get_public_url(upload_name)
-                                        urls.append(url)
-                                    evidence_urls[p_name] = urls
+                                try:
+                                    import os as _os
+                                    from supabase import create_client as _cc
+                                    _url = _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+                                    _key = _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
+                                    _sc = _cc(_url, _key)
+                                    
+                                    for p_name, files in evidence_files.items():
+                                        urls = []
+                                        for f in files:
+                                            upload_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f['name']}"
+                                            _sc.storage.from_("evidence").upload(upload_name, f['bytes'], {"content-type": f['type']})
+                                            url = _sc.storage.from_("evidence").get_public_url(upload_name)
+                                            st.success(f"✅ Uploaded: {upload_name} → {url}")
+                                            urls.append(url)
+                                        evidence_urls[p_name] = urls
+                                    
+                                    st.success(f"📎 Total evidence URLs: {json.dumps(evidence_urls)}")
+                                except Exception as upload_error:
+                                    st.error(f"❌ Upload failed: {str(upload_error)}")
                             
                             # Clear uploaded files
                             st.session_state.uploaded_files_data = {}
