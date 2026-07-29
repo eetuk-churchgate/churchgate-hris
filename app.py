@@ -3751,7 +3751,11 @@ def performance_okrs():
                             log_audit('Appraisal Rejected', f'{user_name} rejected {reviewer_type} review')
                             st.warning(f"⚠️ Rejected! {reviewer_type} notified."); time.sleep(2); st.rerun()
             elif a.get('acceptance') == 'Accepted': st.success("🎉 Appraisal Complete!")
-            elif a.get('acceptance') == 'Rejected': st.warning(f"🔄 Awaiting {reviewer_type} re-review")
+            elif a.get('acceptance') == 'Rejected':
+                if a.get('sr_decision') == 'Pending Committee' or a.get('status') in ['Escalated from TL', 'Escalated to HOD from TL']:
+                    st.warning("🚨 Escalated - Awaiting Committee Final Verdict")
+                else:
+                    st.warning(f"🔄 Awaiting {reviewer_type} re-review")
     
     # ============================================================
     # TAB 4: HOD REVIEW (FIXED - Stand Firm + Admin sees ALL)
@@ -6005,13 +6009,13 @@ def performance_okrs():
                                         if e.get('rejection'):
                                             st.markdown(f"**🚫 Rejection Reason:** {e['rejection']}")
                                         
-                                        # EVIDENCE FILES - READ DIRECTLY FROM DATABASE
+                                        # EVIDENCE FILES
                                         st.markdown("---")
                                         st.markdown("### 📎 Employee Evidence Files")
                                         
                                         db_evidence = None
                                         try:
-                                            db_appraisal = db._get("appraisals", {"user_name": e['name'], "cycle_name": st.session_state.appraisal_cycle_name})
+                                            db_appraisal = db._get("appraisals", {"user_name": e['name']})
                                             if db_appraisal and len(db_appraisal) > 0:
                                                 db_evidence = db_appraisal[0].get('evidence_files', '')
                                         except:
@@ -6020,7 +6024,6 @@ def performance_okrs():
                                         if not db_evidence:
                                             db_evidence = e.get('evidence_files', '')
                                         
-                                        has_files = False
                                         if db_evidence:
                                             try:
                                                 if isinstance(db_evidence, str):
@@ -6031,23 +6034,21 @@ def performance_okrs():
                                                 if evidence and isinstance(evidence, dict):
                                                     for pillar, urls in evidence.items():
                                                         if urls and isinstance(urls, list) and len(urls) > 0:
-                                                            has_files = True
                                                             st.markdown(f"**{pillar}**")
                                                             for url in urls:
                                                                 st.markdown(f"- [📄 View Document]({url})")
                                             except:
                                                 pass
-                                        
-                                        if not has_files:
+                                        else:
                                             st.info("No evidence files attached")
                                         
-                                        # REJECTION DOCUMENTS - READ DIRECTLY FROM DATABASE
+                                        # REJECTION DOCUMENTS
                                         st.markdown("---")
                                         st.markdown("### 📎 Rejection Documents")
                                         
                                         db_rej_docs = None
                                         try:
-                                            db_appraisal = db._get("appraisals", {"user_name": e['name'], "cycle_name": st.session_state.appraisal_cycle_name})
+                                            db_appraisal = db._get("appraisals", {"user_name": e['name']})
                                             if db_appraisal and len(db_appraisal) > 0:
                                                 db_rej_docs = db_appraisal[0].get('rejection_docs', '')
                                         except:
@@ -6056,7 +6057,6 @@ def performance_okrs():
                                         if not db_rej_docs:
                                             db_rej_docs = e.get('rejection_docs', '')
                                         
-                                        has_rej = False
                                         if db_rej_docs:
                                             try:
                                                 if isinstance(db_rej_docs, str):
@@ -6064,13 +6064,11 @@ def performance_okrs():
                                                 else:
                                                     docs = db_rej_docs
                                                 if docs and isinstance(docs, list) and len(docs) > 0:
-                                                    has_rej = True
                                                     for doc_url in docs:
                                                         st.markdown(f"- [📄 View Document]({doc_url})")
                                             except:
                                                 pass
-                                        
-                                        if not has_rej:
+                                        else:
                                             st.info("No rejection documents attached")
                                         
                                         # SCORES BY PILLAR
