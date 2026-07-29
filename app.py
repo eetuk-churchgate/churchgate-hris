@@ -3567,7 +3567,7 @@ def performance_okrs():
                                         from supabase import create_client
                                         supabase_client = create_client(
                                             os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
-                                            os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+                                            os.environ.get("SUPABASE_SERVICE_KEY", os.environ.get("SUPABASE_KEY", ""))
                                         )
                                         for p_name, files in evidence_files.items():
                                             urls = []
@@ -3683,7 +3683,7 @@ def performance_okrs():
                                 from supabase import create_client
                                 supabase_client = create_client(
                                     os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
-                                    os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+                                    os.environ.get("SUPABASE_SERVICE_KEY", os.environ.get("SUPABASE_KEY", ""))
                                 )
                                 for doc in rejection_docs:
                                     try:
