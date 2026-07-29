@@ -1207,7 +1207,7 @@ def employee_dashboard():
             perf_data = db.get_performance_data(user_name)
             if not perf_data.empty:
                 # Sort by pillar order 1-2-3-4
-                pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                pillar_order = get_pillars()
                 perf_data['sort_order'] = perf_data['pillar_name'].apply(lambda x: pillar_order.index(x) if x in pillar_order else 99)
                 perf_data = perf_data.sort_values('sort_order')
                 for _, row in perf_data.iterrows():
@@ -3020,6 +3020,7 @@ def performance_okrs():
     
     # Initialize session state
     if 'appraisal_cycle_active' not in st.session_state: st.session_state.appraisal_cycle_active = False
+    if 'appraisal_fy' not in st.session_state: st.session_state.appraisal_fy = 'FY 26/27'
     if 'appraisal_cycle_name' not in st.session_state: st.session_state.appraisal_cycle_name = "2026 Half-Year Appraisal"
     if 'appraisal_start' not in st.session_state: st.session_state.appraisal_start = "2026-06-01"
     if 'appraisal_end' not in st.session_state: st.session_state.appraisal_end = "2026-12-31"
@@ -3079,6 +3080,28 @@ def performance_okrs():
         except: pass
     
     # ============================================================
+    # DYNAMIC PILLARS BASED ON FINANCIAL YEAR
+    # ============================================================
+    def get_pillars():
+        """Return pillars based on selected financial year"""
+        if st.session_state.get('appraisal_fy') == 'FY 25/26':
+            return [
+                '1. Brand Visibility',
+                '2. New Business Development',
+                '3. Customer Centricity',
+                '4. Invest in Our People',
+                '5. Financial Performance',
+                '6. Behavioral & Collaborations'
+            ]
+        else:
+            return [
+                '1. Occupancy & Revenue Growth',
+                '2. Process Simplification',
+                '3. Asset Reliability & Digitalization',
+                '4. People & Culture'
+            ]
+    
+    # ============================================================
     # HELPER FUNCTIONS
     # ============================================================
     def log_audit(action, details):
@@ -3114,7 +3137,7 @@ def performance_okrs():
     def load_user_pillar_data():
         user_perf = get_user_perf()
         pillar_data = {}
-        for pillar in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+        for pillar in get_pillars():
             pillar_data[pillar] = {'weight': 0, 'progress': 0, 'status': 'Not Started', 'deadline': '2026-12-31', 'kpis': [], 'submission_status': 'Draft'}
         
         if not user_perf.empty:
@@ -3258,7 +3281,7 @@ def performance_okrs():
                 st.success("✅ All KPIs submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         
         st.markdown("---")
-        pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+        pillar_order = get_pillars()
         for pillar_name in pillar_order:
             pd_data = pillar_data[pillar_name]
             status_text, color = get_kpi_status(pd_data['progress'])
@@ -3405,7 +3428,7 @@ def performance_okrs():
             with st.form("kpi_add_form", clear_on_submit=not editing):
                 c1, c2 = st.columns(2)
                 with c1:
-                    pillar_list = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                    pillar_list = get_pillars()
                     pillar_choice = st.selectbox("Strategic Pillar *", pillar_list, index=pillar_list.index(editing['pillar']) if editing else 0)
                     kpi_title = st.text_input("KPI Title *", value=editing['data'].get('kpi', '') if editing else "", placeholder="What will you achieve?")
                     kpi_target = st.text_input("Target *", value=editing['data'].get('target', '') if editing else "", placeholder="e.g., 15% increase")
@@ -3504,7 +3527,7 @@ def performance_okrs():
             else:
                 st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
                 
-                pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                pillar_order = get_pillars()
                 
                 # STEP 1: Upload files
                 st.markdown("### 📎 Step 1: Upload Evidence (Optional)")
@@ -3655,7 +3678,7 @@ def performance_okrs():
                 
                 # Show scores by pillar with KPI names
                 with st.expander("📊 Score Review by Pillar", expanded=True):
-                    pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                    pillar_order = get_pillars()
                     for pillar in pillar_order:
                         pillar_scores = {k: v for k, v in sorted(a['scores'].items(), key=natural_sort_key) if k.startswith(pillar)}
                         if pillar_scores:
@@ -3777,7 +3800,7 @@ def performance_okrs():
                             team_submissions[clean_name].append({'pillar': row.get('pillar_name', ''), 'kpis': json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else [], 'row_id': row.get('id')})
                 if team_submissions:
                     st.success(f"📋 {len(team_submissions)} team member(s)")
-                    pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                    pillar_order = get_pillars()
                     for emp_name, submissions in team_submissions.items():
                         with st.expander(f"👤 {emp_name}", expanded=False):
                             ordered_subs = sorted(submissions, key=lambda x: pillar_order.index(x['pillar']) if x['pillar'] in pillar_order else 99)
@@ -3843,7 +3866,7 @@ def performance_okrs():
                             })
                 if team_approved:
                     st.success(f"✅ {len(team_approved)} team member(s) with approved KPIs")
-                    pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                    pillar_order = get_pillars()
                     for emp_name, kpi_data in team_approved.items():
                         with st.expander(f"✅ {emp_name} — {len(kpi_data)} pillar(s) approved", expanded=False):
                             # Combine duplicate pillars by summing their KPIs
@@ -3967,7 +3990,7 @@ def performance_okrs():
                         st.markdown("### 📊 Score Review")
                         
                         hod_scores = {}
-                        pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                        pillar_order = get_pillars()
                         
                         for pillar in pillar_order:
                             st.markdown(f"**{pillar}**")
@@ -4407,6 +4430,18 @@ def performance_okrs():
                 st.info("⚪ No active appraisal cycle.")
             
             st.markdown("---")
+            
+            # ===== FINANCIAL YEAR SELECTION =====
+            st.markdown("### 📅 Financial Year Strategy")
+            st.session_state.appraisal_fy = st.selectbox(
+                "Select Financial Year",
+                ['FY 26/27', 'FY 25/26'],
+                index=0 if st.session_state.appraisal_fy == 'FY 26/27' else 1,
+                help="FY 26/27: 4 Strategic Pillars | FY 25/26: 6 Strategic Initiatives"
+            )
+            st.caption(f"Active pillars: {', '.join(get_pillars())}")
+            st.markdown("---")
+            
             st.markdown("### ⚙️ Cycle Configuration")
             st.session_state.appraisal_cycle_active = st.checkbox("Activate Appraisal Cycle", value=st.session_state.appraisal_cycle_active)
             cycle_options = ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal']
@@ -4942,7 +4977,7 @@ def performance_okrs():
                             else: st.markdown(f"⏳ {step_name}")
                 
                 pillar_data = load_user_pillar_data()
-                for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+                for pillar_name in get_pillars():
                     pd_data = pillar_data[pillar_name]; status_text, color = get_kpi_status(pd_data['progress'])
                     st.markdown(f"""<div class="glass-card" style="border-left:4px solid {color};padding:0.8rem;"><strong>{pillar_name}</strong> ({pd_data['weight']}%)<br><small>Progress: {pd_data['progress']}% | {pd_data['status']}</small><div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;"><div style="background:{color};width:{pd_data['progress']}%;height:6px;border-radius:3px;"></div></div></div>""", unsafe_allow_html=True)
                 
@@ -5103,7 +5138,7 @@ def performance_okrs():
                 st.markdown("---")
                 st.markdown(f"### 📊 Score Review")
                 
-                pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                pillar_order = get_pillars()
                 
                 for pillar in pillar_order:
                     pillar_scores = {k: v for k, v in sorted(user_assessment.get('scores', {}).items(), key=natural_sort_key) if k.startswith(pillar)}
@@ -5150,7 +5185,7 @@ def performance_okrs():
                         else: st.markdown(f"⏳ {step_name}")
             
             pillar_data = load_user_pillar_data()
-            for pillar_name in ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']:
+            for pillar_name in get_pillars():
                 pd_data = pillar_data[pillar_name]; status_text, color = get_kpi_status(pd_data['progress'])
                 st.markdown(f"""<div class="glass-card" style="border-left:4px solid {color};padding:0.8rem;"><strong>{pillar_name}</strong> ({pd_data['weight']}%)<br><small>Progress: {pd_data['progress']}% | {pd_data['status']}</small><div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;"><div style="background:{color};width:{pd_data['progress']}%;height:6px;border-radius:3px;"></div></div></div>""", unsafe_allow_html=True)
             
@@ -6105,7 +6140,7 @@ def performance_okrs():
                                         st.markdown("### 📊 Scores by Pillar")
                                         scores = e.get('scores', {})
                                         hod_scores = e.get('hod_scores', {})
-                                        pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                                        pillar_order = get_pillars()
                                         
                                         for pillar in pillar_order:
                                             pillar_scores = {k: v for k, v in sorted(scores.items(), key=natural_sort_key) if k.startswith(pillar)}
