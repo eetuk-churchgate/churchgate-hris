@@ -2882,6 +2882,7 @@ def performance_okrs():
     """
     
     # TEMP TEST: Check Supabase storage access
+    import os
     try:
         from supabase import create_client
         test_client = create_client(
