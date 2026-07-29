@@ -3611,20 +3611,22 @@ def performance_okrs():
                                     except Exception as upload_error:
                                         st.error(f"Upload failed: {str(upload_error)}")
                                 
-                                # Clear uploaded files
                                 st.session_state.uploaded_files_data = {}
                                 
-                                # Save appraisal
+                                # Save appraisal FIRST
                                 try:
                                     db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                                 except: pass
                                 
-                                # Save evidence to ALL records for this user so it survives future updates
+                                # THEN save evidence to the LATEST record
                                 if evidence_urls:
+                                    import time
+                                    time.sleep(1)
                                     try:
                                         all_records = db._get("appraisals", {"user_name": user_name})
-                                        for rec in (all_records or []):
-                                            db._patch("appraisals", {"evidence_files": json.dumps(evidence_urls)}, {"id": rec['id']})
+                                        if all_records:
+                                            latest = all_records[-1]
+                                            db._patch("appraisals", {"evidence_files": json.dumps(evidence_urls)}, {"id": latest['id']})
                                     except: pass
                                 
                                 st.session_state.self_assessments[user_name] = {
