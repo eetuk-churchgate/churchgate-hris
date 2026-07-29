@@ -3507,7 +3507,7 @@ def performance_okrs():
                 
                 # FORM FOR SCORES AND COMMENTS
                 with st.form("self_assessment_form"):
-                    scores, pillar_comments = {}, {}
+                    scores, pillar_comments, evidence_files = {}, {}, {}
                     
                     for pillar_name in pillar_order:
                         pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
