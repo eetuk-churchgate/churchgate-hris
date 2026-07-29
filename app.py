@@ -3543,6 +3543,17 @@ def performance_okrs():
                             
                             if all_kpi_list:
                                 st.markdown(f"### {pillar_name} (Weight: {total_weight}%)")
+                                
+                                # FILE UPLOADERS
+                                st.caption("📎 Evidence (Optional — up to 5 files)")
+                                ev_cols = st.columns(5)
+                                pillar_files = []
+                                for j in range(5):
+                                    with ev_cols[j]:
+                                        ev = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_{pillar_name}_{j}")
+                                        if ev: pillar_files.append(ev)
+                                if pillar_files: evidence_files[pillar_name] = pillar_files
+                                
                                 for i, kpi in enumerate(all_kpi_list):
                                     score_key = f"{pillar_name}_{i}"
                                     col1, col2 = st.columns([3, 1])
