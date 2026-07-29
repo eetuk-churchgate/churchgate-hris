@@ -3564,26 +3564,21 @@ def performance_okrs():
                                 # Upload evidence
                                 evidence_urls = {}
                                 if evidence_files:
-                                    try:
-                                        import os as _os
-                                        from supabase import create_client
-                                        supabase_client = create_client(
-                                            _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
-                                            _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
-                                        )
-                                        for p_name, files in evidence_files.items():
-                                            urls = []
-                                            for f in files:
-                                                try:
-                                                    file_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.name}"
-                                                    f.seek(0)
-                                                    supabase_client.storage.from_("evidence").upload(file_name, f.read(), {"content-type": f.type})
-                                                    url = supabase_client.storage.from_("evidence").get_public_url(file_name)
-                                                    if url: urls.append(url)
-                                                except: pass
-                                            if urls: evidence_urls[p_name] = urls
-                                    except Exception as ex:
-                                        st.error(f"Upload error: {str(ex)}")
+                                    import os as _os
+                                    from supabase import create_client as _cc
+                                    _url = _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+                                    _key = _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
+                                    _sc = _cc(_url, _key)
+                                    
+                                    for p_name, files in evidence_files.items():
+                                        urls = []
+                                        for f in files:
+                                            file_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.name}"
+                                            f.seek(0)
+                                            _sc.storage.from_("evidence").upload(file_name, f.read(), {"content-type": f.type})
+                                            url = _sc.storage.from_("evidence").get_public_url(file_name)
+                                            urls.append(url)
+                                        evidence_urls[p_name] = urls
                                 
                                 try:
                                     db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
