@@ -2878,9 +2878,23 @@ def employee_management():
 
 def performance_okrs():
     """
-    Churchgate Group HRIS - Performance & OKRs Module v8.0
-    Fortune 500 Grade: Appraisal Committee | Certificates | Full Admin Control | Advanced Analytics
+    Churchgate Group HRIS - Performance & OKRs Module v7.0
     """
+    
+    # TEMP TEST: Check Supabase storage access
+    try:
+        from supabase import create_client
+        test_client = create_client(
+            os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
+            os.environ.get("SUPABASE_SERVICE_KEY", os.environ.get("SUPABASE_KEY", ""))
+        )
+        files = test_client.storage.from_("evidence").list()
+        st.success(f"Storage connected! Files in evidence: {len(files)}")
+        test_client.storage.from_("evidence").upload("test_connection.txt", b"test", {"content-type": "text/plain"})
+        url = test_client.storage.from_("evidence").get_public_url("test_connection.txt")
+        st.success(f"Test upload URL: {url}")
+    except Exception as e:
+        st.error(f"Storage test failed: {str(e)}")
     
     # ============================================================
     # CSS INJECTION
