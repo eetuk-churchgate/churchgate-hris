@@ -6009,7 +6009,7 @@ def performance_okrs():
                                         if e.get('rejection'):
                                             st.markdown(f"**🚫 Rejection Reason:** {e['rejection']}")
                                         
-                                        # EVIDENCE FILES - READ DIRECTLY FROM DATABASE
+                                        # EVIDENCE FILES - FIND RECORD WITH DATA
                                         st.markdown("---")
                                         st.markdown("### 📎 Employee Evidence Files")
                                         
@@ -6017,8 +6017,11 @@ def performance_okrs():
                                         try:
                                             all_apps = db._get("appraisals", {"user_name": e['name']})
                                             if all_apps and len(all_apps) > 0:
-                                                latest = all_apps[-1]
-                                                db_evidence = latest.get('evidence_files', '')
+                                                for app in reversed(all_apps):
+                                                    ev = app.get('evidence_files', '')
+                                                    if ev and ev != '{}' and ev != '':
+                                                        db_evidence = ev
+                                                        break
                                         except:
                                             db_evidence = e.get('evidence_files', '')
                                         
@@ -6026,7 +6029,7 @@ def performance_okrs():
                                             db_evidence = e.get('evidence_files', '')
                                         
                                         has_files = False
-                                        if db_evidence:
+                                        if db_evidence and db_evidence != '{}':
                                             try:
                                                 if isinstance(db_evidence, str):
                                                     evidence = json.loads(db_evidence)
@@ -6046,7 +6049,7 @@ def performance_okrs():
                                         if not has_files:
                                             st.info("No evidence files attached")
                                         
-                                        # REJECTION DOCUMENTS - READ DIRECTLY FROM DATABASE
+                                        # REJECTION DOCUMENTS - FIND RECORD WITH DATA
                                         st.markdown("---")
                                         st.markdown("### 📎 Rejection Documents")
                                         
@@ -6054,8 +6057,11 @@ def performance_okrs():
                                         try:
                                             all_apps = db._get("appraisals", {"user_name": e['name']})
                                             if all_apps and len(all_apps) > 0:
-                                                latest = all_apps[-1]
-                                                db_rej_docs = latest.get('rejection_docs', '')
+                                                for app in reversed(all_apps):
+                                                    rd = app.get('rejection_docs', '')
+                                                    if rd and rd != 'null' and rd != '' and rd != '[]':
+                                                        db_rej_docs = rd
+                                                        break
                                         except:
                                             db_rej_docs = e.get('rejection_docs', '')
                                         
@@ -6063,7 +6069,7 @@ def performance_okrs():
                                             db_rej_docs = e.get('rejection_docs', '')
                                         
                                         has_rej = False
-                                        if db_rej_docs:
+                                        if db_rej_docs and db_rej_docs != 'null' and db_rej_docs != '[]':
                                             try:
                                                 if isinstance(db_rej_docs, str):
                                                     docs = json.loads(db_rej_docs)
