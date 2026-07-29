@@ -5201,18 +5201,29 @@ def performance_okrs():
                 return sum(int(v) for v in scores.values() if v) / len(scores) if scores else 0
             
             def get_potential_level(emp_name):
+                """Determine potential based on REAL performance data - NOT inflated defaults"""
                 assessment = st.session_state.self_assessments.get(emp_name, {})
                 scores = assessment.get('scores', {})
                 reviewer_scores = assessment.get('hod_scores') or assessment.get('tl_scores') or {}
+                
+                # If no appraisal data exists, potential is Low
+                if not scores and not reviewer_scores:
+                    return 'Low'
+                
                 potential_score = 0
+                
+                # Factor 1: Self-awareness (gap between self and reviewer score)
                 if scores and reviewer_scores:
                     self_avg = sum(int(v) for v in scores.values() if v) / len(scores)
                     rev_avg = sum(int(v) for v in reviewer_scores.values() if v) / len(reviewer_scores)
                     gap = abs(self_avg - rev_avg)
-                    if gap <= 5: potential_score += 30
-                    elif gap <= 15: potential_score += 20
-                    else: potential_score += 5
-                elif scores: potential_score += 15
+                    if gap <= 5: potential_score += 30       # Very self-aware
+                    elif gap <= 15: potential_score += 20    # Moderate self-awareness
+                    else: potential_score += 5               # Large gap
+                elif scores:
+                    potential_score += 10  # Only self scores - neutral
+                
+                # Factor 2: KPI Ambition (number of KPIs set)
                 all_perf_data = get_all_perf_cached()
                 emp_perf = all_perf_data[all_perf_data['user_name'] == emp_name] if not all_perf_data.empty else pd.DataFrame()
                 total_kpis = 0
@@ -5220,15 +5231,27 @@ def performance_okrs():
                     for _, row in emp_perf.iterrows():
                         kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
                         total_kpis += len(kpi_list)
-                if total_kpis >= 16: potential_score += 25
-                elif total_kpis >= 10: potential_score += 20
-                elif total_kpis >= 5: potential_score += 15
-                else: potential_score += 5
+                if total_kpis >= 20: potential_score += 25    # Highly ambitious
+                elif total_kpis >= 12: potential_score += 20  # Ambitious
+                elif total_kpis >= 5: potential_score += 12   # Moderate
+                else: potential_score += 3                    # Minimal KPIs
+                
+                # Factor 3: KPI Approval Status
                 if not emp_perf.empty:
                     if any(emp_perf['submission_status'] == 'Approved'): potential_score += 25
-                    elif any(emp_perf['submission_status'] == 'Submitted'): potential_score += 15
-                    else: potential_score += 5
-                else: potential_score += 5
+                    elif any(emp_perf['submission_status'] == 'Submitted'): potential_score += 12
+                    else: potential_score += 3
+                else:
+                    potential_score += 0  # No KPIs at all
+                
+                # Factor 4: Performance Score Impact
+                if scores:
+                    self_avg = sum(int(v) for v in scores.values() if v) / len(scores) if scores else 0
+                    if self_avg >= 80: potential_score += 20      # High performer
+                    elif self_avg >= 60: potential_score += 12    # Average
+                    else: potential_score += 3                    # Low performer
+                
+                # Factor 5: Consistency across pillars
                 if scores:
                     pillar_scores = defaultdict(list)
                     for key, val in scores.items():
@@ -5237,28 +5260,30 @@ def performance_okrs():
                     pillar_avgs = [sum(v)/len(v) for v in pillar_scores.values()]
                     if pillar_avgs and len(pillar_avgs) > 1:
                         consistency = 100 - (max(pillar_avgs) - min(pillar_avgs))
-                        if consistency >= 80: potential_score += 20
-                        elif consistency >= 60: potential_score += 15
-                        else: potential_score += 5
-                    else: potential_score += 10
-                else: potential_score += 10
-                if potential_score >= 75: return 'High'
-                elif potential_score >= 50: return 'Moderate'
+                        if consistency >= 90: potential_score += 20
+                        elif consistency >= 70: potential_score += 12
+                        else: potential_score += 3
+                    else:
+                        potential_score += 5
+                
+                # Determine level (adjusted thresholds)
+                if potential_score >= 70: return 'High'
+                elif potential_score >= 40: return 'Moderate'
                 else: return 'Low'
             
             def get_9box_position(score, emp_name):
                 perf = get_performance_level(score)
                 pot = get_potential_level(emp_name)
                 positions = {
-                    ('High', 'High'): ('⭐ CONSISTENT STAR', '#6bcb77', 'Top Talent', 'Reward, promote'),
-                    ('High', 'Average'): ('💎 POTENTIAL GEM', '#ffd93d', 'Rising Talent', 'Develop, coach'),
-                    ('High', 'Low'): ('🚀 RISING STAR', '#ff6b6b', 'Diamond in Rough', 'Mentorship'),
-                    ('Moderate', 'High'): ('🏆 CURRENT STAR', '#98fb98', 'Strong Performer', 'Recognize, retain'),
-                    ('Moderate', 'Average'): ('👔 SOLID PROFESSIONAL', '#87ceeb', 'Core Contributor', 'Engage, upskill'),
-                    ('Moderate', 'Low'): ('🔄 INCONSISTENT PLAYER', '#ffa07a', 'Mixed Results', 'Performance plan'),
-                    ('Low', 'High'): ('🔧 TECHNOCRAT', '#90ee90', 'Technical Expert', 'Specialist role'),
-                    ('Low', 'Average'): ('📋 STABILIZER', '#b0c4de', 'Steady Hand', 'Maintain role'),
-                    ('Low', 'Low'): ('⚠️ TALENT AT BAY', '#ff4444', 'At Risk', 'Urgent intervention')
+                    ('High', 'High'): ('⭐ CONSISTENT STAR', '#6bcb77', 'Top Talent - High Performance / High Potential', 'Fast-track promotion, leadership development, key projects'),
+                    ('High', 'Average'): ('💎 POTENTIAL GEM', '#ffd93d', 'Future Leader - Average Performance / High Potential', 'Mentorship, stretch assignments, skills development'),
+                    ('High', 'Low'): ('🚀 DIAMOND IN ROUGH', '#ff6b6b', 'Untapped Potential - Low Performance / High Potential', 'Intensive coaching, clear targets, 90-day improvement plan'),
+                    ('Moderate', 'High'): ('🏆 CURRENT STAR', '#98fb98', 'Strong Performer - High Performance / Moderate Potential', 'Recognition, retention bonus, lateral growth'),
+                    ('Moderate', 'Average'): ('👔 SOLID PROFESSIONAL', '#87ceeb', 'Core Contributor - Average Performance / Moderate Potential', 'Engagement, upskilling, incremental responsibility'),
+                    ('Moderate', 'Low'): ('🔄 INCONSISTENT PLAYER', '#ffa07a', 'Mixed Results - Low Performance / Moderate Potential', 'Performance improvement plan, regular check-ins'),
+                    ('Low', 'High'): ('🔧 TECHNOCRAT', '#90ee90', 'Technical Expert - High Performance / Low Potential', 'Specialist role, technical leadership, reward expertise'),
+                    ('Low', 'Average'): ('📋 STABILIZER', '#b0c4de', 'Steady Hand - Average Performance / Low Potential', 'Role clarity, process improvement, gradual development'),
+                    ('Low', 'Low'): ('⚠️ TALENT AT BAY', '#ff4444', 'At Risk - Low Performance / Low Potential', 'Urgent intervention, final PIP, possible role change')
                 }
                 return positions.get((pot, perf), ('N/A', '#ccc', 'Unknown', 'Review'))
             
@@ -5926,10 +5951,10 @@ def performance_okrs():
                                                         <br><small>Status: <span class="badge {status_badge}">{e['status']}</span> | Rejections: {e['reject_count']}</small>
                                                     </div>
                                                 </div>
-                                                {f'<small style="color:#CC0000;">💬 Employee: {e["comments"][:100]}...</small><br>' if e['comments'] and e['comments'] != 'N/A' else ''}
-                                                {f'<small style="color:#3182ce;">👔 HOD: {e["hod_comments"][:100]}...</small><br>' if e.get('hod_comments') else ''}
-                                                {f'<small style="color:#d69e2e;">👥 TL: {e["tl_comments"][:100]}...</small><br>' if e.get('tl_comments') else ''}
-                                                {f'<small style="color:#CC0000;">🚫 Rejection: {e["rejection"][:100]}...</small>' if e.get('rejection') else ''}
+                                                {f'<small>💬 Employee: {e["comments"][:100]}...</small><br>' if e['comments'] and e['comments'] != 'N/A' else ''}
+                                                {f'<small>👔 HOD: {e["hod_comments"][:100]}...</small><br>' if e.get('hod_comments') else ''}
+                                                {f'<small>👥 TL: {e["tl_comments"][:100]}...</small><br>' if e.get('tl_comments') else ''}
+                                                {f'<small>🚫 Rejection: {e["rejection"][:100]}...</small>' if e.get('rejection') else ''}
                                             </div>
                                             """, unsafe_allow_html=True)
                 else:
