@@ -3501,7 +3501,7 @@ def performance_okrs():
             if not has_approved: st.warning("⚠️ Your KPIs must be approved before self-assessment.")
             elif st.session_state.appraisal_locked: st.warning("🔒 Scores are locked.")
             elif st.session_state.self_assessments.get(user_name, {}).get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review']: pass
-           else:
+            else:
                 st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
                 
                 # FILE UPLOADERS OUTSIDE FORM
