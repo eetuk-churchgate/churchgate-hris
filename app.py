@@ -3902,33 +3902,39 @@ def performance_okrs():
                         
                         st.markdown(f"**👤 Staff Comments:** {assessment.get('comments', 'N/A')}")
                         
-                        # Show evidence files
+                        # Show evidence files - READ DIRECTLY FROM DATABASE
                         st.markdown("---")
                         st.markdown("### 📎 Evidence Files")
-                        ev_files = assessment.get('evidence_files', '')
-                        # Show evidence files
-                        st.markdown("---")
-                        st.markdown("### 📎 Evidence Files")
-                        ev_files = assessment.get('evidence_files', '')
-                        has_files = False
                         
-                        if ev_files:
+                        # Force reload from database to get latest evidence
+                        db_evidence = None
+                        try:
+                            db_appraisal = db._get("appraisals", {"user_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                            if db_appraisal and len(db_appraisal) > 0:
+                                db_evidence = db_appraisal[0].get('evidence_files', '')
+                        except:
+                            db_evidence = assessment.get('evidence_files', '')
+                        
+                        if not db_evidence:
+                            db_evidence = assessment.get('evidence_files', '')
+                        
+                        has_files = False
+                        if db_evidence:
                             try:
-                                # Handle both string and dict
-                                if isinstance(ev_files, str):
-                                    evidence = json.loads(ev_files)
+                                if isinstance(db_evidence, str):
+                                    evidence = json.loads(db_evidence)
                                 else:
-                                    evidence = ev_files
+                                    evidence = db_evidence
                                 
-                                if evidence and isinstance(evidence, dict) and len(evidence) > 0:
+                                if evidence and isinstance(evidence, dict):
                                     for pillar, urls in evidence.items():
-                                        if urls and len(urls) > 0:
+                                        if urls and isinstance(urls, list) and len(urls) > 0:
                                             has_files = True
                                             st.markdown(f"**{pillar}**")
                                             for url in urls:
                                                 st.markdown(f"- [📄 View Document]({url})")
-                            except Exception as e:
-                                st.error(f"Error loading evidence: {str(e)}")
+                            except:
+                                pass
                         
                         if not has_files:
                             st.info("📎 No evidence files attached")
@@ -5985,28 +5991,38 @@ def performance_okrs():
                                         if e.get('rejection'):
                                             st.markdown(f"**🚫 Rejection Reason:** {e['rejection']}")
                                         
-                                        # EVIDENCE FILES
-                                        ev_files = e.get('evidence_files', '')
+                                        # EVIDENCE FILES - READ DIRECTLY FROM DATABASE
                                         st.markdown("---")
                                         st.markdown("### 📎 Employee Evidence Files")
-                                        has_files = False
                                         
-                                        if ev_files:
+                                        db_evidence = None
+                                        try:
+                                            db_appraisal = db._get("appraisals", {"user_name": e['name'], "cycle_name": st.session_state.appraisal_cycle_name})
+                                            if db_appraisal and len(db_appraisal) > 0:
+                                                db_evidence = db_appraisal[0].get('evidence_files', '')
+                                        except:
+                                            db_evidence = e.get('evidence_files', '')
+                                        
+                                        if not db_evidence:
+                                            db_evidence = e.get('evidence_files', '')
+                                        
+                                        has_files = False
+                                        if db_evidence:
                                             try:
-                                                if isinstance(ev_files, str):
-                                                    evidence = json.loads(ev_files)
+                                                if isinstance(db_evidence, str):
+                                                    evidence = json.loads(db_evidence)
                                                 else:
-                                                    evidence = ev_files
+                                                    evidence = db_evidence
                                                 
-                                                if evidence and isinstance(evidence, dict) and len(evidence) > 0:
+                                                if evidence and isinstance(evidence, dict):
                                                     for pillar, urls in evidence.items():
-                                                        if urls and len(urls) > 0:
+                                                        if urls and isinstance(urls, list) and len(urls) > 0:
                                                             has_files = True
                                                             st.markdown(f"**{pillar}**")
                                                             for url in urls:
                                                                 st.markdown(f"- [📄 View Document]({url})")
-                                            except Exception as e:
-                                                st.error(f"Error: {str(e)}")
+                                            except:
+                                                pass
                                         
                                         if not has_files:
                                             st.info("No evidence files attached")
