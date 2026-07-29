@@ -3889,16 +3889,30 @@ def performance_okrs():
                             st.warning(f"⚠️ Staff rejected your review (Rejection #{assessment.get('reject_count', 1)})")
                             st.markdown(f"**Rejection Reason:** {assessment.get('rejection_comment', 'No comment provided')}")
                             
-                            # Show rejection documents
-                            rej_docs = assessment.get('rejection_docs', '')
-                            if rej_docs:
+                            # Show rejection documents - READ DIRECTLY FROM DATABASE
+                            db_rej_docs = None
+                            try:
+                                db_appraisal = db._get("appraisals", {"user_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                if db_appraisal and len(db_appraisal) > 0:
+                                    db_rej_docs = db_appraisal[0].get('rejection_docs', '')
+                            except:
+                                db_rej_docs = assessment.get('rejection_docs', '')
+                            
+                            if not db_rej_docs:
+                                db_rej_docs = assessment.get('rejection_docs', '')
+                            
+                            if db_rej_docs:
                                 try:
-                                    docs = json.loads(rej_docs) if isinstance(rej_docs, str) else rej_docs
-                                    if docs:
+                                    if isinstance(db_rej_docs, str):
+                                        docs = json.loads(db_rej_docs)
+                                    else:
+                                        docs = db_rej_docs
+                                    if docs and isinstance(docs, list) and len(docs) > 0:
                                         st.markdown("**📎 Rejection Documents:**")
                                         for doc_url in docs:
-                                            st.markdown(f"- [📄 View]({doc_url})")
-                                except: pass
+                                            st.markdown(f"- [📄 View Document]({doc_url})")
+                                except:
+                                    pass
                         
                         st.markdown(f"**👤 Staff Comments:** {assessment.get('comments', 'N/A')}")
                         
@@ -6027,21 +6041,36 @@ def performance_okrs():
                                         if not has_files:
                                             st.info("No evidence files attached")
                                         
-                                        # REJECTION DOCUMENTS
-                                        rej_docs = e.get('rejection_docs', '')
+                                        # REJECTION DOCUMENTS - READ DIRECTLY FROM DATABASE
                                         st.markdown("---")
                                         st.markdown("### 📎 Rejection Documents")
-                                        if rej_docs:
+                                        
+                                        db_rej_docs = None
+                                        try:
+                                            db_appraisal = db._get("appraisals", {"user_name": e['name'], "cycle_name": st.session_state.appraisal_cycle_name})
+                                            if db_appraisal and len(db_appraisal) > 0:
+                                                db_rej_docs = db_appraisal[0].get('rejection_docs', '')
+                                        except:
+                                            db_rej_docs = e.get('rejection_docs', '')
+                                        
+                                        if not db_rej_docs:
+                                            db_rej_docs = e.get('rejection_docs', '')
+                                        
+                                        has_rej = False
+                                        if db_rej_docs:
                                             try:
-                                                docs = json.loads(rej_docs) if isinstance(rej_docs, str) else rej_docs
-                                                if docs:
-                                                    for url in docs:
-                                                        st.markdown(f"- [📄 View Document]({url})")
+                                                if isinstance(db_rej_docs, str):
+                                                    docs = json.loads(db_rej_docs)
                                                 else:
-                                                    st.info("No rejection documents")
+                                                    docs = db_rej_docs
+                                                if docs and isinstance(docs, list) and len(docs) > 0:
+                                                    has_rej = True
+                                                    for doc_url in docs:
+                                                        st.markdown(f"- [📄 View Document]({doc_url})")
                                             except:
-                                                st.info("No rejection documents available")
-                                        else:
+                                                pass
+                                        
+                                        if not has_rej:
                                             st.info("No rejection documents attached")
                                         
                                         # SCORES BY PILLAR
@@ -6059,7 +6088,6 @@ def performance_okrs():
                                                     kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
                                                     kpi_name = f"KPI {kpi_index + 1}"
                                                     
-                                                    # Get actual KPI name from database
                                                     try:
                                                         all_p = db._get("performance_data")
                                                         for row in (all_p or []):
