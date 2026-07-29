@@ -2993,6 +2993,7 @@ def performance_okrs():
                 st.session_state.appraisal_start = cycle.get('start_date', '2026-06-01')
                 st.session_state.appraisal_end = cycle.get('end_date', '2026-12-31')
                 st.session_state.appraisal_locked = cycle.get('is_locked', False)
+                st.session_state.appraisal_fy = cycle.get('financial_year', 'FY 26/27')
                 return True
             else:
                 st.session_state.appraisal_cycle_active = False
@@ -3011,6 +3012,7 @@ def performance_okrs():
                 "end_date": st.session_state.appraisal_end,
                 "is_active": True,
                 "is_locked": st.session_state.appraisal_locked,
+                "financial_year": st.session_state.appraisal_fy,
                 "activated_by": user_name,
                 "activated_at": now_wat.strftime('%Y-%m-%d %H:%M WAT')
             })
