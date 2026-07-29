@@ -3743,16 +3743,20 @@ def performance_okrs():
                             st.session_state.self_assessments[user_name]['rejection_docs'] = json.dumps(rej_urls)
                             st.session_state.self_assessments[user_name]['reject_count'] = a.get('reject_count', 0) + 1
                             
+                            # Save appraisal FIRST
                             try:
                                 db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, f'Awaiting {reviewer_type} Re-review', a['scores'], a.get('comments', ''), a.get('pillar_comments', {}), a.get('hod_scores'), a.get('hod_comments', ''), a.get('hod_pillar_comments', {}), 'Rejected', None, a.get('date', ''))
                             except: pass
                             
-                            # Save rejection docs to ALL records so they survive
+                            # THEN save rejection docs to the LATEST record
                             if rej_urls:
+                                import time
+                                time.sleep(1)
                                 try:
                                     all_records = db._get("appraisals", {"user_name": user_name})
-                                    for rec in (all_records or []):
-                                        db._patch("appraisals", {"rejection_docs": json.dumps(rej_urls), "rejection_comment": rejection_comment}, {"id": rec['id']})
+                                    if all_records:
+                                        latest = all_records[-1]
+                                        db._patch("appraisals", {"rejection_docs": json.dumps(rej_urls), "rejection_comment": rejection_comment}, {"id": latest['id']})
                                 except: pass
                             
                             reviewer_email = find_hod_email_for_dept(user_dept) if reviewer_type == 'HOD' else get_employee_email(user_name)
