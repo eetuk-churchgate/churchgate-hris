@@ -3504,30 +3504,11 @@ def performance_okrs():
             else:
                 st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
                 
-                # Initialize evidence storage
-                if 'evidence_files_store' not in st.session_state:
-                    st.session_state.evidence_files_store = {}
-                
-                # FILE UPLOADERS OUTSIDE FORM
                 pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
-                st.markdown("### 📎 Upload Evidence (Optional)")
                 
-                for pillar_name in pillar_order:
-                    pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
-                    if not pillar_rows.empty:
-                        with st.expander(f"{pillar_name}", expanded=False):
-                            cols = st.columns(5)
-                            for j in range(5):
-                                with cols[j]:
-                                    uploaded = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"file_{pillar_name}_{j}")
-                                    if uploaded:
-                                        st.session_state.evidence_files_store[f"{pillar_name}_{j}"] = uploaded
-                
-                st.markdown("---")
-                
-                # FORM
                 with st.form("self_assessment_form"):
                     scores, pillar_comments = {}, {}
+                    uploaded_files_data = {}  # Store file data during form
                     
                     for pillar_name in pillar_order:
                         pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
@@ -3545,6 +3526,19 @@ def performance_okrs():
                             if all_kpi_list:
                                 total_weight = sum(k.get('weight', 0) for k in all_kpi_list)
                                 st.markdown(f"### {pillar_name} (Weight: {total_weight}%)")
+                                
+                                st.caption("📎 Evidence (Optional)")
+                                cols = st.columns(5)
+                                pillar_files = []
+                                for j in range(5):
+                                    with cols[j]:
+                                        f = st.file_uploader(f"File", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_{pillar_name}_{j}")
+                                        if f:
+                                            import base64
+                                            f.seek(0)
+                                            file_bytes = f.read()
+                                            file_b64 = base64.b64encode(file_bytes).decode('utf-8')
+                                            uploaded_files_data[f"{pillar_name}|||{f.name}|||{f.type}"] = file_b64
                                 
                                 for i, kpi in enumerate(all_kpi_list):
                                     score_key = f"{pillar_name}_{i}"
@@ -3565,13 +3559,22 @@ def performance_okrs():
                         if not scores: st.error("❌ Please score at least one KPI!")
                         elif not overall_comments: st.error("❌ Overall comments required!")
                         else:
-                            # Group files by pillar from session state
+                            # Group files by pillar from uploaded_files_data
                             evidence_files = {}
-                            for key, file_obj in st.session_state.evidence_files_store.items():
-                                pillar = key.rsplit('_', 1)[0]
+                            for key, b64_data in uploaded_files_data.items():
+                                parts = key.split('|||')
+                                pillar = parts[0]
+                                file_name = parts[1]
+                                file_type = parts[2]
+                                file_bytes = base64.b64decode(b64_data)
+                                
                                 if pillar not in evidence_files:
                                     evidence_files[pillar] = []
-                                evidence_files[pillar].append(file_obj)
+                                evidence_files[pillar].append({
+                                    'name': file_name,
+                                    'type': file_type,
+                                    'bytes': file_bytes
+                                })
                             
                             # Upload to Supabase
                             evidence_urls = {}
@@ -3585,15 +3588,11 @@ def performance_okrs():
                                 for p_name, files in evidence_files.items():
                                     urls = []
                                     for f in files:
-                                        file_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.name}"
-                                        f.seek(0)
-                                        _sc.storage.from_("evidence").upload(file_name, f.read(), {"content-type": f.type})
+                                        file_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f['name']}"
+                                        _sc.storage.from_("evidence").upload(file_name, f['bytes'], {"content-type": f['type']})
                                         url = _sc.storage.from_("evidence").get_public_url(file_name)
                                         urls.append(url)
                                     evidence_urls[p_name] = urls
-                            
-                            # Clear session state
-                            st.session_state.evidence_files_store = {}
                             
                             try:
                                 db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
