@@ -3591,54 +3591,48 @@ def performance_okrs():
                                 evidence_files[pillar].append({'name': file_name, 'type': file_type, 'bytes': file_bytes})
                             
                             # Upload to Supabase
-                                evidence_urls = {}
-                                if evidence_files:
-                                    try:
-                                        import os as _os
-                                        from supabase import create_client as _cc
-                                        _url = _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
-                                        _key = _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
-                                        _sc = _cc(_url, _key)
-                                        
-                                        for p_name, files in evidence_files.items():
-                                            urls = []
-                                            for f in files:
-                                                upload_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f['name']}"
-                                                _sc.storage.from_("evidence").upload(upload_name, f['bytes'], {"content-type": f['type']})
-                                                url = _sc.storage.from_("evidence").get_public_url(upload_name)
-                                                urls.append(url)
-                                            evidence_urls[p_name] = urls
-                                    except Exception as upload_error:
-                                        st.error(f"Upload failed: {str(upload_error)}")
-                                
-                                st.session_state.uploaded_files_data = {}
-                                
-                                # Save appraisal FIRST
+                            evidence_urls = {}
+                            if evidence_files:
                                 try:
-                                    db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
-                                except: pass
-                                
-                                # THEN save evidence to the LATEST record
-                                if evidence_urls:
-                                    import time
-                                    time.sleep(1)
-                                    try:
-                                        all_records = db._get("appraisals", {"user_name": user_name})
-                                        if all_records:
-                                            latest = all_records[-1]
-                                            db._patch("appraisals", {"evidence_files": json.dumps(evidence_urls)}, {"id": latest['id']})
-                                    except: pass
-                                
-                                st.session_state.self_assessments[user_name] = {
-                                    'scores': scores, 'comments': overall_comments,
-                                    'pillar_comments': pillar_comments,
-                                    'evidence_files': json.dumps(evidence_urls),
-                                    'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
-                                    'status': 'Submitted', 'department': user_dept, 'email': user_email,
-                                    'hod_scores': None, 'hod_comments': None, 'acceptance': None
-                                }
-                                log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
-                                st.success("✅ Submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
+                                    import os as _os
+                                    from supabase import create_client as _cc
+                                    _url = _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+                                    _key = _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
+                                    _sc = _cc(_url, _key)
+                                    
+                                    for p_name, files in evidence_files.items():
+                                        urls = []
+                                        for f in files:
+                                            upload_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f['name']}"
+                                            _sc.storage.from_("evidence").upload(upload_name, f['bytes'], {"content-type": f['type']})
+                                            url = _sc.storage.from_("evidence").get_public_url(upload_name)
+                                            st.success(f"✅ Uploaded: {upload_name} → {url}")
+                                            urls.append(url)
+                                        evidence_urls[p_name] = urls
+                                    
+                                    st.success(f"📎 Total evidence URLs: {json.dumps(evidence_urls)}")
+                                except Exception as upload_error:
+                                    st.error(f"❌ Upload failed: {str(upload_error)}")
+                            
+                            # Clear uploaded files
+                            st.session_state.uploaded_files_data = {}
+                            
+                            # Save appraisal
+                            try:
+                                db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                                db._patch("appraisals", {"evidence_files": json.dumps(evidence_urls)}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                            except: pass
+                            
+                            st.session_state.self_assessments[user_name] = {
+                                'scores': scores, 'comments': overall_comments,
+                                'pillar_comments': pillar_comments,
+                                'evidence_files': json.dumps(evidence_urls),
+                                'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
+                                'status': 'Submitted', 'department': user_dept, 'email': user_email,
+                                'hod_scores': None, 'hod_comments': None, 'acceptance': None
+                            }
+                            log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
+                            st.success("✅ Submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         else: st.info("⏳ No active appraisal cycle.")
         
         # Acceptance/Rejection
@@ -3743,21 +3737,10 @@ def performance_okrs():
                             st.session_state.self_assessments[user_name]['rejection_docs'] = json.dumps(rej_urls)
                             st.session_state.self_assessments[user_name]['reject_count'] = a.get('reject_count', 0) + 1
                             
-                            # Save appraisal FIRST
                             try:
                                 db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, f'Awaiting {reviewer_type} Re-review', a['scores'], a.get('comments', ''), a.get('pillar_comments', {}), a.get('hod_scores'), a.get('hod_comments', ''), a.get('hod_pillar_comments', {}), 'Rejected', None, a.get('date', ''))
+                                db._patch("appraisals", {"rejection_docs": json.dumps(rej_urls), "rejection_comment": rejection_comment}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
                             except: pass
-                            
-                            # THEN save rejection docs to the LATEST record
-                            if rej_urls:
-                                import time
-                                time.sleep(1)
-                                try:
-                                    all_records = db._get("appraisals", {"user_name": user_name})
-                                    if all_records:
-                                        latest = all_records[-1]
-                                        db._patch("appraisals", {"rejection_docs": json.dumps(rej_urls), "rejection_comment": rejection_comment}, {"id": latest['id']})
-                                except: pass
                             
                             reviewer_email = find_hod_email_for_dept(user_dept) if reviewer_type == 'HOD' else get_employee_email(user_name)
                             if reviewer_email:
@@ -3768,11 +3751,7 @@ def performance_okrs():
                             log_audit('Appraisal Rejected', f'{user_name} rejected {reviewer_type} review')
                             st.warning(f"⚠️ Rejected! {reviewer_type} notified."); time.sleep(2); st.rerun()
             elif a.get('acceptance') == 'Accepted': st.success("🎉 Appraisal Complete!")
-            elif a.get('acceptance') == 'Rejected':
-                if a.get('sr_decision') == 'Pending Committee' or a.get('status') in ['Escalated from TL', 'Escalated to HOD from TL']:
-                    st.warning("🚨 Escalated - Awaiting Committee Final Verdict")
-                else:
-                    st.warning(f"🔄 Awaiting {reviewer_type} re-review")
+            elif a.get('acceptance') == 'Rejected': st.warning(f"🔄 Awaiting {reviewer_type} re-review")
     
     # ============================================================
     # TAB 4: HOD REVIEW (FIXED - Stand Firm + Admin sees ALL)
@@ -6026,19 +6005,15 @@ def performance_okrs():
                                         if e.get('rejection'):
                                             st.markdown(f"**🚫 Rejection Reason:** {e['rejection']}")
                                         
-                                        # EVIDENCE FILES - FIND RECORD WITH DATA
+                                        # EVIDENCE FILES - READ DIRECTLY FROM DATABASE
                                         st.markdown("---")
                                         st.markdown("### 📎 Employee Evidence Files")
                                         
                                         db_evidence = None
                                         try:
-                                            all_apps = db._get("appraisals", {"user_name": e['name']})
-                                            if all_apps and len(all_apps) > 0:
-                                                for app in reversed(all_apps):
-                                                    ev = app.get('evidence_files', '')
-                                                    if ev and ev != '{}' and ev != '':
-                                                        db_evidence = ev
-                                                        break
+                                            db_appraisal = db._get("appraisals", {"user_name": e['name'], "cycle_name": st.session_state.appraisal_cycle_name})
+                                            if db_appraisal and len(db_appraisal) > 0:
+                                                db_evidence = db_appraisal[0].get('evidence_files', '')
                                         except:
                                             db_evidence = e.get('evidence_files', '')
                                         
@@ -6046,7 +6021,7 @@ def performance_okrs():
                                             db_evidence = e.get('evidence_files', '')
                                         
                                         has_files = False
-                                        if db_evidence and db_evidence != '{}':
+                                        if db_evidence:
                                             try:
                                                 if isinstance(db_evidence, str):
                                                     evidence = json.loads(db_evidence)
@@ -6066,17 +6041,15 @@ def performance_okrs():
                                         if not has_files:
                                             st.info("No evidence files attached")
                                         
-                                        # REJECTION DOCUMENTS - FIND RECORD WITH DATA
+                                        # REJECTION DOCUMENTS - READ DIRECTLY FROM DATABASE
                                         st.markdown("---")
                                         st.markdown("### 📎 Rejection Documents")
                                         
                                         db_rej_docs = None
                                         try:
-                                            for app in reversed(all_apps or []):
-                                                rd = app.get('rejection_docs', '')
-                                                if rd and rd != 'null' and rd != '' and rd != '[]':
-                                                    db_rej_docs = rd
-                                                    break
+                                            db_appraisal = db._get("appraisals", {"user_name": e['name'], "cycle_name": st.session_state.appraisal_cycle_name})
+                                            if db_appraisal and len(db_appraisal) > 0:
+                                                db_rej_docs = db_appraisal[0].get('rejection_docs', '')
                                         except:
                                             db_rej_docs = e.get('rejection_docs', '')
                                         
@@ -6084,7 +6057,7 @@ def performance_okrs():
                                             db_rej_docs = e.get('rejection_docs', '')
                                         
                                         has_rej = False
-                                        if db_rej_docs and db_rej_docs != 'null' and db_rej_docs != '[]':
+                                        if db_rej_docs:
                                             try:
                                                 if isinstance(db_rej_docs, str):
                                                     docs = json.loads(db_rej_docs)
