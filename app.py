@@ -6016,13 +6016,17 @@ def performance_okrs():
                                         db_evidence = None
                                         try:
                                             all_apps = db._get("appraisals", {"user_name": e['name']})
+                                            st.write(f"DEBUG: Found {len(all_apps) if all_apps else 0} appraisal records for {e['name']}")
                                             if all_apps and len(all_apps) > 0:
                                                 for app in reversed(all_apps):
                                                     ev = app.get('evidence_files', '')
+                                                    st.write(f"DEBUG: id={app.get('id')}, ev={str(ev)[:80]}")
                                                     if ev and ev != '{}' and ev != '':
                                                         db_evidence = ev
+                                                        st.write(f"DEBUG: USING this record for evidence")
                                                         break
-                                        except:
+                                        except Exception as ex:
+                                            st.write(f"DEBUG: Error getting evidence: {str(ex)}")
                                             db_evidence = e.get('evidence_files', '')
                                         
                                         if not db_evidence:
@@ -6055,13 +6059,11 @@ def performance_okrs():
                                         
                                         db_rej_docs = None
                                         try:
-                                            all_apps = db._get("appraisals", {"user_name": e['name']})
-                                            if all_apps and len(all_apps) > 0:
-                                                for app in reversed(all_apps):
-                                                    rd = app.get('rejection_docs', '')
-                                                    if rd and rd != 'null' and rd != '' and rd != '[]':
-                                                        db_rej_docs = rd
-                                                        break
+                                            for app in reversed(all_apps or []):
+                                                rd = app.get('rejection_docs', '')
+                                                if rd and rd != 'null' and rd != '' and rd != '[]':
+                                                    db_rej_docs = rd
+                                                    break
                                         except:
                                             db_rej_docs = e.get('rejection_docs', '')
                                         
