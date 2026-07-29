@@ -3906,23 +3906,33 @@ def performance_okrs():
                         st.markdown("---")
                         st.markdown("### 📎 Evidence Files")
                         ev_files = assessment.get('evidence_files', '')
+                        # Show evidence files
+                        st.markdown("---")
+                        st.markdown("### 📎 Evidence Files")
+                        ev_files = assessment.get('evidence_files', '')
+                        has_files = False
+                        
                         if ev_files:
                             try:
-                                evidence = json.loads(ev_files) if isinstance(ev_files, str) else ev_files
-                                if evidence:
-                                    for pillar, urls in evidence.items():
-                                        st.markdown(f"**{pillar}**")
-                                        if urls:
-                                            for url in urls:
-                                                st.markdown(f"- [📄 View]({url})")
-                                        else:
-                                            st.caption("No evidence")
+                                # Handle both string and dict
+                                if isinstance(ev_files, str):
+                                    evidence = json.loads(ev_files)
                                 else:
-                                    st.info("📎 No evidence files attached")
-                            except:
-                                st.info("📎 No evidence files available")
-                        else:
+                                    evidence = ev_files
+                                
+                                if evidence and isinstance(evidence, dict) and len(evidence) > 0:
+                                    for pillar, urls in evidence.items():
+                                        if urls and len(urls) > 0:
+                                            has_files = True
+                                            st.markdown(f"**{pillar}**")
+                                            for url in urls:
+                                                st.markdown(f"- [📄 View Document]({url})")
+                            except Exception as e:
+                                st.error(f"Error loading evidence: {str(e)}")
+                        
+                        if not has_files:
                             st.info("📎 No evidence files attached")
+
                         
                         # Score review with KPI names
                         st.markdown("---")
@@ -5979,22 +5989,26 @@ def performance_okrs():
                                         ev_files = e.get('evidence_files', '')
                                         st.markdown("---")
                                         st.markdown("### 📎 Employee Evidence Files")
+                                        has_files = False
+                                        
                                         if ev_files:
                                             try:
-                                                evidence = json.loads(ev_files) if isinstance(ev_files, str) else ev_files
-                                                if evidence:
+                                                if isinstance(ev_files, str):
+                                                    evidence = json.loads(ev_files)
+                                                else:
+                                                    evidence = ev_files
+                                                
+                                                if evidence and isinstance(evidence, dict) and len(evidence) > 0:
                                                     for pillar, urls in evidence.items():
-                                                        st.markdown(f"**{pillar}**")
-                                                        if urls:
+                                                        if urls and len(urls) > 0:
+                                                            has_files = True
+                                                            st.markdown(f"**{pillar}**")
                                                             for url in urls:
                                                                 st.markdown(f"- [📄 View Document]({url})")
-                                                        else:
-                                                            st.caption("No files for this pillar")
-                                                else:
-                                                    st.info("No evidence files attached")
-                                            except:
-                                                st.info("No evidence files available")
-                                        else:
+                                            except Exception as e:
+                                                st.error(f"Error: {str(e)}")
+                                        
+                                        if not has_files:
                                             st.info("No evidence files attached")
                                         
                                         # REJECTION DOCUMENTS
