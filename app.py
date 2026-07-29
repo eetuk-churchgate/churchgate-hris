@@ -3501,14 +3501,33 @@ def performance_okrs():
             if not has_approved: st.warning("⚠️ Your KPIs must be approved before self-assessment.")
             elif st.session_state.appraisal_locked: st.warning("🔒 Scores are locked.")
             elif st.session_state.self_assessments.get(user_name, {}).get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review']: pass
-            else:
+           else:
                 st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
                 
+                # FILE UPLOADERS OUTSIDE FORM
+                pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                st.markdown("### 📎 Upload Evidence (Optional)")
+                if 'evidence_uploads' not in st.session_state:
+                    st.session_state.evidence_uploads = {}
                 
+                for pillar_name in pillar_order:
+                    pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
+                    if not pillar_rows.empty:
+                        with st.expander(f"{pillar_name}", expanded=False):
+                            cols = st.columns(5)
+                            if pillar_name not in st.session_state.evidence_uploads:
+                                st.session_state.evidence_uploads[pillar_name] = {}
+                            for j in range(5):
+                                with cols[j]:
+                                    uploaded = st.file_uploader(f"File", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_{pillar_name}_{j}")
+                                    if uploaded:
+                                        st.session_state.evidence_uploads[pillar_name][j] = uploaded
+                
+                st.markdown("---")
                 
                 # FORM FOR SCORES AND COMMENTS
                 with st.form("self_assessment_form"):
-                    scores, pillar_comments, evidence_files = {}, {}, {}
+                    scores, pillar_comments = {}, {}
                     
                     for pillar_name in pillar_order:
                         pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
@@ -3527,16 +3546,6 @@ def performance_okrs():
                             
                             if all_kpi_list:
                                 st.markdown(f"### {pillar_name} (Weight: {total_weight}%)")
-                                
-                                # FILE UPLOADERS
-                                st.caption("📎 Evidence (Optional — up to 5 files)")
-                                ev_cols = st.columns(5)
-                                pillar_files = []
-                                for j in range(5):
-                                    with ev_cols[j]:
-                                        ev = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_{pillar_name}_{j}")
-                                        if ev: pillar_files.append(ev)
-                                if pillar_files: evidence_files[pillar_name] = pillar_files
                                 
                                 for i, kpi in enumerate(all_kpi_list):
                                     score_key = f"{pillar_name}_{i}"
@@ -3561,6 +3570,13 @@ def performance_okrs():
                             empty_just = [k for k, v in pillar_comments.items() if v is not None and not v]
                             if empty_just: st.error(f"❌ Justification required for: {', '.join(empty_just)}")
                             else:
+                                # Get files from session state
+                                evidence_files = {}
+                                for p_name, files_dict in st.session_state.evidence_uploads.items():
+                                    file_list = [f for f in files_dict.values() if f is not None]
+                                    if file_list:
+                                        evidence_files[p_name] = file_list
+                                
                                 # Upload evidence
                                 evidence_urls = {}
                                 if evidence_files:
@@ -3579,6 +3595,9 @@ def performance_okrs():
                                             url = _sc.storage.from_("evidence").get_public_url(file_name)
                                             urls.append(url)
                                         evidence_urls[p_name] = urls
+                                
+                                # Clear session state
+                                st.session_state.evidence_uploads = {}
                                 
                                 try:
                                     db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
