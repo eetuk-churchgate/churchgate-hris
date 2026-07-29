@@ -3508,7 +3508,6 @@ def performance_okrs():
                     for pillar_name in pillar_order:
                         pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
                         if not pillar_rows.empty:
-                            # Combine ALL KPIs from ALL rows for this pillar
                             all_kpi_list = []
                             seen = set()
                             for _, pr in pillar_rows.iterrows():
@@ -3519,7 +3518,6 @@ def performance_okrs():
                                         seen.add(title)
                                         all_kpi_list.append(kpi)
                             
-                            # Sum all KPI weights for total pillar weight
                             total_weight = sum(k.get('weight', 0) for k in all_kpi_list)
                             
                             if all_kpi_list:
@@ -3529,10 +3527,11 @@ def performance_okrs():
                                 pillar_files = []
                                 for j in range(5):
                                     with ev_cols[j]:
-                                        ev = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_{pillar_name}_{j}", label_visibility="collapsed")
+                                        ev = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_{pillar_name}_{j}")
                                         if ev:
                                             pillar_files.append(ev)
-                                evidence_files[pillar_name] = pillar_files if pillar_files else None
+                                if pillar_files:
+                                    evidence_files[pillar_name] = pillar_files
                                 
                                 for i, kpi in enumerate(all_kpi_list):
                                     score_key = f"{pillar_name}_{i}"
@@ -3555,7 +3554,6 @@ def performance_okrs():
                             else:
                                 # Upload evidence using direct Supabase storage
                                 evidence_urls = {}
-                                upload_errors = []
                                 try:
                                     from supabase import create_client
                                     supabase_client = create_client(
@@ -3569,26 +3567,12 @@ def performance_okrs():
                                                 try:
                                                     file_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f.name}"
                                                     f.seek(0)
-                                                    file_bytes = f.read()
-                                                    supabase_client.storage.from_("evidence").upload(file_name, file_bytes, {"content-type": f.type})
+                                                    supabase_client.storage.from_("evidence").upload(file_name, f.read(), {"content-type": f.type})
                                                     url = supabase_client.storage.from_("evidence").get_public_url(file_name)
-                                                    if url: 
-                                                        urls.append(url)
-                                                    else:
-                                                        upload_errors.append(f"No URL for {f.name}")
-                                                except Exception as e:
-                                                    upload_errors.append(f"Upload error {f.name}: {str(e)}")
-                                            if urls: 
-                                                evidence_urls[p_name] = urls
-                                except Exception as e:
-                                    upload_errors.append(f"Storage connection: {str(e)}")
-                                
-                                if upload_errors:
-                                    for err in upload_errors:
-                                        st.error(err)
-                                
-                                if evidence_urls:
-                                    st.success(f"✅ {sum(len(v) for v in evidence_urls.values())} files uploaded")
+                                                    if url: urls.append(url)
+                                                except: pass
+                                            if urls: evidence_urls[p_name] = urls
+                                except: pass
                                 
                                 try:
                                     db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
