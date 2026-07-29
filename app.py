@@ -3502,9 +3502,30 @@ def performance_okrs():
             elif st.session_state.self_assessments.get(user_name, {}).get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review']: pass
             else:
                 st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
+                
+                # FILE UPLOADERS OUTSIDE FORM
+                pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                evidence_files = {}
+                
+                st.markdown("### 📎 Upload Evidence Files (Optional)")
+                for pillar_name in pillar_order:
+                    pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
+                    if not pillar_rows.empty:
+                        st.markdown(f"**{pillar_name}** (up to 5 files)")
+                        ev_cols = st.columns(5)
+                        pillar_files = []
+                        for j in range(5):
+                            with ev_cols[j]:
+                                ev = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_out_{pillar_name}_{j}")
+                                if ev: pillar_files.append(ev)
+                        if pillar_files: evidence_files[pillar_name] = pillar_files
+                
+                st.markdown("---")
+                
+                # FORM FOR SCORES AND COMMENTS
                 with st.form("self_assessment_form"):
-                    scores, pillar_comments, evidence_files = {}, {}, {}
-                    pillar_order = ['1. Occupancy & Revenue Growth', '2. Process Simplification', '3. Asset Reliability & Digitalization', '4. People & Culture']
+                    scores, pillar_comments = {}, {}
+                    
                     for pillar_name in pillar_order:
                         pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
                         if not pillar_rows.empty:
@@ -3522,17 +3543,6 @@ def performance_okrs():
                             
                             if all_kpi_list:
                                 st.markdown(f"### {pillar_name} (Weight: {total_weight}%)")
-                                st.caption("📎 Evidence (Optional — up to 5 files)")
-                                ev_cols = st.columns(5)
-                                pillar_files = []
-                                for j in range(5):
-                                    with ev_cols[j]:
-                                        ev = st.file_uploader(f"File {j+1}", type=['pdf','docx','jpg','png','xlsx'], key=f"ev_{pillar_name}_{j}")
-                                        if ev:
-                                            pillar_files.append(ev)
-                                if pillar_files:
-                                    evidence_files[pillar_name] = pillar_files
-                                
                                 for i, kpi in enumerate(all_kpi_list):
                                     score_key = f"{pillar_name}_{i}"
                                     col1, col2 = st.columns([3, 1])
@@ -3542,26 +3552,30 @@ def performance_okrs():
                                     with col2:
                                         scores[score_key] = st.number_input("Score %", 0, 100, 50, 1, key=f"score_{pillar_name}_{i}")
                                 
-                                pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", key=f"just_{pillar_name}", placeholder="Explain your performance in this pillar...")
+                                pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", key=f"just_{pillar_name}", placeholder="Explain your performance...")
                                 st.markdown("---")
-                    overall_comments = st.text_area("Overall Comments *")
-                    if st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True, type="primary"):
+                    
+                    overall_comments = st.text_area("Overall Comments *", placeholder="Summarize your overall performance...")
+                    
+                    submitted = st.form_submit_button("📤 Submit Self-Assessment", use_container_width=True, type="primary")
+                    
+                    if submitted:
                         if not scores: st.error("❌ Please score at least one KPI!")
                         elif not overall_comments: st.error("❌ Overall comments required!")
                         else:
                             empty_just = [k for k, v in pillar_comments.items() if v is not None and not v]
                             if empty_just: st.error(f"❌ Justification required for: {', '.join(empty_just)}")
                             else:
-                                # Upload evidence using direct Supabase storage
+                                # Upload evidence
                                 evidence_urls = {}
-                                try:
-                                    from supabase import create_client
-                                    supabase_client = create_client(
-                                        os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
-                                        os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
-                                    )
-                                    for p_name, files in evidence_files.items():
-                                        if files:
+                                if evidence_files:
+                                    try:
+                                        from supabase import create_client
+                                        supabase_client = create_client(
+                                            os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co"),
+                                            os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+                                        )
+                                        for p_name, files in evidence_files.items():
                                             urls = []
                                             for f in files:
                                                 try:
@@ -3572,7 +3586,7 @@ def performance_okrs():
                                                     if url: urls.append(url)
                                                 except: pass
                                             if urls: evidence_urls[p_name] = urls
-                                except: pass
+                                    except: pass
                                 
                                 try:
                                     db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
