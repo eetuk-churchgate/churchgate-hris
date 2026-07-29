@@ -217,8 +217,17 @@ class DatabaseManager:
     
     def save_appraisal(self, user_name, user_email, department, cycle_name, status, scores, comments, pillar_comments, hod_scores, hod_comments, hod_pillar_comments, acceptance, sr_decision, submitted_date):
         existing = self._get("appraisals", {"user_name": user_name, "cycle_name": cycle_name})
-        if existing:
+        
+        # Save old evidence and rejection docs before deleting
+        old_evidence = None
+        old_rejection_docs = None
+        old_rejection_comment = None
+        if existing and len(existing) > 0:
+            old_evidence = existing[0].get('evidence_files', '')
+            old_rejection_docs = existing[0].get('rejection_docs', '')
+            old_rejection_comment = existing[0].get('rejection_comment', '')
             self._delete("appraisals", {"user_name": user_name, "cycle_name": cycle_name})
+        
         self._post("appraisals", {
             "user_name": user_name, "user_email": user_email, "department": department,
             "cycle_name": cycle_name, "status": status,
@@ -230,7 +239,10 @@ class DatabaseManager:
             "hod_pillar_comments": json.dumps(hod_pillar_comments) if hod_pillar_comments else "{}",
             "acceptance": acceptance or "",
             "sr_decision": sr_decision or "",
-            "submitted_date": submitted_date or ""
+            "submitted_date": submitted_date or "",
+            "evidence_files": old_evidence or "{}",
+            "rejection_docs": old_rejection_docs or "",
+            "rejection_comment": old_rejection_comment or ""
         })
     
     def get_all_appraisals(self):
