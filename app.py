@@ -3792,7 +3792,11 @@ def performance_okrs():
                             with c1:
                                 if st.button(f"✅ Approve", key=f"app_{emp_name}", type="primary"):
                                     for sub in submissions:
-                                        db._patch("performance_data", {"submission_status": "Approved"}, {"id": sub['row_id']})
+                                        db._patch("performance_data", {
+                                            "submission_status": "Approved",
+                                            "progress": 100,
+                                            "status": "On Track"
+                                        }, {"id": sub['row_id']})
                                     emp_email_addr = get_employee_email(emp_name)
                                     if emp_email_addr:
                                         send_kpi_notification('approved', emp_name, emp_email_addr)
