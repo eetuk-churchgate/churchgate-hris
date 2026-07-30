@@ -3227,7 +3227,7 @@ def performance_okrs():
     # ============================================================
     # HEADER & CYCLE STATUS
     # ============================================================
-    st.markdown("""<div class="glass-card" style="text-align:center;margin-bottom:1.5rem;"><h1 style="margin:0;color:#1a1a1a;">📈 Performance & Appraisal Engine</h1><p style="color:#888;margin:0.5rem 0 0 0;">Fortune 500 Grade | KPI Management | Self-Assessment | Team Lead Review | HOD Review | Appraisal Committee | Certificates</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="glass-card" style="text-align:center;margin-bottom:1.5rem;"><h1 style="margin:0;color:#1a1a1a;">📈 Performance & Appraisal Engine</h1><p style="color:#888;margin:0.5rem 0 0 0;">AI-Powered | KPI Management | Self-Assessment | Team Lead Review | HOD Review | Appraisal Committee | Certificates</p></div>""", unsafe_allow_html=True)
     
     if st.session_state.appraisal_cycle_active:
         try:
