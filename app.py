@@ -14677,9 +14677,12 @@ def requests_hub():
         
         att_tabs = st.tabs(["📝 Manual Entry", "📊 My Attendance", "🔌 Biometric Sync"])
         
-        # ----- Manual Entry -----
+         # ----- Manual Entry -----
         with att_tabs[0]:
-            st.markdown("### 📝 Record Attendance")
+            if not (is_admin or user_role in ['HR Director']):
+                st.info("⛔ Manual entry is restricted to HR and Admin only.")
+            else:
+                st.markdown("### 📝 Record Attendance")
             
             with st.form("attendance_form"):
                 c1, c2 = st.columns(2)
@@ -14835,7 +14838,10 @@ def requests_hub():
         
         # ----- Biometric Sync -----
         with att_tabs[2]:
-            st.subheader("🔌 Biometric Integration - ZKTeco")
+            if not (is_admin or user_role in ['HR Director']):
+                st.info("⛔ Biometric sync settings are restricted to HR and Admin only.")
+            else:
+                st.subheader("🔌 Biometric Integration - ZKTeco")
             
             st.markdown("### 📡 Device Status")
             
