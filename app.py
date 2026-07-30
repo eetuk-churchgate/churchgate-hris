@@ -1297,58 +1297,170 @@ def employee_dashboard():
             if st.button("😤 Stressed", use_container_width=True, key="mood_stressed"):
                 st.success("We hear you. HR is here to help. 😤")
         
-        # Birthdays This Month
+        # Birthdays & Anniversaries This Month
         st.markdown("---")
-        st.subheader("🎂 Birthdays This Month")
-        try:
-            emp_df = db.get_all_employees()
-            if not emp_df.empty:
-                today = datetime.now()
-                found_birthday = False
-                for _, emp in emp_df.iterrows():
-                    dob = emp.get('date_of_birth')
-                    if dob and str(dob) != 'None' and str(dob) != 'nan':
-                        try:
-                            dob_date = pd.to_datetime(dob)
-                            if dob_date.month == today.month:
-                                found_birthday = True
-                                st.markdown(f"🎂 **{emp['first_name']} {emp['last_name']}** — {dob_date.strftime('%B %d')} ({emp.get('department', '')})")
-                        except:
-                            pass
-                if not found_birthday:
-                    st.info("No birthdays this month.")
-        except:
-            pass
         
-        # Work Anniversaries
+        today = datetime.now()
+        emp_df = db.get_all_employees() if 'emp_df' not in dir() else emp_df
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 🎂 Birthdays This Month")
+            try:
+                if not emp_df.empty:
+                    found_birthday = False
+                    birthdays_list = []
+                    for _, emp in emp_df.iterrows():
+                        dob = emp.get('date_of_birth')
+                        if dob and str(dob) != 'None' and str(dob) != 'nan':
+                            try:
+                                dob_date = pd.to_datetime(dob)
+                                if dob_date.month == today.month:
+                                    found_birthday = True
+                                    birthdays_list.append({
+                                        'name': f"{emp['first_name']} {emp['last_name']}",
+                                        'day': dob_date.day,
+                                        'dept': emp.get('department', ''),
+                                        'is_today': dob_date.day == today.day
+                                    })
+                            except: pass
+                    
+                    if found_birthday:
+                        birthdays_list.sort(key=lambda x: x['day'])
+                        for b in birthdays_list:
+                            icon = "🎈" if b['is_today'] else "🎂"
+                            highlight = 'style="color:#CC0000;font-weight:600;"' if b['is_today'] else ''
+                            st.markdown(f'{icon} <span {highlight}>{b["name"]}</span> — {today.strftime("%B")} {b["day"]} <small style="color:#888;">({b["dept"]})</small>', unsafe_allow_html=True)
+                    else:
+                        st.info("No birthdays this month.")
+            except: pass
+        
+        with col2:
+            st.markdown("### ⭐ Work Anniversaries")
+            try:
+                if not emp_df.empty:
+                    found_anniversary = False
+                    anniversary_list = []
+                    for _, emp in emp_df.iterrows():
+                        join_date = emp.get('join_date')
+                        if join_date and str(join_date) != 'None' and str(join_date) != 'nan':
+                            try:
+                                jd = pd.to_datetime(join_date)
+                                if jd.month == today.month:
+                                    years = today.year - jd.year
+                                    if years > 0:
+                                        found_anniversary = True
+                                        anniversary_list.append({
+                                            'name': f"{emp['first_name']} {emp['last_name']}",
+                                            'years': years,
+                                            'dept': emp.get('department', ''),
+                                            'is_today': jd.day == today.day
+                                        })
+                            except: pass
+                    
+                    if found_anniversary:
+                        anniversary_list.sort(key=lambda x: x['years'], reverse=True)
+                        for a in anniversary_list:
+                            icon = "🏆" if a['years'] >= 10 else "⭐" if a['years'] >= 5 else "🌱"
+                            highlight = 'style="color:#D4AF37;font-weight:600;"' if a['years'] >= 10 else ''
+                            st.markdown(f'{icon} <span {highlight}>{a["name"]}</span> — {a["years"]} yrs <small style="color:#888;">({a["dept"]})</small>', unsafe_allow_html=True)
+                    else:
+                        st.info("No work anniversaries this month.")
+            except: pass
+        
+        # Today's Celebrations
         st.markdown("---")
-        st.subheader("⭐ Work Anniversaries This Month")
-        try:
-            if not emp_df.empty:
-                today = datetime.now()
-                found_anniversary = False
-                for _, emp in emp_df.iterrows():
-                    join_date = emp.get('join_date')
-                    if join_date and str(join_date) != 'None' and str(join_date) != 'nan':
-                        try:
-                            jd = pd.to_datetime(join_date)
-                            if jd.month == today.month:
-                                years = today.year - jd.year
-                                if years > 0:
-                                    found_anniversary = True
-                                    st.markdown(f"⭐ **{emp['first_name']} {emp['last_name']}** — {years} year{'s' if years > 1 else ''} ({emp.get('department', '')})")
-                        except:
-                            pass
-                if not found_anniversary:
-                    st.info("No work anniversaries this month.")
-        except:
-            pass
+        st.markdown("### 🎉 Today's Celebrations")
+        
+        today_birthdays = [b for b in birthdays_list if b.get('is_today')] if 'birthdays_list' in dir() else []
+        today_anniversaries = [a for a in anniversary_list if a.get('is_today')] if 'anniversary_list' in dir() else []
+        
+        if today_birthdays or today_anniversaries:
+            if today_birthdays:
+                st.markdown(f"""
+                <div style="background:linear-gradient(135deg, #fff5f5, #ffe6e6);padding:1rem;border-radius:12px;border-left:4px solid #CC0000;margin-bottom:0.5rem;">
+                    <strong>🎂 Happy Birthday!</strong> {', '.join([b['name'] for b in today_birthdays])}
+                </div>
+                """, unsafe_allow_html=True)
+            if today_anniversaries:
+                st.markdown(f"""
+                <div style="background:linear-gradient(135deg, #fffef5, #f5f0e0);padding:1rem;border-radius:12px;border-left:4px solid #D4AF37;margin-bottom:0.5rem;">
+                    <strong>⭐ Work Anniversary!</strong> {', '.join([f"{a['name']} ({a['years']} yrs)" for a in today_anniversaries])}
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No celebrations today.")
         
         # Upcoming Holidays
         st.markdown("---")
-        st.subheader("🏖️ Upcoming Holidays")
-        st.markdown("📅 **Democracy Day** — June 12 (18 days)")
-        st.markdown("📅 **Eid al-Adha** — June 17 (23 days)")
+        st.subheader("🏖️ Upcoming Holidays & Events")
+        
+        # Nigerian public holidays 2026
+        holidays = [
+            ("New Year's Day", "2026-01-01"),
+            ("Good Friday", "2026-04-03"),
+            ("Easter Monday", "2026-04-06"),
+            ("Workers' Day", "2026-05-01"),
+            ("Democracy Day", "2026-06-12"),
+            ("Eid al-Adha", "2026-06-17"),
+            ("Eid al-Fitr", "2026-03-20"),
+            ("Independence Day", "2026-10-01"),
+            ("Christmas Day", "2026-12-25"),
+            ("Boxing Day", "2026-12-26"),
+        ]
+        
+        # Find upcoming holidays (next 90 days)
+        upcoming = []
+        for name, date_str in holidays:
+            h_date = datetime.strptime(date_str, '%Y-%m-%d')
+            days_away = (h_date - today).days
+            if 0 <= days_away <= 90:
+                upcoming.append((name, h_date, days_away))
+        
+        # Sort by closest date
+        upcoming.sort(key=lambda x: x[1])
+        
+        if upcoming:
+            # Next holiday - prominent display
+            next_holiday = upcoming[0]
+            days = next_holiday[2]
+            day_str = "Today! 🎉" if days == 0 else f"{days} day{'s' if days > 1 else ''}"
+            
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg, #f0f8ff, #e6f2ff);padding:1rem;border-radius:12px;border-left:4px solid #3182ce;margin-bottom:0.8rem;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:2rem;">📅</span>
+                    <div>
+                        <strong style="color:#3182ce;">Next Holiday</strong><br>
+                        <span style="font-size:1.1rem;">{next_holiday[0]}</span>
+                        <br><small style="color:#888;">{next_holiday[1].strftime('%B %d, %Y')} — {day_str} away</small>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Other upcoming holidays
+            if len(upcoming) > 1:
+                with st.expander(f"📋 {len(upcoming)-1} more upcoming", expanded=False):
+                    for name, h_date, days in upcoming[1:]:
+                        emoji = "🎄" if "Christmas" in name else "🕌" if "Eid" in name else "🇳🇬" if "Independence" in name or "Democracy" in name else "✝️" if "Easter" in name or "Good Friday" in name else "🎉" if "New Year" in name else "👷" if "Workers" in name else "📅"
+                        st.markdown(f"{emoji} **{name}** — {h_date.strftime('%B %d')} ({days} days)")
+        else:
+            st.info("No upcoming holidays in the next 90 days.")
+        
+        # Company events (can be customized)
+        st.markdown("---")
+        st.subheader("🏢 Company Events")
+        company_events = [
+            ("Monthly Town Hall", "Last Friday of every month", "📢"),
+            ("Quarterly Business Review", "First week of April, July, October, January", "📊"),
+            ("Annual General Meeting", "December 2026", "🏛️"),
+            ("Team Building Day", "Quarterly", "🤝"),
+        ]
+        
+        for event, date_info, emoji in company_events:
+            st.markdown(f"{emoji} **{event}** — *{date_info}*")
         
         # Wellness Tip
         st.markdown("---")
