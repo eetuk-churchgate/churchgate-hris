@@ -1237,7 +1237,9 @@ def employee_dashboard():
             
             if not perf_data.empty:
                 pillar_order = get_pillars()
-                perf_data['sort_order'] = perf_data['pillar_name'].apply(lambda x: pillar_order.index(x) if x in pillar_order else 99)
+                perf_data['sort_order'] = perf_data['pillar_name'].apply(
+                    lambda x: int(x.split('.')[0]) if x and x[0].isdigit() else 99
+                )
                 perf_data = perf_data.sort_values('sort_order')
                 for _, row in perf_data.iterrows():
                     progress = row.get('progress', 0)
