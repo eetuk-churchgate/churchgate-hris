@@ -1204,9 +1204,14 @@ def employee_dashboard():
         # KPI Progress
         st.subheader("🎯 My KPI Progress")
         try:
-            perf_data = db.get_performance_data(user_name)
+            import requests as _req
+            _url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+            _key = os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+            _headers = {"apikey": _key, "Authorization": f"Bearer {_key}"}
+            _r = _req.get(f"{_url}/rest/v1/performance_data?user_name=eq.{user_name}&select=*", headers=_headers)
+            perf_data = pd.DataFrame(_r.json()) if _r.status_code == 200 else pd.DataFrame()
+            
             if not perf_data.empty:
-                # Sort by pillar order 1-2-3-4
                 pillar_order = get_pillars()
                 perf_data['sort_order'] = perf_data['pillar_name'].apply(lambda x: pillar_order.index(x) if x in pillar_order else 99)
                 perf_data = perf_data.sort_values('sort_order')
