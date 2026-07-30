@@ -25,6 +25,30 @@ import calendar
 sys.path.append(str(Path(__file__).parent))
 
 # =============================================
+# DYNAMIC PILLARS BASED ON FINANCIAL YEAR
+# =============================================
+def get_pillars():
+    """Return pillars based on selected financial year"""
+    try:
+        if st.session_state.get('appraisal_fy') == 'FY 25/26':
+            return [
+                '1. Brand Visibility',
+                '2. New Business Development',
+                '3. Customer Centricity',
+                '4. Invest in Our People',
+                '5. Financial Performance',
+                '6. Behavioral & Collaborations'
+            ]
+    except:
+        pass
+    return [
+        '1. Occupancy & Revenue Growth',
+        '2. Process Simplification',
+        '3. Asset Reliability & Digitalization',
+        '4. People & Culture'
+    ]
+
+# =============================================
 # FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
 # =============================================
 class HuggingFaceSecrets:
