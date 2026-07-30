@@ -2169,16 +2169,19 @@ def employee_management():
         with c3: st.metric("🏢 Departments", len(employees_df['department'].unique()) if not employees_df.empty else 0)
         with c4: st.metric("🆕 New This Month", new_this_month)
         
-        st.markdown("---")
-        st.markdown("### 🎂 Birthdays & Anniversaries This Month")
+       st.markdown("---")
         
-        current_month = datetime.now().month
+        # Get today's date
+        today = datetime.now()
+        current_day = today.day
+        current_month = today.month
+        
+        # Collect real data from database
         birthdays_this_month = []
         anniversaries_this_month = []
         
         if not employees_df.empty:
             for _, emp in employees_df.iterrows():
-                # Check birthdays
                 dob = emp.get('date_of_birth', '')
                 if dob and pd.notna(dob):
                     try:
@@ -2193,7 +2196,6 @@ def employee_management():
                     except:
                         pass
                 
-                # Check work anniversaries
                 join_date = emp.get('join_date', '')
                 if join_date and pd.notna(join_date):
                     try:
@@ -2209,20 +2211,63 @@ def employee_management():
                     except:
                         pass
         
-        bday_col1, bday_col2 = st.columns(2)
-        with bday_col1:
-            if birthdays_this_month:
-                bday_list = ', '.join([f"{name} ({day})" for name, day in sorted(birthdays_this_month, key=lambda x: x[1])])
-                st.markdown(f"**🎂 Birthdays:** {bday_list}")
-            else:
-                st.markdown("**🎂 Birthdays:** None this month")
+        # Today's birthdays
+        todays_birthdays = [name for name, day in birthdays_this_month if day == current_day]
+        if todays_birthdays:
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg, #fff5f5, #ffe6e6);padding:1rem;border-radius:12px;border-left:4px solid #CC0000;margin-bottom:0.5rem;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:2rem;">🎂</span>
+                    <div>
+                        <strong style="color:#CC0000;">Happy Birthday Today!</strong><br>
+                        <span>{', '.join(todays_birthdays)}</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
-        with bday_col2:
-            if anniversaries_this_month:
-                anniv_list = ', '.join([f"{name} ({yrs} yrs)" for name, yrs in sorted(anniversaries_this_month, key=lambda x: x[1], reverse=True)])
-                st.markdown(f"**⭐ Anniversaries:** {anniv_list}")
-            else:
-                st.markdown("**⭐ Anniversaries:** None this month")
+        # This Month's Celebrations
+        with st.expander(f"🎉 This Month's Celebrations ({today.strftime('%B')})", expanded=False):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("### 🎂 Birthdays")
+                if birthdays_this_month:
+                    birthdays_by_week = {}
+                    for name, day in sorted(birthdays_this_month, key=lambda x: x[1]):
+                        if day <= 7: week = "Week 1 (1-7)"
+                        elif day <= 14: week = "Week 2 (8-14)"
+                        elif day <= 21: week = "Week 3 (15-21)"
+                        else: week = "Week 4 (22-31)"
+                        if week not in birthdays_by_week: birthdays_by_week[week] = []
+                        is_today = " 🎈 TODAY!" if day == current_day else ""
+                        birthdays_by_week[week].append(f"{name} ({day}{is_today})")
+                    
+                    for week, names in birthdays_by_week.items():
+                        st.markdown(f"**{week}**")
+                        for n in names:
+                            st.markdown(f"• {n}")
+                else:
+                    st.markdown("None this month")
+            
+            with col2:
+                st.markdown("### ⭐ Work Anniversaries")
+                if anniversaries_this_month:
+                    anniv_by_years = {}
+                    for name, years in sorted(anniversaries_this_month, key=lambda x: x[1], reverse=True):
+                        if years >= 20: milestone = "🏆 20+ Years"
+                        elif years >= 10: milestone = "🌟 10-19 Years"
+                        elif years >= 5: milestone = "👔 5-9 Years"
+                        else: milestone = "🌱 1-4 Years"
+                        if milestone not in anniv_by_years: anniv_by_years[milestone] = []
+                        anniv_by_years[milestone].append(f"{name} ({years} yrs)")
+                    
+                    for milestone, names in anniv_by_years.items():
+                        st.markdown(f"**{milestone}**")
+                        for n in names:
+                            st.markdown(f"• {n}")
+                else:
+                    st.markdown("None this month")
         
         st.markdown("---")
         
