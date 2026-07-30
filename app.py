@@ -2772,13 +2772,117 @@ def employee_management():
     # ============ TAB 5: DEPARTMENTS ============
     with tab5:
         st.subheader("🏢 Department Analytics")
+        
         if not employees_df.empty:
+            # Department filter
+            all_depts_list = sorted(employees_df['department'].dropna().unique())
+            
+            # Key metrics
+            total_depts = len(all_depts_list)
+            total_emps = len(employees_df)
+            avg_dept_size = int(total_emps / total_depts) if total_depts > 0 else 0
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("🏢 Departments", total_depts)
+            c2.metric("👥 Total Staff", total_emps)
+            c3.metric("📊 Avg Dept Size", avg_dept_size)
+            c4.metric("🌍 Regions", len(employees_df['region'].dropna().unique()) if 'region' in employees_df.columns else 3)
+            
+            st.markdown("---")
+            
+            # Department cards with details
+            st.subheader("📋 Department Breakdown")
+            
             dept_counts = employees_df['department'].value_counts()
-            c1, c2 = st.columns(2)
-            for i, (dept, count) in enumerate(dept_counts.items()):
+            
+            for dept, count in dept_counts.items():
                 color = dept_colors.get(dept, '#CC0000')
-                with (c1 if i % 2 == 0 else c2):
-                    st.markdown(f"""<div style="background:white;padding:1.2rem;border-radius:10px;margin-bottom:0.8rem;border-left:4px solid {color};box-shadow:0 2px 8px rgba(0,0,0,0.05);"><strong>{dept}</strong><span style="float:right;font-size:1.5rem;font-weight:700;color:{color};">{count}</span><br><small style="color:#888;">staff members</small></div>""", unsafe_allow_html=True)
+                
+                # Get department details
+                dept_emps = employees_df[employees_df['department'] == dept]
+                active = len(dept_emps[dept_emps['status'] == 'Active']) if 'status' in dept_emps.columns else count
+                managers = len(dept_emps[dept_emps['grade'].isin(['Manager', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level'])]) if 'grade' in dept_emps.columns else 0
+                
+                # Get region distribution
+                regions_in_dept = dept_emps['region'].value_counts().to_dict() if 'region' in dept_emps.columns else {}
+                region_str = ' | '.join([f"{r}: {c}" for r, c in regions_in_dept.items()])
+                
+                with st.expander(f"🏢 {dept} — {count} staff | {active} active | {managers} managers", expanded=False):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"""
+                        <div style="background:white;padding:1rem;border-radius:8px;border-left:4px solid {color};margin-bottom:0.5rem;">
+                            <strong>Department Details</strong><br>
+                            <small>👥 Total: {count} | ✅ Active: {active}</small><br>
+                            <small>👔 Managers: {managers}</small><br>
+                            <small>🌍 Regions: {region_str if region_str else 'N/A'}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with col2:
+                        # Grade distribution chart
+                        if 'grade' in dept_emps.columns:
+                            grade_counts = dept_emps['grade'].value_counts()
+                            if not grade_counts.empty:
+                                fig = px.pie(values=grade_counts.values, names=grade_counts.index, 
+                                           hole=0.6, title="Grade Distribution",
+                                           color_discrete_sequence=[color, '#d69e2e', '#3182ce', '#38a169', '#888'])
+                                fig.update_layout(height=200, margin=dict(t=30, b=0, l=0, r=0), showlegend=False)
+                                st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Staff list
+                    st.markdown("**👥 Team Members:**")
+                    staff_list = dept_emps[['first_name', 'last_name', 'position', 'grade']].dropna()
+                    if not staff_list.empty:
+                        for _, emp in staff_list.iterrows():
+                            st.markdown(f"• **{emp['first_name']} {emp['last_name']}** — {emp.get('position', 'N/A')} ({emp.get('grade', 'N/A')})")
+            
+            # Region distribution chart
+            st.markdown("---")
+            st.subheader("🌍 Department Distribution by Region")
+            
+            if 'region' in employees_df.columns:
+                region_dept = employees_df.groupby(['region', 'department']).size().unstack(fill_value=0)
+                if not region_dept.empty:
+                    fig2 = px.bar(region_dept, barmode='stack', 
+                                 color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169', '#dd6b20', '#805ad5', '#2b6cb0', '#718096', '#e53e3e', '#319795', '#d53f8c', '#FFD700'])
+                    fig2.update_layout(height=400, title="Staff Count by Region & Department")
+                    st.plotly_chart(fig2, use_container_width=True)
+            
+            # Department size comparison
+            st.markdown("---")
+            st.subheader("📊 Department Size Comparison")
+            
+            dept_df = pd.DataFrame({'Department': dept_counts.index, 'Staff': dept_counts.values})
+            fig3 = px.bar(dept_df, x='Department', y='Staff', color='Staff', 
+                         color_continuous_scale=['#3182ce', '#d69e2e', '#CC0000'],
+                         text='Staff')
+            fig3.update_traces(textposition='outside')
+            fig3.update_layout(height=400)
+            st.plotly_chart(fig3, use_container_width=True)
+            
+            # Gender distribution by department
+            st.markdown("---")
+            st.subheader("👥 Gender Distribution by Department")
+            
+            if 'gender' in employees_df.columns:
+                gender_dept = employees_df.groupby(['department', 'gender']).size().unstack(fill_value=0)
+                if not gender_dept.empty:
+                    fig4 = px.bar(gender_dept, barmode='group',
+                                 color_discrete_sequence=['#3182ce', '#CC0000'])
+                    fig4.update_layout(height=400, title="Male/Female Distribution per Department")
+                    st.plotly_chart(fig4, use_container_width=True)
+            
+            # Export
+            st.markdown("---")
+            dept_export = pd.DataFrame({
+                'Department': dept_counts.index,
+                'Total Staff': dept_counts.values,
+                'Active': [len(employees_df[(employees_df['department'] == d) & (employees_df['status'] == 'Active')]) for d in dept_counts.index] if 'status' in employees_df.columns else dept_counts.values
+            })
+            st.download_button("📥 Download Department Report", dept_export.to_csv(index=False), "department_report.csv", "text/csv")
+        else:
+            st.info("No employee data available.")
     
     # ============ TAB 6: ORG CHART ============
     with tab6:
