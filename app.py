@@ -14670,15 +14670,10 @@ def requests_hub():
             st.info(f"🎯 No leave records for {cal_module.month_name[cal_month_num]} {cal_year}.")
     
     # ============================================================
-    # TAB 6: ATTENDANCE - COMPLETE FIXED
+    # TAB 6: ATTENDANCE
     # ============================================================
     with tab6:
         st.subheader("⏰ Attendance Tracking")
-        
-        # Get current user info
-        current_user_id = str(st.session_state.user.get('employee_id', ''))
-        current_user_name = st.session_state.user.get('name', user_name)
-        current_first_name = current_user_name.split()[0] if ' ' in current_user_name else current_user_name
         
         att_tabs = st.tabs(["📝 Manual Entry", "📊 My Attendance", "🔌 Biometric Sync"])
         
@@ -14698,17 +14693,15 @@ def requests_hub():
                 if st.form_submit_button("📝 Record Attendance", use_container_width=True):
                     if in_time and out_time:
                         try:
-                            in_dt = datetime.strptime(in_time.replace('AM','').replace('PM','').strip(), '%H:%M') if ':' in in_time else datetime.now()
-                            out_dt = datetime.strptime(out_time.replace('AM','').replace('PM','').strip(), '%H:%M') if ':' in out_time else datetime.now()
+                            in_dt = datetime.strptime(in_time, '%H:%M') if ':' in in_time else datetime.strptime(in_time, '%I:%M %p')
+                            out_dt = datetime.strptime(out_time, '%H:%M') if ':' in out_time else datetime.strptime(out_time, '%I:%M %p')
                             work_hours = round((out_dt - in_dt).total_seconds() / 3600, 2)
-                            if work_hours < 0:
-                                work_hours = work_hours + 24
                         except:
                             work_hours = 0
                         
                         db._post("attendance", {
-                            "employee_id": current_user_id,
-                            "employee_name": current_user_name,
+                            "employee_id": user_id,
+                            "employee_name": user_name,
                             "sync_date": att_date.strftime('%Y-%m-%d'),
                             "in_time": in_time,
                             "out_time": out_time,
@@ -14727,67 +14720,54 @@ def requests_hub():
             st.markdown("### 📊 My Attendance Records")
             
             try:
-                att_data = db._get("attendance")
+                import requests as req_att
+                supabase_url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+                supabase_key = os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+                headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+                
+                thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+                url = f"{supabase_url}/rest/v1/attendance?select=*&sync_date=gte.{thirty_days_ago}&order=sync_date.desc&limit=1000"
+                r = req_att.get(url, headers=headers)
+                att_data = r.json() if r.status_code == 200 else []
+                
                 if att_data:
-                    # Match by employee_id first (most reliable), then by name
                     filtered = []
                     for a in att_data:
-                        a_id = str(a.get('employee_id', '')).strip()
-                        a_name = str(a.get('employee_name', '')).lower().strip()
-                        
-                        # Direct employee_id match
-                        if current_user_id and a_id == current_user_id:
+                        a_id = str(a.get('employee_id', '')).replace(' ', '').replace('-', '')
+                        u_id = user_id.replace(' ', '').replace('-', '') if user_id else ''
+                        if a_id == u_id:
                             filtered.append(a)
-                            continue
-                        
-                        # Match by full name
-                        if current_user_name.lower() in a_name or a_name == current_user_name.lower():
-                            filtered.append(a)
-                            continue
-                        
-                        # Match by first name
-                        if current_first_name.lower() in a_name:
-                            filtered.append(a)
-                            continue
                     
-                    # Remove duplicates
-                    seen = set()
-                    unique_filtered = []
-                    for a in filtered:
-                        key = f"{a.get('sync_date','')}_{a.get('in_time','')}_{a.get('employee_id','')}"
-                        if key not in seen:
-                            seen.add(key)
-                            unique_filtered.append(a)
-                    
-                    if unique_filtered:
+                    if filtered:
                         att_df = pd.DataFrame([{
+                            'Date': a.get('sync_date', ''),
                             'Employee': a.get('employee_name', ''),
                             'ID': a.get('employee_id', ''),
-                            'Date': a.get('sync_date', ''),
                             'In': a.get('in_time', ''),
                             'Out': a.get('out_time', ''),
                             'Hours': a.get('work_hours', 0),
-                            'Source': a.get('source', 'Manual'),
-                            'Status': a.get('status', 'Present'),
-                            'GPS In': a.get('gps_in', ''),
-                            'GPS Out': a.get('gps_out', '')
-                        } for a in unique_filtered[-30:]])
+                            'GPS In': a.get('gps_in_time', ''),
+                            'GPS Out': a.get('gps_out_time', ''),
+                            'GPS Hours': a.get('gps_hours', 0),
+                            'Map': f"https://maps.google.com/?q={a.get('gps_in', '')}" if a.get('gps_in') else '',
+                            'Source': a.get('source', ''),
+                            'Status': a.get('status', '')
+                        } for a in filtered[-30:]])
                         
                         st.dataframe(att_df, use_container_width=True, hide_index=True)
                         
-                        total_hours = sum(float(a.get('work_hours', 0) or 0) for a in unique_filtered[-30:])
-                        days_present = len(set(a.get('sync_date', '') for a in unique_filtered[-30:]))
-                        
+                        total_hours = sum(float(a.get('work_hours', 0) or 0) for a in filtered[-30:])
+                        days_present = len(set(a.get('sync_date', '') for a in filtered[-30:]))
                         c1, c2, c3 = st.columns(3)
                         c1.metric("📊 Hours This Month", f"{total_hours:.1f}")
                         c2.metric("📅 Days Present", days_present)
-                        c3.metric("📋 Total Records", len(unique_filtered))
+                        c3.metric("📋 Total Records", len(filtered))
                     else:
-                        st.info(f"No attendance records found for {current_user_name}. Records are matched by your name. If you have records under a different name, contact HR.")
+                        st.info(f"No attendance records found for your ID ({user_id}).")
                 else:
-                    st.info("No attendance records yet.")
+                    st.info("No attendance data available.")
             except Exception as e:
-                st.info(f"Attendance data loading...")
+                st.error(f"Error: {str(e)}")
         
         # ----- Admin Attendance Dashboard -----
         if is_admin or user_role in ['HR Director']:
@@ -14795,62 +14775,63 @@ def requests_hub():
             st.markdown("### 👥 All Employee Attendance (Admin/HR)")
             
             try:
-                all_att = db._get("attendance")
-                if all_att:
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        att_region = st.selectbox("Region", ["All", "Abuja", "Lagos", "Aba"], key="att_region")
-                    with col2:
-                        att_date_filter = st.date_input("Date", value=datetime.now(), key="att_date")
-                    with col3:
-                        att_source = st.selectbox("Source", ["All", "Biometric", "Device 3", "Manual"], key="att_source")
-                    with col4:
-                        att_status = st.selectbox("Status", ["All", "Present", "Late", "Absent"], key="att_status")
+                import requests as req_att
+                supabase_url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+                supabase_key = os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+                headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    att_date_filter = st.date_input("Date", value=datetime.now(), key="att_date")
+                with col2:
+                    att_source = st.selectbox("Source", ["All", "Biometric", "Manual"], key="att_source")
+                with col3:
+                    att_status = st.selectbox("Status", ["All", "Present", "Absent"], key="att_status")
+                
+                date_str = att_date_filter.strftime('%Y-%m-%d')
+                url = f"{supabase_url}/rest/v1/attendance?select=*&sync_date=eq.{date_str}&order=in_time.asc&limit=2000"
+                r = req_att.get(url, headers=headers)
+                display_att = r.json() if r.status_code == 200 else []
+                
+                if att_source != "All":
+                    display_att = [a for a in display_att if att_source.lower() in str(a.get('source', '')).lower()]
+                if att_status != "All":
+                    display_att = [a for a in display_att if a.get('status', 'Present') == att_status]
+                
+                if display_att:
+                    st.markdown(f"**{len(display_att)} records for {date_str}**")
                     
-                    display_att = all_att
-                    if att_source != "All":
-                        display_att = [a for a in display_att if a.get('source') == att_source]
+                    df_all = pd.DataFrame([{
+                        'Date': a.get('sync_date', ''),
+                        'Employee': a.get('employee_name', ''),
+                        'ID': a.get('employee_id', ''),
+                        'In': a.get('in_time', ''),
+                        'Out': a.get('out_time', ''),
+                        'Hours': a.get('work_hours', 0),
+                        'GPS In': a.get('gps_in_time', ''),
+                        'GPS Out': a.get('gps_out_time', ''),
+                        'GPS Hours': a.get('gps_hours', 0),
+                        'Map': f"https://maps.google.com/?q={a.get('gps_in', '')}" if a.get('gps_in') else '',
+                        'Source': a.get('source', ''),
+                        'Status': a.get('status', '')
+                    } for a in display_att])
                     
-                    date_str = att_date_filter.strftime('%Y-%m-%d')
-                    display_att = [a for a in display_att if a.get('sync_date') == date_str]
+                    st.dataframe(df_all, use_container_width=True, hide_index=True)
                     
-                    if att_status != "All":
-                        display_att = [a for a in display_att if a.get('status', 'Present') == att_status]
+                    present_count = len(df_all)
+                    on_time = len(df_all[df_all['In'].notna()])
                     
-                    if display_att:
-                        st.markdown(f"**{len(display_att)} records for {date_str}**")
-                        
-                        df_all = pd.DataFrame([{
-                            'Employee': a.get('employee_name', ''),
-                            'ID': a.get('employee_id', ''),
-                            'Date': a.get('sync_date', ''),
-                            'In': a.get('in_time', ''),
-                            'Out': a.get('out_time', ''),
-                            'Hours': a.get('work_hours', 0),
-                            'Source': a.get('source', 'Manual'),
-                            'Status': a.get('status', 'Present'),
-                            'GPS In': a.get('gps_in', ''),
-                            'GPS Out': a.get('gps_out', '')
-                        } for a in display_att])
-                        
-                        st.dataframe(df_all, use_container_width=True, hide_index=True)
-                        
-                        present = len(df_all)
-                        on_time = len(df_all[df_all['In'].notna()])
-                        
-                        c1, c2, c3, c4 = st.columns(4)
-                        c1.metric("👥 Present Today", present)
-                        c2.metric("✅ Clocked In", on_time)
-                        c3.metric("📊 Avg Hours", f"{df_all['Hours'].mean():.1f}" if len(df_all) > 0 and df_all['Hours'].sum() > 0 else "N/A")
-                        c4.metric("📡 Biometric", len(df_all[df_all['Source'] != 'Manual']))
-                        
-                        st.download_button("📥 Download Attendance CSV", df_all.to_csv(index=False), f"attendance_{date_str}.csv", "text/csv")
-                    else:
-                        st.info(f"No records for {date_str}")
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("👥 Present Today", present_count)
+                    c2.metric("✅ Clocked In", on_time)
+                    c3.metric("📊 Avg Hours", f"{df_all['Hours'].mean():.1f}" if df_all['Hours'].sum() > 0 else "N/A")
+                    c4.metric("📡 Biometric", len(df_all[~df_all['Source'].str.contains('Manual', na=False)]))
+                    
+                    st.download_button("📥 Download CSV", df_all.to_csv(index=False), f"attendance_{date_str}.csv", "text/csv")
                 else:
-                    st.info("No attendance data available.")
+                    st.info(f"No records for {date_str}")
             except Exception as e:
-                st.info("Attendance dashboard loading...")
+                st.error(f"Error: {str(e)}")
         
         # ----- Biometric Sync -----
         with att_tabs[2]:
@@ -14866,6 +14847,7 @@ def requests_hub():
                     "192.168.100.243 (Device 3)"
                 ])
                 device_ip_clean = device_ip.split(" ")[0] if device_ip else "192.168.100.240"
+                device_name = device_ip.split("(", 1)[1].replace(")", "") if "(" in device_ip else "Main Entrance"
                 device_port = st.text_input("Port", value="4370")
             with col2:
                 device_type = st.selectbox("Device Type", ["ZKTeco", "Suprema", "HID", "Other"])
@@ -14900,63 +14882,13 @@ def requests_hub():
             with c3:
                 if st.button("📊 View Synced Records", use_container_width=True):
                     try:
-                        synced = db._get("attendance")
+                        synced = db._get("attendance", {"source": "Biometric"})
                         if synced:
-                            biometric = [s for s in synced if s.get('source') in ['Biometric', 'Device 3']]
-                            st.markdown(f"**{len(biometric)} biometric records**")
-                            if biometric:
-                                df = pd.DataFrame([{
-                                    'Date': s.get('sync_date', ''),
-                                    'Employee': s.get('employee_name', ''),
-                                    'ID': s.get('employee_id', ''),
-                                    'In': s.get('in_time', ''),
-                                    'Out': s.get('out_time', ''),
-                                    'GPS': s.get('gps_in', '') or s.get('gps_out', '')
-                                } for s in biometric[-20:]])
-                                st.dataframe(df, use_container_width=True, hide_index=True)
+                            st.dataframe(pd.DataFrame(synced[-20:]), use_container_width=True, hide_index=True)
                         else:
-                            st.info("No records yet.")
+                            st.info("No synced records yet.")
                     except:
                         st.info("No records found.")
-            
-            st.markdown("---")
-            st.markdown("### 📋 Employee Biometric Mapping")
-            st.info("Map biometric device user IDs to employee names")
-            
-            try:
-                all_emp = db.get_all_employees()
-                if not all_emp.empty:
-                    mapping_data = []
-                    for _, emp in all_emp.iterrows():
-                        mapping_data.append({
-                            'Employee': f"{emp['first_name']} {emp['last_name']}",
-                            'HRIS ID': emp.get('employee_id', ''),
-                            'Biometric ID': emp.get('biometric_id', 'Not Mapped'),
-                            'Department': emp.get('department', '')
-                        })
-                    
-                    if mapping_data:
-                        df_map = pd.DataFrame(mapping_data)
-                        st.dataframe(df_map, use_container_width=True, hide_index=True)
-                        
-                        st.markdown("---")
-                        st.markdown("### 🔧 Update Biometric ID Mapping")
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            map_emp = st.selectbox("Select Employee", [f"{e['Employee']} ({e['HRIS ID']})" for e in mapping_data])
-                        with col2:
-                            map_bio_id = st.text_input("Biometric Device User ID")
-                        
-                        if st.button("💾 Save Mapping", use_container_width=True):
-                            emp_id = map_emp.split('(')[-1].replace(')', '')
-                            try:
-                                db._patch("employees", {"biometric_id": map_bio_id}, {"employee_id": emp_id})
-                                st.success("✅ Mapping saved!")
-                                st.rerun()
-                            except:
-                                st.error("Run: ALTER TABLE employees ADD COLUMN biometric_id TEXT;")
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
 
 
 # ============================================================
