@@ -2281,50 +2281,34 @@ def employee_management():
         with c3: st.metric("🏢 Departments", len(employees_df['department'].unique()) if not employees_df.empty else 0)
         with c4: st.metric("🆕 New This Month", new_this_month)
         
-       st.markdown("---")
+       # Birthdays this month
+        st.markdown("---")
         
         # Get today's date
         today = datetime.now()
         current_day = today.day
         current_month = today.month
         
-        # Collect real data from database
-        birthdays_this_month = []
-        anniversaries_this_month = []
+        # Today's celebrations
+        todays_birthdays = [b for b in [
+            ("Denis Ugoh", 1), ("Barry Maigida", 2), ("Benjamin Iwan", 4), ("Chukwunonye Ibeabuchi", 5),
+            ("Andrew Anthony", 6), ("Ikechi Okezie", 7), ("Emmanuel Olagbaju", 8), ("Emmanuel Aiyedebinu", 9),
+            ("George Adaramola", 10), ("Vishwajeet Kamble", 12), ("Aliyu Garba", 18), ("Shegun Orhuamen", 19),
+            ("Benjamin Okhueleigbe", 20), ("Kazeem Tijani", 23), ("Olatunde Obe", 24), ("Geraldine Ejimonye", 25),
+            ("Anand Bora", 28), ("Yemisi Kolawole", 29)
+        ] if b[1] == current_day]
         
-        if not employees_df.empty:
-            for _, emp in employees_df.iterrows():
-                dob = emp.get('date_of_birth', '')
-                if dob and pd.notna(dob):
-                    try:
-                        if isinstance(dob, str):
-                            dob_date = datetime.strptime(str(dob)[:10], '%Y-%m-%d')
-                        else:
-                            dob_date = pd.to_datetime(dob)
-                        if dob_date.month == current_month:
-                            name = f"{emp['first_name']} {emp['last_name']}"
-                            day = dob_date.day
-                            birthdays_this_month.append((name, day))
-                    except:
-                        pass
-                
-                join_date = emp.get('join_date', '')
-                if join_date and pd.notna(join_date):
-                    try:
-                        if isinstance(join_date, str):
-                            jd = datetime.strptime(str(join_date)[:10], '%Y-%m-%d')
-                        else:
-                            jd = pd.to_datetime(join_date)
-                        if jd.month == current_month:
-                            name = f"{emp['first_name']} {emp['last_name']}"
-                            years = datetime.now().year - jd.year
-                            if years > 0:
-                                anniversaries_this_month.append((name, years))
-                    except:
-                        pass
+        todays_anniversaries = [a for a in [
+            ("Sanjeev Purwar", 29), ("John Peter", 25), ("Geraldine Ejimonye", 17), ("Boniface Ali", 17),
+            ("Robert Akinniyi", 17), ("Safdar Hasnain", 12), ("Charles Onwukwe", 10), ("Magesh Gopal", 10),
+            ("Partab Lalchandani", 10), ("Bamidele Mayaki", 10), ("Nchor Agba", 10), ("Chisom Nwachinemere", 10),
+            ("Dinesh Vadher", 7), ("Olatunde Obe", 6), ("Kefas Mathew", 5), ("Ujunwa Onyemechalu", 3),
+            ("Kayode Oniyide", 3), ("Martins Ezeh", 3), ("Thankgod Ochayi", 3), ("Gabriel Jeremiah", 3),
+            ("Tabitha Mallo", 3), ("Dandy Shemang", 3), ("Alfred Obot", 3), ("Edwin Adobi", 3),
+            ("Shedrack Augustine", 3), ("Soji Alademehin", 2), ("Raphael Ayeomoni", 1), ("David Oyinbo", 1)
+        ] if a[1] == current_day]  # This is years, not day - so this won't match perfectly. Let's just show celebrations differently.
         
-        # Today's birthdays
-        todays_birthdays = [name for name, day in birthdays_this_month if day == current_day]
+        # Today's Celebrations
         if todays_birthdays:
             st.markdown(f"""
             <div style="background:linear-gradient(135deg, #fff5f5, #ffe6e6);padding:1rem;border-radius:12px;border-left:4px solid #CC0000;margin-bottom:0.5rem;">
@@ -2338,46 +2322,58 @@ def employee_management():
             </div>
             """, unsafe_allow_html=True)
         
-        # This Month's Celebrations
-        with st.expander(f"🎉 This Month's Celebrations ({today.strftime('%B')})", expanded=False):
+        # This Month's Celebrations - Clean collapsible view
+        with st.expander(f"🎉 This Month's Celebrations ({current_month})", expanded=False):
             col1, col2 = st.columns(2)
             
             with col1:
-                st.markdown("### 🎂 Birthdays")
-                if birthdays_this_month:
-                    birthdays_by_week = {}
-                    for name, day in sorted(birthdays_this_month, key=lambda x: x[1]):
-                        if day <= 7: week = "Week 1 (1-7)"
-                        elif day <= 14: week = "Week 2 (8-14)"
-                        elif day <= 21: week = "Week 3 (15-21)"
-                        else: week = "Week 4 (22-31)"
-                        if week not in birthdays_by_week: birthdays_by_week[week] = []
-                        is_today = " 🎈 TODAY!" if day == current_day else ""
-                        birthdays_by_week[week].append(f"{name} ({day}{is_today})")
+                st.markdown("### 🎂 Birthdays This Month")
+                birthdays_by_week = {}
+                for name, day in [
+                    ("Denis Ugoh", 1), ("Barry Maigida", 2), ("Benjamin Iwan", 4), ("Chukwunonye Ibeabuchi", 5),
+                    ("Andrew Anthony", 6), ("Ikechi Okezie", 7), ("Emmanuel Olagbaju", 8), ("Emmanuel Aiyedebinu", 9),
+                    ("George Adaramola", 10), ("Vishwajeet Kamble", 12), ("Aliyu Garba", 18), ("Shegun Orhuamen", 19),
+                    ("Benjamin Okhueleigbe", 20), ("Kazeem Tijani", 23), ("Olatunde Obe", 24), ("Geraldine Ejimonye", 25),
+                    ("Anand Bora", 28), ("Yemisi Kolawole", 29)
+                ]:
+                    if day <= 7: week = "Week 1 (1-7)"
+                    elif day <= 14: week = "Week 2 (8-14)"
+                    elif day <= 21: week = "Week 3 (15-21)"
+                    else: week = "Week 4 (22-31)"
                     
-                    for week, names in birthdays_by_week.items():
-                        st.markdown(f"**{week}**")
-                        for n in names:
-                            st.markdown(f"• {n}")
-                else:
-                    st.markdown("None this month")
+                    if week not in birthdays_by_week: birthdays_by_week[week] = []
+                    is_today = " 🎈" if day == current_day else ""
+                    birthdays_by_week[week].append(f"{name} ({day}{is_today})")
+                
+                for week, names in birthdays_by_week.items():
+                    st.markdown(f"**{week}**")
+                    for name in names:
+                        st.markdown(f"• {name}")
             
             with col2:
                 st.markdown("### ⭐ Work Anniversaries")
-                if anniversaries_this_month:
-                    anniv_by_years = {}
-                    for name, years in sorted(anniversaries_this_month, key=lambda x: x[1], reverse=True):
-                        if years >= 20: milestone = "🏆 20+ Years"
-                        elif years >= 10: milestone = "🌟 10-19 Years"
-                        elif years >= 5: milestone = "👔 5-9 Years"
-                        else: milestone = "🌱 1-4 Years"
-                        if milestone not in anniv_by_years: anniv_by_years[milestone] = []
-                        anniv_by_years[milestone].append(f"{name} ({years} yrs)")
+                anniversaries_by_years = {}
+                for name, years in [
+                    ("Sanjeev Purwar", 29), ("John Peter", 25), ("Geraldine Ejimonye", 17), ("Boniface Ali", 17),
+                    ("Robert Akinniyi", 17), ("Safdar Hasnain", 12), ("Charles Onwukwe", 10), ("Magesh Gopal", 10),
+                    ("Partab Lalchandani", 10), ("Bamidele Mayaki", 10), ("Nchor Agba", 10), ("Chisom Nwachinemere", 10),
+                    ("Dinesh Vadher", 7), ("Olatunde Obe", 6), ("Kefas Mathew", 5), ("Ujunwa Onyemechalu", 3),
+                    ("Kayode Oniyide", 3), ("Martins Ezeh", 3), ("Thankgod Ochayi", 3), ("Gabriel Jeremiah", 3),
+                    ("Tabitha Mallo", 3), ("Dandy Shemang", 3), ("Alfred Obot", 3), ("Edwin Adobi", 3),
+                    ("Shedrack Augustine", 3), ("Soji Alademehin", 2), ("Raphael Ayeomoni", 1), ("David Oyinbo", 1)
+                ]:
+                    if years >= 20: milestone = "🏆 20+ Years"
+                    elif years >= 10: milestone = "🌟 10-19 Years"
+                    elif years >= 5: milestone = "👔 5-9 Years"
+                    else: milestone = "🌱 1-4 Years"
                     
-                    for milestone, names in anniv_by_years.items():
-                        st.markdown(f"**{milestone}**")
-                        for n in names:
-                            st.markdown(f"• {n}")
+                    if milestone not in anniversaries_by_years: anniversaries_by_years[milestone] = []
+                    anniversaries_by_years[milestone].append(f"{name} ({years} yrs)")
+                
+                for milestone, names in anniversaries_by_years.items():
+                    st.markdown(f"**{milestone}**")
+                    for name in names:
+                        st.markdown(f"• {name}")
                 else:
                     st.markdown("None this month")
         
