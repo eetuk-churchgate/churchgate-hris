@@ -16219,7 +16219,14 @@ def my_profile():
                     team = emp_df[emp_df['department'] == emp_dept]
                     team_count = len(team)
                     
-                    # Team stats
+                    # Team stats using YOUR EXACT grades
+                    manager_grades = ['manager', 'senior manager', 'hod', 'management', 'senior management/c-level']
+                    senior_grades = ['senior', 'mid-senior']
+                    junior_grades = ['junior', 'intermediate']
+                    
+                    managers = len([t for _, t in team.iterrows() if str(t.get('grade', '')).lower() in manager_grades])
+                    seniors = len([t for _, t in team.iterrows() if str(t.get('grade', '')).lower() in senior_grades])
+                    
                     c1, c2, c3 = st.columns(3)
                     with c1:
                         st.markdown(f"""
@@ -16230,16 +16237,14 @@ def my_profile():
                         </div>
                         """, unsafe_allow_html=True)
                     with c2:
-                        managers = len([t for _, t in team.iterrows() if t.get('grade') in ['Manager', 'Director', 'VP', 'C-Level']])
                         st.markdown(f"""
                         <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #3182ce;">
                             <div style="font-size: 1.5rem;">⭐</div>
                             <div style="font-weight: 700; font-size: 1.3rem;">{managers}</div>
-                            <small style="color: #666;">Managers</small>
+                            <small style="color: #666;">Managers/HODs</small>
                         </div>
                         """, unsafe_allow_html=True)
                     with c3:
-                        seniors = len([t for _, t in team.iterrows() if t.get('grade') == 'Senior'])
                         st.markdown(f"""
                         <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #38a169;">
                             <div style="font-size: 1.5rem;">💼</div>
@@ -16251,24 +16256,29 @@ def my_profile():
                     st.markdown("---")
                     st.markdown("#### Team Members")
                     
-                    # Team member cards in grid
+                    # Team member cards
                     cols = st.columns(2)
                     col_idx = 0
                     for _, teammate in team.head(12).iterrows():
                         if teammate.get('employee_id') != user_id:
                             initials_t = generate_initials(f"{teammate['first_name']} {teammate['last_name']}")
                             position = teammate.get('position', 'Staff')
-                            grade = teammate.get('grade', '')
+                            grade = str(teammate.get('grade', '')).lower()
                             phone = teammate.get('phone', '')
                             
-                            # Color based on grade
-                            grade_color = "#CC0000" if grade in ['Manager', 'Director', 'VP', 'C-Level'] else "#4a4a4a" if grade == 'Senior' else "#718096"
+                            # Color based on YOUR exact grades
+                            if grade in manager_grades:
+                                grade_color = "#CC0000"
+                            elif grade in senior_grades:
+                                grade_color = "#4a4a4a"
+                            else:
+                                grade_color = "#718096"
                             
                             with cols[col_idx % 2]:
                                 st.markdown(f"""
                                 <div style="background: white; padding: 1rem; border-radius: 10px; margin-bottom: 0.8rem; 
                                             box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid {grade_color};
-                                            display: flex; align-items: center; gap: 0.8rem; transition: all 0.2s;">
+                                            display: flex; align-items: center; gap: 0.8rem;">
                                     <div style="width: 45px; height: 45px; border-radius: 50%; background: {grade_color}; 
                                                 display: flex; align-items: center; justify-content: center; 
                                                 font-weight: 700; color: white; font-size: 1rem; min-width: 45px;">
@@ -16277,7 +16287,7 @@ def my_profile():
                                     <div style="flex: 1;">
                                         <strong style="font-size: 0.9rem;">{teammate['first_name']} {teammate['last_name']}</strong>
                                         <br><small style="color: #666;">{position}</small>
-                                        {f'<br><small style="color: #888;">📱 {phone}</small>' if phone else ''}
+                                        <br><small style="color: #888;">📱 {phone if phone else 'N/A'}</small>
                                     </div>
                                 </div>
                                 """, unsafe_allow_html=True)
