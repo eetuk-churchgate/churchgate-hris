@@ -15950,6 +15950,11 @@ def my_profile():
                         doc_bytes = uploaded_doc.read()
                         doc_type = uploaded_doc.type
                         doc_b64 = base64.b64encode(doc_bytes).decode('utf-8')
+                        file_url = ""
+                        try:
+                            file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, doc_type)
+                        except:
+                            pass
                         db._post("documents", {
                             "employee_id": user_id,
                             "document_type": doc_type,
@@ -15962,7 +15967,7 @@ def my_profile():
                             "employee_id": user_id,
                             "document_type": doc_type,
                             "document_name": doc_name,
-                            "file_url": "",
+                            "file_url": file_url,
                             "uploaded_by": user_name,
                             "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
                             "is_public": False
