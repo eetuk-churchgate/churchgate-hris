@@ -15931,7 +15931,15 @@ def my_profile():
                                 st.download_button("📥 Download", file_bytes, doc.get('document_name', 'file'), 
                                                   key=f"dl_{doc.get('id', '')}", use_container_width=True)
                             except:
-                                st.caption("N/A")
+                                if file_data:
+                                    try:
+                                        file_bytes = bytes(file_data)
+                                        st.download_button("📥 Download", file_bytes, doc.get('document_name', 'file'),
+                                                          key=f"dl2_{doc.get('id', '')}", use_container_width=True)
+                                    except:
+                                        st.caption("N/A")
+                                else:
+                                    st.caption("N/A")
                     with col3:
                         if st.button("🗑️", key=f"del_doc_{doc.get('id', '')}"):
                             db._delete("documents", {"id": doc.get('id')})
@@ -15948,16 +15956,15 @@ def my_profile():
                     try:
                         import base64
                         doc_bytes = uploaded_doc.read()
-                        doc_type = uploaded_doc.type
                         doc_b64 = base64.b64encode(doc_bytes).decode('utf-8')
                         file_url = ""
                         try:
-                            file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, doc_type)
+                            file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, "application/pdf")
                         except:
                             pass
                         db._post("documents", {
                             "employee_id": user_id,
-                            "document_type": doc_type,
+                            "document_type": "personal",
                             "document_name": doc_name,
                             "file_data": doc_b64,
                             "uploaded_by": str(user_id),
@@ -15965,7 +15972,7 @@ def my_profile():
                         })
                         db._post("employee_documents", {
                             "employee_id": user_id,
-                            "document_type": doc_type,
+                            "document_type": "personal",
                             "document_name": doc_name,
                             "file_url": file_url,
                             "uploaded_by": user_name,
