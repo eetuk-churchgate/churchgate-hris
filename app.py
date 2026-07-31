@@ -15924,14 +15924,11 @@ def my_profile():
                         st.caption(f"Type: {doc.get('document_type', 'N/A')} | Uploaded: {doc.get('created_at', '')[:10]}")
                     with col2:
                         file_data = doc.get('file_data', '')
-                        file_url = doc.get('file_url', '')
                         doc_name = doc.get('document_name', 'file')
                         if not doc_name.endswith(('.pdf', '.docx', '.jpg', '.jpeg', '.png', '.xlsx', '.xls')):
                             doc_name += '.pdf'
                         
-                        if file_url and file_url != "":
-                            st.markdown(f"[📥 View/Download]({file_url})")
-                        elif file_data and file_data != "":
+                        if file_data and file_data != "":
                             import base64
                             try:
                                 clean_data = file_data.strip()
@@ -15939,12 +15936,18 @@ def my_profile():
                                 st.download_button("📥 Download", file_bytes, doc_name, 
                                                   key=f"dl_{doc.get('id', '')}", use_container_width=True)
                             except:
-                                st.caption("📎 Stored")
+                                try:
+                                    file_bytes = base64.b64decode(file_data)
+                                    st.download_button("📥 Download", file_bytes, doc_name,
+                                                      key=f"dl_{doc.get('id', '')}", use_container_width=True)
+                                except:
+                                    st.caption("📎 Stored")
                         else:
                             st.caption("No file")
                     with col3:
                         if st.button("🗑️", key=f"del_doc_{doc.get('id', '')}"):
                             db._delete("documents", {"id": doc.get('id')})
+                            db._delete("employee_documents", {"id": doc.get('id')})
                             st.rerun()
             else:
                 st.info("No documents uploaded yet.")
@@ -15961,21 +15964,12 @@ def my_profile():
                         doc_bytes = uploaded_doc.read()
                         doc_b64 = base64.b64encode(doc_bytes).decode('utf-8')
                         doc_type = doc_category.lower().replace(" ", "_")
-                        file_url = ""
-                        try:
-                            file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, uploaded_doc.type)
-                            if file_url:
-                                st.success(f"✅ Storage OK: {file_url[:60]}...")
-                            else:
-                                st.warning("⚠️ Storage returned empty URL")
-                        except Exception as ee:
-                            st.warning(f"⚠️ Storage failed: {str(ee)[:100]}")
+                        
                         db._post("documents", {
                             "employee_id": user_id,
                             "document_type": doc_type,
                             "document_name": doc_name,
                             "file_data": doc_b64,
-                            "file_url": file_url,
                             "uploaded_by": str(user_id),
                             "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         })
@@ -15983,7 +15977,6 @@ def my_profile():
                             "employee_id": user_id,
                             "document_type": doc_type,
                             "document_name": doc_name,
-                            "file_url": file_url,
                             "uploaded_by": user_name,
                             "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
                             "is_public": False
