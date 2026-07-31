@@ -3802,7 +3802,7 @@ def performance_okrs():
                             st.rerun()
     
     # ============================================================
-    # TAB 3: SELF-ASSESSMENT
+    # TAB 3: SELF-ASSESSMENT (WITH SAVE PROGRESS)
     # ============================================================
     with tab3:
         st.markdown('<div class="glass-card"><h3>📝 Self-Assessment</h3></div>', unsafe_allow_html=True)
@@ -3811,13 +3811,26 @@ def performance_okrs():
             user_perf = get_user_perf()
             has_approved = not user_perf.empty and any(row.get('submission_status') == 'Approved' for _, row in user_perf.iterrows())
             
-            if not has_approved: st.warning("⚠️ Your KPIs must be approved before self-assessment.")
-            elif st.session_state.appraisal_locked: st.warning("🔒 Scores are locked.")
-            elif st.session_state.self_assessments.get(user_name, {}).get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review']: pass
+            if not has_approved:
+                st.warning("⚠️ Your KPIs must be approved before self-assessment.")
+            elif st.session_state.appraisal_locked:
+                st.warning("🔒 Scores are locked.")
+            elif st.session_state.self_assessments.get(user_name, {}).get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review']:
+                pass
+            elif st.session_state.self_assessments.get(user_name, {}).get('status') == 'Draft':
+                st.info("📝 You have a saved draft. Continue below or submit when ready.")
             else:
                 st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
+            
+            # Show form if not submitted
+            existing_status = st.session_state.self_assessments.get(user_name, {}).get('status', '')
+            if existing_status not in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review'] or existing_status == 'Draft':
                 
                 pillar_order = get_pillars()
+                existing_draft = st.session_state.self_assessments.get(user_name, {}) if existing_status == 'Draft' else {}
+                draft_scores = existing_draft.get('scores', {}) if existing_status == 'Draft' else {}
+                draft_pillar_comments = existing_draft.get('pillar_comments', {}) if existing_status == 'Draft' else {}
+                draft_overall = existing_draft.get('comments', '') if existing_status == 'Draft' else ''
                 
                 # STEP 1: Upload files
                 st.markdown("### 📎 Step 1: Upload Evidence (Optional)")
@@ -3838,7 +3851,6 @@ def performance_okrs():
                                         st.session_state.uploaded_files_data[f"{pillar_name}|||{f.name}|||{f.type}"] = base64.b64encode(f.read()).decode('utf-8')
                                         st.success(f"✅ {f.name}")
                 
-                # Show what's attached
                 if st.session_state.uploaded_files_data:
                     st.success(f"📎 {len(st.session_state.uploaded_files_data)} file(s) attached and ready for submission")
                 
@@ -3873,14 +3885,79 @@ def performance_okrs():
                                     st.markdown(f"**{kpi.get('kpi', 'KPI')}**")
                                     st.caption(f"Target: {kpi.get('target', 'N/A')} | Weight: {kpi.get('weight', 'N/A')}%")
                                 with col2:
-                                    scores[score_key] = st.number_input("Score %", 0, 100, 50, 1, key=f"sc_{pillar_name}_{i}")
+                                    default_score = draft_scores.get(score_key, 50) if draft_scores else 50
+                                    scores[score_key] = st.number_input("Score %", 0, 100, int(default_score), 1, key=f"sc_{pillar_name}_{i}")
                             
-                            pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", key=f"just_{pillar_name}", placeholder="Explain your performance...")
+                            default_just = draft_pillar_comments.get(pillar_name, '') if draft_pillar_comments else ''
+                            pillar_comments[pillar_name] = st.text_area(f"Justification for {pillar_name} *", value=default_just, key=f"just_{pillar_name}", placeholder="Explain your performance...")
                             st.markdown("---")
                 
-                overall_comments = st.text_area("Overall Comments *", placeholder="Summarize your overall performance...")
+                overall_comments = st.text_area("Overall Comments *", value=draft_overall, placeholder="Summarize your overall performance...")
                 
-                if st.button("📤 Submit Self-Assessment", type="primary", use_container_width=True):
+                col_save, col_submit = st.columns(2)
+                with col_save:
+                    save_btn = st.button("💾 Save Progress", use_container_width=True)
+                with col_submit:
+                    submit_btn = st.button("📤 Submit Self-Assessment", type="primary", use_container_width=True)
+                
+                if save_btn:
+                    if scores:
+                        # Upload files for draft
+                        evidence_urls = {}
+                        if st.session_state.uploaded_files_data:
+                            try:
+                                import os as _os
+                                from supabase import create_client as _cc
+                                _url = _os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+                                _key = _os.environ.get("SUPABASE_SERVICE_KEY", _os.environ.get("SUPABASE_KEY", ""))
+                                _sc = _cc(_url, _key)
+                                
+                                for key, b64_data in st.session_state.uploaded_files_data.items():
+                                    parts = key.split('|||')
+                                    pillar = parts[0]
+                                    file_name = parts[1]
+                                    file_type = parts[2]
+                                    file_bytes = base64.b64decode(b64_data)
+                                    
+                                    if pillar not in evidence_urls:
+                                        evidence_urls[pillar] = []
+                                    
+                                    upload_name = f"{user_name}_{pillar}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{file_name}"
+                                    _sc.storage.from_("evidence").upload(upload_name, file_bytes, {"content-type": file_type})
+                                    url = _sc.storage.from_("evidence").get_public_url(upload_name)
+                                    evidence_urls[pillar].append(url)
+                            except:
+                                pass
+                        
+                        # Save draft to database
+                        try:
+                            db.save_appraisal(user_name, user_email, user_dept,
+                                st.session_state.appraisal_cycle_name, 'Draft',
+                                scores, overall_comments, pillar_comments,
+                                None, None, None, None, None,
+                                now_wat.strftime('%Y-%m-%d %H:%M WAT'))
+                            if evidence_urls:
+                                db._patch("appraisals", {"evidence_files": json.dumps(evidence_urls)}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                        except:
+                            pass
+                        
+                        st.session_state.self_assessments[user_name] = {
+                            'scores': scores, 'comments': overall_comments,
+                            'pillar_comments': pillar_comments,
+                            'evidence_files': json.dumps(evidence_urls),
+                            'date': now_wat.strftime('%Y-%m-%d %H:%M WAT'),
+                            'status': 'Draft', 'department': user_dept, 'email': user_email,
+                            'hod_scores': None, 'hod_comments': None, 'acceptance': None
+                        }
+                        
+                        log_audit('Self-Assessment Draft Saved', f'Draft saved by {user_name}')
+                        st.success("✅ Progress saved! You can continue later or refresh safely.")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ Please enter at least one score before saving.")
+                
+                if submit_btn:
                     if not scores:
                         st.error("❌ Please score at least one KPI!")
                     elif not overall_comments:
@@ -3919,13 +3996,21 @@ def performance_okrs():
                                             upload_name = f"{user_name}_{p_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{f['name']}"
                                             _sc.storage.from_("evidence").upload(upload_name, f['bytes'], {"content-type": f['type']})
                                             url = _sc.storage.from_("evidence").get_public_url(upload_name)
-                                            st.success(f"✅ Uploaded: {upload_name} → {url}")
                                             urls.append(url)
                                         evidence_urls[p_name] = urls
-                                    
-                                    st.success(f"📎 Total evidence URLs: {json.dumps(evidence_urls)}")
                                 except Exception as upload_error:
                                     st.error(f"❌ Upload failed: {str(upload_error)}")
+                            
+                            # Merge with draft evidence if exists
+                            if existing_draft.get('evidence_files'):
+                                try:
+                                    draft_evidence = json.loads(existing_draft['evidence_files']) if isinstance(existing_draft['evidence_files'], str) else existing_draft['evidence_files']
+                                    for p, urls in draft_evidence.items():
+                                        if p not in evidence_urls:
+                                            evidence_urls[p] = []
+                                        evidence_urls[p].extend(urls)
+                                except:
+                                    pass
                             
                             # Clear uploaded files
                             st.session_state.uploaded_files_data = {}
@@ -3934,7 +4019,8 @@ def performance_okrs():
                             try:
                                 db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Submitted', scores, overall_comments, pillar_comments, None, None, None, None, None, now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                                 db._patch("appraisals", {"evidence_files": json.dumps(evidence_urls)}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
-                            except: pass
+                            except:
+                                pass
                             
                             st.session_state.self_assessments[user_name] = {
                                 'scores': scores, 'comments': overall_comments,
@@ -3946,7 +4032,8 @@ def performance_okrs():
                             }
                             log_audit('Self-Assessment Submitted', f'Submitted by {user_name}')
                             st.success("✅ Submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
-        else: st.info("⏳ No active appraisal cycle.")
+        else:
+            st.info("⏳ No active appraisal cycle.")
         
         # Acceptance/Rejection
         if user_name in st.session_state.self_assessments:
@@ -3954,11 +4041,13 @@ def performance_okrs():
             reviewer_type = a.get('reviewer_type', 'HOD')
             reviewer_scores = a.get('hod_scores') or a.get('tl_scores')
             
-            if a.get('status') == 'Submitted': st.info("📝 Your self-assessment has been submitted and is awaiting review.")
+            if a.get('status') == 'Draft':
+                st.info("📝 You have a saved draft. Scroll up to continue editing.")
+            elif a.get('status') == 'Submitted':
+                st.info("📝 Your self-assessment has been submitted and is awaiting review.")
             elif reviewer_scores and not a.get('acceptance'):
                 st.markdown("---"); st.success(f"✅ {reviewer_type} review complete — awaiting your acceptance")
                 
-                # Show reviewer comments
                 reviewer_comments = a.get('hod_comments') or a.get('tl_comments', '')
                 st.markdown(f"### 💬 {reviewer_type} Comments")
                 if reviewer_comments:
@@ -3966,7 +4055,6 @@ def performance_okrs():
                 else:
                     st.caption("No comments provided")
                 
-                # Show scores by pillar with KPI names
                 with st.expander("📊 Score Review by Pillar", expanded=True):
                     pillar_order = get_pillars()
                     for pillar in pillar_order:
@@ -3985,7 +4073,8 @@ def performance_okrs():
                                             if kpi_index < len(kpi_list):
                                                 kpi_name = kpi_list[kpi_index].get('kpi', kpi_name)
                                                 break
-                                except: pass
+                                except:
+                                    pass
                                 c1, c2 = st.columns(2)
                                 with c1:
                                     st.markdown(f"**{kpi_name}**")
@@ -4006,27 +4095,26 @@ def performance_okrs():
                         doc2 = st.file_uploader("Document 2", type=['pdf','docx','jpg','png','xlsx'], key=f"rej_doc2_{user_name}")
                         if doc2: rejection_docs.append(doc2)
                     col1, col2 = st.columns(2)
-                    with col1: 
+                    with col1:
                         accept_btn = st.form_submit_button("✅ Accept Review", use_container_width=True, type="primary")
-                    with col2: 
+                    with col2:
                         reject_btn = st.form_submit_button("❌ Reject - Request Re-review", use_container_width=True)
                     
                     if accept_btn:
                         st.session_state.self_assessments[user_name]['acceptance'] = 'Accepted'
                         st.session_state.self_assessments[user_name]['status'] = 'Completed'
-                        try: 
+                        try:
                             db.archive_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, 'Accepted', a['scores'], reviewer_scores or {}, a.get('comments', ''), a.get('hod_comments', ''), now_wat.strftime('%Y-%m-%d %H:%M WAT'))
                             db._patch("appraisals", {"status": "Completed", "acceptance": "Accepted"}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
-                        except Exception as e: 
+                        except Exception as e:
                             st.error(f"Save error: {str(e)}")
                         log_audit('Appraisal Accepted', f'{user_name} accepted {reviewer_type} review')
                         st.success("✅ Appraisal Accepted! Congratulations!"); st.balloons(); time.sleep(2); st.rerun()
                     
                     if reject_btn:
-                        if not rejection_comment.strip(): 
+                        if not rejection_comment.strip():
                             st.error("❌ You MUST provide comments when rejecting!")
                         else:
-                            # Upload rejection documents using direct Supabase storage
                             rej_urls = []
                             try:
                                 from supabase import create_client
@@ -4041,8 +4129,10 @@ def performance_okrs():
                                         supabase_client.storage.from_("rejection_evidence").upload(file_name, doc.read(), {"content-type": doc.type})
                                         url = supabase_client.storage.from_("rejection_evidence").get_public_url(file_name)
                                         if url: rej_urls.append(url)
-                                    except: pass
-                            except: pass
+                                    except:
+                                        pass
+                            except:
+                                pass
                             
                             st.session_state.self_assessments[user_name]['acceptance'] = 'Rejected'
                             st.session_state.self_assessments[user_name]['status'] = f'Awaiting {reviewer_type} Re-review'
@@ -4053,17 +4143,20 @@ def performance_okrs():
                             try:
                                 db.save_appraisal(user_name, user_email, user_dept, st.session_state.appraisal_cycle_name, f'Awaiting {reviewer_type} Re-review', a['scores'], a.get('comments', ''), a.get('pillar_comments', {}), a.get('hod_scores'), a.get('hod_comments', ''), a.get('hod_pillar_comments', {}), 'Rejected', None, a.get('date', ''))
                                 db._patch("appraisals", {"rejection_docs": json.dumps(rej_urls), "rejection_comment": rejection_comment}, {"user_name": user_name, "cycle_name": st.session_state.appraisal_cycle_name})
-                            except: pass
+                            except:
+                                pass
                             
                             reviewer_email = find_hod_email_for_dept(user_dept) if reviewer_type == 'HOD' else get_employee_email(user_name)
                             if reviewer_email:
-                                try: 
+                                try:
                                     EmailService().send_email(reviewer_email, f"🔄 Appraisal Rejected by {user_name}", f"Dear {reviewer_type},\n\n{user_name} has rejected your review.\n\nReason: {rejection_comment}\n\nPlease log in to review.\n\nhttps://hris.churchgate.com\n\nChurchgate Group HR")
-                                except: pass
+                                except:
+                                    pass
                             
                             log_audit('Appraisal Rejected', f'{user_name} rejected {reviewer_type} review')
                             st.warning(f"⚠️ Rejected! {reviewer_type} notified."); time.sleep(2); st.rerun()
-            elif a.get('acceptance') == 'Accepted': st.success("🎉 Appraisal Complete!")
+            elif a.get('acceptance') == 'Accepted':
+                st.success("🎉 Appraisal Complete!")
             elif a.get('acceptance') == 'Rejected':
                 if a.get('sr_decision') == 'Pending Committee' or a.get('status') in ['Escalated from TL', 'Escalated to HOD from TL']:
                     st.warning("🚨 Escalated - Awaiting Committee Final Verdict")
