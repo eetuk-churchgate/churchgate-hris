@@ -12952,6 +12952,8 @@ def my_documents():
         if tax_docs:
             for doc in tax_docs:
                 st.markdown(f"📥 **{doc.get('document_name', 'Tax Document')}** — {doc.get('uploaded_at', '')[:10]}")
+                if doc.get('file_url'):
+                    st.markdown(f"[📥 Download]({doc['file_url']})")
         else:
             st.info("Annual tax certificates will appear here.")
         
@@ -12960,6 +12962,8 @@ def my_documents():
         if review_docs:
             for doc in review_docs:
                 st.markdown(f"📥 **{doc.get('document_name', 'Review')}** — {doc.get('uploaded_at', '')[:10]}")
+                if doc.get('file_url'):
+                    st.markdown(f"[📥 Download]({doc['file_url']})")
         else:
             st.info("Completed appraisal reports will appear here.")
     
@@ -13010,10 +13014,13 @@ def my_documents():
         
         if personal_docs:
             for doc in personal_docs:
-                col1, col2 = st.columns([4, 1])
+                col1, col2, col3 = st.columns([3, 1, 1])
                 with col1:
                     st.markdown(f"📎 **{doc.get('document_name', 'File')}** — {doc.get('uploaded_at', '')[:10]}")
                 with col2:
+                    if doc.get('file_url'):
+                        st.markdown(f"[📥 Download]({doc['file_url']})")
+                with col3:
                     if st.button("🗑️", key=f"del_{doc.get('id')}"):
                         db._delete("employee_documents", {"id": doc.get('id')})
                         st.rerun()
