@@ -16198,26 +16198,94 @@ def my_profile():
                         st.error(f"❌ Upload failed: {str(e)}")
         
         with tab4:
-            st.subheader("👥 My Team")
-            st.info(f"Showing colleagues in **{emp_dept}**")
+            st.markdown("### 👥 My Team")
+            
+            # Team header card
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; color: white;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="font-size: 2.5rem;">👥</div>
+                    <div>
+                        <h3 style="margin: 0; color: white;">{emp_dept}</h3>
+                        <p style="margin: 5px 0 0 0; color: #a0aec0; font-size: 0.9rem;">Your Department Team</p>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
             
             try:
                 emp_df = db.get_all_employees()
                 if not emp_df.empty:
                     team = emp_df[emp_df['department'] == emp_dept]
-                    for _, teammate in team.head(10).iterrows():
+                    team_count = len(team)
+                    
+                    # Team stats
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.markdown(f"""
+                        <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #CC0000;">
+                            <div style="font-size: 1.5rem;">👤</div>
+                            <div style="font-weight: 700; font-size: 1.3rem;">{team_count}</div>
+                            <small style="color: #666;">Team Members</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with c2:
+                        managers = len([t for _, t in team.iterrows() if t.get('grade') in ['Manager', 'Director', 'VP', 'C-Level']])
+                        st.markdown(f"""
+                        <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #3182ce;">
+                            <div style="font-size: 1.5rem;">⭐</div>
+                            <div style="font-weight: 700; font-size: 1.3rem;">{managers}</div>
+                            <small style="color: #666;">Managers</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with c3:
+                        seniors = len([t for _, t in team.iterrows() if t.get('grade') == 'Senior'])
+                        st.markdown(f"""
+                        <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #38a169;">
+                            <div style="font-size: 1.5rem;">💼</div>
+                            <div style="font-weight: 700; font-size: 1.3rem;">{seniors}</div>
+                            <small style="color: #666;">Senior Staff</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    st.markdown("#### Team Members")
+                    
+                    # Team member cards in grid
+                    cols = st.columns(2)
+                    col_idx = 0
+                    for _, teammate in team.head(12).iterrows():
                         if teammate.get('employee_id') != user_id:
                             initials_t = generate_initials(f"{teammate['first_name']} {teammate['last_name']}")
-                            st.markdown(f"""
-                            <div style="background:white;padding:0.6rem;border-radius:6px;margin-bottom:0.3rem;display:flex;align-items:center;gap:0.8rem;">
-                                <div style="width:35px;height:35px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;font-size:0.8rem;">{initials_t}</div>
-                                <div><strong>{teammate['first_name']} {teammate['last_name']}</strong><br><small>{teammate.get('position', '')}</small></div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            position = teammate.get('position', 'Staff')
+                            grade = teammate.get('grade', '')
+                            phone = teammate.get('phone', '')
+                            
+                            # Color based on grade
+                            grade_color = "#CC0000" if grade in ['Manager', 'Director', 'VP', 'C-Level'] else "#4a4a4a" if grade == 'Senior' else "#718096"
+                            
+                            with cols[col_idx % 2]:
+                                st.markdown(f"""
+                                <div style="background: white; padding: 1rem; border-radius: 10px; margin-bottom: 0.8rem; 
+                                            box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid {grade_color};
+                                            display: flex; align-items: center; gap: 0.8rem; transition: all 0.2s;">
+                                    <div style="width: 45px; height: 45px; border-radius: 50%; background: {grade_color}; 
+                                                display: flex; align-items: center; justify-content: center; 
+                                                font-weight: 700; color: white; font-size: 1rem; min-width: 45px;">
+                                        {initials_t}
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <strong style="font-size: 0.9rem;">{teammate['first_name']} {teammate['last_name']}</strong>
+                                        <br><small style="color: #666;">{position}</small>
+                                        {f'<br><small style="color: #888;">📱 {phone}</small>' if phone else ''}
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                            col_idx += 1
                 else:
-                    st.info("Team data loading...")
-            except:
-                st.info("Team data loading...")
+                    st.info("Team data is loading...")
+            except Exception as e:
+                st.info(f"Team data is loading...")
         
         with tab5:
             st.subheader("📊 My Activity")
