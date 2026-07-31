@@ -4276,10 +4276,12 @@ def performance_okrs():
                                     if docs and isinstance(docs, list) and len(docs) > 0:
                                         st.markdown("**📎 Rejection Documents:**")
                                         for doc_url in docs:
-                                            file_name = doc_url.split('/')[-1]
-                                            parts = file_name.split('_', 3)
-                                            display_name = parts[-1] if len(parts) >= 4 else file_name
-                                            st.markdown(f"- 📄 [{display_name}]({doc_url})")
+                                                file_name = doc_url.split('/')[-1]
+                                                parts = file_name.split('_', 3)
+                                                import urllib.parse
+                                                display_name = parts[-1] if len(parts) >= 4 else file_name
+                                                display_name = urllib.parse.unquote(display_name)
+                                                st.markdown(f"- 📄 [{display_name}]({doc_url})")
                                 except: pass
                         
                         st.markdown(f"**👤 Staff Comments:** {assessment.get('comments', 'N/A')}")
@@ -4313,6 +4315,8 @@ def performance_okrs():
                                                     file_name = url.split('/')[-1]
                                                     parts = file_name.split('_', 3)
                                                     display_name = parts[-1] if len(parts) >= 4 else file_name
+                                                    import urllib.parse
+                                                    display_name = urllib.parse.unquote(display_name)
                                                     st.markdown(f"- 📄 [{display_name}]({url})")
                                 except: pass
                         
@@ -6371,11 +6375,13 @@ def performance_okrs():
                                                             if urls and isinstance(urls, list) and len(urls) > 0:
                                                                 has_evidence = True
                                                                 st.markdown(f"**{pillar}**")
-                                                                for url in urls:
-                                                                    file_name = url.split('/')[-1]
-                                                                    parts = file_name.split('_', 3)
-                                                                    display_name = parts[-1] if len(parts) >= 4 else file_name
-                                                                    st.markdown(f"- 📄 [{display_name}]({url})")
+                                                for url in urls:
+                                                    file_name = url.split('/')[-1]
+                                                    parts = file_name.split('_', 3)
+                                                    display_name = parts[-1] if len(parts) >= 4 else file_name
+                                                    import urllib.parse
+                                                    display_name = urllib.parse.unquote(display_name)
+                                                    st.markdown(f"- 📄 [{display_name}]({url})")
                                                 except:
                                                     pass
                                         
@@ -6397,6 +6403,8 @@ def performance_okrs():
                                                         file_name = doc_url.split('/')[-1]
                                                         parts = file_name.split('_', 3)
                                                         display_name = parts[-1] if len(parts) >= 4 else file_name
+                                                        import urllib.parse
+                                                        display_name = urllib.parse.unquote(display_name)
                                                         st.markdown(f"- 📄 [{display_name}]({doc_url})")
                                             except:
                                                 pass
