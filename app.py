@@ -15679,7 +15679,25 @@ def my_profile():
         except:
             pass
     
-    # Profile completeness
+    # Load skills, certs, and docs for completeness
+    saved_skills = ""
+    saved_certs = ""
+    saved_docs = []
+    try:
+        result = db._get("users", {"email": user_email})
+        if result and len(result) > 0:
+            saved_skills = result[0].get('skills', '') or ""
+            saved_certs = result[0].get('certifications', '') or ""
+    except:
+        pass
+    try:
+        result = db._get("employee_documents", {"employee_id": user_id})
+        if result:
+            saved_docs = result
+    except:
+        pass
+    
+    # Profile completeness - includes skills, certs, and documents
     emergency_name_val = emp_data.get('emergency_name', '') if emp_data else ''
     emergency_phone_val = emp_data.get('emergency_phone', '') if emp_data else ''
     profile_fields = [first_name, last_name, emp_phone, emp_grade, emp_join, emp_gender, 
@@ -15687,6 +15705,21 @@ def my_profile():
                       emergency_name_val, emergency_phone_val]
     complete_count = sum(1 for f in profile_fields if f and f != 'N/A' and f != '+234 800 000 0000' and f != '')
     profile_pct = int(complete_count / len(profile_fields) * 100)
+    
+    # Skills & Certifications score (up to 20%)
+    skills_count = len(saved_skills.split(',')) if saved_skills else 0
+    certs_count = len(saved_certs.split(',')) if saved_certs else 0
+    skills_score = min(skills_count / 5 * 10, 10)  # 5 skills = 10%
+    certs_score = min(certs_count / 5 * 10, 10)    # 5 certs = 10%
+    
+    # Documents score (up to 20%)
+    personal_docs = sum(1 for d in saved_docs if d.get('document_type') == 'personal')
+    cert_docs = sum(1 for d in saved_docs if d.get('document_type') == 'certificate')
+    docs_score = min(personal_docs / 2 * 10, 10) + min(cert_docs / 2 * 10, 10)  # 2 personal + 2 certs = 20%
+    
+    # Combined score
+    profile_pct = int(profile_pct * 0.6 + skills_score + certs_score + docs_score)
+    profile_pct = min(profile_pct, 100)  # Cap at 100%
     
     st.markdown(f"""<div class="churchgate-header"><h1>👤 My Profile</h1><p>{user_name} • {emp_position}</p></div>""", unsafe_allow_html=True)
     
