@@ -6377,13 +6377,13 @@ def performance_okrs():
                                                             if urls and isinstance(urls, list) and len(urls) > 0:
                                                                 has_evidence = True
                                                                 st.markdown(f"**{pillar}**")
-                                                for url in urls:
-                                                    file_name = url.split('/')[-1]
-                                                    parts = file_name.split('_', 3)
-                                                    display_name = parts[-1] if len(parts) >= 4 else file_name
-                                                    import urllib.parse
-                                                    display_name = urllib.parse.unquote(display_name)
-                                                    st.markdown(f"- 📄 [{display_name}]({url})")
+                                                                for url in urls:
+                                                                    file_name = url.split('/')[-1]
+                                                                    parts = file_name.split('_', 3)
+                                                                    display_name = parts[-1] if len(parts) >= 4 else file_name
+                                                                    import urllib.parse
+                                                                    display_name = urllib.parse.unquote(display_name)
+                                                                    st.markdown(f"- 📄 [{display_name}]({url})")
                                                 except:
                                                     pass
                                         
