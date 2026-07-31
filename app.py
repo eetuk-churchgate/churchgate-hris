@@ -15803,7 +15803,72 @@ def my_profile():
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["📋 Info", "🔒 Security", "🛠️ Skills", "👥 Team", "📊 Activity"])
         
         with tab1:
+            st.markdown("### 👤 Personal Information")
+            
+            # Profile header card
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; color: white;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="font-size: 2.5rem;">👤</div>
+                    <div>
+                        <h2 style="margin: 0; color: white;">{user_name}</h2>
+                        <p style="margin: 0; color: #CC0000; font-weight: 600;">{emp_position}</p>
+                        <p style="margin: 5px 0 0 0; color: #a0aec0; font-size: 0.85rem;">ID: {user_id} • {emp_dept} • {emp_status}</p>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Quick stats row
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                st.markdown(f"""
+                <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #CC0000;">
+                    <div style="font-size: 1.5rem;">📅</div>
+                    <div style="font-weight: 700; font-size: 1.2rem;">{time_in_company}</div>
+                    <small style="color: #666;">Time at Churchgate</small>
+                </div>
+                """, unsafe_allow_html=True)
+            with c2:
+                st.markdown(f"""
+                <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #38a169;">
+                    <div style="font-size: 1.5rem;">🏖️</div>
+                    <div style="font-weight: 700; font-size: 1.2rem;">{emp_leave} days</div>
+                    <small style="color: #666;">Leave Balance</small>
+                </div>
+                """, unsafe_allow_html=True)
+            with c3:
+                next_birthday = "N/A"
+                if emp_data and emp_data.get('date_of_birth'):
+                    try:
+                        dob = datetime.strptime(str(emp_data['date_of_birth'])[:10], '%Y-%m-%d')
+                        next_bday = dob.replace(year=datetime.now().year)
+                        if next_bday < datetime.now():
+                            next_bday = next_bday.replace(year=datetime.now().year + 1)
+                        days_to_bday = (next_bday - datetime.now()).days
+                        next_birthday = f"{days_to_bday} days"
+                    except:
+                        pass
+                st.markdown(f"""
+                <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #3182ce;">
+                    <div style="font-size: 1.5rem;">🎂</div>
+                    <div style="font-weight: 700; font-size: 1.2rem;">{next_birthday}</div>
+                    <small style="color: #666;">Until Birthday</small>
+                </div>
+                """, unsafe_allow_html=True)
+            with c4:
+                st.markdown(f"""
+                <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #d69e2e;">
+                    <div style="font-size: 1.5rem;">⭐</div>
+                    <div style="font-weight: 700; font-size: 1.2rem;">{emp_grade}</div>
+                    <small style="color: #666;">Grade Level</small>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
             with st.form("profile_update_form"):
+                st.markdown("#### ✏️ Basic Information")
                 c1, c2 = st.columns(2)
                 with c1:
                     new_first = st.text_input("First Name", value=first_name)
@@ -15831,13 +15896,14 @@ def my_profile():
                 new_dob = st.date_input("Date of Birth *", value=current_dob_date, min_value=date(1920, 1, 1), max_value=date(2026, 12, 31))
                 
                 st.markdown("---")
-                st.markdown("**Emergency Contact**")
+                st.markdown("#### 🆘 Emergency Contact")
                 ec1, ec2 = st.columns(2)
                 with ec1:
                     emergency_name = st.text_input("Contact Name", value=emp_data.get('emergency_name', '') if emp_data else '', placeholder="Next of Kin")
                 with ec2:
                     emergency_phone = st.text_input("Contact Phone", value=emp_data.get('emergency_phone', '') if emp_data else '', placeholder="+234...")
                 
+                st.markdown("---")
                 if st.form_submit_button("💾 Update Profile", use_container_width=True):
                     try:
                         db._patch("employees", {
@@ -15853,17 +15919,94 @@ def my_profile():
                         st.session_state.user['email'] = new_email
                         st.session_state.user['department'] = new_dept
                         st.success("✅ Profile updated!")
-                        st.cache_data.clear()
                         st.rerun()
                     except Exception as e:
                         st.error(f"❌ Update failed: {str(e)}")
         
         with tab2:
-            st.markdown("### 🔒 Change Password")
+            st.markdown("### 🔒 Security & Password")
+            
+            # Security status card
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; color: white;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="font-size: 2.5rem;">🔐</div>
+                    <div>
+                        <h3 style="margin: 0; color: white;">Account Security</h3>
+                        <p style="margin: 5px 0 0 0; color: #a0aec0; font-size: 0.9rem;">Manage your password and keep your account secure</p>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Password strength indicator
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown("""
+                <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #38a169;">
+                    <div style="font-size: 1.5rem;">🔒</div>
+                    <div style="font-weight: 700; font-size: 1rem;">Password Protected</div>
+                    <small style="color: #38a169;">✓ Active</small>
+                </div>
+                """, unsafe_allow_html=True)
+            with c2:
+                st.markdown("""
+                <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #3182ce;">
+                    <div style="font-size: 1.5rem;">📧</div>
+                    <div style="font-weight: 700; font-size: 1rem;">Email Verified</div>
+                    <small style="color: #3182ce;">{}</small>
+                </div>
+                """.format(user_email[:25] + '...' if len(user_email) > 25 else user_email), unsafe_allow_html=True)
+            with c3:
+                last_login = emp_data.get('last_login', 'Today') if emp_data else 'Today'
+                st.markdown(f"""
+                <div style="background: white; padding: 1rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #d69e2e;">
+                    <div style="font-size: 1.5rem;">🕐</div>
+                    <div style="font-weight: 700; font-size: 1rem;">Last Login</div>
+                    <small style="color: #d69e2e;">{str(last_login)[:16]}</small>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
             with st.form("change_password_form"):
-                current_pw = st.text_input("Current Password", type="password")
-                new_pw = st.text_input("New Password", type="password")
-                confirm_pw = st.text_input("Confirm New Password", type="password")
+                st.markdown("#### 🔑 Change Your Password")
+                st.caption("Use a strong password with at least 6 characters including numbers and symbols.")
+                
+                c1, c2 = st.columns(2)
+                with c1:
+                    current_pw = st.text_input("🔒 Current Password", type="password", placeholder="Enter current password")
+                with c2:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                
+                c1, c2 = st.columns(2)
+                with c1:
+                    new_pw = st.text_input("🆕 New Password", type="password", placeholder="Min 6 characters")
+                with c2:
+                    confirm_pw = st.text_input("✅ Confirm New Password", type="password", placeholder="Re-enter new password")
+                
+                # Password strength check
+                if new_pw:
+                    strength = 0
+                    if len(new_pw) >= 6: strength += 25
+                    if len(new_pw) >= 8: strength += 25
+                    if any(c.isupper() for c in new_pw): strength += 25
+                    if any(c.isdigit() or not c.isalnum() for c in new_pw): strength += 25
+                    
+                    strength_color = "#e53e3e" if strength < 50 else "#d69e2e" if strength < 75 else "#38a169"
+                    strength_label = "Weak" if strength < 50 else "Medium" if strength < 75 else "Strong"
+                    
+                    st.markdown(f"""
+                    <div style="margin: 10px 0;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                            <span>Password Strength</span>
+                            <span style="color: {strength_color}; font-weight: 600;">{strength_label}</span>
+                        </div>
+                        <div style="background: #e0e0e0; height: 6px; border-radius: 3px; margin-top: 3px;">
+                            <div style="background: {strength_color}; width: {strength}%; height: 6px; border-radius: 3px;"></div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 if st.form_submit_button("🔒 Change Password", use_container_width=True):
                     if current_pw and new_pw and confirm_pw:
@@ -15875,7 +16018,6 @@ def my_profile():
                                 stored_pw = result[0].get('password_hash', '')
                                 verified = False
                                 
-                                # Try bcrypt
                                 if stored_pw.startswith('$2b$'):
                                     try:
                                         if bcrypt.checkpw(current_pw.encode('utf-8'), stored_pw.encode('utf-8')):
@@ -15883,7 +16025,6 @@ def my_profile():
                                     except:
                                         pass
                                 
-                                # Try SHA-256
                                 if not verified:
                                     current_hash = hashlib.sha256(current_pw.encode()).hexdigest()
                                     if stored_pw == current_hash:
@@ -15894,18 +16035,18 @@ def my_profile():
                                         if len(new_pw) >= 6:
                                             new_hash = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                                             db._patch("users", {"password_hash": new_hash}, {"email": user_email})
-                                            st.success("✅ Password changed!")
+                                            st.success("✅ Password changed successfully!")
                                             st.balloons()
                                         else:
-                                            st.warning("⚠️ Min 6 characters.")
+                                            st.warning("⚠️ Password must be at least 6 characters.")
                                     else:
                                         st.warning("⚠️ Passwords don't match.")
                                 else:
                                     st.error("❌ Wrong current password.")
                         except:
-                            st.error("❌ Error.")
+                            st.error("❌ Error changing password. Please try again.")
                     else:
-                        st.warning("⚠️ Fill all fields.")
+                        st.warning("⚠️ Please fill all fields.")
         
         with tab3:
             st.subheader("🛠️ My Skills & Certifications")
