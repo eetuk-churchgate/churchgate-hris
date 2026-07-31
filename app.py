@@ -15916,9 +15916,17 @@ def my_profile():
             
             if saved_docs:
                 for doc in saved_docs[:10]:
-                    st.markdown(f"📄 **{doc.get('document_name', 'Document')}** - {doc.get('uploaded_at', '')[:10]}")
-                    if doc.get('file_url'):
-                        st.markdown(f"[📥 Download]({doc['file_url']})")
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    with col1:
+                        st.markdown(f"📄 **{doc.get('document_name', 'Document')}**")
+                        st.caption(f"{doc.get('uploaded_at', '')[:10]}")
+                    with col2:
+                        if doc.get('file_url'):
+                            st.markdown(f"[📥 Download]({doc['file_url']})")
+                    with col3:
+                        if st.button("🗑️", key=f"del_doc_{doc.get('id', '')}"):
+                            db._delete("employee_documents", {"id": doc.get('id')})
+                            st.rerun()
             else:
                 st.info("No documents uploaded yet.")
             
