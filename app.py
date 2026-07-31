@@ -17465,7 +17465,7 @@ def main():
         if 'last_activity' not in st.session_state or not isinstance(st.session_state.last_activity, datetime):
             st.session_state.last_activity = datetime.now()
         idle_time = (datetime.now() - st.session_state.last_activity).total_seconds()
-if idle_time > 18000:
+        if idle_time > 18000:
             st.session_state.user = None
             st.session_state.last_activity = None
             st.query_params.clear()
