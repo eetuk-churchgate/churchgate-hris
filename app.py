@@ -15925,22 +15925,23 @@ def my_profile():
                     with col2:
                         file_data = doc.get('file_data', '')
                         file_url = doc.get('file_url', '')
-                        if file_url:
-                            st.markdown(f"[📥 Download]({file_url})")
-                        elif file_data:
+                        doc_name = doc.get('document_name', 'file')
+                        if not doc_name.endswith(('.pdf', '.docx', '.jpg', '.jpeg', '.png', '.xlsx', '.xls')):
+                            doc_name += '.pdf'
+                        
+                        if file_url and file_url != "":
+                            st.markdown(f"[📥 View/Download]({file_url})")
+                        elif file_data and file_data != "":
                             import base64
                             try:
-                                file_bytes = base64.b64decode(file_data)
-                                st.download_button("📥 Download", file_bytes, doc.get('document_name', 'file'), 
+                                clean_data = file_data.strip()
+                                file_bytes = base64.b64decode(clean_data)
+                                st.download_button("📥 Download", file_bytes, doc_name, 
                                                   key=f"dl_{doc.get('id', '')}", use_container_width=True)
                             except:
-                                try:
-                                    st.download_button("📥 Download", str(file_data).encode(), doc.get('document_name', 'file'),
-                                                      key=f"dl2_{doc.get('id', '')}", use_container_width=True)
-                                except:
-                                    st.caption("N/A")
+                                st.caption("📎 Stored")
                         else:
-                            st.caption("N/A")
+                            st.caption("No file")
                     with col3:
                         if st.button("🗑️", key=f"del_doc_{doc.get('id', '')}"):
                             db._delete("documents", {"id": doc.get('id')})
@@ -15950,7 +15951,7 @@ def my_profile():
             
             st.markdown("---")
             doc_category = st.selectbox("Document Category", ["Personal File", "Certificate", "Contract", "Tax Document", "Performance Review"], key="doc_category")
-            uploaded_doc = st.file_uploader("Upload New Document", type=['pdf', 'docx', 'jpg'], key="doc_upload")
+            uploaded_doc = st.file_uploader("Upload New Document", type=['pdf', 'docx', 'jpg', 'jpeg', 'png', 'xlsx', 'xls'], key="doc_upload")
             doc_name = st.text_input("Document Name", placeholder="e.g., Employment Contract, Certification", key="doc_name")
             
             if uploaded_doc is not None and doc_name:
@@ -15963,8 +15964,12 @@ def my_profile():
                         file_url = ""
                         try:
                             file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, uploaded_doc.type)
-                        except:
-                            pass
+                            if file_url:
+                                st.success(f"✅ Storage OK: {file_url[:60]}...")
+                            else:
+                                st.warning("⚠️ Storage returned empty URL")
+                        except Exception as ee:
+                            st.warning(f"⚠️ Storage failed: {str(ee)[:100]}")
                         db._post("documents", {
                             "employee_id": user_id,
                             "document_type": doc_type,
