@@ -15929,14 +15929,16 @@ def my_profile():
             if uploaded_doc is not None and doc_name:
                 if st.button("📤 Upload & Save Document", use_container_width=True):
                     try:
+                        import base64
                         doc_bytes = uploaded_doc.read()
                         doc_type = uploaded_doc.type
+                        doc_b64 = base64.b64encode(doc_bytes).decode('utf-8')
                         db._post("documents", {
                             "employee_id": user_id,
                             "document_type": doc_type,
                             "document_name": doc_name,
-                            "file_data": doc_bytes,
-                            "uploaded_by": user_id,
+                            "file_data": doc_b64,
+                            "uploaded_by": str(user_id),
                             "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         })
                         st.success(f"✅ '{doc_name}' saved permanently!")
