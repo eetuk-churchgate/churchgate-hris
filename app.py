@@ -15879,21 +15879,70 @@ def my_profile():
         
         with tab3:
             st.subheader("🛠️ My Skills & Certifications")
+            
+            # Load saved skills from database
+            saved_skills = ""
+            saved_certs = ""
+            try:
+                result = db._get("users", {"email": user_email})
+                if result and len(result) > 0:
+                    saved_skills = result[0].get('skills', '') or ""
+                    saved_certs = result[0].get('certifications', '') or ""
+            except:
+                pass
+            
             st.markdown("**Technical Skills**")
-            skills = st.text_area("List your skills (comma-separated)", placeholder="e.g., Python, Project Management, BMS, HVAC", value="Python, Project Management, Leadership")
+            skills = st.text_area("List your skills (comma-separated)", value=saved_skills, placeholder="e.g., Python, Project Management, BMS, HVAC")
             
             st.markdown("**Certifications**")
-            certs = st.text_area("List your certifications", placeholder="e.g., CCNP, NEBOSH, PMP, CIPM")
+            certs = st.text_area("List your certifications", value=saved_certs, placeholder="e.g., CCNP, NEBOSH, PMP, CIPM")
             
             if st.button("💾 Save Skills & Certs", use_container_width=True):
-                st.success("✅ Skills saved!")
+                try:
+                    db._patch("users", {"skills": skills, "certifications": certs}, {"email": user_email})
+                    st.success("✅ Skills & Certifications saved permanently!")
+                except Exception as e:
+                    st.error(f"❌ Save failed: {str(e)}")
             
             st.markdown("---")
             st.subheader("📁 My Documents")
-            st.markdown("📄 Employment Contract - Available")
-            st.markdown("📄 Last Pay Slip - May 2026")
-            st.markdown("📄 Performance Review 2025 - Available")
-            st.file_uploader("Upload New Document", type=['pdf', 'docx', 'jpg'])
+            
+            # Load saved documents
+            saved_docs = []
+            try:
+                result = db._get("documents", {"employee_id": user_id})
+                if result:
+                    saved_docs = result
+            except:
+                pass
+            
+            if saved_docs:
+                for doc in saved_docs[:10]:
+                    st.markdown(f"📄 **{doc.get('document_name', 'Document')}** - {doc.get('created_at', '')}")
+            else:
+                st.info("No documents uploaded yet.")
+            
+            st.markdown("---")
+            uploaded_doc = st.file_uploader("Upload New Document", type=['pdf', 'docx', 'jpg'], key="doc_upload")
+            doc_name = st.text_input("Document Name", placeholder="e.g., Employment Contract, Certification", key="doc_name")
+            
+            if uploaded_doc is not None and doc_name:
+                if st.button("📤 Upload & Save Document", use_container_width=True):
+                    try:
+                        doc_bytes = uploaded_doc.read()
+                        doc_type = uploaded_doc.type
+                        db._post("documents", {
+                            "employee_id": user_id,
+                            "document_type": doc_type,
+                            "document_name": doc_name,
+                            "file_data": doc_bytes,
+                            "uploaded_by": user_id,
+                            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        })
+                        st.success(f"✅ '{doc_name}' saved permanently!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ Upload failed: {str(e)}")
         
         with tab4:
             st.subheader("👥 My Team")
