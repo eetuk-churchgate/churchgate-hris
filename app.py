@@ -4164,7 +4164,7 @@ def performance_okrs():
                     st.warning(f"🔄 Awaiting {reviewer_type} re-review")
     
     # ============================================================
-    # TAB 4: HOD REVIEW (FIXED - Stand Firm + Admin sees ALL)
+    # TAB 4: HOD REVIEW (FIXED - File names displayed)
     # ============================================================
     with tab4:
         st.markdown('<div class="glass-card"><h3>👔 HOD Review Hub</h3></div>', unsafe_allow_html=True)
@@ -4177,7 +4177,6 @@ def performance_okrs():
                 for row in (all_perf or []):
                     if row.get('submission_status') == 'Submitted':
                         clean_name = ' '.join(str(row.get('user_name', '')).split())
-                        # Admin sees ALL, HOD sees their department
                         if is_admin or get_employee_dept(clean_name) == user_dept:
                             if clean_name not in team_submissions: team_submissions[clean_name] = []
                             team_submissions[clean_name].append({'pillar': row.get('pillar_name', ''), 'kpis': json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else [], 'row_id': row.get('id')})
@@ -4252,7 +4251,6 @@ def performance_okrs():
                     pillar_order = get_pillars()
                     for emp_name, kpi_data in team_approved.items():
                         with st.expander(f"✅ {emp_name} — {len(kpi_data)} pillar(s) approved", expanded=False):
-                            # Combine duplicate pillars by summing their KPIs
                             combined = {}
                             for entry in kpi_data:
                                 p_name = entry['pillar']
@@ -4264,8 +4262,6 @@ def performance_okrs():
                                     if kpi_title and kpi_title not in combined[p_name]['seen_kpis']:
                                         combined[p_name]['seen_kpis'].add(kpi_title)
                                         combined[p_name]['kpis'].append(kpi)
-                            
-                            # Display ordered by pillar
                             for p_name in pillar_order:
                                 if p_name in combined:
                                     data = combined[p_name]
@@ -4303,7 +4299,6 @@ def performance_okrs():
                             st.warning(f"⚠️ Staff rejected your review (Rejection #{assessment.get('reject_count', 1)})")
                             st.markdown(f"**Rejection Reason:** {assessment.get('rejection_comment', 'No comment provided')}")
                             
-                            # Show rejection documents - READ DIRECTLY FROM DATABASE
                             db_rej_docs = None
                             try:
                                 db_appraisal = db._get("appraisals", {"user_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
@@ -4324,17 +4319,19 @@ def performance_okrs():
                                     if docs and isinstance(docs, list) and len(docs) > 0:
                                         st.markdown("**📎 Rejection Documents:**")
                                         for doc_url in docs:
-                                            st.markdown(f"- [📄 View Document]({doc_url})")
+                                            file_name = doc_url.split('/')[-1]
+                                            parts = file_name.split('_', 3)
+                                            display_name = parts[-1] if len(parts) >= 4 else file_name
+                                            st.markdown(f"- 📄 [{display_name}]({doc_url})")
                                 except:
                                     pass
                         
                         st.markdown(f"**👤 Staff Comments:** {assessment.get('comments', 'N/A')}")
                         
-                        # Show evidence files - READ DIRECTLY FROM DATABASE
+                        # Show evidence files WITH ORIGINAL NAMES
                         st.markdown("---")
                         st.markdown("### 📎 Evidence Files")
                         
-                        # Force reload from database to get latest evidence
                         db_evidence = None
                         try:
                             db_appraisal = db._get("appraisals", {"user_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
@@ -4360,13 +4357,15 @@ def performance_okrs():
                                             has_files = True
                                             st.markdown(f"**{pillar}**")
                                             for url in urls:
-                                                st.markdown(f"- [📄 View Document]({url})")
+                                                file_name = url.split('/')[-1]
+                                                parts = file_name.split('_', 3)
+                                                display_name = parts[-1] if len(parts) >= 4 else file_name
+                                                st.markdown(f"- 📄 [{display_name}]({url})")
                             except:
                                 pass
                         
                         if not has_files:
                             st.info("📎 No evidence files attached")
-
                         
                         # Score review with KPI names
                         st.markdown("---")
@@ -4383,7 +4382,6 @@ def performance_okrs():
                                 kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
                                 kpi_name = f"KPI {kpi_index + 1}"
                                 
-                                # Get actual KPI name
                                 try:
                                     all_p = db._get("performance_data")
                                     for row in (all_p or []):
@@ -4394,12 +4392,11 @@ def performance_okrs():
                                                 break
                                 except: pass
                                 
-                                # Get per-KPI comment
                                 kpi_comment = assessment.get('pillar_comments', {}).get(pillar, '')
                                 
                                 st.markdown(f"**{kpi_name}**")
                                 if kpi_comment:
-                                    st.caption(f"💬 {kpi_comment[:150]}")
+                                    st.caption(f"💬 {kpi_comment}")
                                 
                                 c1, c2 = st.columns(2)
                                 with c1:
@@ -6456,7 +6453,7 @@ def performance_okrs():
                                         if e.get('rejection'):
                                             st.markdown(f"**🚫 Rejection Reason:** {e['rejection']}")
                                         
-                                        # EVIDENCE FILES
+                                        # EVIDENCE FILES - WITH ORIGINAL NAMES
                                         st.markdown("---")
                                         st.markdown("### 📎 Employee Evidence Files")
                                         
@@ -6471,6 +6468,7 @@ def performance_okrs():
                                         if not db_evidence:
                                             db_evidence = e.get('evidence_files', '')
                                         
+                                        has_evidence = False
                                         if db_evidence:
                                             try:
                                                 if isinstance(db_evidence, str):
@@ -6481,15 +6479,20 @@ def performance_okrs():
                                                 if evidence and isinstance(evidence, dict):
                                                     for pillar, urls in evidence.items():
                                                         if urls and isinstance(urls, list) and len(urls) > 0:
+                                                            has_evidence = True
                                                             st.markdown(f"**{pillar}**")
                                                             for url in urls:
-                                                                st.markdown(f"- [📄 View Document]({url})")
+                                                                file_name = url.split('/')[-1]
+                                                                parts = file_name.split('_', 3)
+                                                                display_name = parts[-1] if len(parts) >= 4 else file_name
+                                                                st.markdown(f"- 📄 [{display_name}]({url})")
                                             except:
                                                 pass
-                                        else:
+                                        
+                                        if not has_evidence:
                                             st.info("No evidence files attached")
                                         
-                                        # REJECTION DOCUMENTS
+                                        # REJECTION DOCUMENTS - WITH ORIGINAL NAMES
                                         st.markdown("---")
                                         st.markdown("### 📎 Rejection Documents")
                                         
@@ -6504,6 +6507,7 @@ def performance_okrs():
                                         if not db_rej_docs:
                                             db_rej_docs = e.get('rejection_docs', '')
                                         
+                                        has_rej = False
                                         if db_rej_docs:
                                             try:
                                                 if isinstance(db_rej_docs, str):
@@ -6511,11 +6515,16 @@ def performance_okrs():
                                                 else:
                                                     docs = db_rej_docs
                                                 if docs and isinstance(docs, list) and len(docs) > 0:
+                                                    has_rej = True
                                                     for doc_url in docs:
-                                                        st.markdown(f"- [📄 View Document]({doc_url})")
+                                                        file_name = doc_url.split('/')[-1]
+                                                        parts = file_name.split('_', 3)
+                                                        display_name = parts[-1] if len(parts) >= 4 else file_name
+                                                        st.markdown(f"- 📄 [{display_name}]({doc_url})")
                                             except:
                                                 pass
-                                        else:
+                                        
+                                        if not has_rej:
                                             st.info("No rejection documents attached")
                                         
                                         # SCORES BY PILLAR
@@ -6592,6 +6601,7 @@ def performance_okrs():
                                                 st.success("🔄 Overturned!"); st.balloons(); time.sleep(2); st.rerun()
                 else:
                     st.info("No escalated appraisals.")
+
             
             # ============================================================
             # COMMITTEE TAB 4: COMPLETED - By Region/Subsidiary/Dept
@@ -17455,7 +17465,7 @@ def main():
         if 'last_activity' not in st.session_state or not isinstance(st.session_state.last_activity, datetime):
             st.session_state.last_activity = datetime.now()
         idle_time = (datetime.now() - st.session_state.last_activity).total_seconds()
-        if idle_time > 900:
+if idle_time > 18000:
             st.session_state.user = None
             st.session_state.last_activity = None
             st.query_params.clear()
