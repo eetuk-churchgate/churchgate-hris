@@ -4410,7 +4410,7 @@ def performance_okrs():
                                     log_audit('HOD Review', f'{staff_name} reviewed by HOD')
                                     st.success("✅ Submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
             else:
-                st.info("No pending appraisals."
+                st.info("No pending appraisals.")
     
     # ============================================================
     # TAB 5: TEAM LEAD/MANAGER REVIEW (STRICT REPORTS-TO FILTER)
