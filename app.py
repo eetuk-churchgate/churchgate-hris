@@ -15921,25 +15921,26 @@ def my_profile():
                     col1, col2, col3 = st.columns([3, 1, 1])
                     with col1:
                         st.markdown(f"📄 **{doc.get('document_name', 'Document')}**")
-                        st.caption(f"Uploaded: {doc.get('created_at', '')[:10]}")
+                        st.caption(f"Type: {doc.get('document_type', 'N/A')} | Uploaded: {doc.get('created_at', '')[:10]}")
                     with col2:
                         file_data = doc.get('file_data', '')
-                        if file_data:
+                        file_url = doc.get('file_url', '')
+                        if file_url:
+                            st.markdown(f"[📥 Download]({file_url})")
+                        elif file_data:
                             import base64
                             try:
                                 file_bytes = base64.b64decode(file_data)
                                 st.download_button("📥 Download", file_bytes, doc.get('document_name', 'file'), 
                                                   key=f"dl_{doc.get('id', '')}", use_container_width=True)
                             except:
-                                if file_data:
-                                    try:
-                                        file_bytes = bytes(file_data)
-                                        st.download_button("📥 Download", file_bytes, doc.get('document_name', 'file'),
-                                                          key=f"dl2_{doc.get('id', '')}", use_container_width=True)
-                                    except:
-                                        st.caption("N/A")
-                                else:
+                                try:
+                                    st.download_button("📥 Download", str(file_data).encode(), doc.get('document_name', 'file'),
+                                                      key=f"dl2_{doc.get('id', '')}", use_container_width=True)
+                                except:
                                     st.caption("N/A")
+                        else:
+                            st.caption("N/A")
                     with col3:
                         if st.button("🗑️", key=f"del_doc_{doc.get('id', '')}"):
                             db._delete("documents", {"id": doc.get('id')})
@@ -15948,6 +15949,7 @@ def my_profile():
                 st.info("No documents uploaded yet.")
             
             st.markdown("---")
+            doc_category = st.selectbox("Document Category", ["Personal File", "Certificate", "Contract", "Tax Document", "Performance Review"], key="doc_category")
             uploaded_doc = st.file_uploader("Upload New Document", type=['pdf', 'docx', 'jpg'], key="doc_upload")
             doc_name = st.text_input("Document Name", placeholder="e.g., Employment Contract, Certification", key="doc_name")
             
@@ -15957,22 +15959,24 @@ def my_profile():
                         import base64
                         doc_bytes = uploaded_doc.read()
                         doc_b64 = base64.b64encode(doc_bytes).decode('utf-8')
+                        doc_type = doc_category.lower().replace(" ", "_")
                         file_url = ""
                         try:
-                            file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, "application/pdf")
+                            file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, uploaded_doc.type)
                         except:
                             pass
                         db._post("documents", {
                             "employee_id": user_id,
-                            "document_type": "personal",
+                            "document_type": doc_type,
                             "document_name": doc_name,
                             "file_data": doc_b64,
+                            "file_url": file_url,
                             "uploaded_by": str(user_id),
                             "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         })
                         db._post("employee_documents", {
                             "employee_id": user_id,
-                            "document_type": "personal",
+                            "document_type": doc_type,
                             "document_name": doc_name,
                             "file_url": file_url,
                             "uploaded_by": user_name,
