@@ -15918,7 +15918,24 @@ def my_profile():
             
             if saved_docs:
                 for doc in saved_docs[:10]:
-                    st.markdown(f"📄 **{doc.get('document_name', 'Document')}** - {doc.get('created_at', '')}")
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    with col1:
+                        st.markdown(f"📄 **{doc.get('document_name', 'Document')}**")
+                        st.caption(f"Uploaded: {doc.get('created_at', '')[:10]}")
+                    with col2:
+                        file_data = doc.get('file_data', '')
+                        if file_data:
+                            import base64
+                            try:
+                                file_bytes = base64.b64decode(file_data)
+                                st.download_button("📥 Download", file_bytes, doc.get('document_name', 'file'), 
+                                                  key=f"dl_{doc.get('id', '')}", use_container_width=True)
+                            except:
+                                st.caption("N/A")
+                    with col3:
+                        if st.button("🗑️", key=f"del_doc_{doc.get('id', '')}"):
+                            db._delete("documents", {"id": doc.get('id')})
+                            st.rerun()
             else:
                 st.info("No documents uploaded yet.")
             
@@ -15940,6 +15957,15 @@ def my_profile():
                             "file_data": doc_b64,
                             "uploaded_by": str(user_id),
                             "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        })
+                        db._post("employee_documents", {
+                            "employee_id": user_id,
+                            "document_type": doc_type,
+                            "document_name": doc_name,
+                            "file_url": "",
+                            "uploaded_by": user_name,
+                            "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                            "is_public": False
                         })
                         st.success(f"✅ '{doc_name}' saved permanently!")
                         st.rerun()
