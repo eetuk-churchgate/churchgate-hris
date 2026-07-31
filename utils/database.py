@@ -61,10 +61,15 @@ class DatabaseManager:
             st.error(f"Supabase DELETE Error [{r.status_code}]: {r.text[:200]}")
         return r.status_code in [200, 204]
     
+    def _insert(self, table, data):
+        """Insert a record into a table"""
+        return self._post(table, data)
+    
     def create_tables(self):
         pass
     
     def verify_user(self, email, password):
+
         import hashlib
         import bcrypt
         
