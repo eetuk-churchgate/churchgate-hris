@@ -15887,6 +15887,7 @@ def my_profile():
         with tab3:
             st.subheader("🛠️ My Skills & Certifications")
             
+            # Load saved data
             saved_skills = ""
             saved_certs = ""
             try:
@@ -15897,18 +15898,85 @@ def my_profile():
             except:
                 pass
             
-            st.markdown("**Technical Skills**")
-            skills = st.text_area("List your skills (comma-separated)", value=saved_skills, placeholder="e.g., Python, Project Management, BMS, HVAC")
+            # Parse skills and certs into lists
+            skills_list = [s.strip() for s in saved_skills.split(',') if s.strip()] if saved_skills else []
+            certs_list = [c.strip() for c in saved_certs.split(',') if c.strip()] if saved_certs else []
             
-            st.markdown("**Certifications**")
-            certs = st.text_area("List your certifications", value=saved_certs, placeholder="e.g., CCNP, NEBOSH, PMP, CIPM")
+            col1, col2 = st.columns(2)
             
-            if st.button("💾 Save Skills & Certs", use_container_width=True):
-                try:
-                    db._patch("users", {"skills": skills, "certifications": certs}, {"email": user_email})
-                    st.success("✅ Skills & Certifications saved permanently!")
-                except Exception as e:
-                    st.error(f"❌ Save failed: {str(e)}")
+            with col1:
+                st.markdown("### 💻 Technical Skills")
+                
+                # Display skills as stylish tags
+                if skills_list:
+                    st.markdown('<div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0;">', unsafe_allow_html=True)
+                    for i, skill in enumerate(skills_list):
+                        colors = ['#CC0000', '#1a1a1a', '#4a4a4a', '#2d3748', '#718096']
+                        color = colors[i % len(colors)]
+                        st.markdown(f"""
+                            <div style="background: {color}; color: white; padding: 8px 16px; border-radius: 20px; 
+                                        font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;">
+                                {skill}
+                                <span style="cursor: pointer; font-weight: bold; font-size: 1rem;" 
+                                      title="Remove {skill}">×</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+                else:
+                    st.info("No skills added yet.")
+                
+                # Add new skill
+                with st.expander("➕ Add Skill", expanded=False):
+                    new_skill = st.text_input("New Skill", placeholder="e.g., Python, Project Management, BMS", key="new_skill")
+                    if st.button("Add Skill", key="add_skill_btn", use_container_width=True):
+                        if new_skill and new_skill.strip():
+                            skills_list.append(new_skill.strip())
+                            updated_skills = ', '.join(skills_list)
+                            db._patch("users", {"skills": updated_skills}, {"email": user_email})
+                            st.success(f"✅ '{new_skill}' added!")
+                            st.rerun()
+            
+            with col2:
+                st.markdown("### 🏅 Certifications")
+                
+                # Display certifications as stylish cards
+                if certs_list:
+                    for i, cert in enumerate(certs_list):
+                        colors = ['#CC0000', '#1a1a1a', '#4a4a4a', '#2d3748']
+                        color = colors[i % len(colors)]
+                        st.markdown(f"""
+                            <div style="background: {color}; color: white; padding: 10px 16px; border-radius: 10px; 
+                                        margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 1.2rem;">🏅</span>
+                                <span style="flex: 1; font-weight: 500;">{cert}</span>
+                                <span style="cursor: pointer; font-weight: bold; font-size: 1rem;" 
+                                      title="Remove {cert}">×</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("No certifications added yet.")
+                
+                # Add new certification
+                with st.expander("➕ Add Certification", expanded=False):
+                    new_cert = st.text_input("New Certification", placeholder="e.g., CCNP, PMP, CIPM", key="new_cert")
+                    if st.button("Add Certification", key="add_cert_btn", use_container_width=True):
+                        if new_cert and new_cert.strip():
+                            certs_list.append(new_cert.strip())
+                            updated_certs = ', '.join(certs_list)
+                            db._patch("users", {"certifications": updated_certs}, {"email": user_email})
+                            st.success(f"✅ '{new_cert}' added!")
+                            st.rerun()
+            
+            # Remove functionality (handled via direct edit)
+            with st.expander("✏️ Edit All Skills & Certifications", expanded=False):
+                st.markdown("**Edit Skills (comma-separated)**")
+                edit_skills = st.text_area("Skills", value=', '.join(skills_list), height=80, key="edit_skills")
+                st.markdown("**Edit Certifications (comma-separated)**")
+                edit_certs = st.text_area("Certifications", value=', '.join(certs_list), height=80, key="edit_certs")
+                if st.button("💾 Save Changes", use_container_width=True):
+                    db._patch("users", {"skills": edit_skills, "certifications": edit_certs}, {"email": user_email})
+                    st.success("✅ Skills & Certifications updated!")
+                    st.rerun()
             
             st.markdown("---")
             st.subheader("📁 My Documents")
@@ -15951,7 +16019,6 @@ def my_profile():
                             file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, uploaded_doc.type)
                         except:
                             pass
-                        
                         db._post("employee_documents", {
                             "employee_id": user_id,
                             "document_type": doc_category,
