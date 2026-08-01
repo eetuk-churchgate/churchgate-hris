@@ -2527,7 +2527,12 @@ def employee_management():
                                         current_join_date_val = date.today()
                                 else:
                                     current_join_date_val = date.today()
-                                new_join_date = st.date_input("Join Date", value=current_join_date_val, min_value=date(1970, 1, 1), max_value=date.today(), key=f"join_{emp['employee_id']}_{st.session_state.dir_page}")
+                                # Ensure join date is within valid range
+                                if current_join_date_val and current_join_date_val >= date(1950, 1, 1) and current_join_date_val <= date.today():
+                                    display_date = current_join_date_val
+                                else:
+                                    display_date = date.today()
+                                new_join_date = st.date_input("Join Date", value=display_date, min_value=date(1950, 1, 1), max_value=date.today(), key=f"join_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
                                 current_gender = str(emp.get('gender', 'Male'))
                                 gender_options = ['Male', 'Female']
