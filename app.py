@@ -2316,7 +2316,7 @@ def employee_management():
                     <span style="font-size:2rem;">🎂</span>
                     <div>
                         <strong style="color:#CC0000;">Happy Birthday Today!</strong><br>
-                        <span>{', '.join(todays_birthdays)}</span>
+                        <span>{', '.join([str(b) for b in todays_birthdays])}</span>
                     </div>
                 </div>
             </div>
