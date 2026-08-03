@@ -27,26 +27,42 @@ sys.path.append(str(Path(__file__).parent))
 # =============================================
 # DYNAMIC PILLARS BASED ON FINANCIAL YEAR
 # =============================================
-def get_pillars():
-    """Return pillars based on selected financial year"""
-    try:
-        if st.session_state.get('appraisal_fy') == 'FY 25/26':
-            return [
-                '1. Brand Visibility',
-                '2. New Business Development',
-                '3. Customer Centricity',
-                '4. Invest in Our People',
-                '5. Financial Performance',
-                '6. Behavioral & Collaborations'
-            ]
-    except:
-        pass
-    return [
-        '1. Occupancy & Revenue Growth',
-        '2. Process Simplification',
-        '3. Asset Reliability & Digitalization',
-        '4. People & Culture'
-    ]
+def get_pillars(financial_year=None):
+        """Return pillars based on financial year - DB first, then fallback"""
+        
+        # Try database first
+        try:
+            if financial_year is None:
+                financial_year = st.session_state.get('appraisal_fy', 'FY 26/27')
+            
+            data = db._get("appraisal_pillars", {"financial_year": financial_year, "is_active": "true"})
+            if data and len(data) > 0:
+                sorted_data = sorted(data, key=lambda x: x.get('pillar_order', 0))
+                return [p.get('pillar_name', '') for p in sorted_data]
+        except:
+            pass
+        
+        # Fallback - your existing logic
+        try:
+            if st.session_state.get('appraisal_fy') == 'FY 25/26':
+                return [
+                    '1. Brand Visibility',
+                    '2. New Business Development',
+                    '3. Customer Centricity',
+                    '4. Invest in Our People',
+                    '5. Financial Performance',
+                    '6. Behavioral & Collaborations'
+                ]
+        except:
+            pass
+        
+        # Default fallback - FY2627 pillars
+        return [
+            '1. Occupancy & Revenue Growth',
+            '2. Process Simplification',
+            '3. Asset Reliability & Digitalization',
+            '4. People & Culture'
+        ]
 
 # =============================================
 # FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
@@ -1236,7 +1252,7 @@ def employee_dashboard():
             perf_data = pd.DataFrame(_r.json()) if _r.status_code == 200 else pd.DataFrame()
             
             if not perf_data.empty:
-                pillar_order = get_pillars()
+                pillar_order = get_pillars(st.session_state.get('appraisal_fy', 'FY 26/27'))
                 perf_data['sort_order'] = perf_data['pillar_name'].apply(
                     lambda x: int(x.split('.')[0]) if x and x[0].isdigit() else 99
                 )
@@ -1244,6 +1260,7 @@ def employee_dashboard():
                 for _, row in perf_data.iterrows():
                     progress = row.get('progress', 0)
                     color = "#38a169" if progress >= 85 else "#d69e2e" if progress >= 65 else "#CC0000"
+
                     st.markdown(f"""
                     <div style="background:white;padding:0.7rem 1rem;border-radius:8px;margin-bottom:0.4rem;">
                         <div style="display:flex;justify-content:space-between;">
@@ -3377,7 +3394,7 @@ def performance_okrs():
     # ============================================================
     # DYNAMIC PILLARS BASED ON FINANCIAL YEAR
     # ============================================================
-    def get_pillars():
+    def get_pillars(financial_year=None):
         """Return pillars based on selected financial year"""
         if st.session_state.get('appraisal_fy') == 'FY 25/26':
             return [
@@ -3443,28 +3460,65 @@ def performance_okrs():
                 if p_name in pillar_data:
                     kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
                     
-                    # Add only unique KPIs
                     for kpi in kpi_list:
                         kpi_title = kpi.get('kpi', '')
                         if kpi_title and kpi_title not in seen_kpis[p_name]:
                             seen_kpis[p_name].add(kpi_title)
                             pillar_data[p_name]['kpis'].append(kpi)
                     
-                    # Take the BEST values across all rows
                     pillar_data[p_name]['weight'] = max(pillar_data[p_name]['weight'], row.get('weight', 0))
                     pillar_data[p_name]['progress'] = max(pillar_data[p_name]['progress'], row.get('progress', 0))
                     
-                    # Take the best status
                     row_status = row.get('status', 'Not Started')
                     if row_status in ['Completed', 'Exceeding', 'On Track']:
                         pillar_data[p_name]['status'] = row_status
                     
-                    # Take the best submission status
                     current_sub = row.get('submission_status', 'Draft')
                     if current_sub == 'Approved':
                         pillar_data[p_name]['submission_status'] = 'Approved'
                     elif current_sub == 'Submitted' and pillar_data[p_name]['submission_status'] != 'Approved':
                         pillar_data[p_name]['submission_status'] = 'Submitted'
+        
+        return pillar_data
+    
+    def load_user_pillar_data_for_cycle(cycle_name):
+        """Load pillar data filtered by a specific cycle"""
+        user_perf = get_user_perf()
+        pillar_data = {}
+        pillar_order = get_pillars(cycle_name)
+        
+        for pillar in pillar_order:
+            pillar_data[pillar] = {'weight': 0, 'progress': 0, 'status': 'Not Started', 
+                                   'deadline': '2026-12-31', 'kpis': [], 'submission_status': 'Draft'}
+        
+        if not user_perf.empty and 'pillar_name' in user_perf.columns:
+            seen_kpis = {p: set() for p in pillar_data}
+            
+            for _, row in user_perf.iterrows():
+                p_name = row.get('pillar_name', '')
+                if p_name in pillar_data:
+                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                    filtered_kpis = [k for k in kpi_list if k.get('cycle', '') == cycle_name]
+                    
+                    for kpi in filtered_kpis:
+                        kpi_title = kpi.get('kpi', '')
+                        if kpi_title and kpi_title not in seen_kpis[p_name]:
+                            seen_kpis[p_name].add(kpi_title)
+                            pillar_data[p_name]['kpis'].append(kpi)
+                    
+                    if filtered_kpis:
+                        pillar_data[p_name]['weight'] = max(pillar_data[p_name]['weight'], row.get('weight', 0))
+                        pillar_data[p_name]['progress'] = max(pillar_data[p_name]['progress'], row.get('progress', 0))
+                        
+                        row_status = row.get('status', 'Not Started')
+                        if row_status in ['Completed', 'Exceeding', 'On Track']:
+                            pillar_data[p_name]['status'] = row_status
+                        
+                        current_sub = row.get('submission_status', 'Draft')
+                        if current_sub == 'Approved':
+                            pillar_data[p_name]['submission_status'] = 'Approved'
+                        elif current_sub == 'Submitted' and pillar_data[p_name]['submission_status'] != 'Approved':
+                            pillar_data[p_name]['submission_status'] = 'Submitted'
         
         return pillar_data
     
@@ -3551,7 +3605,54 @@ def performance_okrs():
     # ============================================================
     with tab1:
         st.markdown('<div class="glass-card"><h3>🎯 My Strategic Pillars</h3></div>', unsafe_allow_html=True)
-        pillar_data = load_user_pillar_data()
+        
+        # ============================================================
+        # FY SELECTOR - Map cycles to Financial Years
+        # ============================================================
+        cycle_fy_map = {
+            'Half-Year Appraisal': 'FY 26/27',
+            'Full-Year Appraisal': 'FY 25/26'
+        }
+        
+        available_fy = []
+        user_perf_all = get_all_perf_cached()
+        if not user_perf_all.empty:
+            user_kpis = user_perf_all[user_perf_all['user_name'] == user_name] if 'user_name' in user_perf_all.columns else pd.DataFrame()
+            if not user_kpis.empty:
+                for _, row in user_kpis.iterrows():
+                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                    for kpi in kpi_list:
+                        cycle = kpi.get('cycle', '')
+                        fy = cycle_fy_map.get(cycle, cycle)
+                        if fy and fy not in available_fy:
+                            available_fy.append(fy)
+        
+        if not available_fy:
+            available_fy = ['FY 26/27', 'FY 25/26']
+        
+        available_fy = sorted(available_fy, reverse=True)
+        default_fy = cycle_fy_map.get(st.session_state.appraisal_cycle_name, 'FY 26/27')
+        if default_fy not in available_fy:
+            default_fy = available_fy[0]
+        
+        col_fy, col_space = st.columns([1, 3])
+        with col_fy:
+            selected_fy = st.selectbox("📅 Financial Year", available_fy, 
+                index=available_fy.index(default_fy) if default_fy in available_fy else 0,
+                key="tab1_fy_selector")
+        
+        # Map FY back to cycle name for KPI filtering
+        fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
+        selected_cycle = fy_cycle_map.get(selected_fy, selected_fy)
+        
+        # Check if this FY's cycle is the active one
+        is_active_cycle = (selected_cycle == st.session_state.appraisal_cycle_name) and st.session_state.appraisal_cycle_active
+        
+        if not is_active_cycle:
+            st.info(f"📂 Viewing **{selected_fy}** (Read-only). Switch to the active cycle to make changes.")
+        
+        # Load pillar data filtered by selected cycle
+        pillar_data = load_user_pillar_data_for_cycle(selected_cycle)
         overall_status = 'Draft'
         statuses = [p['submission_status'] for p in pillar_data.values()]
         if 'Submitted' in statuses: overall_status = 'Submitted'
@@ -3576,7 +3677,7 @@ def performance_okrs():
                 st.success("✅ All KPIs submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         
         st.markdown("---")
-        pillar_order = get_pillars()
+        pillar_order = get_pillars(st.session_state.get('appraisal_fy', 'FY 26/27'))
         for pillar_name in pillar_order:
             pd_data = pillar_data[pillar_name]
             status_text, color = get_kpi_status(pd_data['progress'])
@@ -3812,12 +3913,49 @@ def performance_okrs():
     with tab3:
         st.markdown('<div class="glass-card"><h3>📝 Self-Assessment</h3></div>', unsafe_allow_html=True)
         
+        # Cycle selector for self-assessment
+        available_cycles = []
+        user_perf_all = get_all_perf_cached()
+        if not user_perf_all.empty:
+            user_kpis = user_perf_all[user_perf_all['user_name'] == user_name] if 'user_name' in user_perf_all.columns else pd.DataFrame()
+            if not user_kpis.empty:
+                for _, row in user_kpis.iterrows():
+                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                    for kpi in kpi_list:
+                        cycle = kpi.get('cycle', '')
+                        if cycle and cycle not in available_cycles:
+                            available_cycles.append(cycle)
+        
+        if st.session_state.appraisal_cycle_name and st.session_state.appraisal_cycle_name not in available_cycles:
+            available_cycles.append(st.session_state.appraisal_cycle_name)
+        
+        if not available_cycles:
+            available_cycles = [st.session_state.appraisal_cycle_name or 'Half-Year Appraisal']
+        
+        available_cycles = sorted(available_cycles, reverse=True)
+        default_cycle = st.session_state.appraisal_cycle_name if st.session_state.appraisal_cycle_name in available_cycles else available_cycles[0]
+        
+        selected_cycle = st.selectbox("📅 Appraisal Cycle", available_cycles,
+            index=available_cycles.index(default_cycle) if default_cycle in available_cycles else 0,
+            key="tab3_cycle_selector")
+        
+        is_cycle_active = st.session_state.appraisal_cycle_active and (selected_cycle == st.session_state.appraisal_cycle_name)
+        
         if st.session_state.appraisal_cycle_active:
             user_perf = get_user_perf()
-            has_approved = not user_perf.empty and any(row.get('submission_status') == 'Approved' for _, row in user_perf.iterrows())
+            has_approved = False
+            if not user_perf.empty and 'pillar_name' in user_perf.columns:
+                for _, row in user_perf.iterrows():
+                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                    cycle_kpis = [k for k in kpi_list if k.get('cycle', '') == selected_cycle]
+                    if cycle_kpis and row.get('submission_status') == 'Approved':
+                        has_approved = True
+                        break
             
             if not has_approved:
-                st.warning("⚠️ Your KPIs must be approved before self-assessment.")
+                st.warning(f"⚠️ Your KPIs for **{selected_cycle}** must be approved before self-assessment.")
+            elif not is_cycle_active:
+                st.info(f"📂 **{selected_cycle}** is not the active cycle. View only.")
             elif st.session_state.appraisal_locked:
                 st.warning("🔒 Scores are locked.")
             elif st.session_state.self_assessments.get(user_name, {}).get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review']:
@@ -3825,13 +3963,13 @@ def performance_okrs():
             elif st.session_state.self_assessments.get(user_name, {}).get('status') == 'Draft':
                 st.info("📝 You have a saved draft. Continue below or submit when ready.")
             else:
-                st.success(f"🔓 Ready for Self-Assessment — {st.session_state.appraisal_cycle_name}")
+                st.success(f"🔓 Ready for Self-Assessment — {selected_cycle}")
             
             # Show form if not submitted
             existing_status = st.session_state.self_assessments.get(user_name, {}).get('status', '')
             if existing_status not in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review'] or existing_status == 'Draft':
                 
-                pillar_order = get_pillars()
+                pillar_order = get_pillars(selected_cycle)
                 existing_draft = st.session_state.self_assessments.get(user_name, {}) if existing_status == 'Draft' else {}
                 draft_scores = existing_draft.get('scores', {}) if existing_status == 'Draft' else {}
                 draft_pillar_comments = existing_draft.get('pillar_comments', {}) if existing_status == 'Draft' else {}
@@ -3902,6 +4040,36 @@ def performance_okrs():
                             st.markdown("---")
                 
                 overall_comments = st.text_area("Overall Comments *", value=draft_overall, placeholder="Summarize your overall performance...")
+                
+                # Show total average before submitting
+                if scores:
+                    total_score = sum(int(v) for v in scores.values()) / len(scores)
+                    
+                    st.markdown("---")
+                    st.markdown("### 📊 Your Overall Score")
+                    
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.metric("📊 Total Average", f"{total_score:.1f}%")
+                    with c2:
+                        st.metric("📋 KPIs Scored", len(scores))
+                    with c3:
+                        if total_score >= 90: classification = "🥇 PLATINUM"
+                        elif total_score >= 80: classification = "🥇 GOLD"
+                        elif total_score >= 70: classification = "🥈 SILVER"
+                        elif total_score >= 60: classification = "🥉 BRONZE"
+                        elif total_score >= 50: classification = "🔵 STEEL"
+                        else: classification = "⚪ DEVELOPMENT"
+                        st.metric("🏅 Estimated", classification)
+                    
+                    st.markdown("#### Per Pillar Averages")
+                    for pillar_name in pillar_order:
+                        pillar_scores = {k: v for k, v in scores.items() if k.startswith(pillar_name)}
+                        if pillar_scores:
+                            pillar_avg = sum(int(v) for v in pillar_scores.values()) / len(pillar_scores)
+                            st.markdown(f"**{pillar_name}**: {pillar_avg:.0f}%")
+                    
+                    st.markdown("---")
                 
                 col_save, col_submit = st.columns(2)
                 with col_save:
@@ -4065,7 +4233,7 @@ def performance_okrs():
                     st.caption("No comments provided")
                 
                 with st.expander("📊 Score Review by Pillar", expanded=True):
-                    pillar_order = get_pillars()
+                    pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
                     for pillar in pillar_order:
                         pillar_scores = {k: v for k, v in sorted(a['scores'].items(), key=natural_sort_key) if k.startswith(pillar)}
                         if pillar_scores:
@@ -4191,7 +4359,7 @@ def performance_okrs():
                             team_submissions[clean_name].append({'pillar': row.get('pillar_name', ''), 'kpis': json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else [], 'row_id': row.get('id')})
                 if team_submissions:
                     st.success(f"📋 {len(team_submissions)} team member(s)")
-                    pillar_order = get_pillars()
+                    pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
                     for emp_name, submissions in team_submissions.items():
                         with st.expander(f"👤 {emp_name}", expanded=False):
                             ordered_subs = sorted(submissions, key=lambda x: pillar_order.index(x['pillar']) if x['pillar'] in pillar_order else 99)
@@ -4234,7 +4402,7 @@ def performance_okrs():
                             team_approved[clean_name].append({'pillar': row.get('pillar_name', ''), 'kpis': json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else [], 'weight': row.get('weight', 0)})
                 if team_approved:
                     st.success(f"✅ {len(team_approved)} team member(s) with approved KPIs")
-                    pillar_order = get_pillars()
+                    pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
                     for emp_name, kpi_data in team_approved.items():
                         with st.expander(f"✅ {emp_name} — {len(kpi_data)} pillar(s) approved", expanded=False):
                             combined = {}
@@ -4331,16 +4499,22 @@ def performance_okrs():
                         
                         if not has_files: st.info("📎 No evidence files attached")
                         
-                        # SCORE REVIEW
+                        # SCORE REVIEW with Averages
                         st.markdown("---"); st.markdown("### 📊 Score Review")
                         
                         hod_scores = {}
-                        pillar_order = get_pillars()
+                        pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
+                        
+                        staff_total = 0
+                        staff_count = 0
+                        hod_total = 0
+                        hod_count = 0
                         
                         for pillar in pillar_order:
                             pillar_scores = {k: v for k, v in sorted(assessment['scores'].items(), key=natural_sort_key) if k.startswith(pillar)}
                             if pillar_scores:
-                                st.markdown(f"**{pillar}**")
+                                pillar_staff_avg = sum(int(v) for v in pillar_scores.values()) / len(pillar_scores)
+                                st.markdown(f"**{pillar}** (Staff Avg: {pillar_staff_avg:.0f}%)")
                                 for score_key, staff_score in pillar_scores.items():
                                     kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
                                     kpi_name = f"KPI {kpi_index + 1}"
@@ -4364,7 +4538,25 @@ def performance_okrs():
                                     with c2:
                                         prev_hod = assessment.get('hod_scores', {}).get(score_key, staff_score) if is_re_review else staff_score
                                         hod_scores[score_key] = st.number_input("HOD Score", 0, 100, int(prev_hod) if prev_hod else int(staff_score), 1, key=f"hod_{staff_name}_{score_key}")
+                                    
+                                    staff_total += int(staff_score)
+                                    staff_count += 1
+                                    hod_total += int(hod_scores[score_key])
+                                    hod_count += 1
                                 st.markdown("---")
+                        
+                        # TOTAL AVERAGES
+                        staff_avg = staff_total / staff_count if staff_count > 0 else 0
+                        hod_avg = hod_total / hod_count if hod_count > 0 else 0
+                        
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
+                            st.metric("📊 Staff Overall Avg", f"{staff_avg:.1f}%")
+                        with c2:
+                            st.metric("👔 HOD Overall Avg", f"{hod_avg:.1f}%")
+                        with c3:
+                            diff = staff_avg - hod_avg
+                            st.metric("📈 Difference", f"{diff:+.1f}%")
                         
                         hod_overall = st.text_area(f"Your Overall Comments *", value=assessment.get('hod_comments', '') if is_re_review else '', key=f"hod_app_{staff_name}")
                         
@@ -4662,29 +4854,186 @@ def performance_okrs():
     # TAB 6: EXCEPTIONAL ACHIEVEMENTS
     # ============================================================
     with tab6:
-        st.markdown('<div class="glass-card"><h3>🌟 Exceptional Achievements</h3></div>', unsafe_allow_html=True)
-        st.info("Document accomplishments outside your formal KPIs.")
-        categories = {"💡 Innovation": "New ideas", "👑 Leadership": "Leading teams", "😊 Customer Impact": "Going above and beyond", "💰 Cost Savings": "Efficiency gains", "🚨 Crisis Management": "Handling emergencies", "🤝 Teamwork": "Collaboration"}
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; color: white;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="font-size: 2.5rem;">🌟</div>
+                <div>
+                    <h3 style="margin: 0; color: white;">Exceptional Achievements</h3>
+                    <p style="margin: 5px 0 0 0; color: #a0aec0; font-size: 0.9rem;">Document accomplishments that go beyond your formal KPIs</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Load achievements from database
+        if 'exceptional_achievements' not in st.session_state:
+            st.session_state.exceptional_achievements = {}
+        
+        # Load from Supabase
+        try:
+            result = db._get("exceptional_achievements", {"user_name": user_name})
+            if result:
+                st.session_state.exceptional_achievements[user_name] = result
+        except:
+            pass
+        
         my_achievements = st.session_state.exceptional_achievements.get(user_name, [])
-        c1, c2, c3 = st.columns(3)
-        c1.metric("🏆 Achievements", len(my_achievements))
-        c2.metric("⭐ Avg Impact", f"{sum(3 if a.get('impact')=='Organization' else 2 if a.get('impact')=='Department' else 1 for a in my_achievements) / len(my_achievements):.1f}" if my_achievements else "N/A")
-        c3.metric("🎖️ Badges", len(set(a.get('category', '') for a in my_achievements)))
+        
+        categories = {
+            "💡 Innovation": "New ideas, process improvements, creative solutions",
+            "👑 Leadership": "Leading teams, mentoring, inspiring others",
+            "😊 Customer Impact": "Going above and beyond for customers/tenants",
+            "💰 Cost Savings": "Efficiency gains, cost reduction initiatives",
+            "🚨 Crisis Management": "Handling emergencies, problem-solving under pressure",
+            "🤝 Teamwork": "Cross-functional collaboration, team support",
+            "📊 Process Improvement": "Streamlining workflows, automation",
+            "🏆 Award/Recognition": "External recognition, awards, certifications earned"
+        }
+        
+        # Stats cards
+        total_achievements = len(my_achievements)
+        avg_impact = sum(4 if a.get('impact') == 'Organization' else 3 if a.get('impact') == 'Department' else 2 if a.get('impact') == 'Team' else 1 for a in my_achievements) / total_achievements if total_achievements > 0 else 0
+        unique_categories = len(set(a.get('category', '') for a in my_achievements))
+        recent_30_days = len([a for a in my_achievements if a.get('date', '') >= (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')])
+        
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.markdown(f"""
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #CC0000;">
+                <div style="font-size: 1.8rem;">🏆</div>
+                <div style="font-weight: 700; font-size: 1.5rem;">{total_achievements}</div>
+                <small style="color: #666;">Total Achievements</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with c2:
+            impact_label = "Exceptional" if avg_impact >= 3.5 else "Strong" if avg_impact >= 2.5 else "Good" if avg_impact >= 1.5 else "Building"
+            impact_color = "#38a169" if avg_impact >= 3.5 else "#3182ce" if avg_impact >= 2.5 else "#d69e2e" if avg_impact >= 1.5 else "#718096"
+            st.markdown(f"""
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid {impact_color};">
+                <div style="font-size: 1.8rem;">⭐</div>
+                <div style="font-weight: 700; font-size: 1.5rem;">{avg_impact:.1f}</div>
+                <small style="color: #666;">Avg Impact ({impact_label})</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with c3:
+            st.markdown(f"""
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #d69e2e;">
+                <div style="font-size: 1.8rem;">🎖️</div>
+                <div style="font-weight: 700; font-size: 1.5rem;">{unique_categories}</div>
+                <small style="color: #666;">Categories Covered</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with c4:
+            st.markdown(f"""
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #38a169;">
+                <div style="font-size: 1.8rem;">🔥</div>
+                <div style="font-weight: 700; font-size: 1.5rem;">{recent_30_days}</div>
+                <small style="color: #666;">Last 30 Days</small>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Category distribution chart
         if my_achievements:
-            for i, ach in enumerate(sorted(my_achievements, key=lambda x: x.get('date', ''), reverse=True)):
-                with st.expander(f"{ach.get('category', '💡')} {ach.get('title', '')}", expanded=i==0):
-                    st.markdown(f"**Description:** {ach.get('description', '')}")
-                    st.markdown(f"**Outcome:** {ach.get('outcome', '')}")
-        with st.form("add_achievement"):
+            st.markdown("---")
+            st.markdown("#### 📊 Achievement Distribution")
+            cat_counts = {}
+            for a in my_achievements:
+                cat = a.get('category', 'Other')
+                cat_counts[cat] = cat_counts.get(cat, 0) + 1
+            
+            if cat_counts:
+                cat_df = pd.DataFrame(list(cat_counts.items()), columns=['Category', 'Count'])
+                fig = px.pie(cat_df, values='Count', names='Category', hole=0.4, 
+                           color_discrete_sequence=['#CC0000', '#1a1a1a', '#4a4a4a', '#3182ce', '#38a169', '#d69e2e', '#718096', '#2d3748'])
+                fig.update_layout(height=350, margin=dict(t=10, b=10))
+                st.plotly_chart(fig, use_container_width=True)
+        
+        # Achievement timeline
+        if my_achievements:
+            st.markdown("---")
+            st.markdown("#### 📅 Achievement Timeline")
+            
+            # Sort by date
+            sorted_achievements = sorted(my_achievements, key=lambda x: x.get('date', ''), reverse=True)
+            
+            for i, ach in enumerate(sorted_achievements):
+                impact_colors = {
+                    'Organization': '#CC0000',
+                    'Department': '#3182ce', 
+                    'Team': '#38a169',
+                    'Individual': '#718096'
+                }
+                impact_color = impact_colors.get(ach.get('impact', 'Individual'), '#718096')
+                
+                with st.expander(f"{ach.get('category', '💡')} {ach.get('title', 'Achievement')} — {ach.get('date', '')}", expanded=(i == 0)):
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"""
+                        <div style="background: #f9f9f9; padding: 1rem; border-radius: 8px; border-left: 4px solid {impact_color};">
+                            <strong>Description:</strong>
+                            <p style="margin: 5px 0;">{ach.get('description', 'N/A')}</p>
+                            <strong>Outcome:</strong>
+                            <p style="margin: 5px 0;">{ach.get('outcome', 'N/A')}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with col2:
+                        st.markdown(f"""
+                        <div style="text-align: center; padding: 1rem;">
+                            <div style="font-size: 1.5rem;">{ach.get('category', '💡').split()[0]}</div>
+                            <span style="background: {impact_color}; color: white; padding: 5px 12px; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">
+                                {ach.get('impact', 'Individual')}
+                            </span>
+                        </div>
+                        """, unsafe_allow_html=True)
+        
+        # Add new achievement form
+        st.markdown("---")
+        st.markdown("#### ✨ Add New Achievement")
+        
+        with st.form("add_achievement_form"):
             c1, c2 = st.columns(2)
-            with c1: ach_title = st.text_input("Title *"); ach_category = st.selectbox("Category", list(categories.keys())); ach_impact = st.selectbox("Impact", ["Individual", "Team", "Department", "Organization"]); ach_date = st.date_input("Date")
-            with c2: ach_description = st.text_area("Description *", height=100); ach_outcome = st.text_area("Outcome *", height=100)
-            if st.form_submit_button("💾 Save", use_container_width=True):
+            with c1:
+                ach_title = st.text_input("Achievement Title *", placeholder="e.g., Led BMS migration project")
+                ach_category = st.selectbox("Category *", list(categories.keys()))
+                ach_impact = st.selectbox("Impact Level *", ["Individual", "Team", "Department", "Organization"])
+                ach_date = st.date_input("Date Achieved *", value=datetime.now())
+            with c2:
+                ach_description = st.text_area("Description *", height=100, placeholder="What did you do? Describe the situation and your actions...")
+                ach_outcome = st.text_area("Outcome / Result *", height=100, placeholder="What was the result? Include measurable impact if possible...")
+            
+            st.caption(f"💡 **{categories.get(ach_category, '').split(',')[0]}** — {categories.get(ach_category, '').split(',')[1] if ',' in categories.get(ach_category, '') else ''}")
+            
+            if st.form_submit_button("💾 Save Achievement", use_container_width=True):
                 if ach_title and ach_description and ach_outcome:
-                    if user_name not in st.session_state.exceptional_achievements: st.session_state.exceptional_achievements[user_name] = []
-                    st.session_state.exceptional_achievements[user_name].append({'title': ach_title, 'category': ach_category, 'description': ach_description, 'impact': ach_impact, 'outcome': ach_outcome, 'date': ach_date.strftime('%Y-%m-%d')})
-                    st.success("✅ Saved!"); st.balloons(); time.sleep(1); st.rerun()
-                else: st.error("❌ All fields required!")
+                    if user_name not in st.session_state.exceptional_achievements:
+                        st.session_state.exceptional_achievements[user_name] = []
+                    
+                    new_ach = {
+                        'title': ach_title,
+                        'category': ach_category,
+                        'description': ach_description,
+                        'impact': ach_impact,
+                        'outcome': ach_outcome,
+                        'date': ach_date.strftime('%Y-%m-%d'),
+                        'user_name': user_name,
+                        'created_at': datetime.now().strftime('%Y-%m-%d %H:%M')
+                    }
+                    
+                    st.session_state.exceptional_achievements[user_name].append(new_ach)
+                    
+                    # Save to database
+                    try:
+                        db._post("exceptional_achievements", new_ach)
+                    except:
+                        pass
+                    
+                    st.success("✅ Achievement saved successfully!")
+                    st.balloons()
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ Please fill all required fields (*)")
     
     # ============================================================
     # TAB 7: APPRAISAL SETTINGS (ADMIN ONLY)
@@ -4708,8 +5057,31 @@ def performance_okrs():
             c4.metric("🚨 Escalated", escalated_count)
             
             st.markdown("---")
+            
+            # Show all active cycles
+            st.markdown("### 📊 Active Appraisal Cycles")
+            try:
+                all_cycles = db._get("appraisal_cycles")
+                if all_cycles:
+                    active_cycles = [c for c in all_cycles if c.get('is_active')]
+                    if active_cycles:
+                        for c in active_cycles:
+                            st.success(f"🟢 **{c.get('cycle_name')}** — {c.get('start_date')} to {c.get('end_date')} (Activated by {c.get('activated_by', 'Admin')})")
+                    else:
+                        st.info("No active cycles.")
+                    
+                    inactive_cycles = [c for c in all_cycles if not c.get('is_active')]
+                    if inactive_cycles:
+                        with st.expander(f"📂 {len(inactive_cycles)} Inactive Cycle(s)", expanded=False):
+                            for c in inactive_cycles:
+                                st.markdown(f"- {c.get('cycle_name')} ({c.get('start_date')} to {c.get('end_date')})")
+            except:
+                pass
+            
+            st.markdown("---")
+            
             if st.session_state.appraisal_cycle_active:
-                st.success(f"🟢 Appraisal Cycle ACTIVE: **{st.session_state.appraisal_cycle_name}**")
+                st.success(f"🟢 Current Active: **{st.session_state.appraisal_cycle_name}**")
                 st.markdown(f"Period: {st.session_state.appraisal_start} to {st.session_state.appraisal_end}")
             else:
                 st.info("⚪ No active appraisal cycle.")
@@ -4718,13 +5090,17 @@ def performance_okrs():
             
             # ===== FINANCIAL YEAR SELECTION =====
             st.markdown("### 📅 Financial Year Strategy")
+            if 'appraisal_fy' not in st.session_state:
+                st.session_state.appraisal_fy = 'FY 25/26'
+            
             st.session_state.appraisal_fy = st.selectbox(
                 "Select Financial Year",
-                ['FY 26/27', 'FY 25/26'],
-                index=0 if st.session_state.appraisal_fy == 'FY 26/27' else 1,
-                help="FY 26/27: 4 Strategic Pillars | FY 25/26: 6 Strategic Initiatives"
+                ['FY 25/26', 'FY 26/27'],
+                index=0 if st.session_state.appraisal_fy == 'FY 25/26' else 1,
+                help="FY 25/26: 6 Strategic Initiatives | FY 26/27: 4 Strategic Pillars"
             )
-            st.caption(f"Active pillars: {', '.join(get_pillars())}")
+            current_pillars = get_pillars()
+            st.caption(f"Active pillars for {st.session_state.appraisal_fy}: {', '.join(current_pillars)}")
             st.markdown("---")
             
             st.markdown("### ⚙️ Cycle Configuration")
@@ -4772,6 +5148,51 @@ def performance_okrs():
                     if existing:
                         for c in existing: db._patch("appraisal_cycles", {"is_active": False}, {"id": c['id']})
                     st.warning("🛑 Cycle deactivated."); st.rerun()
+            
+            # ============================================================
+            # PILLAR MANAGEMENT (ADMIN)
+            # ============================================================
+            st.markdown("---")
+            st.markdown("### 🏗️ Pillar Management")
+            st.info("Set strategic pillars for each financial year. These will appear for all users.")
+            
+            fy_options = ['FY 25/26', 'FY 26/27', 'FY 27/28', 'FY 28/29', 'FY 29/30', 'FY 30/31', 'FY 31/32']
+            manage_fy = st.selectbox("Manage Financial Year", fy_options, key="manage_fy")
+            
+            current_pillars_mgmt = get_pillars(manage_fy)
+            
+            if current_pillars_mgmt:
+                st.markdown(f"**{len(current_pillars_mgmt)} pillars for {manage_fy}:**")
+                for i, p in enumerate(current_pillars_mgmt):
+                    st.markdown(f"{i+1}. {p}")
+            
+            with st.form("add_pillar_form"):
+                st.markdown("#### ➕ Add New Pillar")
+                new_pillar_name = st.text_input("Pillar Name *", placeholder="e.g., 7. Digital Transformation")
+                new_pillar_order = st.number_input("Order", min_value=1, value=len(current_pillars_mgmt)+1)
+                new_pillar_weight = st.number_input("Default Weight (%)", min_value=0, max_value=100, value=17)
+                
+                if st.form_submit_button("➕ Add Pillar", use_container_width=True):
+                    if new_pillar_name:
+                        db._post("appraisal_pillars", {
+                            "financial_year": manage_fy,
+                            "pillar_name": new_pillar_name,
+                            "pillar_order": new_pillar_order,
+                            "default_weight": new_pillar_weight,
+                            "is_active": True,
+                            "created_by": user_name
+                        })
+                        st.success(f"✅ Pillar added to {manage_fy}!")
+                        st.rerun()
+            
+            if current_pillars_mgmt:
+                with st.form("remove_pillar_form"):
+                    st.markdown("#### 🗑️ Remove Pillar")
+                    remove_pillar = st.selectbox("Select Pillar to Remove", current_pillars_mgmt)
+                    if st.form_submit_button("🗑️ Remove Pillar", use_container_width=True):
+                        db._delete("appraisal_pillars", {"financial_year": manage_fy, "pillar_name": remove_pillar})
+                        st.warning(f"🗑️ {remove_pillar} removed from {manage_fy}")
+                        st.rerun()
     
     # ============================================================
     # TAB 8: ADVANCED DASHBOARD - NO st.rerun() - OPTIMIZED
@@ -5423,11 +5844,12 @@ def performance_okrs():
                 st.markdown("---")
                 st.markdown(f"### 📊 Score Review")
                 
-                pillar_order = get_pillars()
+                pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
                 
                 for pillar in pillar_order:
                     pillar_scores = {k: v for k, v in sorted(user_assessment.get('scores', {}).items(), key=natural_sort_key) if k.startswith(pillar)}
                     if pillar_scores:
+
                         st.markdown(f"**{pillar}**")
                         for score_key, staff_score in pillar_scores.items():
                             reviewer_scores = user_assessment.get('hod_scores') or user_assessment.get('tl_scores') or {}
@@ -6428,7 +6850,7 @@ def performance_okrs():
                                         st.markdown("### 📊 Scores by Pillar")
                                         scores = e.get('scores', {})
                                         hod_scores = e.get('hod_scores', {})
-                                        pillar_order = get_pillars()
+                                        pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
                                         
                                         for pillar in pillar_order:
                                             pillar_scores = {k: v for k, v in sorted(scores.items(), key=natural_sort_key) if k.startswith(pillar)}
@@ -6456,6 +6878,17 @@ def performance_okrs():
                                                     with c2:
                                                         st.markdown(f"HOD: {hod_score}%" if hod_score != 'N/A' else "HOD: N/A")
                                                 st.markdown("")
+                                        
+                                        # OVERALL AVERAGES
+                                        st.markdown("---")
+                                        staff_avg = sum(int(v) for v in scores.values()) / len(scores) if scores else 0
+                                        hod_avg = sum(int(v) for v in hod_scores.values()) / len(hod_scores) if hod_scores else 0
+                                        
+                                        c1, c2 = st.columns(2)
+                                        with c1:
+                                            st.metric("📊 Staff Overall Avg", f"{staff_avg:.1f}%")
+                                        with c2:
+                                            st.metric("👔 HOD Overall Avg", f"{hod_avg:.1f}%")
                                         
                                         st.markdown(f"**Reviewer:** {e['reviewer']} | **Rejections:** {e['reject_count']}")
                                         
