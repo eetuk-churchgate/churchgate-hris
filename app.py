@@ -24,45 +24,7 @@ import calendar
 
 sys.path.append(str(Path(__file__).parent))
 
-# =============================================
-# DYNAMIC PILLARS BASED ON FINANCIAL YEAR
-# =============================================
-def get_pillars(financial_year=None):
-        """Return pillars based on financial year - DB first, then fallback"""
-        
-        # Try database first
-        try:
-            if financial_year is None:
-                financial_year = st.session_state.get('appraisal_fy', 'FY 26/27')
-            
-            data = db._get("appraisal_pillars", {"financial_year": financial_year, "is_active": "true"})
-            if data and len(data) > 0:
-                sorted_data = sorted(data, key=lambda x: x.get('pillar_order', 0))
-                return [p.get('pillar_name', '') for p in sorted_data]
-        except:
-            pass
-        
-        # Fallback - your existing logic
-        try:
-            if st.session_state.get('appraisal_fy') == 'FY 25/26':
-                return [
-                    '1. Brand Visibility',
-                    '2. New Business Development',
-                    '3. Customer Centricity',
-                    '4. Invest in Our People',
-                    '5. Financial Performance',
-                    '6. Behavioral & Collaborations'
-                ]
-        except:
-            pass
-        
-        # Default fallback - FY2627 pillars
-        return [
-            '1. Occupancy & Revenue Growth',
-            '2. Process Simplification',
-            '3. Asset Reliability & Digitalization',
-            '4. People & Culture'
-        ]
+
 
 # =============================================
 # FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
@@ -3392,25 +3354,37 @@ def performance_okrs():
         except: pass
     
     # ============================================================
-    # DYNAMIC PILLARS BASED ON FINANCIAL YEAR
+    # DYNAMIC PILLARS BASED ON FINANCIAL YEAR (DATABASE-DRIVEN)
     # ============================================================
     def get_pillars(financial_year=None):
-        """Return pillars based on selected financial year"""
-        if st.session_state.get('appraisal_fy') == 'FY 25/26':
+        """Return pillars from database for a specific financial year"""
+        if financial_year is None:
+            financial_year = st.session_state.get('appraisal_fy', 'FY 26/27')
+        
+        # Map if a cycle name was passed instead of FY
+        cycle_fy_map = {'Half-Year Appraisal': 'FY 26/27', 'Full-Year Appraisal': 'FY 25/26'}
+        if financial_year in cycle_fy_map:
+            financial_year = cycle_fy_map[financial_year]
+        
+        # Try database first
+        try:
+            data = db._get("appraisal_pillars", {"financial_year": financial_year, "is_active": "true"})
+            if data and len(data) > 0:
+                sorted_data = sorted(data, key=lambda x: x.get('pillar_order', 0))
+                return [p.get('pillar_name', '') for p in sorted_data]
+        except:
+            pass
+        
+        # Fallback to hardcoded pillars
+        if financial_year == 'FY 25/26':
             return [
-                '1. Brand Visibility',
-                '2. New Business Development',
-                '3. Customer Centricity',
-                '4. Invest in Our People',
-                '5. Financial Performance',
-                '6. Behavioral & Collaborations'
+                '1. Brand Visibility', '2. New Business Development', '3. Customer Centricity',
+                '4. Invest in Our People', '5. Financial Performance', '6. Behavioral & Collaborations'
             ]
         else:
             return [
-                '1. Occupancy & Revenue Growth',
-                '2. Process Simplification',
-                '3. Asset Reliability & Digitalization',
-                '4. People & Culture'
+                '1. Occupancy & Revenue Growth', '2. Process Simplification',
+                '3. Asset Reliability & Digitalization', '4. People & Culture'
             ]
     
     # ============================================================
@@ -3496,29 +3470,32 @@ def performance_okrs():
             
             for _, row in user_perf.iterrows():
                 p_name = row.get('pillar_name', '')
-                if p_name in pillar_data:
-                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                    filtered_kpis = [k for k in kpi_list if k.get('cycle', '') == cycle_name]
-                    
-                    for kpi in filtered_kpis:
+                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                
+                matching_kpis = [k for k in kpi_list if k.get('cycle', '') == cycle_name]
+                
+                if matching_kpis and p_name in pillar_data:
+                    for kpi in matching_kpis:
                         kpi_title = kpi.get('kpi', '')
                         if kpi_title and kpi_title not in seen_kpis[p_name]:
                             seen_kpis[p_name].add(kpi_title)
                             pillar_data[p_name]['kpis'].append(kpi)
                     
-                    if filtered_kpis:
-                        pillar_data[p_name]['weight'] = max(pillar_data[p_name]['weight'], row.get('weight', 0))
-                        pillar_data[p_name]['progress'] = max(pillar_data[p_name]['progress'], row.get('progress', 0))
-                        
-                        row_status = row.get('status', 'Not Started')
-                        if row_status in ['Completed', 'Exceeding', 'On Track']:
-                            pillar_data[p_name]['status'] = row_status
-                        
-                        current_sub = row.get('submission_status', 'Draft')
-                        if current_sub == 'Approved':
-                            pillar_data[p_name]['submission_status'] = 'Approved'
-                        elif current_sub == 'Submitted' and pillar_data[p_name]['submission_status'] != 'Approved':
-                            pillar_data[p_name]['submission_status'] = 'Submitted'
+                    pillar_data[p_name]['weight'] = max(pillar_data[p_name]['weight'], row.get('weight', 0))
+                    pillar_data[p_name]['progress'] = max(pillar_data[p_name]['progress'], row.get('progress', 0))
+                    
+                    # Take the best status
+                    row_status = row.get('status', 'Not Started')
+                    current_best = pillar_data[p_name]['status']
+                    status_rank = {'Completed': 7, 'Exceeding': 6, 'On Track': 5, 'In Progress': 4, 'Near Target': 3, 'At Risk': 2, 'Not Started': 1}
+                    if status_rank.get(row_status, 0) > status_rank.get(current_best, 0):
+                        pillar_data[p_name]['status'] = row_status
+                    
+                    current_sub = row.get('submission_status', 'Draft')
+                    if current_sub == 'Approved':
+                        pillar_data[p_name]['submission_status'] = 'Approved'
+                    elif current_sub == 'Submitted' and pillar_data[p_name]['submission_status'] != 'Approved':
+                        pillar_data[p_name]['submission_status'] = 'Submitted'
         
         return pillar_data
     
@@ -3653,6 +3630,7 @@ def performance_okrs():
         
         # Load pillar data filtered by selected cycle
         pillar_data = load_user_pillar_data_for_cycle(selected_cycle)
+        
         overall_status = 'Draft'
         statuses = [p['submission_status'] for p in pillar_data.values()]
         if 'Submitted' in statuses: overall_status = 'Submitted'
@@ -3666,9 +3644,14 @@ def performance_okrs():
         with c4: st.markdown(f'<div class="metric-mini"><div class="label">KPI Status</div><div class="value" style="font-size:1rem;">{overall_status.upper()}</div></div>', unsafe_allow_html=True)
         
         if overall_status == 'Draft' and any(len(p['kpis']) > 0 for p in pillar_data.values()):
-            if st.button("🚀 Final Submit All KPIs", use_container_width=True, type="primary"):
+            if st.button(f"🚀 Submit All KPIs for {selected_fy_kpi}", use_container_width=True, type="primary"):
                 all_rows = db._get("performance_data", {"user_name": user_name})
-                for row in (all_rows or []): db._patch("performance_data", {"submission_status": "Submitted"}, {"id": row['id']})
+                for row in (all_rows or []):
+                    # Only submit KPIs for this cycle
+                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                    cycle_kpis = [k for k in kpi_list if k.get('cycle', '') == selected_cycle_kpi]
+                    if cycle_kpis:
+                        db._patch("performance_data", {"submission_status": "Submitted"}, {"id": row['id']})
                 send_kpi_notification('submitted_to_employee', user_name, user_email)
                 hod_email = find_hod_email_for_dept(user_dept)
                 if hod_email: send_kpi_notification('submitted_to_hod', user_name, '', hod_email)
@@ -3677,8 +3660,10 @@ def performance_okrs():
                 st.success("✅ All KPIs submitted!"); st.balloons(); time.sleep(1.5); st.rerun()
         
         st.markdown("---")
-        pillar_order = get_pillars(st.session_state.get('appraisal_fy', 'FY 26/27'))
+        pillar_order = get_pillars(selected_fy)
         for pillar_name in pillar_order:
+            if pillar_name not in pillar_data:
+                continue
             pd_data = pillar_data[pillar_name]
             status_text, color = get_kpi_status(pd_data['progress'])
             if pd_data['status'] in ['Exceeding', 'Completed']:
@@ -3809,22 +3794,44 @@ def performance_okrs():
     # ============================================================
     with tab2:
         st.markdown('<div class="glass-card"><h3>✏️ My KPIs & Objectives</h3></div>', unsafe_allow_html=True)
-        st.info("Set unlimited KPIs aligned to the 4 strategic pillars.")
-        pillar_data = load_user_pillar_data()
+        st.info("Set unlimited KPIs aligned to the strategic pillars for each Financial Year.")
+        
+        # ============================================================
+        # FY SELECTOR FOR KPI CREATION
+        # ============================================================
+        cycle_fy_map = {
+            'Half-Year Appraisal': 'FY 26/27',
+            'Full-Year Appraisal': 'FY 25/26'
+        }
+        fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
+        
+        available_fy_kpi = ['FY 26/27', 'FY 25/26']
+        default_fy_kpi = cycle_fy_map.get(st.session_state.appraisal_cycle_name, 'FY 26/27')
+        
+        selected_fy_kpi = st.selectbox("📅 Select Financial Year for KPIs", available_fy_kpi,
+            index=available_fy_kpi.index(default_fy_kpi) if default_fy_kpi in available_fy_kpi else 0,
+            key="tab2_fy_selector")
+        
+        selected_cycle_kpi = fy_cycle_map.get(selected_fy_kpi, selected_fy_kpi)
+
+       
+        
+        # Load pillar data for the selected FY
+        pillar_data = load_user_pillar_data_for_cycle(selected_cycle_kpi)
         overall_status = 'Draft'
         statuses = [p['submission_status'] for p in pillar_data.values()]
         if 'Submitted' in statuses: overall_status = 'Submitted'
-        if 'Approved' in statuses and 'Submitted' not in statuses: overall_status = 'Approved'
+        if all(s == 'Approved' for s in statuses) and statuses: overall_status = 'Approved'
         
         if overall_status != 'Draft':
-            st.warning(f"🔒 KPIs are locked ({overall_status}). Contact your HOD if changes are needed.")
+            st.warning(f"🔒 KPIs for **{selected_fy_kpi}** are locked ({overall_status}). Select another FY or contact your HOD.")
         else:
             editing = st.session_state.get('editing_kpi')
             if editing: st.info(f"✏️ Editing KPI: {editing['data'].get('kpi', '')[:60]}")
             with st.form("kpi_add_form", clear_on_submit=not editing):
                 c1, c2 = st.columns(2)
                 with c1:
-                    pillar_list = get_pillars()
+                    pillar_list = get_pillars(selected_fy_kpi)
                     pillar_choice = st.selectbox("Strategic Pillar *", pillar_list, index=pillar_list.index(editing['pillar']) if editing else 0)
                     kpi_title = st.text_input("KPI Title *", value=editing['data'].get('kpi', '') if editing else "", placeholder="What will you achieve?")
                     kpi_target = st.text_input("Target *", value=editing['data'].get('target', '') if editing else "", placeholder="e.g., 15% increase")
@@ -3832,7 +3839,12 @@ def performance_okrs():
                     kpi_weight = st.number_input("Weight (%)", 0, 100, value=int(editing['data'].get('weight', 25)) if editing else 25)
                     kpi_deadline = st.date_input("Target Deadline *", value=datetime.strptime(editing['data'].get('deadline', '2026-12-31'), '%Y-%m-%d') if editing and editing['data'].get('deadline') else datetime.now())
                     kpi_current = st.text_input("Current Progress", value=editing['data'].get('current', '0') if editing else "0", placeholder="e.g., 10%")
-                kpi_cycle = st.selectbox("Appraisal Cycle *", ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal'])
+                
+                # Pre-select cycle based on selected FY
+                default_cycle_idx = 0 if selected_cycle_kpi == 'Half-Year Appraisal' else 1
+                kpi_cycle = st.selectbox("Appraisal Cycle *", ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal'],
+                    index=default_cycle_idx)
+                
                 c1, c2 = st.columns(2)
                 with c1: save_add = st.form_submit_button("💾 Save & Add Another", use_container_width=True)
                 with c2: save_done = st.form_submit_button("✅ Save & Finish", use_container_width=True)
@@ -3953,9 +3965,9 @@ def performance_okrs():
                         break
             
             if not has_approved:
-                st.warning(f"⚠️ Your KPIs for **{selected_cycle}** must be approved before self-assessment.")
+                st.warning(f"⚠️ Your KPIs for **{selected_fy}** must be approved before self-assessment.")
             elif not is_cycle_active:
-                st.info(f"📂 **{selected_cycle}** is not the active cycle. View only.")
+                st.info(f"📂 **{selected_fy}** is not the active cycle. View only.")
             elif st.session_state.appraisal_locked:
                 st.warning("🔒 Scores are locked.")
             elif st.session_state.self_assessments.get(user_name, {}).get('status') in ['Submitted', 'Approved', 'Awaiting HOD Re-review', 'Awaiting TL Re-review']:
@@ -3963,7 +3975,7 @@ def performance_okrs():
             elif st.session_state.self_assessments.get(user_name, {}).get('status') == 'Draft':
                 st.info("📝 You have a saved draft. Continue below or submit when ready.")
             else:
-                st.success(f"🔓 Ready for Self-Assessment — {selected_cycle}")
+                st.success(f"🔓 Ready for Self-Assessment — {selected_fy}")
             
             # Show form if not submitted
             existing_status = st.session_state.self_assessments.get(user_name, {}).get('status', '')
@@ -4233,14 +4245,14 @@ def performance_okrs():
                     st.caption("No comments provided")
                 
                 with st.expander("📊 Score Review by Pillar", expanded=True):
-                    pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
-                    for pillar in pillar_order:
-                        pillar_scores = {k: v for k, v in sorted(a['scores'].items(), key=natural_sort_key) if k.startswith(pillar)}
-                        if pillar_scores:
-                            st.markdown(f"**{pillar}**")
-                            for score_key, staff_score in pillar_scores.items():
-                                r_score = reviewer_scores.get(score_key, 'N/A') if reviewer_scores else 'N/A'
-                                kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
+                        pillar_order = get_pillars(selected_cycle)
+                        for pillar in pillar_order:
+                            pillar_scores = {k: v for k, v in sorted(a['scores'].items(), key=natural_sort_key) if k.startswith(pillar)}
+                            if pillar_scores:
+                                st.markdown(f"**{pillar}**")
+                                for score_key, staff_score in pillar_scores.items():
+                                    r_score = reviewer_scores.get(score_key, 'N/A') if reviewer_scores else 'N/A'
+                                    kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
                                 kpi_name = f"KPI {kpi_index + 1}"
                                 try:
                                     all_p = db._get("performance_data")
@@ -4347,19 +4359,42 @@ def performance_okrs():
         st.markdown('<div class="glass-card"><h3>👔 HOD Review Hub</h3></div>', unsafe_allow_html=True)
         if not is_hod: st.info("This section is for Managers, HODs, and Admins only.")
         else:
+            # ============================================================
+            # FY SELECTOR FOR HOD REVIEW
+            # ============================================================
+            cycle_fy_map = {
+                'Half-Year Appraisal': 'FY 26/27',
+                'Full-Year Appraisal': 'FY 25/26'
+            }
+            fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
+            
+            col_fy, col_space = st.columns([1, 3])
+            with col_fy:
+                hod_fy = st.selectbox("📅 Financial Year", ['FY 26/27', 'FY 25/26'],
+                    index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 1,
+                    key="hod_fy")
+            
+            hod_cycle = fy_cycle_map.get(hod_fy, hod_fy)
+            st.caption(f"📊 Viewing: **{hod_fy}**")
+            
             # ===== SECTION 1: KPI APPROVAL =====
             st.markdown("### 📊 Team KPI Submissions")
             try:
                 all_perf = db._get("performance_data"); team_submissions = {}
                 for row in (all_perf or []):
                     if row.get('submission_status') == 'Submitted':
+                        # Filter by cycle
+                        kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                        matching = [k for k in kpi_list if k.get('cycle', '') == hod_cycle]
+                        if not matching:
+                            continue
                         clean_name = ' '.join(str(row.get('user_name', '')).split())
                         if is_admin or get_employee_dept(clean_name) == user_dept:
                             if clean_name not in team_submissions: team_submissions[clean_name] = []
-                            team_submissions[clean_name].append({'pillar': row.get('pillar_name', ''), 'kpis': json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else [], 'row_id': row.get('id')})
+                            team_submissions[clean_name].append({'pillar': row.get('pillar_name', ''), 'kpis': matching, 'row_id': row.get('id')})
                 if team_submissions:
                     st.success(f"📋 {len(team_submissions)} team member(s)")
-                    pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
+                    pillar_order = get_pillars(hod_fy)
                     for emp_name, submissions in team_submissions.items():
                         with st.expander(f"👤 {emp_name}", expanded=False):
                             ordered_subs = sorted(submissions, key=lambda x: pillar_order.index(x['pillar']) if x['pillar'] in pillar_order else 99)
@@ -4396,13 +4431,18 @@ def performance_okrs():
                 all_perf = db._get("performance_data"); team_approved = {}
                 for row in all_perf:
                     if row.get('submission_status') == 'Approved':
+                        # Filter by cycle
+                        kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                        matching = [k for k in kpi_list if k.get('cycle', '') == hod_cycle]
+                        if not matching:
+                            continue
                         clean_name = ' '.join(str(row.get('user_name', '')).split())
                         if is_admin or get_employee_dept(clean_name) == user_dept:
                             if clean_name not in team_approved: team_approved[clean_name] = []
                             team_approved[clean_name].append({'pillar': row.get('pillar_name', ''), 'kpis': json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else [], 'weight': row.get('weight', 0)})
                 if team_approved:
                     st.success(f"✅ {len(team_approved)} team member(s) with approved KPIs")
-                    pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
+                    pillar_order = get_pillars(hod_fy)
                     for emp_name, kpi_data in team_approved.items():
                         with st.expander(f"✅ {emp_name} — {len(kpi_data)} pillar(s) approved", expanded=False):
                             combined = {}
@@ -4427,10 +4467,36 @@ def performance_okrs():
             # ===== SECTION 2: APPRAISAL REVIEW =====
             st.markdown("---"); st.markdown("### 📝 Appraisal Review")
             
+            # Refresh self_assessments from database
+            try:
+                all_appraisals_db = db.get_all_appraisals()
+                for a in all_appraisals_db:
+                    if a['user_name'] not in st.session_state.self_assessments or st.session_state.self_assessments[a['user_name']].get('cycle_name') != a.get('cycle_name'):
+                        st.session_state.self_assessments[a['user_name']] = {
+                            'scores': a.get('scores', {}), 'comments': a.get('comments', ''),
+                            'pillar_comments': a.get('pillar_comments', {}), 'date': a.get('submitted_date', ''),
+                            'status': a.get('status', 'Submitted'), 'department': a.get('department', ''),
+                            'email': a.get('user_email', ''), 'hod_scores': a.get('hod_scores'),
+                            'hod_comments': a.get('hod_comments'), 'hod_pillar_comments': a.get('hod_pillar_comments'),
+                            'acceptance': a.get('acceptance'), 'sr_decision': a.get('sr_decision'),
+                            'rejection_comment': a.get('rejection_comment', ''), 'rejection_docs': a.get('rejection_docs', '[]'),
+                            'reviewer_type': a.get('reviewer_type', 'HOD'),
+                            'tl_scores': a.get('tl_scores'), 'tl_comments': a.get('tl_comments'),
+                            'cycle_name': a.get('cycle_name', ''),
+                            'evidence_files': a.get('evidence_files', ''),
+                        }
+            except:
+                pass
+            
             if is_admin:
-                submitted_appraisals = {k: v for k, v in st.session_state.self_assessments.items() if v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL', 'Escalated to HOD from TL']}
+                submitted_appraisals = {k: v for k, v in st.session_state.self_assessments.items() 
+                                       if v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL', 'Escalated to HOD from TL']
+                                       and v.get('cycle_name', '') == hod_cycle}
             else:
-                submitted_appraisals = {k: v for k, v in st.session_state.self_assessments.items() if get_employee_dept(k) == user_dept and v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL', 'Escalated to HOD from TL']}
+                submitted_appraisals = {k: v for k, v in st.session_state.self_assessments.items() 
+                                       if get_employee_dept(k) == user_dept 
+                                       and v['status'] in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL', 'Escalated to HOD from TL']
+                                       and v.get('cycle_name', '') == hod_cycle}
             
             if submitted_appraisals:
                 st.success(f"📋 {len(submitted_appraisals)} appraisal(s) for review")
@@ -4503,7 +4569,7 @@ def performance_okrs():
                         st.markdown("---"); st.markdown("### 📊 Score Review")
                         
                         hod_scores = {}
-                        pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
+                        pillar_order = get_pillars(hod_fy)
                         
                         staff_total = 0
                         staff_count = 0
@@ -4536,8 +4602,8 @@ def performance_okrs():
                                     c1, c2 = st.columns(2)
                                     with c1: st.markdown(f"<small>Staff: {staff_score}%</small>", unsafe_allow_html=True)
                                     with c2:
-                                        prev_hod = assessment.get('hod_scores', {}).get(score_key, staff_score) if is_re_review else staff_score
-                                        hod_scores[score_key] = st.number_input("HOD Score", 0, 100, int(prev_hod) if prev_hod else int(staff_score), 1, key=f"hod_{staff_name}_{score_key}")
+                                        prev_hod = assessment.get('hod_scores', {}).get(score_key, 0) if is_re_review else 0
+                                        hod_scores[score_key] = st.number_input("HOD Score", 0, 100, int(prev_hod) if prev_hod else 0, 1, key=f"hod_{staff_name}_{score_key}")
                                     
                                     staff_total += int(staff_score)
                                     staff_count += 1
@@ -4628,6 +4694,24 @@ def performance_okrs():
         if not is_team_lead_or_manager:
             st.info("This section is for Team Leads and Managers only.")
         else:
+            # ============================================================
+            # FY SELECTOR FOR TEAM LEAD REVIEW
+            # ============================================================
+            cycle_fy_map = {
+                'Half-Year Appraisal': 'FY 26/27',
+                'Full-Year Appraisal': 'FY 25/26'
+            }
+            fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
+            
+            col_fy, col_space = st.columns([1, 3])
+            with col_fy:
+                tl_fy = st.selectbox("📅 Financial Year", ['FY 26/27', 'FY 25/26'],
+                    index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 1,
+                    key="tl_fy")
+            
+            tl_cycle = fy_cycle_map.get(tl_fy, tl_fy)
+            st.caption(f"📊 Viewing: **{tl_fy}**")
+            
             # STRICT FILTER: Find employees whose reports_to matches current user's name
             team_members = []
             if not employees_df.empty:
@@ -4635,7 +4719,6 @@ def performance_okrs():
                     emp_name = f"{emp['first_name']} {emp['last_name']}".strip()
                     reports_to = str(emp.get('reports_to', '')).strip()
                     
-                    # Check if this employee reports to the current user
                     if reports_to.lower() == user_name.lower():
                         team_members.append(emp_name)
             
@@ -5684,7 +5767,10 @@ def performance_okrs():
                 
                 pillar_data = load_user_pillar_data()
                 for pillar_name in get_pillars():
-                    pd_data = pillar_data[pillar_name]; status_text, color = get_kpi_status(pd_data['progress'])
+                    if pillar_name not in pillar_data:
+                        continue
+                    pd_data = pillar_data[pillar_name]
+                    status_text, color = get_kpi_status(pd_data['progress'])
                     st.markdown(f"""<div class="glass-card" style="border-left:4px solid {color};padding:0.8rem;"><strong>{pillar_name}</strong> ({pd_data['weight']}%)<br><small>Progress: {pd_data['progress']}% | {pd_data['status']}</small><div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;"><div style="background:{color};width:{pd_data['progress']}%;height:6px;border-radius:3px;"></div></div></div>""", unsafe_allow_html=True)
                 
                 total_prog = sum(p['progress'] * p['weight'] / 100 for p in pillar_data.values())
@@ -5844,12 +5930,11 @@ def performance_okrs():
                 st.markdown("---")
                 st.markdown(f"### 📊 Score Review")
                 
-                pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
+                pillar_order = get_pillars(selected_fy)
                 
                 for pillar in pillar_order:
                     pillar_scores = {k: v for k, v in sorted(user_assessment.get('scores', {}).items(), key=natural_sort_key) if k.startswith(pillar)}
                     if pillar_scores:
-
                         st.markdown(f"**{pillar}**")
                         for score_key, staff_score in pillar_scores.items():
                             reviewer_scores = user_assessment.get('hod_scores') or user_assessment.get('tl_scores') or {}
@@ -5887,13 +5972,16 @@ def performance_okrs():
                 cols = st.columns(4)
                 for i, (step_name, step_num) in enumerate(steps):
                     with cols[i]:
-                        if step_num < current_step: st.success(f"✅ {step_name}")
-                        elif step_num == current_step: st.success(f"✅ {step_name}")
-                        else: st.markdown(f"⏳ {step_name}")
+                            if step_num < current_step: st.success(f"✅ {step_name}")
+                            elif step_num == current_step: st.success(f"✅ {step_name}")
+                            else: st.markdown(f"⏳ {step_name}")
             
             pillar_data = load_user_pillar_data()
             for pillar_name in get_pillars():
-                pd_data = pillar_data[pillar_name]; status_text, color = get_kpi_status(pd_data['progress'])
+                if pillar_name not in pillar_data:
+                    continue
+                pd_data = pillar_data[pillar_name]
+                status_text, color = get_kpi_status(pd_data['progress'])
                 st.markdown(f"""<div class="glass-card" style="border-left:4px solid {color};padding:0.8rem;"><strong>{pillar_name}</strong> ({pd_data['weight']}%)<br><small>Progress: {pd_data['progress']}% | {pd_data['status']}</small><div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;"><div style="background:{color};width:{pd_data['progress']}%;height:6px;border-radius:3px;"></div></div></div>""", unsafe_allow_html=True)
             
             total_prog = sum(p['progress'] * p['weight'] / 100 for p in pillar_data.values())
@@ -5919,7 +6007,7 @@ def performance_okrs():
             except: pass
     
     # ============================================================
-    # TAB 9: APPRAISAL COMMITTEE - COMPLETE WITH ALL FIXES
+    # TAB 9: APPRAISAL COMMITTEE - WITH FY SELECTOR
     # ============================================================
     with tab9:
         st.markdown('<div class="glass-card"><h3>🏛️ Appraisal Committee Board</h3><p style="color:#888;">Senior Management & Admin — Full Appraisal Oversight & Talent Analytics</p></div>', unsafe_allow_html=True)
@@ -5927,6 +6015,24 @@ def performance_okrs():
         if not (is_sr_mgmt or is_super_admin):
             st.info("⛔ Restricted to Senior Management and Admin only.")
         else:
+            
+            # ============================================================
+            # FY SELECTOR FOR COMMITTEE
+            # ============================================================
+            cycle_fy_map = {
+                'Half-Year Appraisal': 'FY 26/27',
+                'Full-Year Appraisal': 'FY 25/26'
+            }
+            fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
+            
+            col_fy, col_space = st.columns([1, 3])
+            with col_fy:
+                committee_fy = st.selectbox("📅 Financial Year", ['FY 26/27', 'FY 25/26'],
+                    index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 1,
+                    key="committee_fy")
+            
+            committee_cycle = fy_cycle_map.get(committee_fy, committee_fy)
+            st.caption(f"📊 Viewing: **{committee_fy}** ({committee_cycle})")
             
             def get_classification(score):
                 if score >= 90: return 'PLATINUM', '#E5E4E2'
@@ -5946,30 +6052,21 @@ def performance_okrs():
                 scores = a.get('hod_scores') or a.get('tl_scores') or a.get('scores', {})
                 return sum(int(v) for v in scores.values() if v) / len(scores) if scores else 0
             
+            # Rest of the functions stay the same...
             def get_potential_level(emp_name):
-                """Determine potential based on REAL performance data - NOT inflated defaults"""
                 assessment = st.session_state.self_assessments.get(emp_name, {})
                 scores = assessment.get('scores', {})
                 reviewer_scores = assessment.get('hod_scores') or assessment.get('tl_scores') or {}
-                
-                # If no appraisal data exists, potential is Low
-                if not scores and not reviewer_scores:
-                    return 'Low'
-                
+                if not scores and not reviewer_scores: return 'Low'
                 potential_score = 0
-                
-                # Factor 1: Self-awareness (gap between self and reviewer score)
                 if scores and reviewer_scores:
                     self_avg = sum(int(v) for v in scores.values() if v) / len(scores)
                     rev_avg = sum(int(v) for v in reviewer_scores.values() if v) / len(reviewer_scores)
                     gap = abs(self_avg - rev_avg)
-                    if gap <= 5: potential_score += 30       # Very self-aware
-                    elif gap <= 15: potential_score += 20    # Moderate self-awareness
-                    else: potential_score += 5               # Large gap
-                elif scores:
-                    potential_score += 10  # Only self scores - neutral
-                
-                # Factor 2: KPI Ambition (number of KPIs set)
+                    if gap <= 5: potential_score += 30
+                    elif gap <= 15: potential_score += 20
+                    else: potential_score += 5
+                elif scores: potential_score += 10
                 all_perf_data = get_all_perf_cached()
                 emp_perf = all_perf_data[all_perf_data['user_name'] == emp_name] if not all_perf_data.empty else pd.DataFrame()
                 total_kpis = 0
@@ -5977,27 +6074,19 @@ def performance_okrs():
                     for _, row in emp_perf.iterrows():
                         kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
                         total_kpis += len(kpi_list)
-                if total_kpis >= 20: potential_score += 25    # Highly ambitious
-                elif total_kpis >= 12: potential_score += 20  # Ambitious
-                elif total_kpis >= 5: potential_score += 12   # Moderate
-                else: potential_score += 3                    # Minimal KPIs
-                
-                # Factor 3: KPI Approval Status
+                if total_kpis >= 20: potential_score += 25
+                elif total_kpis >= 12: potential_score += 20
+                elif total_kpis >= 5: potential_score += 12
+                else: potential_score += 3
                 if not emp_perf.empty:
                     if any(emp_perf['submission_status'] == 'Approved'): potential_score += 25
                     elif any(emp_perf['submission_status'] == 'Submitted'): potential_score += 12
                     else: potential_score += 3
-                else:
-                    potential_score += 0  # No KPIs at all
-                
-                # Factor 4: Performance Score Impact
                 if scores:
                     self_avg = sum(int(v) for v in scores.values() if v) / len(scores) if scores else 0
-                    if self_avg >= 80: potential_score += 20      # High performer
-                    elif self_avg >= 60: potential_score += 12    # Average
-                    else: potential_score += 3                    # Low performer
-                
-                # Factor 5: Consistency across pillars
+                    if self_avg >= 80: potential_score += 20
+                    elif self_avg >= 60: potential_score += 12
+                    else: potential_score += 3
                 if scores:
                     pillar_scores = defaultdict(list)
                     for key, val in scores.items():
@@ -6009,10 +6098,7 @@ def performance_okrs():
                         if consistency >= 90: potential_score += 20
                         elif consistency >= 70: potential_score += 12
                         else: potential_score += 3
-                    else:
-                        potential_score += 5
-                
-                # Determine level (adjusted thresholds)
+                    else: potential_score += 5
                 if potential_score >= 70: return 'High'
                 elif potential_score >= 40: return 'Moderate'
                 else: return 'Low'
@@ -6021,19 +6107,18 @@ def performance_okrs():
                 perf = get_performance_level(score)
                 pot = get_potential_level(emp_name)
                 positions = {
-                    ('High', 'High'): ('⭐ CONSISTENT STAR', '#6bcb77', 'Top Talent - High Performance / High Potential', 'Fast-track promotion, leadership development, key projects'),
-                    ('High', 'Average'): ('💎 POTENTIAL GEM', '#ffd93d', 'Future Leader - Average Performance / High Potential', 'Mentorship, stretch assignments, skills development'),
-                    ('High', 'Low'): ('🚀 DIAMOND IN ROUGH', '#ff6b6b', 'Untapped Potential - Low Performance / High Potential', 'Intensive coaching, clear targets, 90-day improvement plan'),
-                    ('Moderate', 'High'): ('🏆 CURRENT STAR', '#98fb98', 'Strong Performer - High Performance / Moderate Potential', 'Recognition, retention bonus, lateral growth'),
-                    ('Moderate', 'Average'): ('👔 SOLID PROFESSIONAL', '#87ceeb', 'Core Contributor - Average Performance / Moderate Potential', 'Engagement, upskilling, incremental responsibility'),
-                    ('Moderate', 'Low'): ('🔄 INCONSISTENT PLAYER', '#ffa07a', 'Mixed Results - Low Performance / Moderate Potential', 'Performance improvement plan, regular check-ins'),
-                    ('Low', 'High'): ('🔧 TECHNOCRAT', '#90ee90', 'Technical Expert - High Performance / Low Potential', 'Specialist role, technical leadership, reward expertise'),
-                    ('Low', 'Average'): ('📋 STABILIZER', '#b0c4de', 'Steady Hand - Average Performance / Low Potential', 'Role clarity, process improvement, gradual development'),
-                    ('Low', 'Low'): ('⚠️ TALENT AT BAY', '#ff4444', 'At Risk - Low Performance / Low Potential', 'Urgent intervention, final PIP, possible role change')
+                    ('High', 'High'): ('⭐ CONSISTENT STAR', '#6bcb77', 'Top Talent', 'Fast-track'),
+                    ('High', 'Average'): ('💎 POTENTIAL GEM', '#ffd93d', 'Future Leader', 'Mentorship'),
+                    ('High', 'Low'): ('🚀 DIAMOND IN ROUGH', '#ff6b6b', 'Untapped', 'Coaching'),
+                    ('Moderate', 'High'): ('🏆 CURRENT STAR', '#98fb98', 'Strong', 'Recognition'),
+                    ('Moderate', 'Average'): ('👔 SOLID PROFESSIONAL', '#87ceeb', 'Core', 'Upskilling'),
+                    ('Moderate', 'Low'): ('🔄 INCONSISTENT', '#ffa07a', 'Mixed', 'PIP'),
+                    ('Low', 'High'): ('🔧 TECHNOCRAT', '#90ee90', 'Expert', 'Specialist'),
+                    ('Low', 'Average'): ('📋 STABILIZER', '#b0c4de', 'Steady', 'Gradual'),
+                    ('Low', 'Low'): ('⚠️ AT RISK', '#ff4444', 'At Risk', 'Urgent')
                 }
                 return positions.get((pot, perf), ('N/A', '#ccc', 'Unknown', 'Review'))
             
-            # Build all employee score data
             all_emps_scored = []
             if not employees_df.empty:
                 for _, emp in employees_df.iterrows():
@@ -6057,6 +6142,13 @@ def performance_okrs():
                         })
             
             all_assessments = st.session_state.self_assessments
+            
+            # Filter by selected committee cycle
+            all_assessments_filtered = {}
+            for emp_name, assessment in all_assessments.items():
+                if assessment.get('cycle_name', '') == committee_cycle or not assessment.get('cycle_name'):
+                    all_assessments_filtered[emp_name] = assessment
+            all_assessments = all_assessments_filtered
             
             committee_tabs = st.tabs([
                 "📊 9-Box Matrix", "📈 Analytics", "📝 Submissions", 
@@ -6850,7 +6942,7 @@ def performance_okrs():
                                         st.markdown("### 📊 Scores by Pillar")
                                         scores = e.get('scores', {})
                                         hod_scores = e.get('hod_scores', {})
-                                        pillar_order = get_pillars(st.session_state.appraisal_cycle_name)
+                                        pillar_order = get_pillars(committee_fy)
                                         
                                         for pillar in pillar_order:
                                             pillar_scores = {k: v for k, v in sorted(scores.items(), key=natural_sort_key) if k.startswith(pillar)}
