@@ -3843,6 +3843,8 @@ def performance_okrs():
                     st.session_state.uploaded_files_data = {}
                 
                 for pillar_name in pillar_order:
+                    if user_perf.empty or 'pillar_name' not in user_perf.columns:
+                        continue
                     pillar_rows = user_perf[user_perf['pillar_name'] == pillar_name]
                     if not pillar_rows.empty:
                         with st.expander(f"{pillar_name}", expanded=False):
