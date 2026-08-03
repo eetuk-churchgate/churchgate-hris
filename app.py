@@ -3275,9 +3275,6 @@ def performance_okrs():
     
     def save_appraisal_cycle_to_db():
         try:
-            existing = db._get("appraisal_cycles")
-            if existing:
-                for c in existing: db._patch("appraisal_cycles", {"is_active": False}, {"id": c['id']})
             db._post("appraisal_cycles", {
                 "cycle_name": st.session_state.appraisal_cycle_name,
                 "start_date": st.session_state.appraisal_start,
@@ -5246,8 +5243,8 @@ def performance_okrs():
             
             if current_pillars_mgmt:
                 st.markdown(f"**{len(current_pillars_mgmt)} pillars for {manage_fy}:**")
-                for i, p in enumerate(current_pillars_mgmt):
-                    st.markdown(f"{i+1}. {p}")
+                for p in current_pillars_mgmt:
+                    st.markdown(f"• {p}")
             
             with st.form("add_pillar_form"):
                 st.markdown("#### ➕ Add New Pillar")
