@@ -985,6 +985,9 @@ def sidebar_navigation():
         return selected
 
 def employee_dashboard():
+    if 'self_assessments' not in st.session_state:
+        st.session_state.self_assessments = {}
+    
     user = st.session_state.user
     user_name = user['name'] if user else 'Staff'
     user_id = user.get('employee_id', '') if user else ''
@@ -1162,6 +1165,17 @@ def employee_dashboard():
     
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
+        # Show appraisal score for active cycle
+        active_cycle = st.session_state.get('appraisal_cycle_name', 'Full-Year Appraisal')
+        user_assessment = st.session_state.self_assessments.get(user_name, {})
+        assessment_cycle = user_assessment.get('cycle_name', '')
+        
+        if assessment_cycle == active_cycle or not assessment_cycle:
+            final_scores = user_assessment.get('hod_scores') or user_assessment.get('tl_scores') or user_assessment.get('scores', {})
+            perf_score = sum(int(v) for v in final_scores.values() if v) / len(final_scores) if final_scores else 0
+        else:
+            perf_score = 0
+        
         st.markdown(f"""<div class="metric-card"><div class="metric-label">📊 Performance</div><div class="metric-value">{perf_score:.0f}%</div><small style="color:#38a169;">Latest appraisal</small></div>""", unsafe_allow_html=True)
     with c2:
         st.markdown(f"""<div class="metric-card"><div class="metric-label">👥 Team Members</div><div class="metric-value">{team_count}</div><small>{user_dept}</small></div>""", unsafe_allow_html=True)
@@ -1205,28 +1219,46 @@ def employee_dashboard():
     with col1:
         # KPI Progress
         st.subheader("🎯 My KPI Progress")
+        
+        # Load KPIs directly for dashboard
+        pillar_data = {}
         try:
             import requests as _req
             _url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
             _key = os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
             _headers = {"apikey": _key, "Authorization": f"Bearer {_key}"}
             _r = _req.get(f"{_url}/rest/v1/performance_data?user_name=eq.{user_name}&select=*", headers=_headers)
-            perf_data = pd.DataFrame(_r.json()) if _r.status_code == 200 else pd.DataFrame()
+            perf_data = _r.json() if _r.status_code == 200 else []
             
-            if not perf_data.empty:
-                pillar_order = get_pillars(st.session_state.get('appraisal_fy', 'FY 26/27'))
-                perf_data['sort_order'] = perf_data['pillar_name'].apply(
-                    lambda x: int(x.split('.')[0]) if x and x[0].isdigit() else 99
-                )
-                perf_data = perf_data.sort_values('sort_order')
-                for _, row in perf_data.iterrows():
-                    progress = row.get('progress', 0)
+            active_cycle = st.session_state.get('appraisal_cycle_name', 'Full-Year Appraisal')
+            
+            for row in perf_data:
+                p_name = row.get('pillar_name', '')
+                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                matching = [k for k in kpi_list if k.get('cycle', '') == active_cycle]
+                if matching:
+                    pillar_data[p_name] = {
+                        'progress': row.get('progress', 0),
+                        'weight': row.get('weight', 0),
+                        'kpis': matching
+                    }
+        except:
+            pass
+        
+        has_kpis = len(pillar_data) > 0
+        
+        if has_kpis:
+            pillar_order = sorted(pillar_data.keys(), key=lambda x: int(x.split('.')[0]) if x and x[0].isdigit() else 99)
+            for pillar_name in pillar_order:
+                if pillar_name in pillar_data:
+                    pd_data = pillar_data[pillar_name]
+                    progress = pd_data.get('progress', 0)
                     color = "#38a169" if progress >= 85 else "#d69e2e" if progress >= 65 else "#CC0000"
 
                     st.markdown(f"""
                     <div style="background:white;padding:0.7rem 1rem;border-radius:8px;margin-bottom:0.4rem;">
                         <div style="display:flex;justify-content:space-between;">
-                            <span style="font-weight:600;font-size:0.9rem;">{row.get('pillar_name', 'Pillar')}</span>
+                            <span style="font-weight:600;font-size:0.9rem;">{pillar_name}</span>
                             <span style="color:{color};font-weight:700;">{int(progress)}%</span>
                         </div>
                         <div style="background:#e0e0e0;height:5px;border-radius:3px;margin-top:0.3rem;">
@@ -1234,10 +1266,8 @@ def employee_dashboard():
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-            else:
-                st.info("Set your KPIs in Performance & OKRs to track progress here.")
-        except:
-            st.info("KPI progress will appear here.")
+        else:
+            st.info("Set your KPIs in Performance & OKRs to track progress here.")
         
         # Recognition Wall
         st.markdown("---")
@@ -16267,6 +16297,17 @@ def my_profile():
     
     leave_balance = emp_leave
     achievements_count = len(st.session_state.get('exceptional_achievements', {}).get(user_name, []))
+    
+    # Calculate performance score for active cycle
+    active_cycle = st.session_state.get('appraisal_cycle_name', 'Full-Year Appraisal')
+    user_assessment = st.session_state.self_assessments.get(user_name, {})
+    assessment_cycle = user_assessment.get('cycle_name', '')
+    
+    if assessment_cycle == active_cycle or not assessment_cycle:
+        final_scores = user_assessment.get('hod_scores') or user_assessment.get('tl_scores') or user_assessment.get('scores', {})
+        perf_score = sum(int(v) for v in final_scores.values() if v) / len(final_scores) if final_scores else 0
+    else:
+        perf_score = 0
     
     c1, c2, c3, c4 = st.columns(4)
     with c1:
