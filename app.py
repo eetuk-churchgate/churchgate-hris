@@ -791,7 +791,22 @@ def login_section():
                     if user:
                         st.session_state.user = user
                         st.session_state.authenticated = True
+                        st.session_state.session_start = datetime.now()
                         st.query_params['logged_in'] = user.get('email', 'true')
+                        # Track login
+                        try:
+                            db._post("user_engagement", {
+                                "user_name": user['name'],
+                                "user_email": user['email'],
+                                "department": user.get('department', ''),
+                                "module": "Login",
+                                "action": "login_success",
+                                "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                "session_id": str(st.session_state.session_start),
+                                "device": "web"
+                            })
+                        except:
+                            pass
                         st.rerun()
                     else:
                         st.session_state.login_attempts += 1
