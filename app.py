@@ -2731,60 +2731,66 @@ def employee_management():
             st.dataframe(df.head(), use_container_width=True)
             if st.button("📤 Upload All", use_container_width=True):
                 success, fail = 0, 0
-                for _, row in df.iterrows():
+                progress_bar = st.progress(0)
+                total = len(df)
+                
+                # Pre-load existing IDs for fast duplicate checking
+                existing_ids = set()
+                try:
+                    all_emp = db._get("employees")
+                    if all_emp:
+                        existing_ids = set(str(e.get('employee_id', '')).strip() for e in all_emp)
+                except:
+                    pass
+                
+                for i, (_, row) in enumerate(df.iterrows()):
                     try:
-                        # Convert dates from DD/MM/YYYY to YYYY-MM-DD
-                        join_date = str(row.get('join_date', ''))
-                        dob = str(row.get('date_of_birth', ''))
+                        emp_id = str(row.get('employee_id', '')).strip()
                         
-                        # Try to convert date formats
-                        try:
-                            if '/' in join_date:
-                                parts = join_date.split('/')
-                                if len(parts[2]) == 4:  # DD/MM/YYYY
-                                    join_date = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                        except:
-                            pass
-                        
-                        try:
-                            if '/' in dob:
-                                parts = dob.split('/')
-                                if len(parts[2]) == 4:  # DD/MM/YYYY
-                                    dob = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                        except:
-                            pass
-                        
-                        # Check for duplicate employee ID
-                        emp_id = str(row.get('employee_id', ''))
-                        existing = db._get("employees", {"employee_id": emp_id})
-                        if existing and len(existing) > 0:
-                            # Skip duplicates
+                        # Fast duplicate check
+                        if emp_id in existing_ids:
                             fail += 1
                             continue
                         
+                        # Quick date conversion
+                        join_date = str(row.get('join_date', '')).strip()
+                        dob = str(row.get('date_of_birth', '')).strip()
+                        
+                        if '/' in join_date:
+                            parts = join_date.split('/')
+                            if len(parts) == 3 and len(parts[2]) == 4:
+                                join_date = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        
+                        if '/' in dob:
+                            parts = dob.split('/')
+                            if len(parts) == 3 and len(parts[2]) == 4:
+                                dob = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        
                         db._post("employees", {
                             "employee_id": emp_id,
-                            "first_name": str(row.get('first_name', '')),
-                            "last_name": str(row.get('last_name', '')),
-                            "email": str(row.get('email', '')),
-                            "phone": str(row.get('phone', '')),
-                            "department": str(row.get('department', '')),
-                            "position": str(row.get('position', '')),
-                            "grade": str(row.get('grade', 'Junior')),
-                            "employment_type": str(row.get('employment_type', 'Full-time')),
+                            "first_name": str(row.get('first_name', '')).strip(),
+                            "last_name": str(row.get('last_name', '')).strip(),
+                            "email": str(row.get('email', '')).strip(),
+                            "phone": str(row.get('phone', '')).strip(),
+                            "department": str(row.get('department', '')).strip(),
+                            "position": str(row.get('position', '')).strip(),
+                            "grade": str(row.get('grade', 'Junior')).strip(),
+                            "employment_type": str(row.get('employment_type', 'Full-time')).strip(),
                             "join_date": join_date,
                             "date_of_birth": dob,
-                            "status": str(row.get('status', 'Active')),
-                            "region": str(row.get('region', 'Lagos')),
-                            "subsidiary": str(row.get('subsidiary', '')),
-                            "reports_to": str(row.get('reports_to', '')),
-                            "gender": str(row.get('gender', 'Male'))
+                            "status": str(row.get('status', 'Active')).strip(),
+                            "region": str(row.get('region', 'Lagos')).strip(),
+                            "subsidiary": str(row.get('subsidiary', '')).strip(),
+                            "reports_to": str(row.get('reports_to', '')).strip(),
+                            "gender": str(row.get('gender', 'Male')).strip()
                         })
                         
-                        # Create user login with role
-                        emp_email = str(row.get('email', ''))
-                        emp_name = f"{str(row.get('first_name', ''))} {str(row.get('last_name', ''))}"
-                        emp_role = str(row.get('system_role', 'Team Member'))
+                        existing_ids.add(emp_id)
+                        
+                        # Create user login
+                        emp_email = str(row.get('email', '')).strip()
+                        emp_name = f"{str(row.get('first_name', '')).strip()} {str(row.get('last_name', '')).strip()}"
+                        emp_role = str(row.get('system_role', 'Team Member')).strip()
                         
                         if emp_email and '@' in emp_email:
                             try:
@@ -2796,24 +2802,25 @@ def employee_management():
                                     "email": emp_email,
                                     "password": default_pw,
                                     "role": emp_role,
-                                    "department": str(row.get('department', '')),
-                                    "position": str(row.get('position', ''))
+                                    "department": str(row.get('department', '')).strip(),
+                                    "position": str(row.get('position', '')).strip()
                                 })
-                            except:
-                                pass
-                            
-                            try:
-                                from utils.email_service import EmailService
-                                EmailService().send_welcome_email(emp_name, emp_email, "https://hris.churchgate.com")
                             except:
                                 pass
                         
                         success += 1
+                        
                     except:
                         fail += 1
-                st.success(f"✅ {success} uploaded! ({fail} skipped - duplicates or errors)")
+                    
+                    progress_bar.progress((i + 1) / total)
+                
                 if success > 0:
-                    st.info(f"📧 Welcome emails sent to {success} employees")
+                    st.success(f"✅ {success} uploaded! ({fail} skipped)")
+                    st.info(f"📧 Welcome emails will be sent to new employees. Use 'Generate Logins' tab to send in bulk.")
+                else:
+                    st.warning(f"⚠️ {fail} records skipped. Check for duplicate IDs.")
+                
                 st.balloons()
                 st.cache_data.clear()
     
