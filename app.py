@@ -2842,6 +2842,13 @@ def employee_management():
                                 })
                             except:
                                 pass
+                            
+                            # Send welcome email
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_welcome_email(emp_name, emp_email, "https://hris.churchgate.com")
+                            except:
+                                pass
                         
                         success += 1
                         
@@ -2852,7 +2859,7 @@ def employee_management():
                 
                 if success > 0:
                     st.success(f"✅ {success} uploaded! ({fail} skipped)")
-                    st.info(f"📧 Welcome emails will be sent to new employees. Use 'Generate Logins' tab to send in bulk.")
+                    st.info(f"📧 Welcome emails sent to {success} new employees")
                 else:
                     st.warning(f"⚠️ {fail} records skipped. Check for duplicate IDs.")
                 
