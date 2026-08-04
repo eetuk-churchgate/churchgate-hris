@@ -17757,12 +17757,40 @@ def audit_log_viewer():
                 st.plotly_chart(fig2, use_container_width=True)
 
 def advanced_analytics():
-    st.markdown("""<div class="churchgate-header"><h1>📊 Advanced Analytics & Business Intelligence</h1><p>Cross-Module Insights | Predictive Analytics | Executive Command Center</p></div>""", unsafe_allow_html=True)
+    st.markdown("""<div class="churchgate-header"><h1>📊 Advanced Analytics & Business Intelligence</h1><p>AI-Powered Insights | User Engagement | Predictive Analytics | Executive Command Center</p></div>""", unsafe_allow_html=True)
     
     is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
     if not is_admin:
         st.error("Access restricted to Administrators and HR Directors only.")
         return
+    
+    # ===== USER ENGAGEMENT TRACKING =====
+    # Track current page view
+    if 'page_views' not in st.session_state:
+        st.session_state.page_views = {}
+    if 'session_start' not in st.session_state:
+        st.session_state.session_start = datetime.now()
+    
+    current_page = "Advanced Analytics"
+    if current_page not in st.session_state.page_views:
+        st.session_state.page_views[current_page] = {'count': 0, 'time_spent': 0, 'last_visit': None}
+    st.session_state.page_views[current_page]['count'] += 1
+    st.session_state.page_views[current_page]['last_visit'] = datetime.now().strftime('%Y-%m-%d %H:%M')
+    
+    # Save engagement to database
+    try:
+        db._post("user_engagement", {
+            "user_name": st.session_state.user['name'],
+            "user_email": st.session_state.user['email'],
+            "department": st.session_state.user.get('department', ''),
+            "module": current_page,
+            "action": "page_view",
+            "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "session_id": str(st.session_state.session_start),
+            "device": "web"
+        })
+    except:
+        pass
     
     # Load all data sources
     try:
@@ -17773,6 +17801,8 @@ def advanced_analytics():
     except:
         emp_df = pd.DataFrame()
         total_emp = 0
+        dept_count = 0
+        active_emp = 0
     
     try:
         candidates = db.get_all_candidates()
@@ -17781,6 +17811,8 @@ def advanced_analytics():
         hired = len(candidates[candidates['status'] == 'Hired']) if not candidates.empty and 'status' in candidates.columns else 0
     except:
         total_candidates = 0
+        screened = 0
+        hired = 0
     
     try:
         enrollments = db._get("lms_enrollments")
@@ -17796,6 +17828,7 @@ def advanced_analytics():
         approved_requests = len([r for r in all_requests if r.get('status') == 'Approved']) if all_requests else 0
     except:
         total_requests = 0
+        approved_requests = 0
     
     try:
         all_appraisals = db.get_all_appraisals()
@@ -17803,6 +17836,7 @@ def advanced_analytics():
         completed_appraisals = len([a for a in all_appraisals if a.get('status') == 'Completed' or a.get('acceptance') == 'Accepted']) if all_appraisals else 0
     except:
         total_appraisals = 0
+        completed_appraisals = 0
     
     try:
         ideas = db._get("ideas_box")
@@ -17810,33 +17844,108 @@ def advanced_analytics():
         implemented_ideas = len([i for i in ideas if i.get('status') == 'Implemented']) if ideas else 0
     except:
         total_ideas = 0
+        implemented_ideas = 0
+    
+    # ===== USER ENGAGEMENT DATA =====
+    try:
+        engagement_data = db._get("user_engagement")
+        if engagement_data:
+            eng_df = pd.DataFrame(engagement_data)
+        else:
+            eng_df = pd.DataFrame()
+    except:
+        eng_df = pd.DataFrame()
+    
+    # Engagement metrics
+    total_sessions = len(eng_df['session_id'].unique()) if not eng_df.empty and 'session_id' in eng_df.columns else 0
+    unique_users_today = 0
+    unique_users_week = 0
+    unique_users_month = 0
+    mobile_users = 0
+    web_users = 0
+    
+    if not eng_df.empty and 'timestamp' in eng_df.columns:
+        eng_df['timestamp'] = pd.to_datetime(eng_df['timestamp'])
+        today = datetime.now().date()
+        week_ago = today - timedelta(days=7)
+        month_ago = today - timedelta(days=30)
+        
+        unique_users_today = len(eng_df[eng_df['timestamp'].dt.date == today]['user_email'].unique())
+        unique_users_week = len(eng_df[eng_df['timestamp'].dt.date >= week_ago]['user_email'].unique())
+        unique_users_month = len(eng_df[eng_df['timestamp'].dt.date >= month_ago]['user_email'].unique())
+        
+        if 'device' in eng_df.columns:
+            mobile_users = len(eng_df[eng_df['device'] == 'mobile']['user_email'].unique())
+            web_users = len(eng_df[eng_df['device'] == 'web']['user_email'].unique())
+    
+    # Module engagement
+    module_engagement = {}
+    if not eng_df.empty and 'module' in eng_df.columns:
+        module_counts = eng_df['module'].value_counts()
+        for mod, count in module_counts.items():
+            module_engagement[mod] = count
     
     # ===== TOP KPI ROW =====
     st.markdown("### 📊 Organizational Health Scorecard")
     
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
     c1.metric("👥 Headcount", total_emp, f"{active_emp} active")
-    c2.metric("🏢 Departments", dept_count)
-    c3.metric("🎓 Learning", total_enrollments, f"{completed_enrollments} completed")
-    c4.metric("📋 Requests", total_requests, f"{approved_requests} approved")
+    c2.metric("🏢 Depts", dept_count)
+    c3.metric("🎓 Learning", total_enrollments, f"{completed_enrollments} done")
+    c4.metric("📋 Requests", total_requests, f"{approved_requests} OK")
     c5.metric("📝 Appraisals", total_appraisals, f"{completed_appraisals} done")
-    c6.metric("💡 Ideas", total_ideas, f"{implemented_ideas} implemented")
+    c6.metric("💡 Ideas", total_ideas, f"{implemented_ideas} live")
+    c7.metric("👥 Today", unique_users_today, f"{mobile_users} mobile")
+    c8.metric("📊 Weekly", unique_users_week, f"{web_users} web")
     
-    # ===== EMPLOYEE HEALTH SCORE =====
-    employee_health = 0
-    if total_emp > 0:
-        health_factors = 0
-        if active_emp > 0: health_factors += 1
-        if completed_appraisals > 0: health_factors += 1
-        if total_enrollments > 0: health_factors += 1
-        employee_health = int((health_factors / 3) * 100)
+    # ===== AI INSIGHTS =====
+    st.markdown("---")
+    st.markdown("### 🤖 AI-Powered Insights")
     
-    st.progress(employee_health / 100)
-    st.caption(f"Organizational Health Index: {employee_health}%")
+    # Calculate engagement score
+    engagement_score = 0
+    if total_emp > 0 and unique_users_month > 0:
+        engagement_score = int((unique_users_month / total_emp) * 100)
+    
+    # Generate AI insights
+    insights = []
+    
+    if engagement_score >= 70:
+        insights.append("🌟 **Excellent Engagement:** Over 70% of employees are actively using the HRIS platform this month.")
+    elif engagement_score >= 40:
+        insights.append("📈 **Moderate Engagement:** Consider promoting underutilized modules to increase adoption.")
+    else:
+        insights.append("⚠️ **Low Engagement:** Schedule training sessions to boost platform adoption across departments.")
+    
+    if total_enrollments > 0 and completed_enrollments > 0:
+        completion_rate = int((completed_enrollments / total_enrollments) * 100)
+        if completion_rate >= 80:
+            insights.append(f"🎓 **Strong Learning Culture:** {completion_rate}% course completion rate indicates high learning engagement.")
+    
+    if total_appraisals > 0 and completed_appraisals > 0:
+        appraisal_rate = int((completed_appraisals / total_appraisals) * 100)
+        if appraisal_rate < 60:
+            insights.append(f"📋 **Appraisal Gap:** Only {appraisal_rate}% of appraisals completed. Send reminders to managers.")
+    
+    if mobile_users > 0:
+        mobile_pct = int((mobile_users / max(unique_users_month, 1)) * 100)
+        insights.append(f"📱 **Mobile Adoption:** {mobile_pct}% of users access via mobile app. Optimize mobile experience.")
+    
+    # Most engaged modules
+    if module_engagement:
+        top_module = max(module_engagement, key=module_engagement.get)
+        insights.append(f"🔥 **Most Used Module:** '{top_module}' has the highest engagement with {module_engagement[top_module]} views.")
+    
+    for insight in insights[:5]:
+        st.markdown(f"""
+        <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #CC0000;">
+            {insight}
+        </div>
+        """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["👥 Workforce", "📈 Performance", "🎓 Learning", "💡 Innovation"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["👥 Workforce", "📈 Performance", "🎓 Learning", "💡 Innovation", "📱 User Engagement"])
     
     # ===== TAB 1: WORKFORCE ANALYTICS =====
     with tab1:
@@ -17846,22 +17955,20 @@ def advanced_analytics():
         
         with col1:
             if not emp_df.empty:
-                # Headcount by department
-                dept_counts = emp_df['department'].value_counts().head(10)
+                dept_counts = emp_df['department'].value_counts().head(12)
                 fig = px.bar(x=dept_counts.index, y=dept_counts.values, 
                            title="Headcount by Department", color=dept_counts.values,
                            color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                fig.update_layout(height=350)
+                fig.update_layout(height=400)
                 st.plotly_chart(fig, use_container_width=True)
         
         with col2:
             if not emp_df.empty:
-                # Grade distribution
                 grade_counts = emp_df['grade'].value_counts()
                 fig2 = px.pie(values=grade_counts.values, names=grade_counts.index, 
                             title="Grade Distribution", hole=0.5,
                             color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169', '#805ad5'])
-                fig2.update_layout(height=350)
+                fig2.update_layout(height=400)
                 st.plotly_chart(fig2, use_container_width=True)
         
         # Gender diversity
@@ -17869,10 +17976,8 @@ def advanced_analytics():
             st.markdown("---")
             st.markdown("### 🌍 Gender Diversity")
             col1, col2, col3 = st.columns(3)
-            
             male_count = len(emp_df[emp_df['gender'].str.lower() == 'male'])
             female_count = len(emp_df[emp_df['gender'].str.lower() == 'female'])
-            
             col1.metric("👨 Male", male_count, f"{int(male_count/total_emp*100)}%" if total_emp > 0 else "")
             col2.metric("👩 Female", female_count, f"{int(female_count/total_emp*100)}%" if total_emp > 0 else "")
             col3.metric("📊 Ratio", f"{male_count}:{female_count}")
@@ -17910,7 +18015,6 @@ def advanced_analytics():
         col1, col2 = st.columns(2)
         
         with col1:
-            # Appraisal completion
             appraisal_labels = ['Completed', 'Pending', 'Not Started']
             appraisal_values = [completed_appraisals, max(0, total_appraisals - completed_appraisals), max(0, total_emp - total_appraisals)]
             fig4 = px.pie(values=appraisal_values, names=appraisal_labels, 
@@ -17920,7 +18024,6 @@ def advanced_analytics():
             st.plotly_chart(fig4, use_container_width=True)
         
         with col2:
-            # KPI progress across departments
             try:
                 perf_data = db.get_performance_data()
                 if not perf_data.empty:
@@ -17963,10 +18066,7 @@ def advanced_analytics():
         
         with col1:
             if total_enrollments > 0:
-                learning_status = {
-                    'Completed': completed_enrollments,
-                    'In Progress': total_enrollments - completed_enrollments
-                }
+                learning_status = {'Completed': completed_enrollments, 'In Progress': total_enrollments - completed_enrollments}
                 fig7 = px.pie(values=list(learning_status.values()), names=list(learning_status.keys()),
                             title="Course Completion Rate", hole=0.5,
                             color_discrete_sequence=['#38a169', '#d69e2e'])
@@ -17974,7 +18074,6 @@ def advanced_analytics():
                 st.plotly_chart(fig7, use_container_width=True)
         
         with col2:
-            # Department learning engagement
             try:
                 dept_enrollments = {}
                 for e in enrollments:
@@ -17990,15 +18089,13 @@ def advanced_analytics():
             except:
                 pass
         
-        # Completion rate
         if total_emp > 0:
             st.markdown("---")
-            st.markdown("### 📊 Learning Engagement Rate")
             engagement = int((total_enrollments / total_emp) * 100) if total_emp > 0 else 0
             st.metric("Employees with at least 1 course", f"{engagement}%")
             st.progress(engagement / 100)
     
-    # ===== TAB 4: INNOVATION & IDEAS =====
+    # ===== TAB 4: INNOVATION =====
     with tab4:
         st.subheader("💡 Innovation & Ideas Analytics")
         
@@ -18031,7 +18128,6 @@ def advanced_analytics():
                     fig10.update_layout(height=350)
                     st.plotly_chart(fig10, use_container_width=True)
         
-        # Employee participation
         if total_emp > 0 and total_ideas > 0:
             st.markdown("---")
             idea_participants = len(set(i.get('employee_id', '') for i in ideas))
@@ -18039,20 +18135,122 @@ def advanced_analytics():
             st.metric("Innovation Participation", f"{participation}%", f"{idea_participants} contributors")
             st.progress(participation / 100)
     
+    # ===== TAB 5: USER ENGAGEMENT (NEW!) =====
+    with tab5:
+        st.subheader("📱 User Engagement & Platform Analytics")
+        
+        # Engagement overview
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.markdown(f"""
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #CC0000;">
+                <div style="font-size: 1.8rem;">👥</div>
+                <div style="font-weight: 700; font-size: 1.5rem;">{unique_users_month}</div>
+                <small style="color: #666;">Monthly Active Users</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #3182ce;">
+                <div style="font-size: 1.8rem;">📱</div>
+                <div style="font-weight: 700; font-size: 1.5rem;">{mobile_users}</div>
+                <small style="color: #666;">Mobile App Users</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"""
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #38a169;">
+                <div style="font-size: 1.8rem;">💻</div>
+                <div style="font-weight: 700; font-size: 1.5rem;">{web_users}</div>
+                <small style="color: #666;">Web Users</small>
+            </div>
+            """, unsafe_allow_html=True)
+        with col4:
+            st.markdown(f"""
+            <div style="background: white; padding: 1.2rem; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 3px solid #d69e2e;">
+                <div style="font-size: 1.8rem;">🕐</div>
+                <div style="font-weight: 700; font-size: 1.5rem;">{total_sessions}</div>
+                <small style="color: #666;">Total Sessions</small>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Module engagement chart
+        if module_engagement:
+            st.markdown("---")
+            st.markdown("### 📊 Module Engagement Breakdown")
+            
+            mod_df = pd.DataFrame(list(module_engagement.items()), columns=['Module', 'Views'])
+            mod_df = mod_df.sort_values('Views', ascending=False)
+            
+            fig11 = px.bar(mod_df, x='Module', y='Views', title="Page Views by Module",
+                          color='Views', color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+            fig11.update_layout(height=400)
+            st.plotly_chart(fig11, use_container_width=True)
+        
+        # Daily active users trend
+        if not eng_df.empty and 'timestamp' in eng_df.columns:
+            st.markdown("---")
+            st.markdown("### 📈 Daily Active Users (Last 30 Days)")
+            
+            daily_users = eng_df[eng_df['timestamp'].dt.date >= month_ago].groupby(eng_df['timestamp'].dt.date)['user_email'].nunique().reset_index()
+            daily_users.columns = ['Date', 'Users']
+            
+            fig12 = px.line(daily_users, x='Date', y='Users', title="Daily Active Users",
+                          markers=True, line_shape='spline',
+                          color_discrete_sequence=['#CC0000'])
+            fig12.update_layout(height=350)
+            st.plotly_chart(fig12, use_container_width=True)
+        
+        # Device breakdown
+        if not eng_df.empty and 'device' in eng_df.columns:
+            st.markdown("---")
+            st.markdown("### 📱 Device Breakdown")
+            
+            device_counts = eng_df['device'].value_counts()
+            fig13 = px.pie(values=device_counts.values, names=device_counts.index,
+                         title="Web vs Mobile Usage", hole=0.6,
+                         color_discrete_sequence=['#3182ce', '#38a169'])
+            fig13.update_layout(height=350)
+            st.plotly_chart(fig13, use_container_width=True)
+        
+        # Department engagement
+        if not eng_df.empty and 'department' in eng_df.columns:
+            st.markdown("---")
+            st.markdown("### 🏢 Department Engagement")
+            
+            dept_eng = eng_df['department'].value_counts().head(10)
+            fig14 = px.bar(x=dept_eng.index, y=dept_eng.values,
+                         title="Engagement by Department", color=dept_eng.values,
+                         color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+            fig14.update_layout(height=350)
+            st.plotly_chart(fig14, use_container_width=True)
+    
     # ===== EXPORT =====
     st.markdown("---")
-    st.download_button("📥 Download Analytics Report (CSV)", 
-                      pd.DataFrame([{
-                          'Metric': 'Total Employees', 'Value': total_emp,
-                          'Metric': 'Active Employees', 'Value': active_emp,
-                          'Metric': 'Departments', 'Value': dept_count,
-                          'Metric': 'Candidates', 'Value': total_candidates,
-                          'Metric': 'LMS Enrollments', 'Value': total_enrollments,
-                          'Metric': 'Requests', 'Value': total_requests,
-                          'Metric': 'Appraisals', 'Value': total_appraisals,
-                          'Metric': 'Ideas', 'Value': total_ideas
-                      }]).to_csv(index=False),
-                      "advanced_analytics.csv", "text/csv")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.download_button("📥 Download Analytics Report (CSV)", 
+                          pd.DataFrame([{
+                              'Metric': 'Total Employees', 'Value': total_emp,
+                              'Active': active_emp, 'Departments': dept_count,
+                              'Monthly Users': unique_users_month, 'Mobile Users': mobile_users,
+                              'Web Users': web_users, 'Total Sessions': total_sessions
+                          }]).to_csv(index=False),
+                          "advanced_analytics.csv", "text/csv")
+    with col2:
+        if st.button("📧 Send Weekly Report to Leadership", use_container_width=True):
+            try:
+                from utils.email_service import EmailService
+                es = EmailService()
+                # Get admin users
+                admins = db._get("users", {"role": "Admin"})
+                for admin in admins:
+                    es.send_email(admin['email'], 
+                                "📊 Weekly HRIS Engagement Report",
+                                f"Weekly Summary:\n- Active Users: {unique_users_week}\n- Mobile: {mobile_users}\n- Web: {web_users}\n- Top Module: {max(module_engagement, key=module_engagement.get) if module_engagement else 'N/A'}")
+                st.success("✅ Weekly report sent to leadership!")
+            except:
+                st.warning("Email service unavailable.")
 
 
 def log_audit_action(action, details, module='General'):
