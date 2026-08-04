@@ -691,6 +691,23 @@ def generate_performance_pdf(dept_name, dept_data, report_data):
 def generate_ref(prefix):
     return f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{str(time.time())[-6:]}"
 
+def track_engagement(module_name, action="page_view"):
+    """Track user engagement for analytics"""
+    try:
+        if st.session_state.user:
+            db._post("user_engagement", {
+                "user_name": st.session_state.user['name'],
+                "user_email": st.session_state.user['email'],
+                "department": st.session_state.user.get('department', ''),
+                "module": module_name,
+                "action": action,
+                "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "session_id": str(st.session_state.get('session_start', datetime.now())),
+                "device": "web"
+            })
+    except:
+        pass
+
 def show_churchgate_mission():
     st.markdown("""
     <div class="mission-banner">
@@ -985,6 +1002,7 @@ def sidebar_navigation():
         return selected
 
 def employee_dashboard():
+    track_engagement("Employee Dashboard")
     if 'self_assessments' not in st.session_state:
         st.session_state.self_assessments = {}
     
@@ -1717,6 +1735,7 @@ def employee_dashboard():
 
 
 def executive_dashboard():
+    track_engagement("Executive Dashboard")
     show_churchgate_mission()
     st.markdown("""<div class="churchgate-header"><h1>📊 Executive Dashboard</h1><p>Corporate Strategy 2026-2027 | Real-Time Group Performance Intelligence</p></div>""", unsafe_allow_html=True)
     
@@ -2189,6 +2208,7 @@ def executive_dashboard():
         """, unsafe_allow_html=True)
 
 def employee_management():
+    track_engagement("Employee Management")
     st.markdown("""<div class="churchgate-header"><h1>👥 Employee Management</h1><p>Comprehensive workforce management | Real-time Data | Churchgate Group</p></div>""", unsafe_allow_html=True)
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Team Member'
@@ -3186,6 +3206,7 @@ def employee_management():
 
 
 def performance_okrs():
+    track_engagement("Performance & OKRs")
     """
     Churchgate Group HRIS - Performance & OKRs Module v7.0
     """
@@ -8202,6 +8223,7 @@ def staff_confirmation():
 
 
 def promotions():
+    track_engagement("Promotions")
     """
     Churchgate Group HRIS - Promotions & 360° Feedback Module v2.0
     Fortune 500 Standard | A-Player Assessment | 360° Questionnaire | Feedback Dashboard
@@ -8826,6 +8848,7 @@ def promotions():
                 pass
 
 def recruitment_hub():
+    track_engagement("Recruitment Hub")
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
     
     # ============================================================
@@ -10889,6 +10912,7 @@ APPLY NOW: {public_url}
                     st.balloons()
 
 def ai_recruitment_agent():
+    track_engagement("AI Recruitment Agent")
     st.markdown("""<div class="churchgate-header"><h1>🤖 AI Recruitment Agent</h1><p>AI-Powered CV-JD Matching | Verbatim Detection | Inconsistency Flags | Skills Gap Matrix | Bias Detection | Interview Generator | Executive Reports</p></div>""", unsafe_allow_html=True)
     
     options = ["📥 Load Applications", "📋 JD Analysis", "📤 CV Upload & Scoring", "📊 Candidate Tiering", "🔍 Deep Analysis", "📄 Executive Report", "🔗 LinkedIn Parse", "💾 Save Results", "💬 AI Assistant"]
@@ -11674,6 +11698,7 @@ def ai_recruitment_agent():
                 st.success("✅ Profile data ready! Go to Candidate Portal or Add Candidate to use it.")
 
 def chat_communications():
+    track_engagement("Chat & Communications")
     st.markdown("""<div class="churchgate-header"><h1>💬 Social Hub</h1><p>Team Chat | Direct Messages | Announcements | Kudos | Polls | Interest Groups | Smart HRIS Bot | Integrations</p></div>""", unsafe_allow_html=True)
     
     # Reset old chat state format
@@ -12304,6 +12329,7 @@ def chat_communications():
                 st.info("Add ASANA_PERSONAL_TOKEN to enable")
 
 def training_development():
+    track_engagement("Training & Development")
     st.markdown("""<div class="churchgate-header"><h1>🎓 Training & Development Hub</h1><p>AI-Powered Learning | Live Webinars | Certifications | Skills Gap Analyzer | Mentorship | Video Library | Gamification</p></div>""", unsafe_allow_html=True)
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Team Member'
@@ -12549,6 +12575,7 @@ def training_development():
                 st.markdown(f"🎪 **{conf['name']}** — {conf['date']}, {conf['location']}")
 
 def reports_analytics():
+    track_engagement("Reports & Analytics")
     st.markdown("""<div class="churchgate-header"><h1>📊 Reports & Analytics</h1><p>Real-Time Business Intelligence | Predictive Analytics | Churchgate Group</p></div>""", unsafe_allow_html=True)
     
     # Load real data
@@ -12930,6 +12957,7 @@ def reports_analytics():
             st.download_button("📥 Download Workforce Data (CSV)", emp_df.to_csv(index=False), "workforce_data.csv", "text/csv")
 
 def notifications_page():
+    track_engagement("Notifications")
     st.markdown("""<div class="churchgate-header"><h1>🔔 Notifications Center</h1><p>Real-Time Alerts | Priority Intelligence | System Status</p></div>""", unsafe_allow_html=True)
     
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
@@ -13397,6 +13425,7 @@ def notifications_page():
                 st.plotly_chart(fig, use_container_width=True)
 
 def my_documents():
+    track_engagement("My Documents")
     st.markdown("""<div class="churchgate-header"><h1>📋 My Documents Vault</h1><p>Pay Slips | Contracts | Tax Documents | Certificates | Personal Files</p></div>""", unsafe_allow_html=True)
     
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
@@ -16196,6 +16225,7 @@ def send_celebration_emails():
         return 0, 0, f"Error: {str(e)}"
 
 def my_profile():
+    track_engagement("My Profile")
     user = st.session_state.user
     user_email = user.get('email', '') if user else ''
     user_name = user['name'] if user else 'Staff'
@@ -17764,6 +17794,7 @@ def audit_log_viewer():
                 st.plotly_chart(fig2, use_container_width=True)
 
 def advanced_analytics():
+    track_engagement("Advanced Analytics")
     st.markdown("""<div class="churchgate-header"><h1>📊 Advanced Analytics & Business Intelligence</h1><p>AI-Powered Insights | User Engagement | Predictive Analytics | Executive Command Center</p></div>""", unsafe_allow_html=True)
     
     is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
