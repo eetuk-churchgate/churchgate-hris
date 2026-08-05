@@ -25,6 +25,43 @@ import calendar
 sys.path.append(str(Path(__file__).parent))
 
 # =============================================
+# SCROLLABLE TABS FOR ALL MODULES
+# =============================================
+st.markdown("""
+<style>
+    .stTabs [data-baseweb="tab-list"] {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: thin !important;
+        padding-bottom: 5px !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        flex-shrink: 0 !important;
+        font-size: 0.72rem !important;
+        padding: 0.35rem 0.7rem !important;
+        min-width: auto !important;
+    }
+    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+        height: 4px !important;
+    }
+    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-track {
+        background: #f1f1f1 !important;
+        border-radius: 2px !important;
+    }
+    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
+        background: #CC0000 !important;
+        border-radius: 2px !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background: #CC0000 !important;
+        color: white !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# =============================================
 # FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
 # =============================================
 class HuggingFaceSecrets:
