@@ -4740,8 +4740,7 @@ def performance_okrs():
                                     kpi_comment = assessment.get('pillar_comments', {}).get(pillar, '')
                                     st.markdown(f"**{kpi_name}**")
                                     if kpi_comment:
-                                        with st.expander("💬 View Justification", expanded=False):
-                                            st.markdown(f"<div style='background:#faf8f2;padding:0.8rem;border-radius:6px;border-left:3px solid #D4AF37;font-size:0.85rem;line-height:1.6;color:#3d3020;'>{kpi_comment}</div>", unsafe_allow_html=True)
+                                        st.markdown(f"<div style='background:#faf8f2;padding:0.6rem;border-radius:4px;border-left:3px solid #D4AF37;font-size:0.8rem;margin-top:0.3rem;'>💬 {kpi_comment}</div>", unsafe_allow_html=True)
                                     
                                     c1, c2 = st.columns(2)
                                     with c1: st.markdown(f"<small>Staff: {staff_score}%</small>", unsafe_allow_html=True)
