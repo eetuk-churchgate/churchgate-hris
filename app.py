@@ -24,8 +24,6 @@ import calendar
 
 sys.path.append(str(Path(__file__).parent))
 
-
-
 # =============================================
 # FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
 # =============================================
@@ -66,6 +64,56 @@ from utils.email_service import EmailService
 from utils.chat_service import ChatService
 from utils.training_service import TrainingService
 from streamlit_quill import st_quill
+
+# ============ CACHED DATA LOADERS (Performance Optimization) ============
+@st.cache_data(ttl=600)
+def load_employees_cached():
+    """Cache employees for 10 minutes"""
+    try:
+        df = db.get_all_employees()
+        return df if not df.empty else pd.DataFrame()
+    except:
+        return pd.DataFrame()
+
+@st.cache_data(ttl=600)
+def load_performance_cached():
+    """Cache performance data for 10 minutes"""
+    try:
+        df = db.get_performance_data()
+        return df if not df.empty else pd.DataFrame()
+    except:
+        return pd.DataFrame()
+
+@st.cache_data(ttl=600)
+def load_candidates_cached():
+    """Cache candidates for 10 minutes"""
+    try:
+        df = db.get_all_candidates()
+        return df if not df.empty else pd.DataFrame()
+    except:
+        return pd.DataFrame()
+
+@st.cache_data(ttl=600)
+def load_appraisals_cached():
+    """Cache appraisals for 10 minutes"""
+    try:
+        data = db.get_all_appraisals()
+        return data if data else []
+    except:
+        return []
+
+@st.cache_data(ttl=300)
+def load_engagement_cached():
+    """Cache engagement data for 5 minutes"""
+    try:
+        data = db._get("user_engagement")
+        return pd.DataFrame(data) if data else pd.DataFrame()
+    except:
+        return pd.DataFrame()
+
+def clear_all_cache():
+    """Clear all cached data"""
+    st.cache_data.clear()
 
 # ============================================================
 # PAGE CONFIG
@@ -1001,6 +1049,11 @@ def sidebar_navigation():
                 if st.button("🤖 AI Screen", use_container_width=True, key="qa_ai"):
                     st.session_state['navigate_to'] = "🤖 AI Recruitment Agent"
                     st.rerun()
+        if st.button("🔄 Refresh Data", use_container_width=True, key="refresh_cache"):
+            clear_all_cache()
+            st.success("✅ Data refreshed!")
+            time.sleep(0.5)
+            st.rerun()
         if st.session_state.user:
             if st.button("🚪 Sign Out", use_container_width=True):
                 st.session_state.user = None
@@ -2223,6 +2276,18 @@ def executive_dashboard():
         """, unsafe_allow_html=True)
 
 def employee_management():
+    # Cache employees for 5 minutes
+    @st.cache_data(ttl=300)
+    def load_employees_cached():
+        try:
+            df = db.get_all_employees()
+            if df is None or df.empty:
+                return pd.DataFrame()
+            return df
+        except:
+            return pd.DataFrame()
+    
+    employees_df = load_employees_cached()
     track_engagement("Employee Management")
     st.markdown("""<div class="churchgate-header"><h1>👥 Employee Management</h1><p>Comprehensive workforce management | Real-time Data | Churchgate Group</p></div>""", unsafe_allow_html=True)
     
@@ -3229,6 +3294,8 @@ def employee_management():
 
 def performance_okrs():
     track_engagement("Performance & OKRs")
+    perf_df = load_performance_cached()
+    emp_df = load_employees_cached()
     """
     Churchgate Group HRIS - Performance & OKRs Module v7.0
     """
@@ -3483,12 +3550,12 @@ def performance_okrs():
         parts = re.split(r'(\d+)', key)
         return [int(p) if p.isdigit() else p for p in parts]
     
-    @st.cache_data(ttl=120)
+    @st.cache_data(ttl=600)
     def get_all_perf_cached(): 
         try: return db.get_performance_data()
         except: return pd.DataFrame()
     
-    @st.cache_data(ttl=300)
+    @st.cache_data(ttl=600)
     def get_all_emp_cached(): 
         try: return db.get_all_employees()
         except: return pd.DataFrame()
@@ -17817,6 +17884,9 @@ def audit_log_viewer():
 
 def advanced_analytics():
     track_engagement("Advanced Analytics")
+    emp_df = load_employees_cached()
+    eng_df = load_engagement_cached()
+    candidates_df = load_candidates_cached()
     st.markdown("""<div class="churchgate-header"><h1>📊 Advanced Analytics & Business Intelligence</h1><p>AI-Powered Insights | User Engagement | Predictive Analytics | Executive Command Center</p></div>""", unsafe_allow_html=True)
     
     is_admin = st.session_state.user['role'] in ['Admin', 'HR Director'] if st.session_state.user else False
