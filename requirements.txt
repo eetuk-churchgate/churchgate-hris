@@ -28,4 +28,4 @@ markdown-it-py>=3.0.0
 openai
 sendgrid
 pyzk
-pyarrow==14.0.1
+pyarrow>=14.0.1
