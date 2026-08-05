@@ -811,7 +811,7 @@ def login_section():
         # WTC Abuja Image
         wtc_path = Path(__file__).parent / "WTC Abuja 7 (1).jpg"
         if wtc_path.exists():
-            st.image(str(wtc_path), use_container_width=True)
+            st.image(str(wtc_path))
             st.markdown("<p style='text-align:center;color:#888;font-size:0.8rem;'>Churchgate Group</p>", unsafe_allow_html=True)
         
         with st.form("login_form", clear_on_submit=False):
