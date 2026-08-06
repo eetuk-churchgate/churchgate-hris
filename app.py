@@ -427,6 +427,10 @@ if 'chat_messages' not in st.session_state:
     st.session_state.chat_messages = []
 if 'bot_conversation' not in st.session_state:
     st.session_state.bot_conversation = []
+if 'self_assessments' not in st.session_state:
+    st.session_state.self_assessments = {}
+if 'exceptional_achievements' not in st.session_state:
+    st.session_state.exceptional_achievements = {}
 if 'dashboard_metrics' not in st.session_state:
     st.session_state.dashboard_metrics = {
         'total_employees': 48, 'occupancy_rate': 87,
