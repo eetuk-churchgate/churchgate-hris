@@ -178,13 +178,16 @@ def get_cached_jobs():
         return []
 
 query_params = st.query_params
+# CRITICAL FIX: Preserve job parameter from URL and ensure it persists
 selected_job = query_params.get('job', None)
 
+# CRITICAL FIX: Save job to session state if it's in URL params
 if selected_job:
-    # Reset submission state when entering a new job application
-    if 'success' not in st.query_params:
-        st.session_state.form_submitted = False
-    
+    st.session_state['current_job_application'] = selected_job
+elif 'current_job_application' in st.session_state:
+    selected_job = st.session_state['current_job_application']
+
+if selected_job:
     job_details = None
     try:
         all_reqs = get_cached_jobs()
@@ -221,7 +224,9 @@ if selected_job:
             jd_text = jd_text.replace('\n\n', '<br><br>').replace('\n', '<br>')
             st.markdown(f'<div class="jd-content animate-fade-in-up">{jd_text}</div>', unsafe_allow_html=True)
     
-    with st.form("job_application", clear_on_submit=True):
+    # CRITICAL FIX: Use a unique form key based on the job to prevent form conflicts
+    form_key = f"job_application_{selected_job}"
+    with st.form(form_key, clear_on_submit=True):
             st.markdown("### Personal Information")
             c1, c2 = st.columns(2)
             with c1:
@@ -267,8 +272,6 @@ if selected_job:
                 else:
                     with st.spinner("📤 Submitting your application..."):
                         try:
-                            st.write("🔍 DEBUG: Starting submission...")
-                            
                             # Extract resume text
                             resume_text = ""
                             file_ext = "pdf"
@@ -290,16 +293,15 @@ if selected_job:
                                 resume_text = f"[CV text extraction failed: {str(ex)[:100]}]"
                             
                             tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
-                            st.write(f"🔍 DEBUG: Tracking ID = {tracking_id}")
                             
                             # Upload CV
                             cv_url = ""
                             try:
                                 resume.seek(0)
                                 cv_url = db.upload_file("cvs", f"{tracking_id}_{first_name}_{last_name}.{file_ext}", resume.read(), resume.type)
-                                st.write(f"🔍 DEBUG: CV uploaded = {cv_url[:50]}...")
                             except Exception as ex:
-                                st.write(f"🔍 DEBUG: CV upload failed = {str(ex)[:100]}")
+                                # Continue even if CV upload fails
+                                pass
                             
                             # Build candidate data
                             candidate_data = {
@@ -325,7 +327,6 @@ if selected_job:
                                 "ai_score": 0,
                                 "ai_tier": "Pending"
                             }
-                            st.write(f"🔍 DEBUG: Candidate data ready")
                             
                             # SAVE CANDIDATE - Direct HTTP
                             import requests as req
@@ -334,43 +335,70 @@ if selected_job:
                             headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}", "Content-Type": "application/json", "Prefer": "return=minimal"}
                             
                             candidate_json = {
-                                "candidate_ref": tracking_id, "first_name": first_name, "last_name": last_name,
-                                "email": email, "phone": phone, "linkedin_url": linkedin,
+                                "candidate_ref": tracking_id,
+                                "first_name": first_name,
+                                "last_name": last_name,
+                                "email": email,
+                                "phone": phone,
+                                "linkedin_url": linkedin,
                                 "current_position": current_position,
                                 "current_company": current_company if current_company else "",
                                 "years_of_experience": float(years_exp.split("-")[0]) if years_exp else 0,
-                                "location": "", "education_level": "", "skills": "",
+                                "location": "",
+                                "education_level": "",
+                                "skills": "",
                                 "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
                                 "resume_text": resume_text[:10000] if resume_text else "",
-                                "cv_url": cv_url if cv_url else "", "other_docs": "",
+                                "cv_url": cv_url if cv_url else "",
+                                "other_docs": "",
                                 "job_id": str(selected_job) if selected_job else "",
-                                "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
+                                "source": "Career Portal",
+                                "status": "New",
+                                "ai_score": 0,
+                                "ai_tier": "Pending"
                             }
                             r1 = req.post(f"{supabase_url}/rest/v1/candidates", headers=headers, json=candidate_json)
                             
+                            # SAVE APPLICATION
                             app_json = {
-                                "tracking_id": tracking_id, "first_name": first_name, "last_name": last_name,
-                                "email": email, "phone": phone,
+                                "tracking_id": tracking_id,
+                                "first_name": first_name,
+                                "last_name": last_name,
+                                "email": email,
+                                "phone": phone,
                                 "job_ref": str(selected_job) if selected_job else "",
-                                "position_name": position_name, "status": "Received",
+                                "position_name": position_name,
+                                "status": "Received",
                                 "applied_date": datetime.now().strftime('%Y-%m-%d %H:%M')
                             }
                             r2 = req.post(f"{supabase_url}/rest/v1/applications", headers=headers, json=app_json)
                             
+                            # Email
                             try:
                                 from utils.email_service import EmailService
-                                EmailService().send_email(email, f"Application Received - {position_name}", f"Dear {first_name},\n\nThank you for applying for {position_name}.\n\nTracking ID: {tracking_id}\n\nChurchgate Group HR")
-                            except:
+                                es = EmailService()
+                                es.send_email(email, f"Application Received - {position_name}", f"Dear {first_name},\n\nThank you for applying.\n\nTracking ID: {tracking_id}")
+                            except Exception as ex:
+                                # Email failure shouldn't stop the process
                                 pass
                             
+                            # CRITICAL FIX: Set session state BEFORE rerun
+                            st.session_state.form_submitted = True
+                            st.session_state.submitted_tracking_id = tracking_id
+                            st.session_state.submitted_name = first_name
+                            st.session_state.submitted_email = email
+                            st.session_state.submitted_position = position_name
+                            
+                            # CRITICAL FIX: Force query params and rerun
                             st.query_params['job'] = selected_job
                             st.query_params['success'] = tracking_id
                             st.rerun()
                             
                         except Exception as e:
-                            st.error(f"❌ Failed: {str(e)}")
-                            st.code(traceback.format_exc())
-                            st.info("Please try again or contact careers@churchgate.com for assistance.")
+                            import traceback
+                            st.error(f"❌ Submission failed. Please try again or contact careers@churchgate.com.")
+                            # Log the error for debugging but don't show full traceback to user
+                            st.error(f"Error details: {str(e)[:200]}")
 
 else:
     hero_html = f"""<div class="career-hero animate-fade-in">
