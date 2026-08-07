@@ -7857,7 +7857,7 @@ def staff_confirmation():
                                             send_confirmation_email("jeromedas@churchgate.com", f"✅ Confirmation Recommended: {emp_name}", f"Dear Jerome,\n\n{user_name} has recommended confirmation for {emp_name}.\n\nScore: {total_perf}/100 ({perf_rating})\n\nhttps://hris.churchgate.com")
                                             st.success("✅ Submitted! Sent to COO.")
                                         else:
-                                            send_confirmation_email("asakote@churchgate.com", f"🔄 Extension: {emp_name}", f"HR Team,\n\n{user_name} recommended extension for {emp_name}.\n\n{hod_decision}\n\nPlease process.")
+                                            send_confirmation_email("bsakote@churchgate.com", f"🔄 Extension: {emp_name}", f"HR Team,\n\n{user_name} recommended extension for {emp_name}.\n\n{hod_decision}\n\nPlease process.")
                                             send_confirmation_email(emp.get('email',''), f"🔄 Probation Update", f"Dear {emp_name},\n\nYour probation period has been extended.\n\nYour HOD will discuss this with you.\n\nChurchgate Group HR")
                                             st.warning("🔄 Extension recommended.")
                                         st.rerun()
@@ -7948,7 +7948,7 @@ def staff_confirmation():
                                                     generate_confirmation_letter(emp_name, position, dept, emp_id, jd, now)
                                                 except: pass
                                                 
-                                                send_confirmation_email("asakote@churchgate.com", 
+                                                send_confirmation_email("bsakote@churchgate.com", 
                                                     f"✅ Confirmation Approved: {emp_name}", 
                                                     f"HR Team,\n\nCOO approved {emp_name}.\nScore: {total_score}/100 ({rating})\n\nPlease process confirmation letter.")
                                                 send_confirmation_email(emp.get('email',''), 
@@ -7960,7 +7960,7 @@ def staff_confirmation():
                                                 db._patch("confirmation_reviews", {
                                                     "status":"Returned to HOD","coo_decision":"Returned"
                                                 }, {"id":r.get('id')})
-                                                send_confirmation_email("asakote@churchgate.com",
+                                                send_confirmation_email("bsakote@churchgate.com",
                                                     f"🔄 Confirmation Returned: {emp_name}",
                                                     f"HR Team,\n\nCOO returned {emp_name}'s confirmation to HOD for revision.")
                                                 st.warning("🔄 Returned to HOD"); st.rerun()
@@ -7969,7 +7969,7 @@ def staff_confirmation():
                                                 db._patch("confirmation_reviews", {
                                                     "status":"Rejected by COO","coo_decision":"Rejected"
                                                 }, {"id":r.get('id')})
-                                                send_confirmation_email("asakote@churchgate.com",
+                                                send_confirmation_email("bsakote@churchgate.com",
                                                     f"❌ Confirmation Rejected: {emp_name}",
                                                     f"HR Team,\n\nCOO rejected {emp_name}'s confirmation.")
                                                 st.error("❌ Rejected"); st.rerun()
@@ -9248,7 +9248,7 @@ APPLY NOW: {public_url}
                     lm_emails = {
                         'Accounts & Finance': 'jeff@churchgate.com',
                         'Facility Management': 'deffiong@churchgate.com',
-                        'Human Resources': 'asakote@churchgate.com',
+                        'Human Resources': 'bsakote@churchgate.com',
                         'Legal': 'daiyedun@churchgate.com',
                         'Operations': 'adeogun@churchgate.com',
                         'Procurement': 'abora@churchgate.com',
@@ -9260,7 +9260,7 @@ APPLY NOW: {public_url}
                         'Project Development': 'deffiong@churchgate.com',
                         'Trade Services': 'akarim@churchgate.com'
                     }
-                    lm_email = lm_emails.get(department, 'asakote@churchgate.com')
+                    lm_email = lm_emails.get(department, 'bsakote@churchgate.com')
                     try:
                         from utils.email_service import EmailService
                         EmailService().send_email(
@@ -9355,7 +9355,7 @@ APPLY NOW: {public_url}
                                         
                                         if email_svc:
                                             try:
-                                                hr_emails = ["asakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                                                hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
                                                 for hr_email in hr_emails:
                                                     email_svc.send_email(
                                                         hr_email,
@@ -10746,7 +10746,7 @@ APPLY NOW: {public_url}
                         # Notify HR team
                         try:
                             from utils.email_service import EmailService
-                            hr_emails = ["asakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                            hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
                             for hr_email in hr_emails:
                                 EmailService().send_email(
                                     hr_email,
@@ -11285,7 +11285,7 @@ def ai_recruitment_agent():
                     # Send to Manager
                     col1, col2 = st.columns(2)
                     with col1:
-                        manager_email = st.text_input("Hiring Manager Email", value="asakote@churchgate.com", key="manager_email")
+                        manager_email = st.text_input("Hiring Manager Email", value="bsakote@churchgate.com", key="manager_email")
                     with col2:
                         if st.button("📧 Send Report to Manager", use_container_width=True, type="primary"):
                             # Build email
@@ -14765,7 +14765,7 @@ def requests_hub():
     
     def get_approver_chain(emp_id):
         """Get the approval chain for an employee based on reports_to"""
-        chain = {'team_lead': '', 'hod': '', 'hr': 'asakote@churchgate.com'}
+        chain = {'team_lead': '', 'hod': '', 'hr': 'bsakote@churchgate.com'}
         try:
             emp = db._get("employees", {"employee_id": emp_id})
             if emp and len(emp) > 0:
