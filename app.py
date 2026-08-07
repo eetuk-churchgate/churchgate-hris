@@ -427,10 +427,6 @@ if 'chat_messages' not in st.session_state:
     st.session_state.chat_messages = []
 if 'bot_conversation' not in st.session_state:
     st.session_state.bot_conversation = []
-if 'self_assessments' not in st.session_state:
-    st.session_state.self_assessments = {}
-if 'exceptional_achievements' not in st.session_state:
-    st.session_state.exceptional_achievements = {}
 if 'dashboard_metrics' not in st.session_state:
     st.session_state.dashboard_metrics = {
         'total_employees': 48, 'occupancy_rate': 87,
@@ -9801,6 +9797,13 @@ APPLY NOW: {public_url}
             st.subheader("➕ Quick Add Candidate")
             st.info("Manually add a candidate from walk-in, referral, or external source.")
             
+            # File uploaders OUTSIDE the form
+            st.markdown("#### 📎 Documents")
+            q_cv = st.file_uploader("Upload CV *", type=['pdf', 'docx'], key="quick_cv")
+            q_other = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png'], accept_multiple_files=True, key="quick_other")
+            
+            st.markdown("---")
+            
             with st.form("quick_add_candidate", clear_on_submit=True):
                 c1, c2 = st.columns(2)
                 with c1:
@@ -9814,9 +9817,6 @@ APPLY NOW: {public_url}
                     q_job = st.text_input("Job Reference (if any)")
                     q_linkedin = st.text_input("LinkedIn URL")
                 
-                st.markdown("---")
-                q_cv = st.file_uploader("Upload CV *", type=['pdf', 'docx'])
-                q_other = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png'], accept_multiple_files=True)
                 q_notes = st.text_area("Notes", height=80)
                 
                 if st.form_submit_button("➕ Add Candidate", use_container_width=True):
@@ -9834,13 +9834,24 @@ APPLY NOW: {public_url}
                                 cv_text = "\n".join([p.text for p in docx.Document(q_cv).paragraphs])
                                 file_ext = "docx"
                             
-                            # Upload CV
                             cv_url = ""
                             try:
                                 q_cv.seek(0)
                                 cv_url = db.upload_file("cvs", f"{tracking_id}_{q_fn}_{q_ln}.{file_ext}", q_cv.read(), q_cv.type)
                             except:
                                 pass
+                            
+                            other_docs_list = ""
+                            if q_other and len(q_other) > 0:
+                                doc_names = []
+                                for doc in q_other:
+                                    try:
+                                        doc_name = f"{tracking_id}_{doc.name}"
+                                        db.upload_file("candidate-docs", doc_name, doc.read(), doc.type)
+                                        doc_names.append(doc.name)
+                                    except:
+                                        pass
+                                other_docs_list = ", ".join(doc_names) if doc_names else ""
                             
                             db._post("candidates", {
                                 "candidate_ref": tracking_id,
@@ -9853,12 +9864,15 @@ APPLY NOW: {public_url}
                                 "resume_filename": f"CV_{q_fn}_{q_ln}.{file_ext}",
                                 "resume_text": cv_text[:10000],
                                 "cv_url": cv_url,
+                                "other_docs": other_docs_list,
                                 "job_id": q_job,
                                 "source": q_src,
                                 "status": "New"
                             })
                             st.success(f"✅ Candidate {q_fn} {q_ln} added! (Ref: {tracking_id})")
                             st.balloons()
+                            time.sleep(1)
+                            st.rerun()
                         except Exception as e:
                             st.error(f"Error: {str(e)}")
                     else:
