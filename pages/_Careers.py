@@ -292,21 +292,21 @@ if selected_job:
                                 "email": email,
                                 "phone": phone,
                                 "linkedin_url": linkedin,
-                                "github_url": github,
                                 "current_position": current_position,
                                 "current_company": current_company if current_company else "",
-                                "years_of_experience": years_exp,
+                                "years_of_experience": float(years_exp.split("-")[0]) if years_exp else 0,
+                                "location": "",
+                                "education_level": "",
+                                "skills": "",
                                 "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
                                 "resume_text": resume_text[:10000] if resume_text else "",
                                 "cv_url": cv_url if cv_url else "",
-                                "cover_letter": cover_letter if cover_letter else "",
                                 "other_docs": other_docs_list,
                                 "job_id": selected_job,
                                 "source": "Career Portal",
                                 "status": "New",
                                 "ai_score": 0,
-                                "ai_tier": "Pending",
-                                "applied_date": datetime.now().strftime('%Y-%m-%d %H:%M')
+                                "ai_tier": "Pending"
                             })
                             
                             # Save to applications table
