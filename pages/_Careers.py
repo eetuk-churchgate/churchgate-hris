@@ -185,7 +185,6 @@ if selected_job:
         submitted = st.form_submit_button("📤 Submit Application", use_container_width=True, type="primary")
         
         if submitted:
-            st.write("DEBUG: Form submitted!")
             if not first_name or not last_name or not email or not phone:
                 st.error("❌ Please fill all required personal information fields")
             elif not resume:
