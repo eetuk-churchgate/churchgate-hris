@@ -11402,49 +11402,48 @@ def ai_recruitment_agent():
                     score = int(row.get('ai_score', 0)) if row.get('ai_score') and float(row.get('ai_score', 0)) > 0 else 0
                     tier = str(row.get('ai_tier', 'Pending'))
                     cv_text = str(row.get('resume_text', ''))
-                    phone_val = str(row.get('phone', ''))
-                    linkedin_val = str(row.get('linkedin_url', ''))
-                    
-                    emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "🔶" if score > 0 else "⏳"
-                    
-                    with st.expander(f"{emoji} {first} {last} — {job_id_val} — {score}% — {tier}", expanded=(score >= 85)):
-                        col1, col2, col3 = st.columns([1, 2, 1])
+                        phone_val = str(row.get('phone', ''))
+                        linkedin_val = str(row.get('linkedin_url', ''))
                         
-                        with col1:
-                            initials = (first[:1] + last[:1]).upper() if first and last else "??"
-                            st.markdown(f"""<div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
-                            if score > 0:
-                                st.metric("Score", f"{score}%")
+                        emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "🔶" if score > 0 else "⏳"
                         
-                        with col2:
-                            st.markdown(f"**📧** {email_val} | **📱** {phone_val}")
-                            if linkedin_val and linkedin_val != 'None':
-                                st.markdown(f"**🔗** [{linkedin_val[:30]}...]({linkedin_val})")
-                            st.markdown(f"**💼** {str(row.get('current_position', ''))} | **📅** {str(row.get('years_of_experience', ''))} yrs")
-                            if score > 0:
-                                st.progress(score/100)
-                        
-                        with col3:
-                            if cv_text and cv_text != 'None' and len(cv_text) > 10:
-                                with st.expander("📄 View CV", expanded=False):
-                                    st.text_area("CV Content", cv_text, height=200, key=f"cv_pipeline_{idx}")
+                        with st.expander(f"{emoji} {first} {last} — {job_id_val} — {score}% — {tier}", expanded=(score >= 85)):
+                            col1, col2, col3 = st.columns([1, 2, 1])
+                            
+                            with col1:
+                                initials = (first[:1] + last[:1]).upper() if first and last else "??"
+                                st.markdown(f"""<div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
+                                if score > 0:
+                                    st.metric("Score", f"{score}%")
+                            
+                            with col2:
+                                st.markdown(f"**📧** {email_val} | **📱** {phone_val}")
+                                if linkedin_val and linkedin_val != 'None':
+                                    st.markdown(f"**🔗** [{linkedin_val[:30]}...]({linkedin_val})")
+                                st.markdown(f"**💼** {str(row.get('current_position', ''))} | **📅** {str(row.get('years_of_experience', ''))} yrs")
+                                if score > 0:
+                                    st.progress(score/100)
+                            
+                            with col3:
+                                if cv_text and cv_text != 'None' and len(cv_text) > 10:
+                                    st.markdown("**📄 CV Content:**")
+                                    st.text_area("CV", cv_text, height=200, key=f"cv_pipeline_{idx}", label_visibility="collapsed")
                                     st.download_button("📥 Download CV Text", cv_text, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
-                                    # Original file download
                                     cv_url = str(row.get('cv_url', ''))
                                     resume_filename = str(row.get('resume_filename', ''))
                                     if cv_url and cv_url != 'None' and cv_url != '':
                                         st.markdown(f"📎 [Download Original File: {resume_filename}]({cv_url})")
-                            if st.button("🔍 Deep Analysis", key=f"deep_pipe_{idx}", use_container_width=True):
-                                if cv_text and len(cv_text) > 50:
-                                    with st.spinner("Analyzing..."):
-                                        job_jd = ""
-                                        if job_id_val and job_id_val != 'None':
-                                            for r in all_reqs:
-                                                if r.get('req_id') == job_id_val:
-                                                    job_jd = r.get('jd', '')
-                                                    break
-                                        res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
-                                        if isinstance(res, dict):
+                                if st.button("🔍 Deep Analysis", key=f"deep_pipe_{idx}", use_container_width=True):
+                                    if cv_text and len(cv_text) > 50:
+                                        with st.spinner("Analyzing..."):
+                                            job_jd = ""
+                                            if job_id_val and job_id_val != 'None':
+                                                for r in all_reqs:
+                                                    if r.get('req_id') == job_id_val:
+                                                        job_jd = r.get('jd', '')
+                                                        break
+                                            res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                            if isinstance(res, dict):
                                             st.session_state[f"pipe_analysis_{idx}"] = res
                                             st.rerun()
                         
