@@ -157,7 +157,7 @@ if selected_job:
     
     st.markdown("<div class='form-container animate-slide-in'>", unsafe_allow_html=True)
     
-    with st.form("job_application", clear_on_submit=False):
+    with st.form("job_application", clear_on_submit=True):
         st.markdown("### Personal Information")
         c1, c2 = st.columns(2)
         with c1:
@@ -184,7 +184,7 @@ if selected_job:
         q3 = st.text_area("3. Why do you want to join Churchgate Group? *", height=80)
         st.markdown("*All fields marked with * are required.*")
         
-        submitted = st.form_submit_button("📤 Submit Application", use_container_width=True)
+        submitted = st.form_submit_button("📤 Submit Application", use_container_width=True, type="primary")
         
         if submitted:
             if not first_name or not last_name or not email or not phone:
@@ -215,9 +215,7 @@ if selected_job:
                         cv_url = ""
                         try:
                             resume.seek(0)
-                            file_content = resume.read()
-                            file_name = f"{tracking_id}_{first_name}_{last_name}.{file_ext}"
-                            cv_url = db.upload_file("cvs", file_name, file_content, resume.type)
+                            cv_url = db.upload_file("cvs", f"{tracking_id}_{first_name}_{last_name}.{file_ext}", resume.read(), resume.type)
                         except:
                             pass
                         
@@ -226,9 +224,8 @@ if selected_job:
                             doc_names = []
                             for doc in other_docs:
                                 try:
-                                    doc_name = f"{tracking_id}_{doc.name}"
                                     doc.seek(0)
-                                    db.upload_file("candidate-docs", doc_name, doc.read(), doc.type)
+                                    db.upload_file("candidate-docs", f"{tracking_id}_{doc.name}", doc.read(), doc.type)
                                     doc_names.append(doc.name)
                                 except:
                                     pass
@@ -239,12 +236,9 @@ if selected_job:
                             "email": email, "phone": phone, "linkedin_url": linkedin,
                             "current_position": current_position, "current_company": "",
                             "years_of_experience": years_exp.replace("+","").split("-")[0] if "-" in years_exp else "1",
-                            "education_level": "", "skills": "", "location": "",
                             "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
-                            "resume_text": resume_text[:10000],
-                            "cv_url": cv_url,
-                            "other_docs": other_docs_list,
-                            "job_id": selected_job,
+                            "resume_text": resume_text[:10000], "cv_url": cv_url,
+                            "other_docs": other_docs_list, "job_id": selected_job,
                             "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
                         })
                         
@@ -262,11 +256,20 @@ if selected_job:
                         except:
                             pass
                         
-                        st.success(f"✅ Thank you, {first_name}! Your application has been submitted.")
-                        st.balloons()
-                        st.markdown(f"""<div class="success-box"><h2>📋 Application Received!</h2><p><strong>Tracking ID:</strong> {tracking_id}</p><p><strong>Position:</strong> {position_name}</p></div>""", unsafe_allow_html=True)
+                        st.session_state['app_submitted'] = True
+                        st.session_state['app_tracking_id'] = tracking_id
+                        st.session_state['app_name'] = first_name
+                        st.session_state['app_email'] = email
+                        st.rerun()
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
+
+# Show success message outside the form (after rerun)
+if st.session_state.get('app_submitted'):
+    st.success(f"✅ Thank you, {st.session_state.get('app_name', '')}! Your application has been submitted.")
+    st.balloons()
+    st.markdown(f"""<div class="success-box"><h2>📋 Application Received!</h2><p><strong>Tracking ID:</strong> {st.session_state.get('app_tracking_id', '')}</p><p>📧 Confirmation sent to <strong>{st.session_state.get('app_email', '')}</strong></p></div>""", unsafe_allow_html=True)
+    st.session_state['app_submitted'] = False
 
 else:
     hero_html = f"""<div class="career-hero animate-fade-in">
