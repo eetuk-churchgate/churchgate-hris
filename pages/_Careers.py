@@ -241,6 +241,8 @@ if selected_job:
                 else:
                     with st.spinner("📤 Submitting your application..."):
                         try:
+                            st.write("🔍 DEBUG: Starting submission...")
+                            
                             # Extract resume text
                             resume_text = ""
                             file_ext = "pdf"
@@ -262,30 +264,19 @@ if selected_job:
                                 resume_text = f"[CV text extraction failed: {str(ex)[:100]}]"
                             
                             tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
+                            st.write(f"🔍 DEBUG: Tracking ID = {tracking_id}")
                             
-                            # Upload CV to Supabase Storage
+                            # Upload CV
                             cv_url = ""
                             try:
                                 resume.seek(0)
                                 cv_url = db.upload_file("cvs", f"{tracking_id}_{first_name}_{last_name}.{file_ext}", resume.read(), resume.type)
-                            except:
-                                pass
+                                st.write(f"🔍 DEBUG: CV uploaded = {cv_url[:50]}...")
+                            except Exception as ex:
+                                st.write(f"🔍 DEBUG: CV upload failed = {str(ex)[:100]}")
                             
-                            # Upload other documents
-                            other_docs_list = ""
-                            if other_docs and len(other_docs) > 0:
-                                doc_names = []
-                                for doc in other_docs:
-                                    try:
-                                        doc.seek(0)
-                                        db.upload_file("candidate-docs", f"{tracking_id}_{doc.name}", doc.read(), doc.type)
-                                        doc_names.append(doc.name)
-                                    except:
-                                        pass
-                                other_docs_list = ", ".join(doc_names) if doc_names else ""
-                            
-                            # Save to candidates table
-                            db._post("candidates", {
+                            # Build candidate data
+                            candidate_data = {
                                 "candidate_ref": tracking_id,
                                 "first_name": first_name,
                                 "last_name": last_name,
@@ -301,52 +292,43 @@ if selected_job:
                                 "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
                                 "resume_text": resume_text[:10000] if resume_text else "",
                                 "cv_url": cv_url if cv_url else "",
-                                "other_docs": other_docs_list,
-                                "job_id": selected_job,
+                                "other_docs": "",
+                                "job_id": str(selected_job) if selected_job else "",
                                 "source": "Career Portal",
                                 "status": "New",
                                 "ai_score": 0,
                                 "ai_tier": "Pending"
-                            })
+                            }
+                            st.write(f"🔍 DEBUG: Candidate data ready")
                             
-                            # Save to applications table
-                            db._post("applications", {
+                            # SAVE CANDIDATE
+                            result = db._post("candidates", candidate_data)
+                            st.write(f"🔍 DEBUG: Candidate save result = {result}")
+                            
+                            # SAVE APPLICATION
+                            app_data = {
                                 "tracking_id": tracking_id,
                                 "first_name": first_name,
                                 "last_name": last_name,
                                 "email": email,
                                 "phone": phone,
-                                "job_ref": selected_job,
+                                "job_ref": str(selected_job) if selected_job else "",
                                 "position_name": position_name,
                                 "status": "Received",
                                 "applied_date": datetime.now().strftime('%Y-%m-%d %H:%M')
-                            })
+                            }
+                            result2 = db._post("applications", app_data)
+                            st.write(f"🔍 DEBUG: Application save result = {result2}")
                             
-                            # Send confirmation email
+                            # Email
                             try:
                                 from utils.email_service import EmailService
                                 es = EmailService()
-                                es.send_email(
-                                    email,
-                                    f"Application Received - {position_name} | Churchgate Group",
-                                    f"""Dear {first_name},
-
-Thank you for applying for the position of {position_name} at Churchgate Group.
-
-Your application has been received and is being reviewed.
-
-📋 Tracking ID: {tracking_id}
-📅 Date: {datetime.now().strftime('%B %d, %Y')}
-
-We will contact you if your profile matches our requirements.
-
-Best regards,
-Churchgate Group HR Team"""
-                                )
-                            except:
-                                pass
+                                es.send_email(email, f"Application Received - {position_name}", f"Dear {first_name},\n\nThank you for applying.\n\nTracking ID: {tracking_id}")
+                                st.write("🔍 DEBUG: Email sent")
+                            except Exception as ex:
+                                st.write(f"🔍 DEBUG: Email failed = {str(ex)[:100]}")
                             
-                            # Set session state for Railway persistence
                             st.session_state.form_submitted = True
                             st.session_state.submitted_tracking_id = tracking_id
                             st.session_state.submitted_name = first_name
@@ -356,7 +338,7 @@ Churchgate Group HR Team"""
                             
                         except Exception as e:
                             import traceback
-                            st.error(f"❌ Submission failed: {str(e)}")
+                            st.error(f"❌ FAILED: {str(e)}")
                             st.code(traceback.format_exc())
                             st.info("Please try again or contact careers@churchgate.com for assistance.")
 
