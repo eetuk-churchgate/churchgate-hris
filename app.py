@@ -19,6 +19,8 @@ import base64
 import io
 import os
 import random
+import re
+import groq
 from PIL import Image
 import calendar
 
@@ -451,11 +453,17 @@ def save_uploaded_file(uploaded_file):
         return None
     try:
         if uploaded_file.type == "application/pdf":
-            import PyPDF2
-            pdf_reader = PyPDF2.PdfReader(uploaded_file)
+            try:
+                from pypdf import PdfReader
+                pdf_reader = PdfReader(uploaded_file)
+            except:
+                import PyPDF2
+                pdf_reader = PyPDF2.PdfReader(uploaded_file)
             text = ""
             for page in pdf_reader.pages:
-                text += page.extract_text() + "\n"
+                extracted = page.extract_text()
+                if extracted:
+                    text += extracted + "\n"
             return text
         elif uploaded_file.type == "text/plain":
             return uploaded_file.read().decode('utf-8')
@@ -464,9 +472,9 @@ def save_uploaded_file(uploaded_file):
             doc = docx.Document(uploaded_file)
             return "\n".join([p.text for p in doc.paragraphs])
         else:
-            return uploaded_file.read().decode('utf-8', errors='ignore')
+            return str(uploaded_file.read())
     except Exception as e:
-        return f"[Error: {str(e)}]"
+        return f"[Error reading file: {str(e)[:100]}]"
 
 def generate_summary_pdf(dept_name, dept_data, summary):
     """Generate a Fortune 500 Executive Summary PDF"""
@@ -8972,6 +8980,234 @@ def promotions():
             except:
                 pass
 
+
+
+# ============================================
+# AI RECRUITMENT AGENT & HELPER FUNCTIONS
+# ADD THIS ENTIRE BLOCK BEFORE def recruitment_hub():
+# ============================================
+
+import groq
+import json
+import re
+import random
+import pandas as pd
+
+class AIRecruitmentAgent:
+    def __init__(self):
+        self.use_openai = False
+        self.use_groq = False
+        self.client = None
+        self.model = "llama-3.1-70b-versatile"
+        
+        # Try Groq first
+        self.groq_api_key = os.environ.get("GROQ_API_KEY", "")
+        if not self.groq_api_key:
+            try:
+                self.groq_api_key = st.secrets.get("GROQ_API_KEY", "")
+            except:
+                pass
+        
+        if self.groq_api_key:
+            try:
+                self.client = groq.Groq(api_key=self.groq_api_key)
+                self.use_groq = True
+                print("✅ Groq AI initialized successfully")
+            except Exception as e:
+                print(f"⚠️ Groq init failed: {str(e)[:100]}")
+        
+        if not self.use_groq:
+            print("⚠️ No AI provider available - using fallback scoring")
+    
+    def _groq_chat(self, messages, temperature=0.3, max_tokens=2000):
+        try:
+            if not self.use_groq or not self.client:
+                return None
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Groq API error: {str(e)[:200]}")
+            return None
+    
+    def analyze_jd(self, jd_text):
+        if not jd_text or len(jd_text) < 50:
+            return {"title": "Unknown", "department": "General", "experience_level": "Mid-Level", "required_skills": [], "keywords": []}
+        
+        prompt = f"""Analyze this job description. Return ONLY valid JSON:
+{{"title": "Job Title", "department": "Department", "experience_level": "Entry/Mid/Senior", "required_skills": [{{"skill": "skill1", "importance": 90}}], "keywords": ["keyword1"]}}
+
+JD: {jd_text[:3000]}"""
+        
+        try:
+            if self.use_groq:
+                result = self._groq_chat([
+                    {"role": "system", "content": "Recruitment AI. Return only valid JSON."},
+                    {"role": "user", "content": prompt}
+                ], temperature=0.1, max_tokens=1000)
+                if result:
+                    json_match = re.search(r'\{.*\}', result, re.DOTALL)
+                    if json_match:
+                        return json.loads(json_match.group())
+            return self._fallback_jd_analysis(jd_text)
+        except:
+            return self._fallback_jd_analysis(jd_text)
+    
+    def _fallback_jd_analysis(self, jd_text):
+        jd_lower = jd_text.lower()
+        all_skills = ['python', 'java', 'javascript', 'react', 'node', 'sql', 'aws', 'azure', 'docker', 
+                     'kubernetes', 'agile', 'scrum', 'leadership', 'communication', 'project management',
+                     'networking', 'cisco', 'security', 'cloud', 'devops', 'excel', 'sales', 'marketing']
+        found_skills = [s for s in all_skills if s in jd_lower]
+        return {"title": "Position", "department": "General", "experience_level": "Mid-Level", 
+                "required_skills": [{"skill": s, "importance": 80} for s in found_skills[:8]], "keywords": found_skills}
+    
+    def score_candidate_advanced(self, cv_text, jd_analysis):
+        if not cv_text or len(cv_text) < 50:
+            return {"overall_score": 0, "tier": "Pending", "skills_score": 0, "experience_score": 0,
+                    "education_score": 0, "cv_quality_score": 0, "soft_skills_score": 0,
+                    "verbatim_flags": 0, "confidence": 0, "key_strengths": [], "gaps_identified": [], "interview_questions": []}
+        
+        prompt = f"""Score candidate. Return ONLY valid JSON:
+{{"overall_score": 75, "skills_score": 70, "experience_score": 80, "education_score": 75, "cv_quality_score": 70, "soft_skills_score": 65, "verbatim_flags": 10, "confidence": 85, "tier": "Tier 2", "key_strengths": ["strength1"], "gaps_identified": ["gap1"], "interview_questions": ["question1"]}}
+
+JD: {str(jd_analysis)[:1000]}
+CV: {cv_text[:3000]}"""
+        
+        try:
+            if self.use_groq:
+                result = self._groq_chat([
+                    {"role": "system", "content": "Score objectively. Return only valid JSON."},
+                    {"role": "user", "content": prompt}
+                ], temperature=0.2, max_tokens=1500)
+                if result:
+                    json_match = re.search(r'\{.*\}', result, re.DOTALL)
+                    if json_match:
+                        return json.loads(json_match.group())
+            return self._fallback_scoring(cv_text, jd_analysis)
+        except:
+            return self._fallback_scoring(cv_text, jd_analysis)
+    
+    def _fallback_scoring(self, cv_text, jd_analysis):
+        cv_lower = cv_text.lower()
+        keywords = jd_analysis.get('keywords', [])
+        if not keywords:
+            score = random.randint(40, 70)
+        else:
+            matches = sum(1 for kw in keywords if kw in cv_lower)
+            score = min(95, int((matches / max(len(keywords), 1)) * 100))
+        tier = "Tier 1" if score >= 85 else "Tier 2" if score >= 70 else "Tier 3" if score >= 50 else "Tier 4"
+        return {"overall_score": score, "tier": tier, "skills_score": min(score+5, 95), "experience_score": min(score-5, 90),
+                "education_score": score, "cv_quality_score": 70, "soft_skills_score": 65, "verbatim_flags": 5, "confidence": 75,
+                "key_strengths": ["Keyword match"] if matches > 0 else [], "gaps_identified": ["Missing keywords"] if matches < len(keywords) else [],
+                "interview_questions": ["Tell me about your experience"]}
+    
+    def deep_analyze_candidate(self, cv_text, jd_text):
+        if not cv_text or len(cv_text) < 50:
+            return self.score_candidate_advanced(cv_text, self.analyze_jd(jd_text if jd_text else cv_text[:500]))
+        
+        prompt = f"""Deep analysis. Return ONLY valid JSON:
+{{"overall_score": 82, "skills_score": 85, "experience_score": 80, "education_score": 75, "cv_quality_score": 78, "soft_skills_score": 82, "verbatim_flags": 5, "confidence": 90, "tier": "Tier 2", "key_strengths": ["strength"], "gaps_identified": ["gap"], "interview_questions": ["question"], "recommendation": "Strong candidate", "risk_factors": ["None"], "culture_fit_score": 85}}
+
+JD: {jd_text[:2000] if jd_text else 'General'}
+CV: {cv_text[:3000]}"""
+        
+        try:
+            if self.use_groq:
+                result = self._groq_chat([
+                    {"role": "system", "content": "Expert recruitment AI. Return only valid JSON."},
+                    {"role": "user", "content": prompt}
+                ], temperature=0.2, max_tokens=2000)
+                if result:
+                    json_match = re.search(r'\{.*\}', result, re.DOTALL)
+                    if json_match:
+                        return json.loads(json_match.group())
+            return self.score_candidate_advanced(cv_text, self.analyze_jd(jd_text if jd_text else cv_text[:500]))
+        except:
+            return self.score_candidate_advanced(cv_text, self.analyze_jd(jd_text if jd_text else cv_text[:500]))
+    
+    def chat(self, message, context=""):
+        if not self.use_groq:
+            return get_smart_response(message, [], pd.DataFrame())
+        try:
+            messages = [
+                {"role": "system", "content": f"HR/Recruitment AI for Churchgate Group. Be helpful and concise. Context: {context[:1500]}"},
+                {"role": "user", "content": message}
+            ]
+            result = self._groq_chat(messages, temperature=0.7, max_tokens=800)
+            return result if result else get_smart_response(message, [], pd.DataFrame())
+        except:
+            return get_smart_response(message, [], pd.DataFrame())
+
+
+def get_smart_response(message, screened_candidates, all_candidates):
+    msg_lower = message.lower()
+    if 'top' in msg_lower or 'best' in msg_lower:
+        return "I recommend interviewing candidates with scores above 85% first (Tier 1). You can find them in the dashboard."
+    elif 'compare' in msg_lower:
+        return "Use the Deep Analysis feature for detailed skills comparison and radar charts."
+    elif 'interview' in msg_lower or 'question' in msg_lower:
+        return "Ask about relevant experience, present a real scenario, and discuss career goals. Deep Analysis generates targeted questions."
+    elif 'offer' in msg_lower:
+        return "Go to 'Offer Letters' tab in Recruitment Hub to create professional offer letters."
+    elif 'status' in msg_lower or 'pipeline' in msg_lower:
+        return "View the recruitment pipeline in 'Load Applications' section: Applied → Screened → Shortlisted → Interviewed → Offered → Hired."
+    else:
+        return "I can help with candidate screening, interviews, offers, and analytics. What do you need?"
+
+
+class LinkedInParser:
+    def parse_profile(self, url, profile_text=None):
+        result = {"name": "Unknown", "headline": "", "location": "", "current_company": "", 
+                  "current_position": "", "experience_years": 0, "education": "", "skills": [], 
+                  "summary": "", "parsed_via": "url_only"}
+        if profile_text and len(profile_text) > 50:
+            result["parsed_via"] = "text_analysis"
+            lines = profile_text.split('\n')
+            if lines:
+                result["name"] = lines[0].strip()
+                if len(lines) > 1:
+                    result["headline"] = lines[1].strip()
+            skill_keywords = ['python', 'java', 'javascript', 'react', 'node', 'sql', 'aws', 'azure', 
+                            'docker', 'kubernetes', 'agile', 'scrum', 'leadership', 'management']
+            result["skills"] = [s for s in skill_keywords if s in profile_text.lower()]
+            years_match = re.findall(r'(\d+)\+?\s*years?', profile_text.lower())
+            if years_match:
+                result["experience_years"] = max(int(y) for y in years_match)
+            result["summary"] = profile_text[:500]
+        return result
+    
+    def parse_with_cv_text(self, url, cv_text):
+        result = self.parse_profile(url, cv_text)
+        result["parsed_via"] = "cv_enhanced"
+        return result
+
+
+def get_pipeline_stats(job_id=None):
+    try:
+        if job_id:
+            pipeline_data = db._get("recruitment_pipeline", {"job_id": job_id})
+        else:
+            pipeline_data = db._get("recruitment_pipeline")
+        stats = {}
+        for entry in (pipeline_data or []):
+            stage = entry.get('current_stage', 'New')
+            stats[stage] = stats.get(stage, 0) + 1
+        return stats, pipeline_data or []
+    except:
+        return {}, []
+
+
+# Initialize global instances
+ai_agent = AIRecruitmentAgent()
+linkedin_parser = LinkedInParser()
+
+
+
 def recruitment_hub():
     track_engagement("Recruitment Hub")
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
@@ -9824,9 +10060,14 @@ APPLY NOW: {public_url}
                             cv_text = ""
                             file_ext = "pdf"
                             if q_cv.type == "application/pdf":
-                                import PyPDF2
-                                for page in PyPDF2.PdfReader(q_cv).pages:
-                                    cv_text += page.extract_text() + "\n"
+                                try:
+                                    from pypdf import PdfReader
+                                    for page in PdfReader(q_cv).pages:
+                                        cv_text += page.extract_text() + "\n"
+                                except:
+                                    import PyPDF2
+                                    for page in PyPDF2.PdfReader(q_cv).pages:
+                                        cv_text += page.extract_text() + "\n"
                             elif "word" in q_cv.type:
                                 import docx
                                 cv_text = "\n".join([p.text for p in docx.Document(q_cv).paragraphs])
@@ -11423,14 +11664,25 @@ def ai_recruitment_agent():
                                 st.progress(score/100)
                         
                         with col3:
-                            if cv_text and cv_text != 'None' and len(cv_text) > 10:
-                                st.markdown("**📄 CV Content:**")
-                                st.text_area("CV", cv_text, height=200, key=f"cv_pipeline_{idx}", label_visibility="collapsed")
-                                st.download_button("📥 Download CV Text", cv_text, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_{idx}")
-                                cv_url = str(row.get('cv_url', ''))
-                                resume_filename = str(row.get('resume_filename', ''))
-                                if cv_url and cv_url != 'None' and cv_url != '':
-                                    st.markdown(f"📎 [Download Original File: {resume_filename}]({cv_url})")
+                            st.markdown("**📄 CV & Documents:**")
+                            cv_text = str(row.get('resume_text', ''))
+                            cv_url = str(row.get('cv_url', ''))
+                            resume_filename = str(row.get('resume_filename', ''))
+                            
+                            # Show CV text if available
+                            if cv_text and cv_text not in ['None', '', 'nan'] and len(cv_text) > 10:
+                                with st.expander("📄 View CV Text", expanded=False):
+                                    st.text_area("CV Content", cv_text[:5000], height=300, key=f"cv_text_{idx}", label_visibility="collapsed")
+                                    st.download_button("📥 Download CV Text", cv_text, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_text_{idx}")
+                            
+                            # Show original file download if URL exists
+                            if cv_url and cv_url not in ['None', '', 'nan'] and len(cv_url) > 5:
+                                st.markdown(f"📎 [Download Original: {resume_filename}]({cv_url})")
+                                st.success("✅ CV file available")
+                            elif cv_text and cv_text not in ['None', '', 'nan'] and len(cv_text) > 10:
+                                st.info("📄 CV text extracted and displayed above")
+                            else:
+                                st.warning("⚠️ No CV content available")
                             if st.button("🔍 Deep Analysis", key=f"deep_pipe_{idx}", use_container_width=True):
                                 if cv_text and len(cv_text) > 50:
                                     with st.spinner("Analyzing..."):
@@ -11518,24 +11770,17 @@ def ai_recruitment_agent():
                     st.session_state.ai_chat_history.append({"role": "user", "content": user_message})
                     try:
                         candidates = db.get_all_candidates()
-                        screened = candidates[candidates['ai_score'] > 0] if not candidates.empty and 'ai_score' in candidates.columns else []
+                        screened = candidates[candidates['ai_score'] > 0] if not candidates.empty and 'ai_score' in candidates.columns else pd.DataFrame()
                         
-                        if ai_agent.use_openai:
-                            context = f"You are an AI Recruitment Assistant. Pipeline: {len(candidates)} total, {len(screened)} screened.\n"
-                            if len(screened) > 0:
-                                for _, c in screened.sort_values('ai_score', ascending=False).head(5).iterrows():
-                                    context += f"- {c.get('first_name','')} {c.get('last_name','')}: {int(c.get('ai_score',0))}%, {c.get('ai_tier','')}\n"
-                            try:
-                                response = ai_agent.client.chat.completions.create(
-                                    model="gpt-3.5-turbo",
-                                    messages=[{"role": "system", "content": context}, *[{"role": m['role'], "content": m['content']} for m in st.session_state.ai_chat_history[-10:]]],
-                                    temperature=0.7, max_tokens=800
-                                )
-                                ai_response = response.choices[0].message.content
-                            except:
-                                ai_response = get_smart_response(user_message, screened, candidates)
-                        else:
-                            ai_response = get_smart_response(user_message, screened, candidates)
+                        # Build context for AI
+                        context = f"Pipeline: {len(candidates)} total candidates, {len(screened)} screened."
+                        
+                        # Use Groq AI chat
+                        ai_response = ai_agent.chat(user_message, context)
+                        
+                        st.session_state.ai_chat_history.append({"role": "assistant", "content": ai_response})
+                    except Exception as e:
+                        st.session_state.ai_chat_history.append({"role": "assistant", "content": f"I'm having trouble: {str(e)[:100]}. Please try again."})
                         
                         st.session_state.ai_chat_history.append({"role": "assistant", "content": ai_response})
                     except:
