@@ -160,8 +160,9 @@ if selected_job:
         st.markdown("---")
         cover_letter = st.text_area("Cover Letter (Optional)", height=120)
         st.markdown("---")
-        resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'])
-        other_docs = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'jpeg'], accept_multiple_files=True)
+        st.markdown("### 📎 Documents")
+        resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'], key="career_cv")
+        other_docs = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'jpeg'], accept_multiple_files=True, key="career_other")
         st.markdown("---")
         st.markdown("### Screening Questions")
         q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80)
@@ -190,7 +191,7 @@ if selected_job:
                     
                     tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
                     
-                    # Upload original file to Supabase Storage
+                    # Upload CV to Supabase Storage
                     cv_url = ""
                     try:
                         resume.seek(0)
@@ -202,6 +203,20 @@ if selected_job:
                     except Exception as e:
                         st.warning(f"Storage upload: {str(e)}")
                     
+                    # Upload other documents
+                    other_docs_list = ""
+                    if other_docs and len(other_docs) > 0:
+                        doc_names = []
+                        for doc in other_docs:
+                            try:
+                                doc_name = f"{tracking_id}_{doc.name}"
+                                doc.seek(0)
+                                db.upload_file("candidate-docs", doc_name, doc.read(), doc.type)
+                                doc_names.append(doc.name)
+                            except:
+                                pass
+                        other_docs_list = ", ".join(doc_names) if doc_names else ""
+                    
                     db._post("candidates", {
                         "candidate_ref": tracking_id, "first_name": first_name, "last_name": last_name,
                         "email": email, "phone": phone, "linkedin_url": linkedin,
@@ -211,7 +226,7 @@ if selected_job:
                         "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
                         "resume_text": resume_text[:10000],
                         "cv_url": cv_url,
-                        "other_docs": str(other_docs.name) if other_docs else "",
+                        "other_docs": other_docs_list,
                         "job_id": selected_job,
                         "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
                     })
