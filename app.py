@@ -9299,15 +9299,13 @@ APPLY NOW: {public_url}
                     st.markdown(f"**Closing Date:** {req.get('closing', 'Not set')}")
                     
                     st.markdown("---")
-                    with st.expander("📋 View Full Job Description", expanded=False):
-                        jd_content = req.get('jd', 'No JD provided')
-                        # Check if JD is HTML or plain text
-                        if '<' in jd_content and '>' in jd_content:
-                            st.markdown(jd_content, unsafe_allow_html=True)
-                        else:
-                            # Format plain text with proper paragraphs
-                            formatted = jd_content.replace('\n\n', '<br><br>').replace('\n', '<br>')
-                            st.markdown(formatted, unsafe_allow_html=True)
+                    st.markdown("**📋 Job Description:**")
+                    jd_content = req.get('jd', 'No JD provided')
+                    if '<' in jd_content and '>' in jd_content:
+                        st.markdown(jd_content, unsafe_allow_html=True)
+                    else:
+                        formatted = jd_content.replace('\n\n', '<br><br>').replace('\n', '<br>')
+                        st.markdown(formatted, unsafe_allow_html=True)
                     
                     if req.get('screening'):
                         st.markdown("---")
@@ -9867,7 +9865,9 @@ APPLY NOW: {public_url}
                                 "other_docs": other_docs_list,
                                 "job_id": q_job,
                                 "source": q_src,
-                                "status": "New"
+                                "status": "New",
+                                "ai_score": 0,
+                                "ai_tier": "Pending"
                             })
                             st.success(f"✅ Candidate {q_fn} {q_ln} added! (Ref: {tracking_id})")
                             st.balloons()
