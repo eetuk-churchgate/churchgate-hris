@@ -11402,23 +11402,23 @@ def ai_recruitment_agent():
                     score = int(row.get('ai_score', 0)) if row.get('ai_score') and float(row.get('ai_score', 0)) > 0 else 0
                     tier = str(row.get('ai_tier', 'Pending'))
                     cv_text = str(row.get('resume_text', ''))
-                        phone_val = str(row.get('phone', ''))
-                        linkedin_val = str(row.get('linkedin_url', ''))
+                    phone_val = str(row.get('phone', ''))
+                    linkedin_val = str(row.get('linkedin_url', ''))
+                    
+                    emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "🔶" if score > 0 else "⏳"
+                    
+                    with st.expander(f"{emoji} {first} {last} — {job_id_val} — {score}% — {tier}", expanded=(score >= 85)):
+                        col1, col2, col3 = st.columns([1, 2, 1])
                         
-                        emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "🔶" if score > 0 else "⏳"
+                        with col1:
+                            initials = (first[:1] + last[:1]).upper() if first and last else "??"
+                            st.markdown(f"""<div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
+                            if score > 0:
+                                st.metric("Score", f"{score}%")
                         
-                        with st.expander(f"{emoji} {first} {last} — {job_id_val} — {score}% — {tier}", expanded=(score >= 85)):
-                            col1, col2, col3 = st.columns([1, 2, 1])
-                            
-                            with col1:
-                                initials = (first[:1] + last[:1]).upper() if first and last else "??"
-                                st.markdown(f"""<div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
-                                if score > 0:
-                                    st.metric("Score", f"{score}%")
-                            
-                            with col2:
-                                st.markdown(f"**📧** {email_val} | **📱** {phone_val}")
-                                if linkedin_val and linkedin_val != 'None':
+                        with col2:
+                            st.markdown(f"**📧** {email_val} | **📱** {phone_val}")
+                            if linkedin_val and linkedin_val != 'None':
                                     st.markdown(f"**🔗** [{linkedin_val[:30]}...]({linkedin_val})")
                                 st.markdown(f"**💼** {str(row.get('current_position', ''))} | **📅** {str(row.get('years_of_experience', ''))} yrs")
                                 if score > 0:
