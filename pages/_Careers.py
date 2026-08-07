@@ -260,22 +260,8 @@ if selected_job:
                         st.markdown(f"""<div class="success-box"><h2>📋 Application Received!</h2><p><strong>Tracking ID:</strong> {tracking_id}</p><p><strong>Position:</strong> {position_name}</p></div>""", unsafe_allow_html=True)
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
-                    
-                    st.markdown(f"""
-                    <div class="success-box animate-fade-in-up">
-                        <h2 style="color: #38a169;">📋 Application Received!</h2>
-                        <p style="font-size: 1.2rem;"><strong>Tracking ID:</strong> {tracking_id}</p>
-                        <p style="font-size: 1.1rem;"><strong>Position:</strong> {position_name}</p>
-                        <p>📧 Confirmation sent to <strong>{email}</strong></p>
-                        <p>🔍 Check status anytime with your Tracking ID</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
             else:
                 st.error("❌ Please fill all required fields marked with *")
-    
-    st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     hero_html = f"""<div class="career-hero animate-fade-in">
