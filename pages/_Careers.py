@@ -251,25 +251,16 @@ if selected_job:
                         
                         try:
                             from utils.email_service import EmailService
-                            EmailService().send_email(email, "Application Received - Churchgate Group",
-                                f"Dear {first_name},\n\nThank you for applying for {position_name}.\n\nTracking ID: {tracking_id}\n\nChurchgate Group HR")
-                        except:
-                            pass
-                        
-                        st.session_state['app_submitted'] = True
-                        st.session_state['app_tracking_id'] = tracking_id
-                        st.session_state['app_name'] = first_name
-                        st.session_state['app_email'] = email
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
-
-# Show success message outside the form (after rerun)
-if st.session_state.get('app_submitted'):
-    st.success(f"✅ Thank you, {st.session_state.get('app_name', '')}! Your application has been submitted.")
-    st.balloons()
-    st.markdown(f"""<div class="success-box"><h2>📋 Application Received!</h2><p><strong>Tracking ID:</strong> {st.session_state.get('app_tracking_id', '')}</p><p>📧 Confirmation sent to <strong>{st.session_state.get('app_email', '')}</strong></p></div>""", unsafe_allow_html=True)
-    st.session_state['app_submitted'] = False
+                        EmailService().send_email(email, "Application Received - Churchgate Group",
+                            f"Dear {first_name},\n\nThank you for applying for {position_name}.\n\nTracking ID: {tracking_id}\n\nChurchgate Group HR")
+                    except:
+                        pass
+                    
+                    st.success(f"✅ Thank you, {first_name}! Your application has been submitted.")
+                    st.info(f"📧 Confirmation email sent to {email}")
+                    st.markdown(f"""<div class="success-box"><h2>📋 Application Received!</h2><p><strong>Tracking ID:</strong> {tracking_id}</p><p><strong>Position:</strong> {position_name}</p></div>""", unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"Error: {str(e)}")
 
 else:
     hero_html = f"""<div class="career-hero animate-fade-in">
