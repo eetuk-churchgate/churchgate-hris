@@ -260,8 +260,6 @@ if selected_job:
                         st.markdown(f"""<div class="success-box"><h2>📋 Application Received!</h2><p><strong>Tracking ID:</strong> {tracking_id}</p><p><strong>Position:</strong> {position_name}</p></div>""", unsafe_allow_html=True)
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
-            else:
-                st.error("❌ Please fill all required fields marked with *")
 
 else:
     hero_html = f"""<div class="career-hero animate-fade-in">
@@ -291,6 +289,7 @@ else:
         pass
     
     # Stats bar
+
     try:
         emp_count = len(db.get_all_employees()) if not db.get_all_employees().empty else 200
     except:
