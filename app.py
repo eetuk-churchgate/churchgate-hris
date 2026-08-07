@@ -88,7 +88,7 @@ def load_performance_cached():
 
 @st.cache_data(ttl=600)
 def load_candidates_cached():
-    """Cache candidates for 10 minutes"""
+    """Cache candidates for 11 minutes"""
     try:
         df = db.get_all_candidates()
         return df if not df.empty else pd.DataFrame()
