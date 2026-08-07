@@ -9795,7 +9795,14 @@ APPLY NOW: {public_url}
             st.subheader("➕ Quick Add Candidate")
             st.info("Manually add a candidate from walk-in, referral, or external source.")
             
-            with st.form("quick_add_candidate", clear_on_submit=False):
+            # File uploaders OUTSIDE the form
+            st.markdown("#### 📎 Documents")
+            q_cv = st.file_uploader("Upload CV *", type=['pdf', 'docx'], key="quick_cv")
+            q_other = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png'], accept_multiple_files=True, key="quick_other")
+            
+            st.markdown("---")
+            
+            with st.form("quick_add_candidate", clear_on_submit=True):
                 c1, c2 = st.columns(2)
                 with c1:
                     q_fn = st.text_input("First Name *")
@@ -9808,15 +9815,9 @@ APPLY NOW: {public_url}
                     q_job = st.text_input("Job Reference (if any)")
                     q_linkedin = st.text_input("LinkedIn URL")
                 
-                st.markdown("---")
-                st.markdown("### 📎 Documents")
-                q_cv = st.file_uploader("Upload CV *", type=['pdf', 'docx'])
-                q_other = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png'], accept_multiple_files=True)
                 q_notes = st.text_area("Notes", height=80)
                 
-                submitted = st.form_submit_button("➕ Add Candidate", use_container_width=True)
-                
-                if submitted:
+                if st.form_submit_button("➕ Add Candidate", use_container_width=True):
                     if q_fn and q_ln and q_em and q_cv:
                         tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
                         try:
@@ -9844,7 +9845,6 @@ APPLY NOW: {public_url}
                                 for doc in q_other:
                                     try:
                                         doc_name = f"{tracking_id}_{doc.name}"
-                                        doc.seek(0)
                                         db.upload_file("candidate-docs", doc_name, doc.read(), doc.type)
                                         doc_names.append(doc.name)
                                     except:
@@ -9865,9 +9865,7 @@ APPLY NOW: {public_url}
                                 "other_docs": other_docs_list,
                                 "job_id": q_job,
                                 "source": q_src,
-                                "status": "New",
-                                "ai_score": 0,
-                                "ai_tier": "Pending"
+                                "status": "New"
                             })
                             st.success(f"✅ Candidate {q_fn} {q_ln} added! (Ref: {tracking_id})")
                             st.balloons()
