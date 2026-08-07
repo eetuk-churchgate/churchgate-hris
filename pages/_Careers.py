@@ -373,11 +373,131 @@ if selected_job:
                             }
                             r2 = req.post(f"{supabase_url}/rest/v1/applications", headers=headers, json=app_json)
                             
-                            # Email
+                            # Professional Email
                             try:
                                 from utils.email_service import EmailService
+                                
+                                email_body = f"""
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <style>
+                                        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+                                        body {{ font-family: 'Inter', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f0e8; }}
+                                        .email-wrapper {{ max-width: 600px; margin: 0 auto; background: #ffffff; }}
+                                        .header {{ background: linear-gradient(135deg, #1a1a1a 0%, #2d2a1f 100%); padding: 30px; text-align: center; border-bottom: 4px solid #D4AF37; }}
+                                        .header h1 {{ color: #F5E6CC; font-size: 24px; margin: 0; font-weight: 700; }}
+                                        .header p {{ color: #c4b998; font-size: 14px; margin: 5px 0 0 0; }}
+                                        .content {{ padding: 40px 30px; }}
+                                        .greeting {{ color: #1a1a1a; font-size: 18px; font-weight: 600; margin-bottom: 20px; }}
+                                        .message {{ color: #444444; font-size: 15px; line-height: 1.6; margin-bottom: 25px; }}
+                                        .tracking-box {{ background: linear-gradient(135deg, #faf8f2, #f5f0e8); border-left: 4px solid #D4AF37; padding: 20px; margin: 25px 0; border-radius: 4px; }}
+                                        .tracking-box h3 {{ color: #1a1a1a; font-size: 16px; margin: 0 0 10px 0; }}
+                                        .tracking-id {{ font-size: 24px; font-weight: 700; color: #CC0000; letter-spacing: 1px; margin: 5px 0; }}
+                                        .details-table {{ width: 100%; border-collapse: collapse; margin: 25px 0; }}
+                                        .details-table td {{ padding: 12px; border-bottom: 1px solid #e8dcc8; font-size: 14px; }}
+                                        .details-table td:first-child {{ color: #888888; width: 40%; }}
+                                        .details-table td:last-child {{ color: #1a1a1a; font-weight: 500; }}
+                                        .next-steps {{ background: #faf8f2; padding: 20px; border-radius: 4px; margin: 25px 0; }}
+                                        .next-steps h3 {{ color: #1a1a1a; font-size: 16px; margin: 0 0 15px 0; }}
+                                        .next-steps ul {{ color: #444444; font-size: 14px; line-height: 1.8; padding-left: 20px; }}
+                                        .divider {{ border: none; border-top: 1px solid #e8dcc8; margin: 30px 0; }}
+                                        .footer {{ background: #1a1a1a; padding: 30px; text-align: center; }}
+                                        .footer h3 {{ color: #D4AF37; font-size: 16px; margin: 0 0 10px 0; font-weight: 700; }}
+                                        .footer p {{ color: #c4b998; font-size: 12px; margin: 5px 0; line-height: 1.6; }}
+                                        .social-links {{ margin: 15px 0; }}
+                                        .social-links a {{ color: #D4AF37; text-decoration: none; margin: 0 10px; font-size: 13px; }}
+                                        .button {{ background: #CC0000; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; font-weight: 600; display: inline-block; margin: 15px 0; }}
+                                        .button:hover {{ background: #D4AF37; }}
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="email-wrapper">
+                                        <div class="header">
+                                            <h1>🏢 Churchgate Group</h1>
+                                            <p>Application Confirmation</p>
+                                        </div>
+                                        
+                                        <div class="content">
+                                            <div class="greeting">Dear {first_name} {last_name},</div>
+                                            
+                                            <div class="message">
+                                                Thank you for your interest in joining Churchgate Group. We are pleased to confirm that your application for the position of <strong>{position_name}</strong> has been successfully received and is now under review.
+                                            </div>
+                                            
+                                            <div class="tracking-box">
+                                                <h3>📋 Your Application Reference</h3>
+                                                <div class="tracking-id">{tracking_id}</div>
+                                                <p style="color: #888888; font-size: 13px; margin: 10px 0 0 0;">Please save this tracking ID for future reference</p>
+                                            </div>
+                                            
+                                            <table class="details-table">
+                                                <tr>
+                                                    <td>Position Applied</td>
+                                                    <td>{position_name}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Department</td>
+                                                    <td>{job_details.get('department', 'N/A') if job_details else 'N/A'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Location</td>
+                                                    <td>{job_details.get('location', 'N/A') if job_details else 'N/A'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Application Date</td>
+                                                    <td>{datetime.now().strftime('%B %d, %Y')}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Status</td>
+                                                    <td style="color: #D4AF37;">Under Review</td>
+                                                </tr>
+                                            </table>
+                                            
+                                            <div class="next-steps">
+                                                <h3>📌 What Happens Next?</h3>
+                                                <ul>
+                                                    <li>Our HR team will review your application within 5-7 business days</li>
+                                                    <li>Shortlisted candidates will be contacted for initial screening</li>
+                                                    <li>You can check your application status anytime using your tracking ID</li>
+                                                    <li>We appreciate your patience during our review process</li>
+                                                </ul>
+                                            </div>
+                                            
+                                            <div style="text-align: center; margin: 25px 0;">
+                                                <a href="https://churchgate-churchgate-hris.hf.space/Careers" class="button">🔍 Check Application Status</a>
+                                            </div>
+                                            
+                                            <div class="divider"></div>
+                                            
+                                            <p style="color: #888888; font-size: 13px; line-height: 1.6;">
+                                                If you have any questions about your application, please contact our HR team at 
+                                                <a href="mailto:careers@churchgate.com" style="color: #CC0000; text-decoration: none;">careers@churchgate.com</a>
+                                            </p>
+                                        </div>
+                                        
+                                        <div class="footer">
+                                            <h3>Churchgate Group</h3>
+                                            <p>Churchgate Towers, PC 30 Churchgate Street, Victoria Island, Lagos, Nigeria.</p>
+                                            <p>📧 careers@churchgate.com | 🌐 www.churchgate.com</p>
+                                            <div class="social-links">
+                                                <a href="#">LinkedIn</a> | <a href="#">Twitter</a> | <a href="#">Facebook</a>
+                                            </div>
+                                            <p style="margin-top: 15px;">© {datetime.now().year} Churchgate Group. All rights reserved.</p>
+                                            <p>Churchgate Group is an equal opportunity employer.</p>
+                                        </div>
+                                    </div>
+                                </body>
+                                </html>
+                                """
+                                
                                 es = EmailService()
-                                es.send_email(email, f"Application Received - {position_name}", f"Dear {first_name},\n\nThank you for applying.\n\nTracking ID: {tracking_id}")
+                                es.send_email(
+                                    to_email=email,
+                                    subject=f"Application Received - {position_name} | Churchgate Group",
+                                    body=email_body,
+                                    is_html=True
+                                )
                             except Exception as ex:
                                 # Email failure shouldn't stop the process
                                 pass
