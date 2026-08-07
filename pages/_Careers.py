@@ -290,7 +290,6 @@ else:
         pass
     
     # Stats bar
-
     try:
         emp_count = len(db.get_all_employees()) if not db.get_all_employees().empty else 200
     except:
