@@ -155,9 +155,7 @@ if selected_job:
             jd_text = jd_text.replace('\n\n', '<br><br>').replace('\n', '<br>')
             st.markdown(f'<div class="jd-content animate-fade-in-up">{jd_text}</div>', unsafe_allow_html=True)
     
-    st.markdown("<div class='form-container animate-slide-in'>", unsafe_allow_html=True)
-    
-    with st.form("job_application", clear_on_submit=True):
+    with st.form("job_application", clear_on_submit=False):
         st.markdown("### Personal Information")
         c1, c2 = st.columns(2)
         with c1:
