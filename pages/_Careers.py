@@ -277,8 +277,12 @@ if selected_job:
                             file_ext = "pdf"
                             try:
                                 if resume.type == "application/pdf":
-                                    import PyPDF2
-                                    pdf_reader = PyPDF2.PdfReader(resume)
+                                    try:
+                                        from pypdf import PdfReader
+                                        pdf_reader = PdfReader(resume)
+                                    except:
+                                        import PyPDF2
+                                        pdf_reader = PyPDF2.PdfReader(resume)
                                     for page in pdf_reader.pages:
                                         text = page.extract_text()
                                         if text:
@@ -350,6 +354,7 @@ if selected_job:
                                 "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
                                 "resume_text": resume_text[:10000] if resume_text else "",
                                 "cv_url": cv_url if cv_url else "",
+                                "cv_extracted_text": resume_text[:10000] if resume_text else "",
                                 "other_docs": "",
                                 "job_id": str(selected_job) if selected_job else "",
                                 "source": "Career Portal",
