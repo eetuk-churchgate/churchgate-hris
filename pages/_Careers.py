@@ -355,7 +355,9 @@ Churchgate Group HR Team"""
                             st.rerun()
                             
                         except Exception as e:
+                            import traceback
                             st.error(f"❌ Submission failed: {str(e)}")
+                            st.code(traceback.format_exc())
                             st.info("Please try again or contact careers@churchgate.com for assistance.")
 
 else:
