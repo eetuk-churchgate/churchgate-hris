@@ -101,13 +101,27 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 db = DatabaseManager()
+
+@st.cache_data(ttl=300)
+def get_cached_jobs():
+    try:
+        import requests
+        supabase_url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+        supabase_key = os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+        headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+        url = f"{supabase_url}/rest/v1/job_requisitions?select=*&status=eq.Approved - Live"
+        r = requests.get(url, headers=headers)
+        return r.json() if r.status_code == 200 else []
+    except:
+        return []
+
 query_params = st.query_params
 selected_job = query_params.get('job', None)
 
 if selected_job:
     job_details = None
     try:
-        all_reqs = db.get_all_job_requisitions()
+        all_reqs = get_cached_jobs()
         for r in all_reqs:
             if r.get('status') == 'Approved - Live':
                 req_id = r.get('req_id', '')
@@ -158,99 +172,94 @@ if selected_job:
             years_exp = st.selectbox("Years of Experience", ["0-1", "1-3", "3-5", "5-7", "7-10", "10+", "15+", "20+"])
         
         st.markdown("---")
-        cover_letter = st.text_area("Cover Letter (Optional)", height=120)
+        cover_letter = st.text_area("Cover Letter (Optional)", height=120, key="career_cover")
         st.markdown("---")
         st.markdown("### 📎 Documents")
         resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'], key="career_cv")
         other_docs = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'jpeg'], accept_multiple_files=True, key="career_other")
         st.markdown("---")
         st.markdown("### Screening Questions")
-        q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80)
-        q2 = st.text_area("2. What is your proudest professional achievement? *", height=80)
-        q3 = st.text_area("3. Why do you want to join Churchgate Group? *", height=80)
+        q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80, key="career_q1")
+        q2 = st.text_area("2. What is your proudest professional achievement? *", height=80, key="career_q2")
+        q3 = st.text_area("3. Why do you want to join Churchgate Group? *", height=80, key="career_q3")
         st.markdown("*All fields marked with * are required.*")
         
-        submitted = st.form_submit_button("📤 Submit Application", use_container_width=True)
+        submitted = st.button("📤 Submit Application", use_container_width=True, type="primary")
         
         if submitted:
-            if first_name and last_name and email and phone and resume and q1 and q2 and q3:
-                try:
-                    resume_text = ""
-                    file_ext = "pdf"
-                    if resume.type == "application/pdf":
-                        import PyPDF2
-                        pdf_reader = PyPDF2.PdfReader(resume)
-                        for page in pdf_reader.pages:
-                            resume_text += page.extract_text() + "\n"
+            if not first_name or not last_name or not email or not phone:
+                st.error("❌ Please fill all required personal information fields")
+            elif not resume:
+                st.error("❌ Please upload your CV/Resume")
+            elif not q1 or not q2 or not q3:
+                st.error("❌ Please answer all screening questions")
+            else:
+                with st.spinner("📤 Submitting your application..."):
+                    try:
+                        resume_text = ""
                         file_ext = "pdf"
-                    elif "word" in resume.type or "docx" in resume.type:
-                        import docx
-                        doc = docx.Document(resume)
-                        resume_text = "\n".join([p.text for p in doc.paragraphs])
-                        file_ext = "docx"
-                    
-                    tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
-                    
-                    # Upload CV to Supabase Storage
-                    cv_url = ""
-                    try:
-                        resume.seek(0)
-                        file_content = resume.read()
-                        file_name = f"{tracking_id}_{first_name}_{last_name}.{file_ext}"
-                        cv_url = db.upload_file("cvs", file_name, file_content, resume.type)
-                        if cv_url:
-                            st.success("✅ CV uploaded to storage!")
+                        if resume.type == "application/pdf":
+                            import PyPDF2
+                            pdf_reader = PyPDF2.PdfReader(resume)
+                            for page in pdf_reader.pages:
+                                resume_text += page.extract_text() + "\n"
+                            file_ext = "pdf"
+                        elif "word" in resume.type or "docx" in resume.type:
+                            import docx
+                            doc = docx.Document(resume)
+                            resume_text = "\n".join([p.text for p in doc.paragraphs])
+                            file_ext = "docx"
+                        
+                        tracking_id = f"CG-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
+                        
+                        cv_url = ""
+                        try:
+                            resume.seek(0)
+                            file_content = resume.read()
+                            file_name = f"{tracking_id}_{first_name}_{last_name}.{file_ext}"
+                            cv_url = db.upload_file("cvs", file_name, file_content, resume.type)
+                        except:
+                            pass
+                        
+                        other_docs_list = ""
+                        if other_docs and len(other_docs) > 0:
+                            doc_names = []
+                            for doc in other_docs:
+                                try:
+                                    doc_name = f"{tracking_id}_{doc.name}"
+                                    doc.seek(0)
+                                    db.upload_file("candidate-docs", doc_name, doc.read(), doc.type)
+                                    doc_names.append(doc.name)
+                                except:
+                                    pass
+                            other_docs_list = ", ".join(doc_names) if doc_names else ""
+                        
+                        db._post("candidates", {
+                            "candidate_ref": tracking_id, "first_name": first_name, "last_name": last_name,
+                            "email": email, "phone": phone, "linkedin_url": linkedin,
+                            "current_position": current_position, "current_company": "",
+                            "years_of_experience": years_exp.replace("+","").split("-")[0] if "-" in years_exp else "1",
+                            "education_level": "", "skills": "", "location": "",
+                            "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
+                            "resume_text": resume_text[:10000],
+                            "cv_url": cv_url,
+                            "other_docs": other_docs_list,
+                            "job_id": selected_job,
+                            "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
+                        })
+                        
+                        try:
+                            from utils.email_service import EmailService
+                            EmailService().send_email(email, "Application Received - Churchgate Group",
+                                f"Dear {first_name},\n\nThank you for applying for {position_name}.\n\nTracking ID: {tracking_id}\n\nChurchgate Group HR")
+                        except:
+                            pass
+                        
+                        st.success(f"✅ Thank you, {first_name}! Your application has been submitted.")
+                        st.balloons()
+                        st.markdown(f'<div class="success-box"><h2>📋 Application Received!</h2><p><strong>Tracking ID:</strong> {tracking_id}</p><p><strong>Position:</strong> {position_name}</p></div>', unsafe_allow_html=True)
                     except Exception as e:
-                        st.warning(f"Storage upload: {str(e)}")
-                    
-                    # Upload other documents
-                    other_docs_list = ""
-                    if other_docs and len(other_docs) > 0:
-                        doc_names = []
-                        for doc in other_docs:
-                            try:
-                                doc_name = f"{tracking_id}_{doc.name}"
-                                doc.seek(0)
-                                db.upload_file("candidate-docs", doc_name, doc.read(), doc.type)
-                                doc_names.append(doc.name)
-                            except:
-                                pass
-                        other_docs_list = ", ".join(doc_names) if doc_names else ""
-                    
-                    db._post("candidates", {
-                        "candidate_ref": tracking_id, "first_name": first_name, "last_name": last_name,
-                        "email": email, "phone": phone, "linkedin_url": linkedin,
-                        "current_position": current_position, "current_company": "",
-                        "years_of_experience": years_exp.replace("+","").split("-")[0] if "-" in years_exp else years_exp.replace("+",""),
-                        "education_level": "", "skills": "", "location": "",
-                        "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
-                        "resume_text": resume_text[:10000],
-                        "cv_url": cv_url,
-                        "other_docs": other_docs_list,
-                        "job_id": selected_job,
-                        "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
-                    })
-                    
-                    db._post("applications", {
-                        "tracking_id": tracking_id, "first_name": first_name, "last_name": last_name,
-                        "email": email, "phone": phone, "job_ref": selected_job,
-                        "position_name": position_name, "status": "Received",
-                        "applied_date": datetime.now().strftime('%Y-%m-%d %H:%M WAT')
-                    })
-                    
-                    try:
-                        from utils.email_service import EmailService
-                        result, msg = EmailService().send_email(email, "Application Received - Churchgate Group",
-                            f"Dear {first_name},\n\nThank you for applying for {position_name} at Churchgate Group.\n\nYour Tracking ID: {tracking_id}\n\nWe will review your application and get back to you.\n\nBest regards,\nChurchgate Group HR")
-                        if result:
-                            st.info(f"📧 Confirmation email sent to {email}")
-                        else:
-                            st.warning(f"Email not sent: {msg}")
-                    except Exception as e:
-                        st.warning(f"Email service: {str(e)}")
-                    
-                    st.success(f"✅ Thank you, {first_name}! Your application has been submitted.")
-                    st.balloons()
+                        st.error(f"Error: {str(e)}")
                     
                     st.markdown(f"""
                     <div class="success-box animate-fade-in-up">
