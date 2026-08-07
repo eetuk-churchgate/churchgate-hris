@@ -9997,7 +9997,7 @@ APPLY NOW: {public_url}
                             'Offered': '#805ad5', 'Hired': '#38a169', 'Rejected': '#CC0000'
                         }.get(status, '#a0aec0')
                         
-                        with st.expander(f"👤 {cand.get('first_name', '')} {cand.get('last_name', '')} | {cand.get('email', '')} | {status}", expanded=False):
+                        with st.expander(f"👤 {cand.get('first_name', '')} {cand.get('last_name', '')} | {cand.get('email', '')} | {status}", expanded=True):
                             col1, col2 = st.columns([1, 3])
                             with col1:
                                 st.markdown(f"""<div style="width:45px;height:45px;border-radius:50%;background:{status_color};display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
@@ -10017,14 +10017,16 @@ APPLY NOW: {public_url}
                                     st.success("✅ Updated!")
                                     st.rerun()
                             with c3:
-                                if cand.get('resume_text') and len(str(cand.get('resume_text'))) > 10:
-                                    with st.expander("📄 View CV"):
-                                        st.text_area("CV Content", str(cand.get('resume_text'))[:2000], height=200, key=f"cv_{cand.get('candidate_ref')}")
+                                cv_text = str(cand.get('resume_text', ''))
+                                if cv_text and cv_text not in ['None', '', 'nan'] and len(cv_text) > 10:
+                                    st.markdown("**📄 CV Content:**")
+                                    st.text_area("CV", cv_text[:3000], height=200, key=f"cv_{cand.get('candidate_ref')}", label_visibility="collapsed")
+                                    st.download_button("📥 Download CV", cv_text, f"CV_{cand.get('first_name', '')}_{cand.get('last_name', '')}.txt", "text/plain", key=f"dl_{cand.get('candidate_ref')}")
                             with c4:
                                 if st.button("📧 Email", key=f"email_{cand.get('candidate_ref')}"):
                                     st.info(f"Email queued to {cand.get('email')}")
-            except:
-                st.info("No candidates yet. Share the Careers Page link to start receiving applications.")
+            except Exception as e:
+                st.error(f"Error loading candidates: {str(e)[:200]}")
         
         # ===== SUB-TAB 2: QUICK ADD CANDIDATE =====
         with cand_tab2:
@@ -10346,16 +10348,32 @@ APPLY NOW: {public_url}
                 
                 initials = (first[:1] + last[:1]).upper() if first and last else "??"
                 
-                with st.expander(f"{emoji} {first} {last} — {job_id} — {score}%", expanded=(score >= 85)):
+                with st.expander(f"{emoji} {first} {last} — {job_id} — {score}%", expanded=True):
                     c1, c2 = st.columns([1, 4])
                     with c1:
                         st.markdown(f"""<div style="width:50px;height:50px;border-radius:50%;background:{border};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;color:white;">{initials}</div>""", unsafe_allow_html=True)
                         if score > 0:
                             st.markdown(f"""<span style="background:{badge};color:white;padding:0.2rem 0.5rem;border-radius:12px;font-size:0.7rem;">{tier}</span>""", unsafe_allow_html=True)
+                        else:
+                            st.caption("Not screened")
                     with c2:
                         st.markdown(f"**📧** {email_val} | **💼** {str(row.get('current_position', ''))} | **📅** {str(row.get('years_of_experience', ''))} yrs")
                         if score > 0:
                             st.progress(score/100)
+                    
+                    # Show CV for ALL candidates (even unscreened)
+                    st.markdown("---")
+                    st.markdown("**📄 CV Content:**")
+                    cv_text = str(row.get('resume_text', ''))
+                    if cv_text and cv_text not in ['None', '', 'nan'] and len(cv_text) > 10:
+                        st.text_area("CV", cv_text[:5000], height=200, key=f"cv_t4_{i}", label_visibility="collapsed")
+                        st.download_button("📥 Download CV Text", cv_text, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_t4_{i}")
+                        
+                        cv_url = str(row.get('cv_url', ''))
+                        if cv_url and cv_url not in ['None', '', 'nan']:
+                            st.markdown(f"📎 [Download Original File]({cv_url})")
+                    else:
+                        st.caption("⚠️ No CV content available")
                     
                     col_a1, col_a2, col_a3 = st.columns(3)
                     with col_a1:
@@ -11646,7 +11664,7 @@ def ai_recruitment_agent():
                     
                     emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "🔶" if score > 0 else "⏳"
                     
-                    with st.expander(f"{emoji} {first} {last} — {job_id_val} — {score}% — {tier}", expanded=(score >= 85)):
+                    with st.expander(f"{emoji} {first} {last} — {job_id_val} — {score}% — {tier}", expanded=True):
                         col1, col2, col3 = st.columns([1, 2, 1])
                         
                         with col1:
@@ -11654,6 +11672,8 @@ def ai_recruitment_agent():
                             st.markdown(f"""<div style="width:50px;height:50px;border-radius:50%;background:#CC0000;display:flex;align-items:center;justify-content:center;font-weight:700;color:white;">{initials}</div>""", unsafe_allow_html=True)
                             if score > 0:
                                 st.metric("Score", f"{score}%")
+                            else:
+                                st.caption("Not screened yet")
                         
                         with col2:
                             st.markdown(f"**📧** {email_val} | **📱** {phone_val}")
@@ -11669,20 +11689,65 @@ def ai_recruitment_agent():
                             cv_url = str(row.get('cv_url', ''))
                             resume_filename = str(row.get('resume_filename', ''))
                             
-                            # Show CV text if available
+                            # Always show CV text if available (even without screening)
                             if cv_text and cv_text not in ['None', '', 'nan'] and len(cv_text) > 10:
-                                with st.expander("📄 View CV Text", expanded=False):
-                                    st.text_area("CV Content", cv_text[:5000], height=300, key=f"cv_text_{idx}", label_visibility="collapsed")
-                                    st.download_button("📥 Download CV Text", cv_text, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_text_{idx}")
+                                st.text_area("CV Content", cv_text[:5000], height=200, key=f"cv_text_{idx}", label_visibility="collapsed")
+                                st.download_button("📥 Download CV Text", cv_text, f"CV_{first}_{last}.txt", "text/plain", key=f"dl_cv_text_{idx}")
                             
                             # Show original file download if URL exists
                             if cv_url and cv_url not in ['None', '', 'nan'] and len(cv_url) > 5:
                                 st.markdown(f"📎 [Download Original: {resume_filename}]({cv_url})")
-                                st.success("✅ CV file available")
                             elif cv_text and cv_text not in ['None', '', 'nan'] and len(cv_text) > 10:
-                                st.info("📄 CV text extracted and displayed above")
+                                st.caption("📄 CV text available above")
                             else:
-                                st.warning("⚠️ No CV content available")
+                                st.caption("⚠️ No CV content available")
+                        
+                        # Deep Analysis button - works even without screening
+                        if st.button("🔍 Deep Analysis", key=f"deep_pipe_{idx}", use_container_width=True):
+                            if cv_text and len(cv_text) > 50:
+                                with st.spinner("Analyzing..."):
+                                    job_jd = ""
+                                    if job_id_val and job_id_val != 'None':
+                                        try:
+                                            all_reqs = db.get_all_job_requisitions()
+                                            for r in all_reqs:
+                                                if r.get('req_id') == job_id_val:
+                                                    job_jd = r.get('jd', '')
+                                                    break
+                                        except:
+                                            pass
+                                    res = ai_agent.deep_analyze_candidate(cv_text, job_jd) if job_jd else ai_agent.score_candidate_advanced(cv_text, ai_agent.analyze_jd(cv_text[:500]))
+                                    if isinstance(res, dict):
+                                        st.session_state[f"pipe_analysis_{idx}"] = res
+                                        st.rerun()
+                        
+                        # Show analysis results
+                        if f"pipe_analysis_{idx}" in st.session_state:
+                            res = st.session_state[f"pipe_analysis_{idx}"]
+                            st.markdown("---")
+                            st.markdown("#### 🔬 Deep Analysis")
+                            s1, s2, s3, s4 = st.columns(4)
+                            s1.metric("Overall", f"{res.get('overall_score', 0)}%")
+                            s2.metric("Skills", f"{res.get('skills_score', 0)}%")
+                            s3.metric("Experience", f"{res.get('experience_score', 0)}%")
+                            s4.metric("Confidence", f"{res.get('confidence', 0)}%")
+                            
+                            if res.get('verbatim_flags', 0) > 30:
+                                st.warning(f"🚨 Verbatim risk: {res.get('verbatim_flags', 0):.0f}%")
+                            
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.markdown("**✅ Strengths**")
+                                for s in res.get('key_strengths', [])[:3]:
+                                    st.markdown(f"- {s}")
+                            with c2:
+                                st.markdown("**⚠️ Gaps**")
+                                for g in res.get('gaps_identified', [])[:3]:
+                                    st.markdown(f"- {g}")
+                            
+                            if st.button("🗑️ Clear Analysis", key=f"clr_pipe_{idx}"):
+                                del st.session_state[f"pipe_analysis_{idx}"]
+                                st.rerun()
                             if st.button("🔍 Deep Analysis", key=f"deep_pipe_{idx}", use_container_width=True):
                                 if cv_text and len(cv_text) > 50:
                                     with st.spinner("Analyzing..."):
