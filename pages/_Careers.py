@@ -157,7 +157,7 @@ if selected_job:
     
     st.markdown("<div class='form-container animate-slide-in'>", unsafe_allow_html=True)
     
-    with st.form("job_application", clear_on_submit=True):
+    with st.form("job_application", clear_on_submit=False):
         st.markdown("### Personal Information")
         c1, c2 = st.columns(2)
         with c1:
@@ -172,19 +172,19 @@ if selected_job:
             years_exp = st.selectbox("Years of Experience", ["0-1", "1-3", "3-5", "5-7", "7-10", "10+", "15+", "20+"])
         
         st.markdown("---")
-        cover_letter = st.text_area("Cover Letter (Optional)", height=120, key="career_cover")
+        cover_letter = st.text_area("Cover Letter (Optional)", height=120)
         st.markdown("---")
         st.markdown("### 📎 Documents")
-        resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'], key="career_cv")
-        other_docs = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'jpeg'], accept_multiple_files=True, key="career_other")
+        resume = st.file_uploader("Upload CV/Resume *", type=['pdf', 'docx'])
+        other_docs = st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png', 'jpeg'], accept_multiple_files=True)
         st.markdown("---")
         st.markdown("### Screening Questions")
-        q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80, key="career_q1")
-        q2 = st.text_area("2. What is your proudest professional achievement? *", height=80, key="career_q2")
-        q3 = st.text_area("3. Why do you want to join Churchgate Group? *", height=80, key="career_q3")
+        q1 = st.text_area("1. Describe your most relevant experience for this position. *", height=80)
+        q2 = st.text_area("2. What is your proudest professional achievement? *", height=80)
+        q3 = st.text_area("3. Why do you want to join Churchgate Group? *", height=80)
         st.markdown("*All fields marked with * are required.*")
         
-        submitted = st.button("📤 Submit Application", use_container_width=True, type="primary")
+        submitted = st.form_submit_button("📤 Submit Application", use_container_width=True)
         
         if submitted:
             if not first_name or not last_name or not email or not phone:
@@ -246,6 +246,13 @@ if selected_job:
                             "other_docs": other_docs_list,
                             "job_id": selected_job,
                             "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
+                        })
+                        
+                        db._post("applications", {
+                            "tracking_id": tracking_id, "first_name": first_name, "last_name": last_name,
+                            "email": email, "phone": phone, "job_ref": selected_job,
+                            "position_name": position_name, "status": "Received",
+                            "applied_date": datetime.now().strftime('%Y-%m-%d %H:%M WAT')
                         })
                         
                         try:
