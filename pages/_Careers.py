@@ -257,7 +257,7 @@ if selected_job:
                         
                         st.success(f"✅ Thank you, {first_name}! Your application has been submitted.")
                         st.balloons()
-                        st.markdown(f'<div class="success-box"><h2>📋 Application Received!</h2><p><strong>Tracking ID:</strong> {tracking_id}</p><p><strong>Position:</strong> {position_name}</p></div>', unsafe_allow_html=True)
+                        st.markdown(f"""<div class="success-box"><h2>📋 Application Received!</h2><p><strong>Tracking ID:</strong> {tracking_id}</p><p><strong>Position:</strong> {position_name}</p></div>""", unsafe_allow_html=True)
                     except Exception as e:
                         st.error(f"Error: {str(e)}")
                     
