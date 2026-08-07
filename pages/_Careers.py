@@ -181,6 +181,10 @@ query_params = st.query_params
 selected_job = query_params.get('job', None)
 
 if selected_job:
+    # Reset submission state when entering a new job application
+    if 'success' not in st.query_params:
+        st.session_state.form_submitted = False
+    
     job_details = None
     try:
         all_reqs = get_cached_jobs()
@@ -330,67 +334,41 @@ if selected_job:
                             headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}", "Content-Type": "application/json", "Prefer": "return=minimal"}
                             
                             candidate_json = {
-                                "candidate_ref": tracking_id,
-                                "first_name": first_name,
-                                "last_name": last_name,
-                                "email": email,
-                                "phone": phone,
-                                "linkedin_url": linkedin,
+                                "candidate_ref": tracking_id, "first_name": first_name, "last_name": last_name,
+                                "email": email, "phone": phone, "linkedin_url": linkedin,
                                 "current_position": current_position,
                                 "current_company": current_company if current_company else "",
                                 "years_of_experience": float(years_exp.split("-")[0]) if years_exp else 0,
-                                "location": "",
-                                "education_level": "",
-                                "skills": "",
+                                "location": "", "education_level": "", "skills": "",
                                 "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
                                 "resume_text": resume_text[:10000] if resume_text else "",
-                                "cv_url": cv_url if cv_url else "",
-                                "other_docs": "",
+                                "cv_url": cv_url if cv_url else "", "other_docs": "",
                                 "job_id": str(selected_job) if selected_job else "",
-                                "source": "Career Portal",
-                                "status": "New",
-                                "ai_score": 0,
-                                "ai_tier": "Pending"
+                                "source": "Career Portal", "status": "New", "ai_score": 0, "ai_tier": "Pending"
                             }
                             r1 = req.post(f"{supabase_url}/rest/v1/candidates", headers=headers, json=candidate_json)
-                            st.write(f"🔍 DEBUG: Candidate save = {r1.status_code}")
                             
-                            # SAVE APPLICATION
                             app_json = {
-                                "tracking_id": tracking_id,
-                                "first_name": first_name,
-                                "last_name": last_name,
-                                "email": email,
-                                "phone": phone,
+                                "tracking_id": tracking_id, "first_name": first_name, "last_name": last_name,
+                                "email": email, "phone": phone,
                                 "job_ref": str(selected_job) if selected_job else "",
-                                "position_name": position_name,
-                                "status": "Received",
+                                "position_name": position_name, "status": "Received",
                                 "applied_date": datetime.now().strftime('%Y-%m-%d %H:%M')
                             }
                             r2 = req.post(f"{supabase_url}/rest/v1/applications", headers=headers, json=app_json)
-                            st.write(f"🔍 DEBUG: Application save = {r2.status_code}")
                             
-                            # Email
                             try:
                                 from utils.email_service import EmailService
-                                es = EmailService()
-                                es.send_email(email, f"Application Received - {position_name}", f"Dear {first_name},\n\nThank you for applying.\n\nTracking ID: {tracking_id}")
-                                st.write("🔍 DEBUG: Email sent")
-                            except Exception as ex:
-                                st.write(f"🔍 DEBUG: Email failed = {str(ex)[:100]}")
+                                EmailService().send_email(email, f"Application Received - {position_name}", f"Dear {first_name},\n\nThank you for applying for {position_name}.\n\nTracking ID: {tracking_id}\n\nChurchgate Group HR")
+                            except:
+                                pass
                             
-                            st.session_state.form_submitted = True
-                            st.session_state.submitted_tracking_id = tracking_id
-                            st.session_state.submitted_name = first_name
-                            st.session_state.submitted_email = email
-                            st.session_state.submitted_position = position_name
-                            # Force query param to stay
                             st.query_params['job'] = selected_job
                             st.query_params['success'] = tracking_id
+                            st.rerun()
                             
                         except Exception as e:
-                            import traceback
-                            st.error(f"❌ FAILED: {str(e)}")
+                            st.error(f"❌ Failed: {str(e)}")
                             st.code(traceback.format_exc())
                             st.info("Please try again or contact careers@churchgate.com for assistance.")
 
