@@ -334,7 +334,9 @@ if selected_job:
                             st.session_state.submitted_name = first_name
                             st.session_state.submitted_email = email
                             st.session_state.submitted_position = position_name
-                            st.rerun()
+                            st.success(f"✅ Application Submitted! Tracking ID: {tracking_id}")
+                            st.balloons()
+                            st.stop()
                             
                         except Exception as e:
                             import traceback
