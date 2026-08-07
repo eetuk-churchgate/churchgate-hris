@@ -50,8 +50,29 @@ if logo_path.exists():
 else:
     st.set_page_config(page_title="Careers - Churchgate Group", page_icon="🏢", layout="wide", initial_sidebar_state="collapsed")
 
-# ============ SHOW SUCCESS IF ALREADY SUBMITTED ============
-if st.session_state.form_submitted:
+# ============ SHOW SUCCESS FROM QUERY PARAMS ============
+if 'success' in st.query_params:
+    st.balloons()
+    st.markdown(f"""
+    <div style="max-width: 700px; margin: 50px auto; text-align: center;">
+        <div style="background: #f0fdf4; border: 2px solid #38a169; border-radius: 16px; padding: 40px;">
+            <h1 style="color: #38a169;">✅ Application Submitted!</h1>
+            <p>Thank you for your application!</p>
+            <div style="background: white; border-radius: 12px; padding: 20px; margin: 20px 0;">
+                <p><strong>📋 Tracking ID:</strong> {st.query_params['success']}</p>
+                <p><strong>📊 Status:</strong> Under Review</p>
+            </div>
+            <p style="color: #666;">A confirmation email has been sent to your email address.</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("🔄 Apply for Another Position"):
+        st.query_params.clear()
+        st.rerun()
+    st.stop()
+
+# ============ SHOW SUCCESS IF ALREADY SUBMITTED (session state) ============
+if st.session_state.form_submitted and 'success' not in st.query_params:
     st.balloons()
     st.markdown(f"""
     <div style="max-width: 700px; margin: 50px auto; text-align: center;">
@@ -72,6 +93,7 @@ if st.session_state.form_submitted:
     
     if st.button("🔄 Apply for Another Position", use_container_width=True):
         st.session_state.form_submitted = False
+        st.query_params.clear()
         st.rerun()
     st.stop()
 
@@ -362,9 +384,9 @@ if selected_job:
                             st.session_state.submitted_name = first_name
                             st.session_state.submitted_email = email
                             st.session_state.submitted_position = position_name
-                            st.success(f"✅ Application Submitted! Tracking ID: {tracking_id}")
-                            st.balloons()
-                            st.stop()
+                            # Force query param to stay
+                            st.query_params['job'] = selected_job
+                            st.query_params['success'] = tracking_id
                             
                         except Exception as e:
                             import traceback
