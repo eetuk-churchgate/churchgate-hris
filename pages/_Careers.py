@@ -32,11 +32,51 @@ if not hasattr(st, 'secrets') or not hasattr(st.secrets, '_secrets'):
 
 from utils.database import DatabaseManager
 
+# ============ SESSION STATE FOR RAILWAY ============
+if 'form_submitted' not in st.session_state:
+    st.session_state.form_submitted = False
+if 'submitted_tracking_id' not in st.session_state:
+    st.session_state.submitted_tracking_id = ""
+if 'submitted_name' not in st.session_state:
+    st.session_state.submitted_name = ""
+if 'submitted_email' not in st.session_state:
+    st.session_state.submitted_email = ""
+if 'submitted_position' not in st.session_state:
+    st.session_state.submitted_position = ""
+
 logo_path = Path(__file__).parent.parent / "churchgate-logo.jpeg"
 if logo_path.exists():
     st.set_page_config(page_title="Careers - Churchgate Group", page_icon=str(logo_path), layout="wide", initial_sidebar_state="collapsed")
 else:
     st.set_page_config(page_title="Careers - Churchgate Group", page_icon="🏢", layout="wide", initial_sidebar_state="collapsed")
+
+# ============ SHOW SUCCESS IF ALREADY SUBMITTED ============
+if st.session_state.form_submitted:
+    st.balloons()
+    st.markdown(f"""
+    <div style="max-width: 700px; margin: 50px auto; text-align: center;">
+        <div style="background: #f0fdf4; border: 2px solid #38a169; border-radius: 16px; padding: 40px;">
+            <h1 style="color: #38a169;">✅ Application Submitted!</h1>
+            <p style="font-size: 1.2rem;">Thank you, <strong>{st.session_state.submitted_name}</strong>!</p>
+            <div style="background: white; border-radius: 12px; padding: 20px; margin: 20px 0;">
+                <p><strong>📋 Tracking ID:</strong> {st.session_state.submitted_tracking_id}</p>
+                <p><strong>📧 Email:</strong> {st.session_state.submitted_email}</p>
+                <p><strong>💼 Position:</strong> {st.session_state.submitted_position}</p>
+                <p><strong>📊 Status:</strong> Under Review</p>
+            </div>
+            <p style="color: #666;">A confirmation email has been sent to your email address.</p>
+            <p style="color: #666;">Please save your Tracking ID for future reference.</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("🔄 Apply for Another Position", use_container_width=True):
+        st.session_state.form_submitted = False
+        st.rerun()
+    st.stop()
+
+# Initialize database
+db = DatabaseManager()
 
 def get_logo_base64():
     for ext in ['.jpeg', '.jpg', '.png']:
@@ -306,17 +346,13 @@ Churchgate Group HR Team"""
                             except:
                                 pass
                             
-                            st.success(f"✅ Thank you, {first_name}! Your application has been submitted successfully!")
-                            st.info(f"📧 A confirmation email has been sent to **{email}**")
-                            st.markdown(f"""
-                            <div style="background: #f0fdf4; border: 2px solid #38a169; border-radius: 12px; padding: 20px; margin: 20px 0;">
-                                <h2 style="color: #38a169;">📋 Application Received!</h2>
-                                <p><strong>Tracking ID:</strong> {tracking_id}</p>
-                                <p><strong>Position:</strong> {position_name}</p>
-                                <p><strong>Status:</strong> Under Review</p>
-                                <p style="font-size: 0.9rem; color: #666;">Please save your Tracking ID for future reference.</p>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            # Set session state for Railway persistence
+                            st.session_state.form_submitted = True
+                            st.session_state.submitted_tracking_id = tracking_id
+                            st.session_state.submitted_name = first_name
+                            st.session_state.submitted_email = email
+                            st.session_state.submitted_position = position_name
+                            st.rerun()
                             
                         except Exception as e:
                             st.error(f"❌ Submission failed: {str(e)}")
