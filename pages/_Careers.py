@@ -407,7 +407,7 @@ if selected_job:
                                 </div>
                                 
                                 <p style="text-align: center; margin: 25px 0;">
-                                    <a href="https://churchgate-churchgate-hris.hf.space/Careers" class="btn">🔍 Check Application Status</a>
+                                    <a href="https://hris.churchgate.com/Careers" class="btn">🔍 Check Application Status</a>
                                 </p>
                                 
                                 <p style="font-size: 13px; color: #888; line-height: 1.6;">
@@ -532,7 +532,7 @@ else:
                         st.query_params['job'] = job['ref']
                         st.rerun()
                 with c2:
-                    share_url = f"https://churchgate-churchgate-hris.hf.space/Careers?job={job['ref']}"
+                    share_url = f"https://hris.churchgate.com/Careers?job={job['ref']}"
                     st.markdown(f"""<div style="margin-top:0.5rem;"><a href="https://www.linkedin.com/sharing/share-offsite/?url={share_url}" target="_blank">🔗 LinkedIn</a> <a href="https://wa.me/?text=Job:{job['title']}%20at%20Churchgate%20Group%20{share_url}" target="_blank">💬 WhatsApp</a> <a href="https://twitter.com/intent/tweet?text=Job:{job['title']}%20at%20Churchgate%20Group&url={share_url}" target="_blank">🐦 Twitter</a></div>""", unsafe_allow_html=True)
     else:
         st.info("🎯 No open positions at the moment.")
