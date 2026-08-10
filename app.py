@@ -8996,7 +8996,7 @@ class AIRecruitmentAgent:
         self.use_openai = False
         self.use_groq = False
         self.client = None
-        self.model = "llama-3.1-70b-versatile"
+        self.model = "llama-3.3-70b-versatile"
         
         # Try EVERY possible way to get the key
         self.groq_api_key = ""
