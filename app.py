@@ -9150,59 +9150,70 @@ CV Content: {cv_text[:3000]}"""
                 "interview_questions": ["Tell me about your experience"]}
     
     def deep_analyze_candidate(self, cv_text, jd_text):
+        """Deep analysis with dynamic competency scoring based on JD"""
         if not cv_text or len(cv_text) < 50:
             return self.score_candidate_advanced(cv_text, self.analyze_jd(jd_text if jd_text else cv_text[:500]))
         
-        prompt = f"""Deep candidate analysis. Return ONLY valid JSON:
-{{"overall_score": 82, "skills_score": 85, "experience_score": 80, "education_score": 75,
-  "cv_quality_score": 78, "soft_skills_score": 82, "verbatim_flags": 5, "confidence": 90,
-  "tier": "Tier 2", "key_strengths": ["strength1", "strength2"],
-  "gaps_identified": ["gap1"], "interview_questions": ["q1", "q2", "q3"],
-  "recommendation": "Strong candidate", "risk_factors": ["None"], "culture_fit_score": 85}}
+        prompt = f"""You are an expert recruitment AI agent. Perform a comprehensive candidate evaluation against the job description provided.
 
-JD: {jd_text[:2000] if jd_text else 'General position'}
-CV: {cv_text[:3000]}"""
-        
-        if self.use_groq:
-            result = self._groq_chat([
-                {"role": "system", "content": "Expert recruitment AI. Return only valid JSON."},
-                {"role": "user", "content": prompt}
-            ], temperature=0.2, max_tokens=2000)
-            if result:
-                json_match = re.search(r'\{.*\}', result, re.DOTALL)
-                if json_match:
-                    return json.loads(json_match.group())
-        return self.score_candidate_advanced(cv_text, self.analyze_jd(jd_text if jd_text else cv_text[:500]))
-    
-    def chat(self, message, context=""):
-        if not self.use_groq:
-            return get_smart_response(message, [], pd.DataFrame())
+First, analyze the job description to identify the TOP 5 most important competencies for this role. Then score the candidate against those competencies.
+
+Return ONLY valid JSON with this structure:
+{{
+    "role_type": "Identify the role category (e.g., Builder-Operator, Sales Operations, CRM Manager, Executive, Technical, etc.)",
+    "core_competencies": [
+        {{"name": "Competency 1", "weight": 25, "score": 4, "evidence": "What in the CV demonstrates this"}},
+        {{"name": "Competency 2", "weight": 20, "score": 5, "evidence": "What in the CV demonstrates this"}},
+        {{"name": "Competency 3", "weight": 20, "score": 3, "evidence": "What in the CV demonstrates this"}},
+        {{"name": "Competency 4", "weight": 20, "score": 4, "evidence": "What in the CV demonstrates this"}},
+        {{"name": "Competency 5", "weight": 15, "score": 4, "evidence": "What in the CV demonstrates this"}}
+    ],
+    "overall_score": 85,
+    "tier": "Tier 1",
+    "key_strengths": ["strength1", "strength2", "strength3"],
+    "gaps_identified": ["gap1", "gap2"],
+    "interview_questions": ["q1", "q2", "q3", "q4", "q5"],
+    "recommendation": "Detailed recommendation",
+    "risk_factors": ["risk1"],
+    "culture_fit_score": 80,
+    "builder_operator_score": 85,
+    "execution_rigor_score": 80,
+    "red_flags": [],
+    "salary_estimation": "Market range estimate based on experience"
+}}
+
+IMPORTANT GUIDELINES:
+- For Sales Operations roles: prioritize CRM ownership, pipeline discipline, process enforcement, data-driven mindset, team management
+- For Builder-Operator roles: prioritize shipped production systems, technical depth, measurable business impact, cross-functional ability
+- For Associate/Junior roles: prioritize attention to detail, data handling, coachability, discipline, organization
+- For Manager roles: prioritize team management, process building, stakeholder management, systems thinking
+- Detect verbatim copying from JD templates
+- Flag vague claims without evidence
+- Note employment gaps
+- Assess if experience is at scale or limited
+
+Job Description: {jd_text[:3000] if jd_text else 'General position - assess broadly'}
+
+CV Content: {cv_text[:4000]}"""
         
         try:
-            system_prompt = """You are an intelligent AI Recruitment Assistant for Churchgate Group, a major real estate and infrastructure company in Nigeria. 
-
-You are helpful, conversational, and knowledgeable about HR, recruitment, and general business topics. 
-
-Respond naturally like a helpful colleague. Keep responses concise but informative.
-
-If asked about candidates or pipeline data, use the context provided. If you don't know something, be honest.
-
-You can discuss: recruitment, HR policies, interviews, onboarding, performance management, training, company culture, leadership, career development, and general professional topics."""
-            
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Context about current pipeline: {context[:1000]}\n\nUser question: {message}"}
-            ]
-            
-            result = self._groq_chat(messages, temperature=0.7, max_tokens=500)
-            
-            if result and len(result.strip()) > 10:
-                return result.strip()
-            else:
-                return get_smart_response(message, [], pd.DataFrame())
+            if self.use_groq:
+                result = self._groq_chat([
+                    {"role": "system", "content": "You are an expert recruitment AI agent. Analyze candidates deeply and objectively. Return only valid JSON with the exact structure requested."},
+                    {"role": "user", "content": prompt}
+                ], temperature=0.2, max_tokens=2500)
                 
+                if result:
+                    import json as json_lib
+                    json_match = re.search(r'\{.*\}', result, re.DOTALL)
+                    if json_match:
+                        parsed = json_lib.loads(json_match.group())
+                        return parsed
+            
+            return self.score_candidate_advanced(cv_text, self.analyze_jd(jd_text if jd_text else cv_text[:500]))
         except Exception as e:
-            return get_smart_response(message, [], pd.DataFrame())
+            print(f"Deep analysis error: {str(e)[:100]}")
+            return self.score_candidate_advanced(cv_text, self.analyze_jd(jd_text if jd_text else cv_text[:500]))
 
 
 
@@ -9545,7 +9556,7 @@ linkedin_parser = LinkedInParser()
 
 
 def extract_text_from_cv_url(cv_url):
-    """Download and extract text from CV file URL from Supabase storage"""
+    """Download and extract text from CV file URL"""
     try:
         import requests as req
         import io
@@ -9557,52 +9568,52 @@ def extract_text_from_cv_url(cv_url):
             print(f"DEBUG CV: HTTP {response.status_code}")
             return None
         
-        content_type = response.headers.get('content-type', '').lower()
-        print(f"DEBUG CV: Content-Type: {content_type}, Size: {len(response.content)} bytes")
-        
-        # Save content to bytes
         file_bytes = response.content
+        print(f"DEBUG CV: Downloaded {len(file_bytes)} bytes")
         
-        # Try pypdf first
+        # Try pypdf
         try:
             from pypdf import PdfReader
             file_stream = io.BytesIO(file_bytes)
-            pdf_reader = PdfReader(file_stream)
+            pdf = PdfReader(file_stream)
             text_parts = []
-            for page in pdf_reader.pages:
+            for page in pdf.pages:
                 text = page.extract_text()
                 if text and text.strip():
-                    # Filter out raw PDF binary garbage
+                    # Only keep printable characters
                     cleaned = ''.join(c for c in text if c.isprintable() or c in '\n\r\t ')
-                    if len(cleaned) > 20 and not cleaned.startswith('%PDF'):
+                    # Skip if it looks like raw PDF
+                    if not cleaned.startswith('%PDF') and 'endobj' not in cleaned[:100]:
                         text_parts.append(cleaned)
             
             if text_parts:
-                full_text = '\n'.join(text_parts)
-                if len(full_text.strip()) > 50:
-                    print(f"DEBUG CV: pypdf extracted {len(full_text)} chars")
-                    return full_text.strip()
+                full_text = '\n'.join(text_parts).strip()
+                if len(full_text) > 100:
+                    print(f"DEBUG CV: SUCCESS - pypdf extracted {len(full_text)} chars")
+                    return full_text
+                else:
+                    print(f"DEBUG CV: pypdf text too short: {len(full_text)} chars")
         except Exception as e:
             print(f"DEBUG CV: pypdf failed: {str(e)[:100]}")
         
-        # Try PyPDF2 as fallback
+        # Try PyPDF2
         try:
             import PyPDF2
             file_stream = io.BytesIO(file_bytes)
-            pdf_reader = PyPDF2.PdfReader(file_stream)
+            pdf = PyPDF2.PdfReader(file_stream)
             text_parts = []
-            for page in pdf_reader.pages:
+            for page in pdf.pages:
                 text = page.extract_text()
                 if text and text.strip():
                     cleaned = ''.join(c for c in text if c.isprintable() or c in '\n\r\t ')
-                    if len(cleaned) > 20 and not cleaned.startswith('%PDF'):
+                    if not cleaned.startswith('%PDF') and 'endobj' not in cleaned[:100]:
                         text_parts.append(cleaned)
             
             if text_parts:
-                full_text = '\n'.join(text_parts)
-                if len(full_text.strip()) > 50:
-                    print(f"DEBUG CV: PyPDF2 extracted {len(full_text)} chars")
-                    return full_text.strip()
+                full_text = '\n'.join(text_parts).strip()
+                if len(full_text) > 100:
+                    print(f"DEBUG CV: SUCCESS - PyPDF2 extracted {len(full_text)} chars")
+                    return full_text
         except Exception as e:
             print(f"DEBUG CV: PyPDF2 failed: {str(e)[:100]}")
         
@@ -9612,24 +9623,13 @@ def extract_text_from_cv_url(cv_url):
             file_stream = io.BytesIO(file_bytes)
             doc = docx.Document(file_stream)
             text = '\n'.join([p.text for p in doc.paragraphs])
-            if text.strip() and len(text.strip()) > 50:
-                print(f"DEBUG CV: DOCX extracted {len(text)} chars")
+            if len(text.strip()) > 100:
+                print(f"DEBUG CV: SUCCESS - DOCX extracted {len(text)} chars")
                 return text.strip()
-        except Exception as e:
-            print(f"DEBUG CV: DOCX failed: {str(e)[:100]}")
-        
-        # Try plain text (filter out binary)
-        try:
-            text = file_bytes.decode('utf-8', errors='ignore')
-            # Remove obvious binary garbage
-            cleaned = ''.join(c for c in text if c.isprintable() or c in '\n\r\t ')
-            if len(cleaned.strip()) > 100 and not cleaned.startswith('%PDF'):
-                print(f"DEBUG CV: Plain text extracted {len(cleaned)} chars")
-                return cleaned.strip()
         except:
             pass
         
-        print(f"DEBUG CV: All extraction methods failed for {cv_url[:50]}...")
+        print(f"DEBUG CV: All methods failed - PDF may be image-based (scanned)")
         return None
         
     except Exception as e:
@@ -12204,16 +12204,24 @@ def ai_recruitment_agent():
                         scorecard_data.append({
                             'Rank': len(scorecard_data) + 1,
                             'Candidate': f"{row.get('first_name','')} {row.get('last_name','')}",
-                            'Overall': safe_int(row.get('ai_score', 0)),
-                            'Tier': safe_str(row.get('ai_tier'), 'Pending'),
+                            'Overall': safe_int(detailed.get('overall_score', row.get('ai_score', 0))),
+                            'Tier': safe_str(detailed.get('tier', row.get('ai_tier')), 'Pending'),
+                            'Role_Type': safe_str(detailed.get('role_type'), 'General'),
+                            'Core_Competencies': detailed.get('core_competencies', []),
                             'Skills': safe_int(detailed.get('skills_score', 0)),
                             'Experience': safe_int(detailed.get('experience_score', 0)),
                             'Education': safe_int(detailed.get('education_score', 0)),
                             'CV Quality': safe_int(detailed.get('cv_quality_score', detailed.get('soft_skills_score', 0))),
+                            'Builder_Operator': safe_int(detailed.get('builder_operator_score', 0)),
+                            'Execution_Rigor': safe_int(detailed.get('execution_rigor_score', 0)),
                             'Verbatim': f"{safe_int(detailed.get('verbatim_flags', 0))}%",
                             'Confidence': f"{safe_int(detailed.get('confidence', 0))}%",
-                            'Strengths': ', '.join(detailed.get('key_strengths', [])[:2]) if detailed.get('key_strengths') else 'N/A',
-                            'Gaps': ', '.join(detailed.get('gaps_identified', [])[:2]) if detailed.get('gaps_identified') else 'N/A',
+                            'Strengths': ', '.join(detailed.get('key_strengths', [])[:3]) if detailed.get('key_strengths') else 'N/A',
+                            'Gaps': ', '.join(detailed.get('gaps_identified', [])[:3]) if detailed.get('gaps_identified') else 'N/A',
+                            'Red_Flags': ', '.join(detailed.get('red_flags', [])) if detailed.get('red_flags') else '',
+                            'Salary_Estimation': safe_str(detailed.get('salary_estimation'), ''),
+                            'Recommendation': safe_str(detailed.get('recommendation'), ''),
+                            'Interview_Questions': detailed.get('interview_questions', []),
                         })
                     
                     if scorecard_data:
@@ -12224,20 +12232,78 @@ def ai_recruitment_agent():
                         st.markdown("---")
                         st.markdown("### 🔍 Individual Score Breakdowns")
                         for i, data in enumerate(scorecard_data):
-                            with st.expander(f"📊 {data.get('Candidate', 'Unknown')} — {data.get('Overall', 0)}% — {data.get('Tier', 'Pending')}"):
+                            with st.expander(f"📊 {data.get('Candidate', 'Unknown')} — {data.get('Overall', 0)}% — {data.get('Tier', 'Pending')} — {data.get('Role_Type', 'General')}"):
+                                
+                                # Dynamic Competency Breakdown
+                                competencies = data.get('Core_Competencies', [])
+                                if competencies:
+                                    st.markdown("### 🎯 Role-Specific Competency Assessment")
+                                    st.caption(f"Role Type: {data.get('Role_Type', 'General')}")
+                                    for comp in competencies:
+                                        comp_name = comp.get('name', 'Competency')
+                                        comp_score = comp.get('score', 0)
+                                        comp_weight = comp.get('weight', 0)
+                                        comp_evidence = comp.get('evidence', '')
+                                        
+                                        col1, col2, col3 = st.columns([2, 1, 1])
+                                        with col1:
+                                            st.markdown(f"**{comp_name}**")
+                                            if comp_evidence:
+                                                st.caption(f"📌 {comp_evidence[:120]}")
+                                        with col2:
+                                            st.progress(comp_score/5)
+                                        with col3:
+                                            st.markdown(f"**{comp_score}/5** ({comp_weight}%)")
+                                
+                                st.markdown("---")
+                                
+                                # Standard scores
                                 col1, col2, col3, col4 = st.columns(4)
                                 col1.metric("🎯 Skills", f"{data.get('Skills', 0)}%")
                                 col2.metric("💼 Experience", f"{data.get('Experience', 0)}%")
                                 col3.metric("🎓 Education", f"{data.get('Education', 0)}%")
                                 col4.metric("📄 CV Quality", f"{data.get('CV Quality', 0)}%")
                                 
-                                st.markdown(f"**🚨 Verbatim Risk:** {data.get('Verbatim', '0%')}")
+                                # Additional role-specific scores
+                                if data.get('Builder_Operator', 0) > 0:
+                                    st.metric("🏗️ Builder-Operator Score", f"{data.get('Builder_Operator', 0)}%")
+                                if data.get('Execution_Rigor', 0) > 0:
+                                    st.metric("⚡ Execution Rigor", f"{data.get('Execution_Rigor', 0)}%")
+                                
+                                # Risk and confidence
+                                st.markdown(f"**🚨 Verbatim/Plagiarism Risk:** {data.get('Verbatim', '0%')}")
                                 st.markdown(f"**🤖 AI Confidence:** {data.get('Confidence', '0%')}")
-                                st.markdown(f"**✅ Strengths:** {data.get('Strengths', 'N/A')}")
-                                st.markdown(f"**⚠️ Gaps:** {data.get('Gaps', 'N/A')}")
+                                
+                                # Strengths and Gaps
+                                c1, c2 = st.columns(2)
+                                with c1:
+                                    st.markdown("**✅ Key Strengths**")
+                                    st.markdown(data.get('Strengths', 'N/A'))
+                                with c2:
+                                    st.markdown("**⚠️ Gaps Identified**")
+                                    st.markdown(data.get('Gaps', 'N/A'))
+                                
+                                # Red Flags
+                                if data.get('Red_Flags'):
+                                    st.error(f"**🚩 Red Flags:** {data.get('Red_Flags')}")
+                                
+                                # Salary Estimation
+                                if data.get('Salary_Estimation'):
+                                    st.info(f"**💰 Market Salary Estimate:** {data.get('Salary_Estimation')}")
+                                
+                                # Recommendation
+                                if data.get('Recommendation'):
+                                    st.success(f"**💡 AI Recommendation:** {data.get('Recommendation')}")
+                                
+                                # Interview Questions
+                                questions = data.get('Interview_Questions', [])
+                                if questions:
+                                    st.markdown("**🎯 Suggested Interview Questions:**")
+                                    for q_idx, q in enumerate(questions[:5]):
+                                        st.markdown(f"**{q_idx+1}.** {q}")
                                 
                                 # Visual score bar
-                                st.progress(data['Overall']/100)
+                                st.progress(data.get('Overall', 0)/100)
                     else:
                         st.info("Scorecard data will appear after screening.")
                     
