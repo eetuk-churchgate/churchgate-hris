@@ -9170,14 +9170,21 @@ Return ONLY valid JSON with this structure:
     ],
     "overall_score": 85,
     "tier": "Tier 1",
+    "skills_score": 80,
+    "experience_score": 85,
+    "education_score": 75,
+    "cv_quality_score": 70,
+    "soft_skills_score": 80,
+    "verbatim_flags": 5,
+    "confidence": 90,
+    "builder_operator_score": 85,
+    "execution_rigor_score": 80,
     "key_strengths": ["strength1", "strength2", "strength3"],
     "gaps_identified": ["gap1", "gap2"],
     "interview_questions": ["q1", "q2", "q3", "q4", "q5"],
     "recommendation": "Detailed recommendation",
     "risk_factors": ["risk1"],
     "culture_fit_score": 80,
-    "builder_operator_score": 85,
-    "execution_rigor_score": 80,
     "red_flags": [],
     "salary_estimation": "Market range estimate based on experience"
 }}
@@ -9204,16 +9211,40 @@ CV Content: {cv_text[:4000]}"""
                 ], temperature=0.2, max_tokens=2500)
                 
                 if result:
-                    import json as json_lib
                     json_match = re.search(r'\{.*\}', result, re.DOTALL)
                     if json_match:
-                        parsed = json_lib.loads(json_match.group())
-                        return parsed
+                        return json.loads(json_match.group())
             
             return self.score_candidate_advanced(cv_text, self.analyze_jd(jd_text if jd_text else cv_text[:500]))
         except Exception as e:
             print(f"Deep analysis error: {str(e)[:100]}")
             return self.score_candidate_advanced(cv_text, self.analyze_jd(jd_text if jd_text else cv_text[:500]))
+    
+    def chat(self, message, context=""):
+        """AI Chat Assistant using Groq"""
+        if not self.use_groq:
+            return get_smart_response(message, [], pd.DataFrame())
+        
+        try:
+            system_prompt = """You are an intelligent AI Recruitment Assistant for Churchgate Group, a major real estate and infrastructure company in Nigeria. 
+You are helpful, conversational, and knowledgeable about HR, recruitment, and general business topics. 
+Respond naturally like a helpful colleague. Keep responses concise but informative.
+You can discuss: recruitment, HR policies, interviews, onboarding, performance management, training, company culture, leadership, career development, sourcing strategies, salary benchmarking, and general professional topics."""
+            
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Context: {context[:1000]}\n\nQuestion: {message}"}
+            ]
+            
+            result = self._groq_chat(messages, temperature=0.7, max_tokens=500)
+            
+            if result and len(result.strip()) > 10:
+                return result.strip()
+            else:
+                return get_smart_response(message, [], pd.DataFrame())
+                
+        except:
+            return get_smart_response(message, [], pd.DataFrame())
 
 
 
@@ -12208,24 +12239,44 @@ def ai_recruitment_agent():
                             'Tier': safe_str(detailed.get('tier', row.get('ai_tier')), 'Pending'),
                             'Role_Type': safe_str(detailed.get('role_type'), 'General'),
                             'Core_Competencies': detailed.get('core_competencies', []),
+                            # Standard scores
                             'Skills': safe_int(detailed.get('skills_score', 0)),
                             'Experience': safe_int(detailed.get('experience_score', 0)),
                             'Education': safe_int(detailed.get('education_score', 0)),
-                            'CV Quality': safe_int(detailed.get('cv_quality_score', detailed.get('soft_skills_score', 0))),
-                            'Builder_Operator': safe_int(detailed.get('builder_operator_score', 0)),
-                            'Execution_Rigor': safe_int(detailed.get('execution_rigor_score', 0)),
-                            'Verbatim': f"{safe_int(detailed.get('verbatim_flags', 0))}%",
-                            'Confidence': f"{safe_int(detailed.get('confidence', 0))}%",
+                            'CV_Quality': safe_int(detailed.get('cv_quality_score', 0)),
+                            'Soft_Skills': safe_int(detailed.get('soft_skills_score', 0)),
+                            'Culture_Fit': safe_int(detailed.get('culture_fit_score', 0)),
+                            # Risk & Confidence
+                            'Verbatim_Risk': f"{safe_int(detailed.get('verbatim_flags', 0))}%",
+                            'AI_Confidence': f"{safe_int(detailed.get('confidence', 0))}%",
+                            # Strengths & Gaps
                             'Strengths': ', '.join(detailed.get('key_strengths', [])[:3]) if detailed.get('key_strengths') else 'N/A',
                             'Gaps': ', '.join(detailed.get('gaps_identified', [])[:3]) if detailed.get('gaps_identified') else 'N/A',
-                            'Red_Flags': ', '.join(detailed.get('red_flags', [])) if detailed.get('red_flags') else '',
-                            'Salary_Estimation': safe_str(detailed.get('salary_estimation'), ''),
-                            'Recommendation': safe_str(detailed.get('recommendation'), ''),
+                            # Red Flags
+                            'Red_Flags': ', '.join(detailed.get('red_flags', [])) if detailed.get('red_flags') else 'None',
+                            # Salary
+                            'Salary_Estimate': safe_str(detailed.get('salary_estimation'), 'N/A'),
+                            # Recommendation
+                            'Recommendation': safe_str(detailed.get('recommendation'), 'N/A'),
+                            # Interview Questions
                             'Interview_Questions': detailed.get('interview_questions', []),
+                            # Dynamic extra scores - capture ANY additional scores the AI returns
+                            'Extra_Scores': {k: v for k, v in detailed.items() if k.endswith('_score') and k not in ['overall_score', 'skills_score', 'experience_score', 'education_score', 'cv_quality_score', 'soft_skills_score', 'culture_fit_score', 'builder_operator_score', 'execution_rigor_score']},
+                            # Risk factors
+                            'Risk_Factors': detailed.get('risk_factors', []),
                         })
                     
                     if scorecard_data:
-                        scorecard_df = pd.DataFrame(scorecard_data)
+                        # Build dynamic table - only show relevant columns
+                        display_cols = ['Rank', 'Candidate', 'Overall', 'Tier', 'Role_Type']
+                        
+                        # Add columns that have data
+                        for col in ['Skills', 'Experience', 'Education', 'CV_Quality', 'Culture_Fit', 'Verbatim_Risk', 'AI_Confidence', 'Salary_Estimate', 'Recommendation', 'Red_Flags']:
+                            sample_val = str(scorecard_data[0].get(col, ''))
+                            if sample_val and sample_val not in ['0%', '0', 'N/A', 'None', '']:
+                                display_cols.append(col)
+                        
+                        scorecard_df = pd.DataFrame(scorecard_data)[display_cols]
                         st.dataframe(scorecard_df, use_container_width=True, hide_index=True)
                         
                         # Detailed breakdown for each candidate
@@ -12234,78 +12285,113 @@ def ai_recruitment_agent():
                         for i, data in enumerate(scorecard_data):
                             with st.expander(f"📊 {data.get('Candidate', 'Unknown')} — {data.get('Overall', 0)}% — {data.get('Tier', 'Pending')} — {data.get('Role_Type', 'General')}"):
                                 
-                                # Dynamic Competency Breakdown
+                                # ===== DYNAMIC COMPETENCY BREAKDOWN =====
                                 competencies = data.get('Core_Competencies', [])
                                 if competencies:
                                     st.markdown("### 🎯 Role-Specific Competency Assessment")
-                                    st.caption(f"Role Type: {data.get('Role_Type', 'General')}")
+                                    st.caption(f"📌 Role Type: {data.get('Role_Type', 'General')}")
+                                    
+                                    # Competency summary table
+                                    comp_data = []
+                                    for comp in competencies:
+                                        comp_data.append({
+                                            'Competency': comp.get('name', 'N/A'),
+                                            'Weight': f"{comp.get('weight', 0)}%",
+                                            'Score': f"{comp.get('score', 0)}/5",
+                                            'Evidence': comp.get('evidence', '')[:80]
+                                        })
+                                    if comp_data:
+                                        st.dataframe(pd.DataFrame(comp_data), use_container_width=True, hide_index=True)
+                                    
+                                    # Visual competency bars
                                     for comp in competencies:
                                         comp_name = comp.get('name', 'Competency')
                                         comp_score = comp.get('score', 0)
                                         comp_weight = comp.get('weight', 0)
-                                        comp_evidence = comp.get('evidence', '')
                                         
-                                        col1, col2, col3 = st.columns([2, 1, 1])
+                                        col1, col2 = st.columns([3, 1])
                                         with col1:
-                                            st.markdown(f"**{comp_name}**")
-                                            if comp_evidence:
-                                                st.caption(f"📌 {comp_evidence[:120]}")
-                                        with col2:
+                                            st.markdown(f"**{comp_name}** ({comp_weight}%)")
                                             st.progress(comp_score/5)
-                                        with col3:
-                                            st.markdown(f"**{comp_score}/5** ({comp_weight}%)")
+                                        with col2:
+                                            st.markdown(f"**{comp_score}/5**")
                                 
                                 st.markdown("---")
                                 
-                                # Standard scores
-                                col1, col2, col3, col4 = st.columns(4)
-                                col1.metric("🎯 Skills", f"{data.get('Skills', 0)}%")
-                                col2.metric("💼 Experience", f"{data.get('Experience', 0)}%")
-                                col3.metric("🎓 Education", f"{data.get('Education', 0)}%")
-                                col4.metric("📄 CV Quality", f"{data.get('CV Quality', 0)}%")
+                                # ===== STANDARD SCORES =====
+                                st.markdown("### 📊 Standard Scores")
+                                cols = st.columns(3)
+                                with cols[0]:
+                                    st.metric("🎯 Skills", f"{data.get('Skills', 0)}%")
+                                    st.metric("🎓 Education", f"{data.get('Education', 0)}%")
+                                with cols[1]:
+                                    st.metric("💼 Experience", f"{data.get('Experience', 0)}%")
+                                    st.metric("📄 CV Quality", f"{data.get('CV_Quality', 0)}%")
+                                with cols[2]:
+                                    st.metric("🤝 Soft Skills", f"{data.get('Soft_Skills', 0)}%")
+                                    st.metric("🏢 Culture Fit", f"{data.get('Culture_Fit', 0)}%")
                                 
-                                # Additional role-specific scores
-                                if data.get('Builder_Operator', 0) > 0:
-                                    st.metric("🏗️ Builder-Operator Score", f"{data.get('Builder_Operator', 0)}%")
-                                if data.get('Execution_Rigor', 0) > 0:
-                                    st.metric("⚡ Execution Rigor", f"{data.get('Execution_Rigor', 0)}%")
+                                # ===== DYNAMIC EXTRA SCORES (any score AI returns) =====
+                                extra_scores = data.get('Extra_Scores', {})
+                                if extra_scores:
+                                    st.markdown("---")
+                                    st.markdown("### 📈 Additional Role-Specific Scores")
+                                    extra_cols = st.columns(min(len(extra_scores), 4))
+                                    for idx, (key, value) in enumerate(extra_scores.items()):
+                                        label = key.replace('_score', '').replace('_', ' ').title()
+                                        col_idx = idx % len(extra_cols)
+                                        with extra_cols[col_idx]:
+                                            st.metric(f"📌 {label}", f"{safe_int(value)}%")
                                 
-                                # Risk and confidence
-                                st.markdown(f"**🚨 Verbatim/Plagiarism Risk:** {data.get('Verbatim', '0%')}")
-                                st.markdown(f"**🤖 AI Confidence:** {data.get('Confidence', '0%')}")
+                                st.markdown("---")
                                 
-                                # Strengths and Gaps
+                                # ===== RISK & CONFIDENCE =====
+                                col1, col2, col3 = st.columns(3)
+                                with col1:
+                                    st.markdown(f"**🚨 Verbatim Risk:** {data.get('Verbatim_Risk', '0%')}")
+                                with col2:
+                                    st.markdown(f"**🤖 AI Confidence:** {data.get('AI_Confidence', '0%')}")
+                                with col3:
+                                    st.progress(data.get('Overall', 0)/100)
+                                
+                                # ===== STRENGTHS & GAPS =====
                                 c1, c2 = st.columns(2)
                                 with c1:
                                     st.markdown("**✅ Key Strengths**")
-                                    st.markdown(data.get('Strengths', 'N/A'))
+                                    st.success(data.get('Strengths', 'N/A'))
                                 with c2:
                                     st.markdown("**⚠️ Gaps Identified**")
-                                    st.markdown(data.get('Gaps', 'N/A'))
+                                    st.warning(data.get('Gaps', 'N/A'))
                                 
-                                # Red Flags
-                                if data.get('Red_Flags'):
-                                    st.error(f"**🚩 Red Flags:** {data.get('Red_Flags')}")
+                                # ===== RED FLAGS =====
+                                red_flags = data.get('Red_Flags', 'None')
+                                if red_flags and red_flags != 'None':
+                                    st.error(f"**🚩 Red Flags:** {red_flags}")
                                 
-                                # Salary Estimation
-                                if data.get('Salary_Estimation'):
-                                    st.info(f"**💰 Market Salary Estimate:** {data.get('Salary_Estimation')}")
+                                # ===== RISK FACTORS =====
+                                risk_factors = data.get('Risk_Factors', [])
+                                if risk_factors:
+                                    st.markdown("**⚠️ Risk Factors:**")
+                                    for risk in risk_factors:
+                                        st.markdown(f"- {risk}")
                                 
-                                # Recommendation
-                                if data.get('Recommendation'):
-                                    st.success(f"**💡 AI Recommendation:** {data.get('Recommendation')}")
+                                # ===== SALARY =====
+                                salary = data.get('Salary_Estimate', 'N/A')
+                                if salary and salary != 'N/A':
+                                    st.info(f"**💰 Market Salary Estimate:** {salary}")
                                 
-                                # Interview Questions
+                                # ===== RECOMMENDATION =====
+                                recommendation = data.get('Recommendation', 'N/A')
+                                if recommendation and recommendation != 'N/A':
+                                    st.success(f"**💡 AI Recommendation:** {recommendation}")
+                                
+                                # ===== INTERVIEW QUESTIONS =====
                                 questions = data.get('Interview_Questions', [])
                                 if questions:
-                                    st.markdown("**🎯 Suggested Interview Questions:**")
+                                    st.markdown("---")
+                                    st.markdown("### 🎯 AI-Generated Interview Questions")
                                     for q_idx, q in enumerate(questions[:5]):
                                         st.markdown(f"**{q_idx+1}.** {q}")
-                                
-                                # Visual score bar
-                                st.progress(data.get('Overall', 0)/100)
-                    else:
-                        st.info("Scorecard data will appear after screening.")
                     
                     # Send to Manager
                     col1, col2 = st.columns(2)
