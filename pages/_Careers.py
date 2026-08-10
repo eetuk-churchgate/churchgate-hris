@@ -51,6 +51,55 @@ if logo_path.exists():
 else:
     st.set_page_config(page_title="Careers - Churchgate Group", page_icon="🏢", layout="wide", initial_sidebar_state="collapsed")
 
+# ============ OPEN GRAPH META TAGS FOR SOCIAL SHARING ============
+query_params = st.query_params
+selected_job = query_params.get('job', None)
+
+if selected_job:
+    job_title = "Career Opportunity"
+    job_description = "Join Churchgate Group - Building Africa's Future"
+    try:
+        # Try to get job details for better preview
+        import requests as req_og
+        supabase_url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+        supabase_key = os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
+        headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
+        url = f"{supabase_url}/rest/v1/job_requisitions?select=*&status=eq.Approved - Live"
+        r = req_og.get(url, headers=headers)
+        if r.status_code == 200:
+            jobs = r.json()
+            for job in jobs:
+                if job.get('req_id') == selected_job:
+                    job_title = job.get('title', 'Career Opportunity').replace('**', '')
+                    job_description = f"{job.get('department', '')} | {job.get('location', '')} | {job.get('job_type', '')} | Churchgate Group"
+                    break
+    except:
+        pass
+    
+    # Open Graph tags
+    st.markdown(f"""
+    <meta property="og:title" content="{job_title} - Churchgate Group Careers" />
+    <meta property="og:description" content="{job_description}" />
+    <meta property="og:url" content="https://hris.churchgate.com/Careers?job={selected_job}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Churchgate Group Careers" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{job_title} - Churchgate Group" />
+    <meta name="twitter:description" content="{job_description}" />
+    """, unsafe_allow_html=True)
+else:
+    # Default OG tags for main career page
+    st.markdown("""
+    <meta property="og:title" content="Careers at Churchgate Group - Build Your Future" />
+    <meta property="og:description" content="Join a team of innovators, leaders, and changemakers shaping Africa's real estate and infrastructure future. Explore open positions at Churchgate Group." />
+    <meta property="og:url" content="https://hris.churchgate.com/Careers" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Churchgate Group Careers" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Careers at Churchgate Group" />
+    <meta name="twitter:description" content="Join Churchgate Group - Explore career opportunities in real estate, technology, facilities management, and more." />
+    """, unsafe_allow_html=True)
+
 # ============ SHOW SUCCESS FROM QUERY PARAMS ============
 if 'success' in st.query_params:
     st.balloons()
