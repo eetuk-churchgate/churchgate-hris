@@ -404,7 +404,6 @@ if selected_job:
                                 "resume_filename": f"CV_{first_name}_{last_name}.{file_ext}",
                                 "resume_text": resume_text[:10000] if resume_text else "",
                                 "cv_url": cv_url if cv_url else "",
-                                "cv_extracted_text": resume_text[:10000] if resume_text else "",
                                 "other_docs": "",
                                 "job_id": str(selected_job) if selected_job else "",
                                 "source": "Career Portal",
