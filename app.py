@@ -9004,16 +9004,14 @@ class AIRecruitmentAgent:
         # Method 1: Direct os.environ
         val = os.environ.get("GROQ_API_KEY", "")
         if val:
-            self.groq_api_key = val
-            print("✅ GROQ: Found in os.environ")
+            self.groq_api_key = val.strip()
         
         # Method 2: Streamlit secrets (Railway style)
         if not self.groq_api_key:
             try:
                 val = st.secrets["GROQ_API_KEY"]
                 if val:
-                    self.groq_api_key = val
-                    print("✅ GROQ: Found in st.secrets")
+                    self.groq_api_key = val.strip()
             except:
                 pass
         
@@ -9022,8 +9020,7 @@ class AIRecruitmentAgent:
             try:
                 val = st.secrets.get("GROQ_API_KEY", "")
                 if val:
-                    self.groq_api_key = val
-                    print("✅ GROQ: Found in st.secrets.get")
+                    self.groq_api_key = val.strip()
             except:
                 pass
         
@@ -9031,37 +9028,29 @@ class AIRecruitmentAgent:
         if not self.groq_api_key:
             for key, value in os.environ.items():
                 if "GROQ" in key.upper():
-                    self.groq_api_key = value
-                    print(f"✅ GROQ: Found via env scan: {key}")
+                    self.groq_api_key = value.strip()
                     break
         
-        # Method 5: Try lowercase
-        if not self.groq_api_key:
-            val = os.environ.get("groq_api_key", "")
-            if val:
-                self.groq_api_key = val
-                print("✅ GROQ: Found in lowercase")
-        
-        # Print status
+        # Final clean
         if self.groq_api_key:
+            self.groq_api_key = self.groq_api_key.strip()
             print(f"✅ GROQ API Key found! Starts with: {self.groq_api_key[:10]}...")
             self.use_groq = True
-            print("✅ Groq ready - Using HTTP API directly")
         else:
             self.use_groq = False
-            print("❌ GROQ_API_KEY NOT FOUND in any location!")
-            print(f"   Available env vars: {[k for k in os.environ.keys() if 'KEY' in k.upper() or 'GROQ' in k.upper()]}")
+            print("❌ GROQ_API_KEY NOT FOUND!")
     
     def _groq_chat(self, messages, temperature=0.3, max_tokens=2000):
         try:
-            if not self.groq_api_key:
+            if not self.use_groq or not self.groq_api_key:
                 return None
             
             import requests as req
             
             url = "https://api.groq.com/openai/v1/chat/completions"
+            clean_key = self.groq_api_key.strip()
             headers = {
-                "Authorization": f"Bearer {self.groq_api_key}",
+                "Authorization": f"Bearer {clean_key}",
                 "Content-Type": "application/json"
             }
             
@@ -9072,20 +9061,15 @@ class AIRecruitmentAgent:
                 "max_tokens": max_tokens
             }
             
-            print(f"DEBUG: Sending HTTP request to Groq...")
-            
             response = req.post(url, json=payload, headers=headers, timeout=30)
-            
-            print(f"DEBUG: Groq HTTP status: {response.status_code}")
             
             if response.status_code == 200:
                 data = response.json()
                 content = data.get('choices', [{}])[0].get('message', {}).get('content', '')
                 if content:
-                    print(f"DEBUG: Groq response: {len(content)} chars")
                     return content
             
-            print(f"DEBUG: Groq error: {response.status_code} - {response.text[:200]}")
+            print(f"DEBUG Groq error: {response.status_code} - {response.text[:200]}")
             return None
                 
         except Exception as e:
@@ -9215,12 +9199,11 @@ You can discuss: recruitment, HR policies, interviews, onboarding, performance m
             if result and len(result.strip()) > 10:
                 return result.strip()
             else:
-                print(f"DEBUG: Groq returned empty. Falling back to smart response.")
                 return get_smart_response(message, [], pd.DataFrame())
                 
         except Exception as e:
-            print(f"DEBUG CHAT ERROR: {str(e)[:200]}")
             return get_smart_response(message, [], pd.DataFrame())
+
 
 
 def get_smart_response(message, screened_candidates, all_candidates):
