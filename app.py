@@ -12191,19 +12191,29 @@ def ai_recruitment_agent():
                         except:
                             detailed = {}
                         
+                        # Safe getters to handle None values
+                        def safe_int(val, default=0):
+                            try:
+                                return int(float(val)) if val is not None else default
+                            except:
+                                return default
+                        
+                        def safe_str(val, default='N/A'):
+                            return str(val) if val is not None else default
+                        
                         scorecard_data.append({
                             'Rank': len(scorecard_data) + 1,
                             'Candidate': f"{row.get('first_name','')} {row.get('last_name','')}",
-                            'Overall': int(row.get('ai_score', 0)),
-                            'Tier': row.get('ai_tier', 'Pending'),
-                            'Skills': int(detailed.get('skills_score', 0)),
-                            'Experience': int(detailed.get('experience_score', 0)),
-                            'Education': int(detailed.get('education_score', 0)),
-                            'CV Quality': int(detailed.get('cv_quality_score', detailed.get('soft_skills_score', 0))),
-                            'Verbatim': f"{int(detailed.get('verbatim_flags', 0))}%",
-                            'Confidence': f"{int(detailed.get('confidence', 0))}%",
-                            'Strengths': ', '.join(detailed.get('key_strengths', [])[:2]),
-                            'Gaps': ', '.join(detailed.get('gaps_identified', [])[:2]),
+                            'Overall': safe_int(row.get('ai_score', 0)),
+                            'Tier': safe_str(row.get('ai_tier'), 'Pending'),
+                            'Skills': safe_int(detailed.get('skills_score', 0)),
+                            'Experience': safe_int(detailed.get('experience_score', 0)),
+                            'Education': safe_int(detailed.get('education_score', 0)),
+                            'CV Quality': safe_int(detailed.get('cv_quality_score', detailed.get('soft_skills_score', 0))),
+                            'Verbatim': f"{safe_int(detailed.get('verbatim_flags', 0))}%",
+                            'Confidence': f"{safe_int(detailed.get('confidence', 0))}%",
+                            'Strengths': ', '.join(detailed.get('key_strengths', [])[:2]) if detailed.get('key_strengths') else 'N/A',
+                            'Gaps': ', '.join(detailed.get('gaps_identified', [])[:2]) if detailed.get('gaps_identified') else 'N/A',
                         })
                     
                     if scorecard_data:
@@ -12214,17 +12224,17 @@ def ai_recruitment_agent():
                         st.markdown("---")
                         st.markdown("### 🔍 Individual Score Breakdowns")
                         for i, data in enumerate(scorecard_data):
-                            with st.expander(f"📊 {data['Candidate']} — {data['Overall']}% — {data['Tier']}"):
+                            with st.expander(f"📊 {data.get('Candidate', 'Unknown')} — {data.get('Overall', 0)}% — {data.get('Tier', 'Pending')}"):
                                 col1, col2, col3, col4 = st.columns(4)
-                                col1.metric("🎯 Skills", f"{data['Skills']}%")
-                                col2.metric("💼 Experience", f"{data['Experience']}%")
-                                col3.metric("🎓 Education", f"{data['Education']}%")
-                                col4.metric("📄 CV Quality", f"{data['CV Quality']}%")
+                                col1.metric("🎯 Skills", f"{data.get('Skills', 0)}%")
+                                col2.metric("💼 Experience", f"{data.get('Experience', 0)}%")
+                                col3.metric("🎓 Education", f"{data.get('Education', 0)}%")
+                                col4.metric("📄 CV Quality", f"{data.get('CV Quality', 0)}%")
                                 
-                                st.markdown(f"**🚨 Verbatim Risk:** {data['Verbatim']}")
-                                st.markdown(f"**🤖 AI Confidence:** {data['Confidence']}")
-                                st.markdown(f"**✅ Strengths:** {data['Strengths']}")
-                                st.markdown(f"**⚠️ Gaps:** {data['Gaps']}")
+                                st.markdown(f"**🚨 Verbatim Risk:** {data.get('Verbatim', '0%')}")
+                                st.markdown(f"**🤖 AI Confidence:** {data.get('Confidence', '0%')}")
+                                st.markdown(f"**✅ Strengths:** {data.get('Strengths', 'N/A')}")
+                                st.markdown(f"**⚠️ Gaps:** {data.get('Gaps', 'N/A')}")
                                 
                                 # Visual score bar
                                 st.progress(data['Overall']/100)
