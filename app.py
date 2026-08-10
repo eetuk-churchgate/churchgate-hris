@@ -9660,6 +9660,28 @@ def extract_text_from_cv_url(cv_url):
         except:
             pass
         
+        # ===== OCR FALLBACK FOR IMAGE-BASED PDFs =====
+        try:
+            from pdf2image import convert_from_bytes
+            import pytesseract
+            
+            print("DEBUG CV: Attempting OCR on image-based PDF...")
+            images = convert_from_bytes(file_bytes, first_page=1, last_page=2)
+            
+            ocr_text = []
+            for img in images:
+                text = pytesseract.image_to_string(img)
+                if text.strip():
+                    ocr_text.append(text.strip())
+            
+            if ocr_text:
+                full_text = '\n'.join(ocr_text)
+                if len(full_text.strip()) > 100:
+                    print(f"DEBUG CV: OCR SUCCESS - extracted {len(full_text)} chars")
+                    return full_text.strip()
+        except Exception as e:
+            print(f"DEBUG CV: OCR failed: {str(e)[:100]}")
+        
         print(f"DEBUG CV: All methods failed - PDF may be image-based (scanned)")
         return None
         
