@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 import random
 import base64
+import urllib.parse
 import time
 
 sys.path.append(str(Path(__file__).parent.parent))
@@ -407,7 +408,7 @@ if selected_job:
                                 </div>
                                 
                                 <p style="text-align: center; margin: 25px 0;">
-                                    <a href="https://hris.churchgate.com/Careers" class="btn">🔍 Check Application Status</a>
+                                    <a href="https://churchgate-churchgate-hris.hf.space/Careers" class="btn">🔍 Check Application Status</a>
                                 </p>
                                 
                                 <p style="font-size: 13px; color: #888; line-height: 1.6;">
@@ -532,8 +533,37 @@ else:
                         st.query_params['job'] = job['ref']
                         st.rerun()
                 with c2:
-                    share_url = f"https://hris.churchgate.com/Careers?job={job['ref']}"
-                    st.markdown(f"""<div style="margin-top:0.5rem;"><a href="https://www.linkedin.com/sharing/share-offsite/?url={share_url}" target="_blank">🔗 LinkedIn</a> <a href="https://wa.me/?text=Job:{job['title']}%20at%20Churchgate%20Group%20{share_url}" target="_blank">💬 WhatsApp</a> <a href="https://twitter.com/intent/tweet?text=Job:{job['title']}%20at%20Churchgate%20Group&url={share_url}" target="_blank">🐦 Twitter</a></div>""", unsafe_allow_html=True)
+                    share_url = f"https://churchgate-churchgate-hris.hf.space/Careers?job={job['ref']}"
+                    clean_title = job['title'].replace('**', '')
+                    company = "Churchgate Group"
+                    location = job.get('location', 'Nigeria')
+                    job_type = job.get('type', 'Full-time')
+                    department = job.get('department', '')
+                    
+                    # LinkedIn Share
+                    linkedin_url = f"https://www.linkedin.com/sharing/share-offsite/?url={share_url}"
+                    
+                    # WhatsApp Share
+                    whatsapp_text = f"🚀 *We're Hiring!*\n\n*{clean_title}*\n🏢 {company}\n📍 {location}\n💼 {job_type}\n🏷️ {department}\n\nApply here: {share_url}"
+                    whatsapp_url = f"https://wa.me/?text={urllib.parse.quote(whatsapp_text)}"
+                    
+                    # Twitter/X Share
+                    twitter_text = f"We're hiring! {clean_title} at {company} - {location}\n\nApply now: {share_url}\n\n#Hiring #Jobs #Nigeria #Careers #{department.replace(' ', '')}"
+                    twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(twitter_text)}"
+                    
+                    # Email Share
+                    email_subject = f"Job Opportunity: {clean_title} at {company}"
+                    email_body = f"Hi,%0D%0A%0D%0AI thought you might be interested in this job opening:%0D%0A%0D%0A{clean_title}%0D%0A{company}%0D%0A📍 {location}%0D%0A💼 {job_type}%0D%0A%0D%0AApply here: {share_url}%0D%0A%0D%0ARegards"
+                    email_url = f"mailto:?subject={urllib.parse.quote(email_subject)}&body={email_body}"
+                    
+                    st.markdown(f"""
+                    <div style="display:flex;gap:15px;margin-top:0.5rem;flex-wrap:wrap;">
+                        <a href="{linkedin_url}" target="_blank" style="background:#0077B5;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:0.8rem;font-weight:600;">🔗 LinkedIn</a>
+                        <a href="{whatsapp_url}" target="_blank" style="background:#25D366;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:0.8rem;font-weight:600;">💬 WhatsApp</a>
+                        <a href="{twitter_url}" target="_blank" style="background:#1DA1F2;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:0.8rem;font-weight:600;">🐦 Twitter</a>
+                        <a href="{email_url}" target="_blank" style="background:#D4AF37;color:#1a1a1a;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:0.8rem;font-weight:600;">📧 Email</a>
+                    </div>
+                    """, unsafe_allow_html=True)
     else:
         st.info("🎯 No open positions at the moment.")
     
