@@ -21,6 +21,7 @@ import os
 import random
 import re
 import groq
+import requests
 from PIL import Image
 import calendar
 
@@ -9044,41 +9045,51 @@ class AIRecruitmentAgent:
         # Print status
         if self.groq_api_key:
             print(f"✅ GROQ API Key found! Starts with: {self.groq_api_key[:10]}...")
-            try:
-                self.client = groq.Groq(api_key=self.groq_api_key)
-                self.use_groq = True
-                print("✅ Groq client initialized successfully!")
-            except Exception as e:
-                print(f"❌ Groq client init failed: {str(e)[:100]}")
+            self.use_groq = True
+            print("✅ Groq ready - Using HTTP API directly")
         else:
+            self.use_groq = False
             print("❌ GROQ_API_KEY NOT FOUND in any location!")
             print(f"   Available env vars: {[k for k in os.environ.keys() if 'KEY' in k.upper() or 'GROQ' in k.upper()]}")
     
     def _groq_chat(self, messages, temperature=0.3, max_tokens=2000):
         try:
-            if not self.use_groq or not self.client:
-                print("DEBUG: Groq not initialized")
+            if not self.groq_api_key:
                 return None
             
-            print(f"DEBUG: Sending to Groq - Model: {self.model}, Messages: {len(messages)}")
+            import requests as req
             
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens
-            )
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.groq_api_key}",
+                "Content-Type": "application/json"
+            }
             
-            if response and response.choices and len(response.choices) > 0:
-                content = response.choices[0].message.content
-                print(f"DEBUG: Groq response length: {len(content) if content else 0}")
-                return content
-            else:
-                print("DEBUG: Groq returned empty response")
-                return None
+            payload = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens
+            }
+            
+            print(f"DEBUG: Sending HTTP request to Groq...")
+            
+            response = req.post(url, json=payload, headers=headers, timeout=30)
+            
+            print(f"DEBUG: Groq HTTP status: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                content = data.get('choices', [{}])[0].get('message', {}).get('content', '')
+                if content:
+                    print(f"DEBUG: Groq response: {len(content)} chars")
+                    return content
+            
+            print(f"DEBUG: Groq error: {response.status_code} - {response.text[:200]}")
+            return None
                 
         except Exception as e:
-            print(f"DEBUG Groq API error: {str(e)[:200]}")
+            print(f"DEBUG Groq error: {str(e)[:200]}")
             return None
     
     def analyze_jd(self, jd_text):
