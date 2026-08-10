@@ -9057,13 +9057,28 @@ class AIRecruitmentAgent:
     def _groq_chat(self, messages, temperature=0.3, max_tokens=2000):
         try:
             if not self.use_groq or not self.client:
+                print("DEBUG: Groq not initialized")
                 return None
+            
+            print(f"DEBUG: Sending to Groq - Model: {self.model}, Messages: {len(messages)}")
+            
             response = self.client.chat.completions.create(
-                model=self.model, messages=messages,
-                temperature=temperature, max_tokens=max_tokens
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens
             )
-            return response.choices[0].message.content
-        except:
+            
+            if response and response.choices and len(response.choices) > 0:
+                content = response.choices[0].message.content
+                print(f"DEBUG: Groq response length: {len(content) if content else 0}")
+                return content
+            else:
+                print("DEBUG: Groq returned empty response")
+                return None
+                
+        except Exception as e:
+            print(f"DEBUG Groq API error: {str(e)[:200]}")
             return None
     
     def analyze_jd(self, jd_text):
@@ -9166,43 +9181,35 @@ CV: {cv_text[:3000]}"""
     
     def chat(self, message, context=""):
         if not self.use_groq:
-            return "I'm currently running in offline mode. Please check the GROQ_API_KEY configuration."
+            return get_smart_response(message, [], pd.DataFrame())
         
         try:
-            system_prompt = f"""You are an intelligent AI Recruitment Assistant for Churchgate Group, a major real estate and infrastructure company in Nigeria. 
+            system_prompt = """You are an intelligent AI Recruitment Assistant for Churchgate Group, a major real estate and infrastructure company in Nigeria. 
 
-You have access to the current recruitment pipeline. Be conversational, helpful, and provide specific insights based on the data available to you.
+You are helpful, conversational, and knowledgeable about HR, recruitment, and general business topics. 
 
-Current Pipeline Context:
-{context[:2000]}
+Respond naturally like a helpful colleague. Keep responses concise but informative.
 
-Guidelines:
-- Be natural and conversational, like a helpful HR colleague
-- Reference specific candidates and scores when relevant
-- Provide actionable recommendations
-- If asked about candidates, analyze their scores and profiles
-- If asked to compare, give detailed comparisons
-- If asked for interview questions, make them role-specific
-- If you don't have enough data, be honest about it
-- Never say "I can only help with top candidates, comparisons..." - that's too restrictive
-- You CAN help with: candidate analysis, hiring strategy, interview prep, offer negotiations, onboarding tips, recruitment best practices, job description writing, salary benchmarking, and more"""
+If asked about candidates or pipeline data, use the context provided. If you don't know something, be honest.
 
+You can discuss: recruitment, HR policies, interviews, onboarding, performance management, training, company culture, leadership, career development, and general professional topics."""
+            
             messages = [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": message}
+                {"role": "user", "content": f"Context about current pipeline: {context[:1000]}\n\nUser question: {message}"}
             ]
             
-            result = self._groq_chat(messages, temperature=0.7, max_tokens=1000)
+            result = self._groq_chat(messages, temperature=0.7, max_tokens=500)
             
-            if result and len(result) > 20:
-                return result
+            if result and len(result.strip()) > 10:
+                return result.strip()
             else:
-                print(f"DEBUG CHAT: Groq returned empty or short response: {result}")
-                return "I received your message but couldn't generate a proper response. Please try again or rephrase your question."
+                print(f"DEBUG: Groq returned empty. Falling back to smart response.")
+                return get_smart_response(message, [], pd.DataFrame())
                 
         except Exception as e:
             print(f"DEBUG CHAT ERROR: {str(e)[:200]}")
-            return f"I encountered a technical issue: {str(e)[:100]}. Please try again."
+            return get_smart_response(message, [], pd.DataFrame())
 
 
 def get_smart_response(message, screened_candidates, all_candidates):
@@ -9549,64 +9556,91 @@ def extract_text_from_cv_url(cv_url):
         import requests as req
         import io
         
-        # Handle Supabase storage URLs
+        print(f"DEBUG CV: Downloading from {cv_url[:80]}...")
+        
         response = req.get(cv_url, timeout=30, headers={'User-Agent': 'Mozilla/5.0'})
         if response.status_code != 200:
-            print(f"CV download failed: HTTP {response.status_code}")
+            print(f"DEBUG CV: HTTP {response.status_code}")
             return None
         
         content_type = response.headers.get('content-type', '').lower()
-        file_content = io.BytesIO(response.content)
+        print(f"DEBUG CV: Content-Type: {content_type}, Size: {len(response.content)} bytes")
         
-        extracted_text = ""
+        # Save content to bytes
+        file_bytes = response.content
         
-        # Try PDF
-        if 'pdf' in content_type or cv_url.lower().endswith('.pdf'):
-            try:
-                from pypdf import PdfReader
-                pdf_reader = PdfReader(file_content)
-                for page in pdf_reader.pages:
-                    text = page.extract_text()
-                    if text:
-                        extracted_text += text + "\n"
-                if extracted_text.strip() and len(extracted_text.strip()) > 50:
-                    print(f"✅ PDF extracted: {len(extracted_text)} chars")
-                    return extracted_text.strip()
-            except Exception as e:
-                print(f"PDF extraction error: {str(e)[:100]}")
+        # Try pypdf first
+        try:
+            from pypdf import PdfReader
+            file_stream = io.BytesIO(file_bytes)
+            pdf_reader = PdfReader(file_stream)
+            text_parts = []
+            for page in pdf_reader.pages:
+                text = page.extract_text()
+                if text and text.strip():
+                    # Filter out raw PDF binary garbage
+                    cleaned = ''.join(c for c in text if c.isprintable() or c in '\n\r\t ')
+                    if len(cleaned) > 20 and not cleaned.startswith('%PDF'):
+                        text_parts.append(cleaned)
+            
+            if text_parts:
+                full_text = '\n'.join(text_parts)
+                if len(full_text.strip()) > 50:
+                    print(f"DEBUG CV: pypdf extracted {len(full_text)} chars")
+                    return full_text.strip()
+        except Exception as e:
+            print(f"DEBUG CV: pypdf failed: {str(e)[:100]}")
+        
+        # Try PyPDF2 as fallback
+        try:
+            import PyPDF2
+            file_stream = io.BytesIO(file_bytes)
+            pdf_reader = PyPDF2.PdfReader(file_stream)
+            text_parts = []
+            for page in pdf_reader.pages:
+                text = page.extract_text()
+                if text and text.strip():
+                    cleaned = ''.join(c for c in text if c.isprintable() or c in '\n\r\t ')
+                    if len(cleaned) > 20 and not cleaned.startswith('%PDF'):
+                        text_parts.append(cleaned)
+            
+            if text_parts:
+                full_text = '\n'.join(text_parts)
+                if len(full_text.strip()) > 50:
+                    print(f"DEBUG CV: PyPDF2 extracted {len(full_text)} chars")
+                    return full_text.strip()
+        except Exception as e:
+            print(f"DEBUG CV: PyPDF2 failed: {str(e)[:100]}")
         
         # Try DOCX
-        if 'docx' in content_type or 'word' in content_type or cv_url.lower().endswith('.docx'):
-            try:
-                import docx
-                file_content.seek(0)
-                doc = docx.Document(file_content)
-                extracted_text = "\n".join([p.text for p in doc.paragraphs])
-                if extracted_text.strip() and len(extracted_text.strip()) > 50:
-                    print(f"✅ DOCX extracted: {len(extracted_text)} chars")
-                    return extracted_text.strip()
-            except Exception as e:
-                print(f"DOCX extraction error: {str(e)[:100]}")
+        try:
+            import docx
+            file_stream = io.BytesIO(file_bytes)
+            doc = docx.Document(file_stream)
+            text = '\n'.join([p.text for p in doc.paragraphs])
+            if text.strip() and len(text.strip()) > 50:
+                print(f"DEBUG CV: DOCX extracted {len(text)} chars")
+                return text.strip()
+        except Exception as e:
+            print(f"DEBUG CV: DOCX failed: {str(e)[:100]}")
         
-        # Try plain text
-        if not extracted_text or len(extracted_text.strip()) < 50:
-            try:
-                file_content.seek(0)
-                text = response.content.decode('utf-8', errors='ignore')
-                # Remove binary garbage
-                text = ''.join(c for c in text if c.isprintable() or c in '\n\r\t')
-                if text.strip() and len(text.strip()) > 50:
-                    print(f"✅ Text extracted: {len(text)} chars")
-                    return text.strip()
-            except:
-                pass
+        # Try plain text (filter out binary)
+        try:
+            text = file_bytes.decode('utf-8', errors='ignore')
+            # Remove obvious binary garbage
+            cleaned = ''.join(c for c in text if c.isprintable() or c in '\n\r\t ')
+            if len(cleaned.strip()) > 100 and not cleaned.startswith('%PDF'):
+                print(f"DEBUG CV: Plain text extracted {len(cleaned)} chars")
+                return cleaned.strip()
+        except:
+            pass
         
-        print(f"❌ Could not extract text from CV: {cv_url[:50]}...")
+        print(f"DEBUG CV: All extraction methods failed for {cv_url[:50]}...")
         return None
+        
     except Exception as e:
-        print(f"CV extraction error: {str(e)[:200]}")
+        print(f"DEBUG CV: Fatal error: {str(e)[:200]}")
         return None
-
 
 
 def recruitment_hub():
