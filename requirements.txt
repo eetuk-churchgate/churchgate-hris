@@ -30,3 +30,5 @@ markdown-it-py==3.0.0
 sendgrid
 pyzk
 groq
+pytesseract
+pdf2image
