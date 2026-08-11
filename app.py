@@ -3036,8 +3036,19 @@ def employee_management():
                     'Has Login': '✅ Yes' if has_login else '❌ No'
                 })
             
+            # Search / filter
+            search_query = st.text_input("🔍 Search employees", placeholder="Filter by name, email or department...", key="gen_logins_search")
+            if search_query:
+                q = search_query.strip().lower()
+                emp_list = [
+                    e for e in emp_list
+                    if q in e['Name'].lower()
+                    or q in e['Email'].lower()
+                    or q in e['Department'].lower()
+                ]
+
             # Display with checkboxes for selection
-            st.markdown("**Select employees to generate logins:**")
+            st.markdown(f"**Select employees to generate logins:** ({len(emp_list)} shown)")
             
             # Select all / Deselect all
             col1, col2 = st.columns(2)
@@ -5318,7 +5329,7 @@ def performance_okrs():
         else:
             all_perf_data = get_all_perf_cached()
             approved_kpi_count = len(all_perf_data[all_perf_data['submission_status'] == 'Approved']) if not all_perf_data.empty else 0
-            submitted_appraisal_count = len([v for v in st.session_state.self_assessments.values() if v['status'] == 'Submitted'])
+            submitted_appraisal_count = len([v for v in st.session_state.self_assessments.values() if v.get('status') == 'Submitted'])
             completed_count = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Accepted'])
             escalated_count = len([v for v in st.session_state.self_assessments.values() if v.get('status') == 'Escalated from TL'])
             
@@ -5378,7 +5389,8 @@ def performance_okrs():
             st.markdown("### ⚙️ Cycle Configuration")
             st.session_state.appraisal_cycle_active = st.checkbox("Activate Appraisal Cycle", value=st.session_state.appraisal_cycle_active)
             cycle_options = ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal']
-            st.session_state.appraisal_cycle_name = st.selectbox("Select Appraisal Cycle", cycle_options, index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 0)
+            _cycle_idx = cycle_options.index(st.session_state.appraisal_cycle_name) if st.session_state.appraisal_cycle_name in cycle_options else 0
+            st.session_state.appraisal_cycle_name = st.selectbox("Select Appraisal Cycle", cycle_options, index=_cycle_idx)
             c1, c2 = st.columns(2)
             with c1:
                 start_val = st.session_state.appraisal_start
@@ -5522,7 +5534,7 @@ def performance_okrs():
                     st.subheader("📈 Group-Wide Performance Metrics")
                     total_approved = len(all_perf[all_perf['submission_status'] == 'Approved']) if not all_perf.empty else 0
                     total_submitted = len(all_perf[all_perf['submission_status'] == 'Submitted']) if not all_perf.empty else 0
-                    total_appraisals_in = len([v for v in st.session_state.self_assessments.values() if v['status'] in ['Submitted', 'Approved', 'Completed']])
+                    total_appraisals_in = len([v for v in st.session_state.self_assessments.values() if v.get('status') in ['Submitted', 'Approved', 'Completed']])
                     total_completed = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Accepted'])
                     total_escalated = len([v for v in st.session_state.self_assessments.values() if v.get('status') == 'Escalated from TL'])
                     total_rejected = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected'])
