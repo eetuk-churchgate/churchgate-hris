@@ -3873,12 +3873,12 @@ def performance_okrs():
         with c4: st.markdown(f'<div class="metric-mini"><div class="label">KPI Status</div><div class="value" style="font-size:1rem;">{overall_status.upper()}</div></div>', unsafe_allow_html=True)
         
         if overall_status == 'Draft' and any(len(p['kpis']) > 0 for p in pillar_data.values()):
-            if st.button(f"🚀 Submit All KPIs for {selected_fy_kpi}", use_container_width=True, type="primary"):
+            if st.button(f"🚀 Submit All KPIs for {selected_fy}", use_container_width=True, type="primary"):
                 all_rows = db._get("performance_data", {"user_name": user_name})
                 for row in (all_rows or []):
                     # Only submit KPIs for this cycle
                     kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                    cycle_kpis = [k for k in kpi_list if k.get('cycle', '') == selected_cycle_kpi]
+                    cycle_kpis = [k for k in kpi_list if k.get('cycle', '') == selected_cycle]
                     if cycle_kpis:
                         db._patch("performance_data", {"submission_status": "Submitted"}, {"id": row['id']})
                 send_kpi_notification('submitted_to_employee', user_name, user_email)
