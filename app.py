@@ -2907,19 +2907,51 @@ def employee_management():
                             existing_ids = set(str(e.get('employee_id', '')).strip() for e in all_emp)
                     except Exception as _e:
                         st.warning(f"⚠️ Could not pre-load existing IDs: {_e}")
-                
-                    def _fmt_date(val):
+
+                    # Pre-load existing login emails so we never re-POST a user that already
+                    # exists — users.email is UNIQUE and a retry surfaces a raw 409 to the user.
+                    existing_emails = set()
+                    try:
+                        all_users = db._get("users")
+                        if all_users:
+                            existing_emails = set(str(u.get('email', '')).strip().lower() for u in all_users)
+                    except Exception as _e:
+                        st.warning(f"⚠️ Could not pre-load existing logins: {_e}")
+
+                    date_warnings = []
+
+                    def _clean(val, default=''):
+                        """Trim a CSV cell to a string, treating pandas nulls as blank."""
+                        if val is None or (isinstance(val, float) and pd.isna(val)):
+                            return default
                         v = str(val).strip()
+                        return default if v.lower() in ('nan', 'nat', 'none', 'null', '') else v
+
+                    def _fmt_date(val, field, row_no):
+                        """Return YYYY-MM-DD, or None when blank/unparseable.
+
+                        Must be None and not '' — join_date and date_of_birth are Postgres
+                        `date` columns, which reject an empty string with 22007.
+                        """
+                        v = _clean(val)
+                        if not v:
+                            return None
                         if '/' in v:
                             parts = v.split('/')
                             if len(parts) == 3 and len(parts[2]) == 4:
                                 return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                        return v if v not in ('nan', 'NaT', '') else ''
+                        # A leading 4-digit year means ISO (YYYY-MM-DD) — month comes first there.
+                        # Anything else is read day-first, matching the DD/MM/YYYY branch above.
+                        try:
+                            return pd.to_datetime(v, dayfirst=not v[:4].isdigit()).strftime('%Y-%m-%d')
+                        except Exception:
+                            date_warnings.append({'Row': row_no, 'Field': field, 'Value': v})
+                            return None
 
                     for i, (_, row) in enumerate(df.iterrows()):
-                        emp_id    = str(row.get('employee_id', '')).strip()
-                        emp_email = str(row.get('email', '')).strip()
-                        emp_name  = f"{str(row.get('first_name', '')).strip()} {str(row.get('last_name', '')).strip()}".strip()
+                        emp_id    = _clean(row.get('employee_id'))
+                        emp_email = _clean(row.get('email'))
+                        emp_name  = f"{_clean(row.get('first_name'))} {_clean(row.get('last_name'))}".strip()
 
                         # Skip rows with no ID
                         if not emp_id or emp_id == 'nan':
@@ -2937,44 +2969,61 @@ def employee_management():
 
                         try:
                         
-                            join_date = _fmt_date(row.get('join_date', ''))
-                            dob       = _fmt_date(row.get('date_of_birth', ''))
-                        
+                            join_date = _fmt_date(row.get('join_date'), 'join_date', i + 2)
+                            dob       = _fmt_date(row.get('date_of_birth'), 'date_of_birth', i + 2)
+
+                            emp_dept = _clean(row.get('department'))
+                            emp_pos  = _clean(row.get('position'))
+
                             emp_payload = {
                                 "employee_id":     emp_id,
-                                "first_name":      str(row.get('first_name', '')).strip(),
-                                "last_name":       str(row.get('last_name', '')).strip(),
+                                "first_name":      _clean(row.get('first_name')),
+                                "last_name":       _clean(row.get('last_name')),
                                 "email":           emp_email,
-                                "phone":           str(row.get('phone', '')).strip(),
-                                "department":      str(row.get('department', '')).strip(),
-                                "position":        str(row.get('position', '')).strip(),
-                                "grade":           str(row.get('grade', 'Junior')).strip(),
-                                "employment_type": str(row.get('employment_type', 'Full-time')).strip(),
-                                "join_date":       join_date,
-                                "date_of_birth":   dob,
-                                "status":          str(row.get('status', 'Active')).strip(),
-                                "region":          str(row.get('region', 'Lagos')).strip(),
-                                "subsidiary":      str(row.get('subsidiary', '')).strip(),
-                                "reports_to":      str(row.get('reports_to', '')).strip(),
-                                "gender":          str(row.get('gender', 'Male')).strip(),
+                                "phone":           _clean(row.get('phone')),
+                                "department":      emp_dept,
+                                "position":        emp_pos,
+                                "grade":           _clean(row.get('grade'), 'Junior'),
+                                "employment_type": _clean(row.get('employment_type'), 'Full-time'),
+                                "status":          _clean(row.get('status'), 'Active'),
+                                "region":          _clean(row.get('region'), 'Lagos'),
+                                "subsidiary":      _clean(row.get('subsidiary')),
+                                "reports_to":      _clean(row.get('reports_to')),
+                                "gender":          _clean(row.get('gender'), 'Male'),
                             }
+                            # Omit blank dates entirely — sending "" to a Postgres date column
+                            # fails with 22007 (invalid input syntax for type date: "").
+                            if join_date: emp_payload["join_date"]     = join_date
+                            if dob:       emp_payload["date_of_birth"] = dob
 
+                            # _post/_patch report failure by return value, not by raising — check
+                            # it, or a rejected row is silently counted as a successful upload.
                             if emp_id in existing_ids and overwrite_dupes:
-                                db._patch("employees", emp_payload, {"employee_id": emp_id})
+                                saved = db._patch("employees", emp_payload, {"employee_id": emp_id})
+                                verb  = 'update'
                             else:
-                                db._post("employees", emp_payload)
+                                saved = db._post("employees", emp_payload)
+                                verb  = 'insert'
+
+                            if not saved:
+                                failed_rows.append({'Row': i + 2, 'ID': emp_id, 'Name': emp_name, 'Email': emp_email,
+                                                    'Reason': f'Supabase rejected the {verb} (see error above)'})
+                                fail += 1
+                                progress_bar.progress((i + 1) / total)
+                                continue
+
+                            if verb == 'insert':
                                 existing_ids.add(emp_id)
-                        
+
                             # Fix 1: Use db.create_user → proper bcrypt hashing, correct field name
-                            emp_role = str(row.get('system_role', 'Team Member')).strip()
-                            emp_dept = str(row.get('department', '')).strip()
-                            emp_pos  = str(row.get('position', '')).strip()
-                            if emp_email and '@' in emp_email:
+                            emp_role = _clean(row.get('system_role'), 'Team Member')
+                            if emp_email and '@' in emp_email and emp_email.lower() not in existing_emails:
                                 try:
                                     db.create_user(emp_id, emp_name, emp_email, "churchgate2026", emp_role, emp_dept, emp_pos)
+                                    existing_emails.add(emp_email.lower())
                                 except Exception:
-                                    pass  # login may already exist — not fatal
-                        
+                                    pass  # login creation is not fatal to the employee record
+
                             success += 1
                             status_text.text(f"Uploading… {success} done, {fail} errors, {skipped} skipped")
 
@@ -3002,6 +3051,12 @@ def employee_management():
                         st.markdown("#### ⚠️ Failed / Skipped Rows")
                         st.dataframe(err_df, use_container_width=True)
                         st.download_button("📥 Download Failure Report", err_df.to_csv(index=False), "upload_errors.csv", "text/csv")
+
+                    # Dates we could not parse were saved as blank — say so rather than dropping silently
+                    if date_warnings:
+                        st.markdown("#### 📅 Unrecognised Dates (saved as blank)")
+                        st.caption("Use DD/MM/YYYY or YYYY-MM-DD. These employees were created without the date.")
+                        st.dataframe(pd.DataFrame(date_warnings), use_container_width=True)
 
                     st.cache_data.clear()
     
