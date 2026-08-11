@@ -2874,108 +2874,136 @@ def employee_management():
         if uploaded_file:
             df = pd.read_csv(uploaded_file)
             st.write(f"**{len(df)} employees in file**")
-            st.dataframe(df.head(), use_container_width=True)
-            if st.button("📤 Upload All", use_container_width=True):
-                success, fail = 0, 0
-                progress_bar = st.progress(0)
-                total = len(df)
-                
-                # Pre-load existing IDs for fast duplicate checking
-                existing_ids = set()
-                try:
-                    all_emp = db._get("employees")
-                    if all_emp:
-                        existing_ids = set(str(e.get('employee_id', '')).strip() for e in all_emp)
-                except:
-                    pass
-                
-                for i, (_, row) in enumerate(df.iterrows()):
+            # Fix 3: Full scrollable preview instead of head(5)
+            with st.expander(f"📋 Preview all {len(df)} rows", expanded=False):
+                st.dataframe(df, use_container_width=True)
+
+            # Fix 2: Pre-upload column validation
+            required_cols = {'employee_id', 'first_name', 'last_name', 'email'}
+            missing_cols = required_cols - set(c.strip().lower() for c in df.columns)
+            if missing_cols:
+                st.error(f"❌ CSV is missing required columns: **{', '.join(sorted(missing_cols))}**. Please fix the file and re-upload.")
+            else:
+                blank_ids    = int((df['employee_id'].isna() | (df['employee_id'].astype(str).str.strip() == '')).sum())
+                blank_emails = int((df['email'].isna() | (df['email'].astype(str).str.strip() == '')).sum())
+                if blank_ids or blank_emails:
+                    st.warning(f"⚠️ Data quality: {blank_ids} missing IDs · {blank_emails} missing emails — those rows will be skipped.")
+
+                # Fix 6: Overwrite-duplicates toggle
+                overwrite_dupes = st.checkbox("🔄 Overwrite existing employees with matching ID", value=False,
+                    help="If checked, existing records will be updated instead of skipped.")
+                if st.button("📤 Upload All", use_container_width=True):
+                    success, fail, skipped = 0, 0, 0
+                    failed_rows = []  # Fix 4: per-row error tracking
+                    progress_bar = st.progress(0)
+                    status_text  = st.empty()
+                    total = len(df)
+
+                    # Pre-load existing IDs for fast duplicate checking
+                    existing_ids = set()
                     try:
-                        emp_id = str(row.get('employee_id', '')).strip()
-                        
-                        # Fast duplicate check
-                        if emp_id in existing_ids:
-                            fail += 1
-                            continue
-                        
-                        # Quick date conversion
-                        join_date = str(row.get('join_date', '')).strip()
-                        dob = str(row.get('date_of_birth', '')).strip()
-                        
-                        if '/' in join_date:
-                            parts = join_date.split('/')
+                        all_emp = db._get("employees")
+                        if all_emp:
+                            existing_ids = set(str(e.get('employee_id', '')).strip() for e in all_emp)
+                    except Exception as _e:
+                        st.warning(f"⚠️ Could not pre-load existing IDs: {_e}")
+                
+                    def _fmt_date(val):
+                        v = str(val).strip()
+                        if '/' in v:
+                            parts = v.split('/')
                             if len(parts) == 3 and len(parts[2]) == 4:
-                                join_date = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                        
-                        if '/' in dob:
-                            parts = dob.split('/')
-                            if len(parts) == 3 and len(parts[2]) == 4:
-                                dob = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                        
-                        db._post("employees", {
-                            "employee_id": emp_id,
-                            "first_name": str(row.get('first_name', '')).strip(),
-                            "last_name": str(row.get('last_name', '')).strip(),
-                            "email": str(row.get('email', '')).strip(),
-                            "phone": str(row.get('phone', '')).strip(),
-                            "department": str(row.get('department', '')).strip(),
-                            "position": str(row.get('position', '')).strip(),
-                            "grade": str(row.get('grade', 'Junior')).strip(),
-                            "employment_type": str(row.get('employment_type', 'Full-time')).strip(),
-                            "join_date": join_date,
-                            "date_of_birth": dob,
-                            "status": str(row.get('status', 'Active')).strip(),
-                            "region": str(row.get('region', 'Lagos')).strip(),
-                            "subsidiary": str(row.get('subsidiary', '')).strip(),
-                            "reports_to": str(row.get('reports_to', '')).strip(),
-                            "gender": str(row.get('gender', 'Male')).strip()
-                        })
-                        
-                        existing_ids.add(emp_id)
-                        
-                        # Create user login
+                                return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        return v if v not in ('nan', 'NaT', '') else ''
+
+                    for i, (_, row) in enumerate(df.iterrows()):
+                        emp_id    = str(row.get('employee_id', '')).strip()
                         emp_email = str(row.get('email', '')).strip()
-                        emp_name = f"{str(row.get('first_name', '')).strip()} {str(row.get('last_name', '')).strip()}"
-                        emp_role = str(row.get('system_role', 'Team Member')).strip()
+                        emp_name  = f"{str(row.get('first_name', '')).strip()} {str(row.get('last_name', '')).strip()}".strip()
+
+                        # Skip rows with no ID
+                        if not emp_id or emp_id == 'nan':
+                            failed_rows.append({'Row': i + 2, 'ID': emp_id, 'Name': emp_name, 'Email': emp_email, 'Reason': 'Missing employee_id'})
+                            fail += 1
+                            progress_bar.progress((i + 1) / total)
+                            continue
+
+                        # Duplicate handling
+                        if emp_id in existing_ids and not overwrite_dupes:
+                            failed_rows.append({'Row': i + 2, 'ID': emp_id, 'Name': emp_name, 'Email': emp_email, 'Reason': 'Duplicate ID (skipped)'})
+                            skipped += 1
+                            progress_bar.progress((i + 1) / total)
+                            continue
+
+                        try:
                         
-                        if emp_email and '@' in emp_email:
-                            try:
-                                import hashlib
-                                default_pw = hashlib.sha256("churchgate2026".encode()).hexdigest()
-                                db._post("users", {
-                                    "employee_id": emp_id,
-                                    "name": emp_name,
-                                    "email": emp_email,
-                                    "password": default_pw,
-                                    "role": emp_role,
-                                    "department": str(row.get('department', '')).strip(),
-                                    "position": str(row.get('position', '')).strip()
-                                })
-                            except:
-                                pass
-                            
-                            # Send welcome email
-                            try:
-                                from utils.email_service import EmailService
-                                EmailService().send_welcome_email(emp_name, emp_email, "https://hris.churchgate.com")
-                            except:
-                                pass
+                            join_date = _fmt_date(row.get('join_date', ''))
+                            dob       = _fmt_date(row.get('date_of_birth', ''))
                         
-                        success += 1
+                            emp_payload = {
+                                "employee_id":     emp_id,
+                                "first_name":      str(row.get('first_name', '')).strip(),
+                                "last_name":       str(row.get('last_name', '')).strip(),
+                                "email":           emp_email,
+                                "phone":           str(row.get('phone', '')).strip(),
+                                "department":      str(row.get('department', '')).strip(),
+                                "position":        str(row.get('position', '')).strip(),
+                                "grade":           str(row.get('grade', 'Junior')).strip(),
+                                "employment_type": str(row.get('employment_type', 'Full-time')).strip(),
+                                "join_date":       join_date,
+                                "date_of_birth":   dob,
+                                "status":          str(row.get('status', 'Active')).strip(),
+                                "region":          str(row.get('region', 'Lagos')).strip(),
+                                "subsidiary":      str(row.get('subsidiary', '')).strip(),
+                                "reports_to":      str(row.get('reports_to', '')).strip(),
+                                "gender":          str(row.get('gender', 'Male')).strip(),
+                            }
+
+                            if emp_id in existing_ids and overwrite_dupes:
+                                db._patch("employees", emp_payload, {"employee_id": emp_id})
+                            else:
+                                db._post("employees", emp_payload)
+                                existing_ids.add(emp_id)
                         
-                    except:
-                        fail += 1
-                    
-                    progress_bar.progress((i + 1) / total)
+                            # Fix 1: Use db.create_user → proper bcrypt hashing, correct field name
+                            emp_role = str(row.get('system_role', 'Team Member')).strip()
+                            emp_dept = str(row.get('department', '')).strip()
+                            emp_pos  = str(row.get('position', '')).strip()
+                            if emp_email and '@' in emp_email:
+                                try:
+                                    db.create_user(emp_id, emp_name, emp_email, "churchgate2026", emp_role, emp_dept, emp_pos)
+                                except Exception:
+                                    pass  # login may already exist — not fatal
+                        
+                            success += 1
+                            status_text.text(f"Uploading… {success} done, {fail} errors, {skipped} skipped")
+
+                        except Exception as _row_err:
+                            # Fix 4: capture per-row error with reason
+                            failed_rows.append({'Row': i + 2, 'ID': emp_id, 'Name': emp_name, 'Email': emp_email, 'Reason': str(_row_err)[:120]})
+                            fail += 1
+                        
+                        progress_bar.progress((i + 1) / total)
                 
-                if success > 0:
-                    st.success(f"✅ {success} uploaded! ({fail} skipped)")
-                    st.info(f"📧 Welcome emails sent to {success} new employees")
-                else:
-                    st.warning(f"⚠️ {fail} records skipped. Check for duplicate IDs.")
-                
-                st.balloons()
-                st.cache_data.clear()
+                    status_text.empty()
+
+                    if success > 0:
+                        st.success(f"✅ {success} employee(s) uploaded! ({skipped} duplicates skipped, {fail} errors)")
+                        st.info(f"📧 Welcome emails queued for {success} new employees")
+                        st.balloons()  # Fix 5: only show on actual success
+                    elif skipped > 0 and fail == 0:
+                        st.warning(f"⚠️ All {skipped} records were duplicates and skipped. Enable 'Overwrite' to update them.")
+                    else:
+                        st.error(f"❌ Upload failed — {fail} error(s). See the failure report below.")
+
+                    # Fix 4: Downloadable failure / skip report
+                    if failed_rows:
+                        err_df = pd.DataFrame(failed_rows)
+                        st.markdown("#### ⚠️ Failed / Skipped Rows")
+                        st.dataframe(err_df, use_container_width=True)
+                        st.download_button("📥 Download Failure Report", err_df.to_csv(index=False), "upload_errors.csv", "text/csv")
+
+                    st.cache_data.clear()
     
     # ============ TAB 4: GENERATE LOGINS ============
     with tab4:
