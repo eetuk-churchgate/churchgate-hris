@@ -2874,191 +2874,108 @@ def employee_management():
         if uploaded_file:
             df = pd.read_csv(uploaded_file)
             st.write(f"**{len(df)} employees in file**")
-            # Fix 3: Full scrollable preview instead of head(5)
-            with st.expander(f"📋 Preview all {len(df)} rows", expanded=False):
-                st.dataframe(df, use_container_width=True)
-
-            # Fix 2: Pre-upload column validation
-            required_cols = {'employee_id', 'first_name', 'last_name', 'email'}
-            missing_cols = required_cols - set(c.strip().lower() for c in df.columns)
-            if missing_cols:
-                st.error(f"❌ CSV is missing required columns: **{', '.join(sorted(missing_cols))}**. Please fix the file and re-upload.")
-            else:
-                blank_ids    = int((df['employee_id'].isna() | (df['employee_id'].astype(str).str.strip() == '')).sum())
-                blank_emails = int((df['email'].isna() | (df['email'].astype(str).str.strip() == '')).sum())
-                if blank_ids or blank_emails:
-                    st.warning(f"⚠️ Data quality: {blank_ids} missing IDs · {blank_emails} missing emails — those rows will be skipped.")
-
-                # Fix 6: Overwrite-duplicates toggle
-                overwrite_dupes = st.checkbox("🔄 Overwrite existing employees with matching ID", value=False,
-                    help="If checked, existing records will be updated instead of skipped.")
-                if st.button("📤 Upload All", use_container_width=True):
-                    success, fail, skipped = 0, 0, 0
-                    failed_rows = []  # Fix 4: per-row error tracking
-                    progress_bar = st.progress(0)
-                    status_text  = st.empty()
-                    total = len(df)
-
-                    # Pre-load existing IDs for fast duplicate checking
-                    existing_ids = set()
-                    try:
-                        all_emp = db._get("employees")
-                        if all_emp:
-                            existing_ids = set(str(e.get('employee_id', '')).strip() for e in all_emp)
-                    except Exception as _e:
-                        st.warning(f"⚠️ Could not pre-load existing IDs: {_e}")
-
-                    # Pre-load existing login emails so we never re-POST a user that already
-                    # exists — users.email is UNIQUE and a retry surfaces a raw 409 to the user.
-                    existing_emails = set()
-                    try:
-                        all_users = db._get("users")
-                        if all_users:
-                            existing_emails = set(str(u.get('email', '')).strip().lower() for u in all_users)
-                    except Exception as _e:
-                        st.warning(f"⚠️ Could not pre-load existing logins: {_e}")
-
-                    date_warnings = []
-
-                    def _clean(val, default=''):
-                        """Trim a CSV cell to a string, treating pandas nulls as blank."""
-                        if val is None or (isinstance(val, float) and pd.isna(val)):
-                            return default
-                        v = str(val).strip()
-                        return default if v.lower() in ('nan', 'nat', 'none', 'null', '') else v
-
-                    def _fmt_date(val, field, row_no):
-                        """Return YYYY-MM-DD, or None when blank/unparseable.
-
-                        Must be None and not '' — join_date and date_of_birth are Postgres
-                        `date` columns, which reject an empty string with 22007.
-                        """
-                        v = _clean(val)
-                        if not v:
-                            return None
-                        if '/' in v:
-                            parts = v.split('/')
-                            if len(parts) == 3 and len(parts[2]) == 4:
-                                return f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
-                        # A leading 4-digit year means ISO (YYYY-MM-DD) — month comes first there.
-                        # Anything else is read day-first, matching the DD/MM/YYYY branch above.
-                        try:
-                            return pd.to_datetime(v, dayfirst=not v[:4].isdigit()).strftime('%Y-%m-%d')
-                        except Exception:
-                            date_warnings.append({'Row': row_no, 'Field': field, 'Value': v})
-                            return None
-
-                    for i, (_, row) in enumerate(df.iterrows()):
-                        emp_id    = _clean(row.get('employee_id'))
-                        emp_email = _clean(row.get('email'))
-                        emp_name  = f"{_clean(row.get('first_name'))} {_clean(row.get('last_name'))}".strip()
-
-                        # Skip rows with no ID
-                        if not emp_id or emp_id == 'nan':
-                            failed_rows.append({'Row': i + 2, 'ID': emp_id, 'Name': emp_name, 'Email': emp_email, 'Reason': 'Missing employee_id'})
-                            fail += 1
-                            progress_bar.progress((i + 1) / total)
-                            continue
-
-                        # Duplicate handling
-                        if emp_id in existing_ids and not overwrite_dupes:
-                            failed_rows.append({'Row': i + 2, 'ID': emp_id, 'Name': emp_name, 'Email': emp_email, 'Reason': 'Duplicate ID (skipped)'})
-                            skipped += 1
-                            progress_bar.progress((i + 1) / total)
-                            continue
-
-                        try:
-                        
-                            join_date = _fmt_date(row.get('join_date'), 'join_date', i + 2)
-                            dob       = _fmt_date(row.get('date_of_birth'), 'date_of_birth', i + 2)
-
-                            emp_dept = _clean(row.get('department'))
-                            emp_pos  = _clean(row.get('position'))
-
-                            emp_payload = {
-                                "employee_id":     emp_id,
-                                "first_name":      _clean(row.get('first_name')),
-                                "last_name":       _clean(row.get('last_name')),
-                                "email":           emp_email,
-                                "phone":           _clean(row.get('phone')),
-                                "department":      emp_dept,
-                                "position":        emp_pos,
-                                "grade":           _clean(row.get('grade'), 'Junior'),
-                                "employment_type": _clean(row.get('employment_type'), 'Full-time'),
-                                "status":          _clean(row.get('status'), 'Active'),
-                                "region":          _clean(row.get('region'), 'Lagos'),
-                                "subsidiary":      _clean(row.get('subsidiary')),
-                                "reports_to":      _clean(row.get('reports_to')),
-                                "gender":          _clean(row.get('gender'), 'Male'),
-                            }
-                            # Omit blank dates entirely — sending "" to a Postgres date column
-                            # fails with 22007 (invalid input syntax for type date: "").
-                            if join_date: emp_payload["join_date"]     = join_date
-                            if dob:       emp_payload["date_of_birth"] = dob
-
-                            # _post/_patch report failure by return value, not by raising — check
-                            # it, or a rejected row is silently counted as a successful upload.
-                            if emp_id in existing_ids and overwrite_dupes:
-                                saved = db._patch("employees", emp_payload, {"employee_id": emp_id})
-                                verb  = 'update'
-                            else:
-                                saved = db._post("employees", emp_payload)
-                                verb  = 'insert'
-
-                            if not saved:
-                                failed_rows.append({'Row': i + 2, 'ID': emp_id, 'Name': emp_name, 'Email': emp_email,
-                                                    'Reason': f'Supabase rejected the {verb} (see error above)'})
-                                fail += 1
-                                progress_bar.progress((i + 1) / total)
-                                continue
-
-                            if verb == 'insert':
-                                existing_ids.add(emp_id)
-
-                            # Fix 1: Use db.create_user → proper bcrypt hashing, correct field name
-                            emp_role = _clean(row.get('system_role'), 'Team Member')
-                            if emp_email and '@' in emp_email and emp_email.lower() not in existing_emails:
-                                try:
-                                    db.create_user(emp_id, emp_name, emp_email, "churchgate2026", emp_role, emp_dept, emp_pos)
-                                    existing_emails.add(emp_email.lower())
-                                except Exception:
-                                    pass  # login creation is not fatal to the employee record
-
-                            success += 1
-                            status_text.text(f"Uploading… {success} done, {fail} errors, {skipped} skipped")
-
-                        except Exception as _row_err:
-                            # Fix 4: capture per-row error with reason
-                            failed_rows.append({'Row': i + 2, 'ID': emp_id, 'Name': emp_name, 'Email': emp_email, 'Reason': str(_row_err)[:120]})
-                            fail += 1
-                        
-                        progress_bar.progress((i + 1) / total)
+            st.dataframe(df.head(), use_container_width=True)
+            if st.button("📤 Upload All", use_container_width=True):
+                success, fail = 0, 0
+                progress_bar = st.progress(0)
+                total = len(df)
                 
-                    status_text.empty()
-
-                    if success > 0:
-                        st.success(f"✅ {success} employee(s) uploaded! ({skipped} duplicates skipped, {fail} errors)")
-                        st.info(f"📧 Welcome emails queued for {success} new employees")
-                        st.balloons()  # Fix 5: only show on actual success
-                    elif skipped > 0 and fail == 0:
-                        st.warning(f"⚠️ All {skipped} records were duplicates and skipped. Enable 'Overwrite' to update them.")
-                    else:
-                        st.error(f"❌ Upload failed — {fail} error(s). See the failure report below.")
-
-                    # Fix 4: Downloadable failure / skip report
-                    if failed_rows:
-                        err_df = pd.DataFrame(failed_rows)
-                        st.markdown("#### ⚠️ Failed / Skipped Rows")
-                        st.dataframe(err_df, use_container_width=True)
-                        st.download_button("📥 Download Failure Report", err_df.to_csv(index=False), "upload_errors.csv", "text/csv")
-
-                    # Dates we could not parse were saved as blank — say so rather than dropping silently
-                    if date_warnings:
-                        st.markdown("#### 📅 Unrecognised Dates (saved as blank)")
-                        st.caption("Use DD/MM/YYYY or YYYY-MM-DD. These employees were created without the date.")
-                        st.dataframe(pd.DataFrame(date_warnings), use_container_width=True)
-
-                    st.cache_data.clear()
+                # Pre-load existing IDs for fast duplicate checking
+                existing_ids = set()
+                try:
+                    all_emp = db._get("employees")
+                    if all_emp:
+                        existing_ids = set(str(e.get('employee_id', '')).strip() for e in all_emp)
+                except:
+                    pass
+                
+                for i, (_, row) in enumerate(df.iterrows()):
+                    try:
+                        emp_id = str(row.get('employee_id', '')).strip()
+                        
+                        # Fast duplicate check
+                        if emp_id in existing_ids:
+                            fail += 1
+                            continue
+                        
+                        # Quick date conversion
+                        join_date = str(row.get('join_date', '')).strip()
+                        dob = str(row.get('date_of_birth', '')).strip()
+                        
+                        if '/' in join_date:
+                            parts = join_date.split('/')
+                            if len(parts) == 3 and len(parts[2]) == 4:
+                                join_date = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        
+                        if '/' in dob:
+                            parts = dob.split('/')
+                            if len(parts) == 3 and len(parts[2]) == 4:
+                                dob = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
+                        
+                        db._post("employees", {
+                            "employee_id": emp_id,
+                            "first_name": str(row.get('first_name', '')).strip(),
+                            "last_name": str(row.get('last_name', '')).strip(),
+                            "email": str(row.get('email', '')).strip(),
+                            "phone": str(row.get('phone', '')).strip(),
+                            "department": str(row.get('department', '')).strip(),
+                            "position": str(row.get('position', '')).strip(),
+                            "grade": str(row.get('grade', 'Junior')).strip(),
+                            "employment_type": str(row.get('employment_type', 'Full-time')).strip(),
+                            "join_date": join_date,
+                            "date_of_birth": dob,
+                            "status": str(row.get('status', 'Active')).strip(),
+                            "region": str(row.get('region', 'Lagos')).strip(),
+                            "subsidiary": str(row.get('subsidiary', '')).strip(),
+                            "reports_to": str(row.get('reports_to', '')).strip(),
+                            "gender": str(row.get('gender', 'Male')).strip()
+                        })
+                        
+                        existing_ids.add(emp_id)
+                        
+                        # Create user login
+                        emp_email = str(row.get('email', '')).strip()
+                        emp_name = f"{str(row.get('first_name', '')).strip()} {str(row.get('last_name', '')).strip()}"
+                        emp_role = str(row.get('system_role', 'Team Member')).strip()
+                        
+                        if emp_email and '@' in emp_email:
+                            try:
+                                import hashlib
+                                default_pw = hashlib.sha256("churchgate2026".encode()).hexdigest()
+                                db._post("users", {
+                                    "employee_id": emp_id,
+                                    "name": emp_name,
+                                    "email": emp_email,
+                                    "password": default_pw,
+                                    "role": emp_role,
+                                    "department": str(row.get('department', '')).strip(),
+                                    "position": str(row.get('position', '')).strip()
+                                })
+                            except:
+                                pass
+                            
+                            # Send welcome email
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_welcome_email(emp_name, emp_email, "https://hris.churchgate.com")
+                            except:
+                                pass
+                        
+                        success += 1
+                        
+                    except:
+                        fail += 1
+                    
+                    progress_bar.progress((i + 1) / total)
+                
+                if success > 0:
+                    st.success(f"✅ {success} uploaded! ({fail} skipped)")
+                    st.info(f"📧 Welcome emails sent to {success} new employees")
+                else:
+                    st.warning(f"⚠️ {fail} records skipped. Check for duplicate IDs.")
+                
+                st.balloons()
+                st.cache_data.clear()
     
     # ============ TAB 4: GENERATE LOGINS ============
     with tab4:
@@ -3119,19 +3036,8 @@ def employee_management():
                     'Has Login': '✅ Yes' if has_login else '❌ No'
                 })
             
-            # Search / filter
-            search_query = st.text_input("🔍 Search employees", placeholder="Filter by name, email or department...", key="gen_logins_search")
-            if search_query:
-                q = search_query.strip().lower()
-                emp_list = [
-                    e for e in emp_list
-                    if q in e['Name'].lower()
-                    or q in e['Email'].lower()
-                    or q in e['Department'].lower()
-                ]
-
             # Display with checkboxes for selection
-            st.markdown(f"**Select employees to generate logins:** ({len(emp_list)} shown)")
+            st.markdown("**Select employees to generate logins:**")
             
             # Select all / Deselect all
             col1, col2 = st.columns(2)
@@ -3646,7 +3552,12 @@ def performance_okrs():
             financial_year = st.session_state.get('appraisal_fy', 'FY 26/27')
         
         # Map if a cycle name was passed instead of FY
-        cycle_fy_map = {'Half-Year Appraisal': 'FY 26/27', 'Full-Year Appraisal': 'FY 25/26'}
+        cycle_fy_map = {
+            'Half-Year Appraisal': 'FY 26/27', 
+            'Full-Year Appraisal': 'FY 25/26',
+            'HOD Mock Appraisal': 'FY 26/27',
+            'Team Mock Appraisal': 'FY 26/27'
+        }
         if financial_year in cycle_fy_map:
             financial_year = cycle_fy_map[financial_year]
         
@@ -3871,9 +3782,11 @@ def performance_okrs():
         # FY SELECTOR - Map cycles to Financial Years
         # ============================================================
         cycle_fy_map = {
-            'Half-Year Appraisal': 'FY 26/27',
-            'Full-Year Appraisal': 'FY 25/26'
-        }
+                'Half-Year Appraisal': 'FY 26/27',
+                'Full-Year Appraisal': 'FY 25/26',
+                'HOD Mock Appraisal': 'FY 26/27',
+                'Team Mock Appraisal': 'FY 26/27'
+            }
         
         available_fy = []
         user_perf_all = get_all_perf_cached()
@@ -3928,12 +3841,12 @@ def performance_okrs():
         with c4: st.markdown(f'<div class="metric-mini"><div class="label">KPI Status</div><div class="value" style="font-size:1rem;">{overall_status.upper()}</div></div>', unsafe_allow_html=True)
         
         if overall_status == 'Draft' and any(len(p['kpis']) > 0 for p in pillar_data.values()):
-            if st.button(f"🚀 Submit All KPIs for {selected_fy}", use_container_width=True, type="primary"):
+            if st.button(f"🚀 Submit All KPIs for {selected_fy_kpi}", use_container_width=True, type="primary"):
                 all_rows = db._get("performance_data", {"user_name": user_name})
                 for row in (all_rows or []):
                     # Only submit KPIs for this cycle
                     kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                    cycle_kpis = [k for k in kpi_list if k.get('cycle', '') == selected_cycle]
+                    cycle_kpis = [k for k in kpi_list if k.get('cycle', '') == selected_cycle_kpi]
                     if cycle_kpis:
                         db._patch("performance_data", {"submission_status": "Submitted"}, {"id": row['id']})
                 send_kpi_notification('submitted_to_employee', user_name, user_email)
@@ -4084,9 +3997,11 @@ def performance_okrs():
         # FY SELECTOR FOR KPI CREATION
         # ============================================================
         cycle_fy_map = {
-            'Half-Year Appraisal': 'FY 26/27',
-            'Full-Year Appraisal': 'FY 25/26'
-        }
+                'Half-Year Appraisal': 'FY 26/27',
+                'Full-Year Appraisal': 'FY 25/26',
+                'HOD Mock Appraisal': 'FY 26/27',
+                'Team Mock Appraisal': 'FY 26/27'
+            }
         fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
         
         available_fy_kpi = ['FY 26/27', 'FY 25/26']
@@ -4648,7 +4563,9 @@ def performance_okrs():
             # ============================================================
             cycle_fy_map = {
                 'Half-Year Appraisal': 'FY 26/27',
-                'Full-Year Appraisal': 'FY 25/26'
+                'Full-Year Appraisal': 'FY 25/26',
+                'HOD Mock Appraisal': 'FY 26/27',
+                'Team Mock Appraisal': 'FY 26/27'
             }
             fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
             
@@ -4982,7 +4899,9 @@ def performance_okrs():
             # ============================================================
             cycle_fy_map = {
                 'Half-Year Appraisal': 'FY 26/27',
-                'Full-Year Appraisal': 'FY 25/26'
+                'Full-Year Appraisal': 'FY 25/26',
+                'HOD Mock Appraisal': 'FY 26/27',
+                'Team Mock Appraisal': 'FY 26/27'
             }
             fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
             
@@ -5412,7 +5331,7 @@ def performance_okrs():
         else:
             all_perf_data = get_all_perf_cached()
             approved_kpi_count = len(all_perf_data[all_perf_data['submission_status'] == 'Approved']) if not all_perf_data.empty else 0
-            submitted_appraisal_count = len([v for v in st.session_state.self_assessments.values() if v.get('status') == 'Submitted'])
+            submitted_appraisal_count = len([v for v in st.session_state.self_assessments.values() if v['status'] == 'Submitted'])
             completed_count = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Accepted'])
             escalated_count = len([v for v in st.session_state.self_assessments.values() if v.get('status') == 'Escalated from TL'])
             
@@ -5472,8 +5391,7 @@ def performance_okrs():
             st.markdown("### ⚙️ Cycle Configuration")
             st.session_state.appraisal_cycle_active = st.checkbox("Activate Appraisal Cycle", value=st.session_state.appraisal_cycle_active)
             cycle_options = ['Half-Year Appraisal', 'Full-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal']
-            _cycle_idx = cycle_options.index(st.session_state.appraisal_cycle_name) if st.session_state.appraisal_cycle_name in cycle_options else 0
-            st.session_state.appraisal_cycle_name = st.selectbox("Select Appraisal Cycle", cycle_options, index=_cycle_idx)
+            st.session_state.appraisal_cycle_name = st.selectbox("Select Appraisal Cycle", cycle_options, index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 0)
             c1, c2 = st.columns(2)
             with c1:
                 start_val = st.session_state.appraisal_start
@@ -5617,7 +5535,7 @@ def performance_okrs():
                     st.subheader("📈 Group-Wide Performance Metrics")
                     total_approved = len(all_perf[all_perf['submission_status'] == 'Approved']) if not all_perf.empty else 0
                     total_submitted = len(all_perf[all_perf['submission_status'] == 'Submitted']) if not all_perf.empty else 0
-                    total_appraisals_in = len([v for v in st.session_state.self_assessments.values() if v.get('status') in ['Submitted', 'Approved', 'Completed']])
+                    total_appraisals_in = len([v for v in st.session_state.self_assessments.values() if v['status'] in ['Submitted', 'Approved', 'Completed']])
                     total_completed = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Accepted'])
                     total_escalated = len([v for v in st.session_state.self_assessments.values() if v.get('status') == 'Escalated from TL'])
                     total_rejected = len([v for v in st.session_state.self_assessments.values() if v.get('acceptance') == 'Rejected'])
@@ -6305,7 +6223,9 @@ def performance_okrs():
             # ============================================================
             cycle_fy_map = {
                 'Half-Year Appraisal': 'FY 26/27',
-                'Full-Year Appraisal': 'FY 25/26'
+                'Full-Year Appraisal': 'FY 25/26',
+                'HOD Mock Appraisal': 'FY 26/27',
+                'Team Mock Appraisal': 'FY 26/27'
             }
             fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
             
