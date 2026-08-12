@@ -9710,20 +9710,28 @@ def recruitment_hub():
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
     
     # ============================================================
-    # AUTO-POST FUNCTION
+    # AUTO-POST FUNCTION - ENHANCED FOR ALL PLATFORMS
     # ============================================================
     def auto_post_job(job_title, job_department, job_location, job_type, job_salary, job_jd, job_ref, public_url):
-        """Auto-post job to LinkedIn, Indeed, and Glassdoor"""
+        """Auto-post job to LinkedIn, Indeed, Glassdoor, MyJobMag, HotNigerianJobs"""
         import re
         import urllib.parse
         
         clean_jd = re.sub(r'<[^>]+>', '', job_jd)
+        clean_jd_short = clean_jd[:800]
         results = {}
         
-        # LINKEDIN - Auto-post to personal profile + Company page link
+        # ============================================
+        # 1. LINKEDIN
+        # ============================================
         import requests as req_linkedin
         
-        linkedin_token = os.environ.get("LINKEDIN_ACCESS_TOKEN", st.secrets.get("LINKEDIN_ACCESS_TOKEN", ""))
+        linkedin_token = os.environ.get("LINKEDIN_ACCESS_TOKEN", "")
+        if not linkedin_token:
+            try:
+                linkedin_token = st.secrets.get("LINKEDIN_ACCESS_TOKEN", "")
+            except:
+                pass
         
         linkedin_post = f"""🚀 WE'RE HIRING: {job_title}
 
@@ -9733,11 +9741,11 @@ def recruitment_hub():
 
 APPLY NOW: {public_url}
 
-#Hiring #Jobs #ChurchgateGroup #Careers #NigeriaJobs"""
+#Hiring #Jobs #ChurchgateGroup #Careers #NigeriaJobs #LagosJobs #AbujaJobs"""
         
         messages = []
         
-        # 1. AUTO-POST TO PERSONAL PROFILE
+        # Auto-post to personal profile
         if linkedin_token:
             try:
                 user_url = "https://api.linkedin.com/v2/userinfo"
@@ -9768,41 +9776,154 @@ APPLY NOW: {public_url}
                     )
                     
                     if post_response.status_code in [200, 201]:
-                        messages.append('✅ Posted to personal LinkedIn')
+                        messages.append('✅ Posted to LinkedIn profile')
                     else:
-                        messages.append('⚠️ Personal LinkedIn: Click share link below')
+                        messages.append('⚠️ LinkedIn: Use share link below')
                 else:
                     messages.append('⚠️ LinkedIn auth issue')
             except:
                 messages.append('⚠️ LinkedIn API error')
         else:
-            messages.append('⚠️ No LinkedIn token configured')
+            messages.append('⚠️ No LinkedIn token')
         
-        # 2. WTC ABUJA PAGE - One-click share link
-        wtc_url = f"https://www.linkedin.com/shareArticle?mini=true&url={urllib.parse.quote(public_url)}&title={urllib.parse.quote('WE ARE HIRING: ' + job_title)}&summary={urllib.parse.quote(clean_jd[:200])}"
-        messages.append(f'🏢 [Click to post on WTC Abuja Page]({wtc_url})')
-        
-        # 3. CHURCHGATE GROUP PAGE - One-click share link
-        cg_url = f"https://www.linkedin.com/shareArticle?mini=true&url={urllib.parse.quote(public_url)}&title={urllib.parse.quote('WE ARE HIRING: ' + job_title)}&summary={urllib.parse.quote(clean_jd[:200])}"
-        messages.append(f'🏢 [Click to post on Churchgate Group Page]({cg_url})')
+        # LinkedIn share links
+        li_share = f"https://www.linkedin.com/shareArticle?mini=true&url={urllib.parse.quote(public_url)}&title={urllib.parse.quote('WE ARE HIRING: ' + job_title)}&summary={urllib.parse.quote(clean_jd[:200])}"
+        messages.append(f'🔗 [Share on LinkedIn]({li_share})')
         
         results['linkedin'] = {
             'status': 'success',
             'post_text': linkedin_post,
-            'message': ' | '.join(messages)
+            'message': ' | '.join(messages),
+            'share_url': li_share
         }
         
-        # INDEED
+        # ============================================
+        # 2. INDEED - XML Feed Generation
+        # ============================================
         try:
+            import xml.etree.ElementTree as ET
+            
+            # Create XML for Indeed
+            job_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<job>
+    <title><![CDATA[{job_title}]]></title>
+    <date><![CDATA[{datetime.now().strftime('%a, %d %b %Y %H:%M:%S +0000')}]]></date>
+    <referencenumber><![CDATA[{job_ref}]]></referencenumber>
+    <url><![CDATA[{public_url}]]></url>
+    <company><![CDATA[Churchgate Group]]></company>
+    <city><![CDATA[{job_location.split()[-1] if job_location else 'Abuja'}]]></city>
+    <state><![CDATA[FCT]]></state>
+    <country><![CDATA[Nigeria]]></country>
+    <description><![CDATA[{clean_jd[:3000]}]]></description>
+    <jobtype><![CDATA[{job_type}]]></jobtype>
+    <category><![CDATA[{job_department}]]></category>
+    <salary><![CDATA[{job_salary if job_salary else 'Competitive'}]]></salary>
+</job>"""
+            
             db_temp = DatabaseManager()
-            db_temp.upload_file("job-feeds", f"indeed_{job_ref}.txt", clean_jd[:2500].encode('utf-8'), "text/plain")
-            results['indeed'] = {'status': 'posted', 'message': '✅ Indeed feed saved! Upload at indeed.com/hire'}
-        except:
-            results['indeed'] = {'status': 'ready', 'message': '📋 Indeed content ready'}
+            db_temp.upload_file("job-feeds", f"indeed_{job_ref}.xml", job_xml.encode('utf-8'), "application/xml")
+            results['indeed'] = {
+                'status': 'posted', 
+                'message': '✅ Indeed XML feed generated! Upload at indeed.com/hire',
+                'xml_content': job_xml[:500]
+            }
+        except Exception as e:
+            results['indeed'] = {'status': 'ready', 'message': f'📋 Indeed content ready (upload manually)'}
         
-        # GLASSDOOR
+        # ============================================
+        # 3. GLASSDOOR
+        # ============================================
         glassdoor_url = f"https://www.glassdoor.com/employers/post-job/?title={urllib.parse.quote(job_title)}&location={urllib.parse.quote(job_location)}"
-        results['glassdoor'] = {'status': 'ready', 'post_url': glassdoor_url, 'message': '🏢 Glassdoor post ready!'}
+        results['glassdoor'] = {
+            'status': 'ready', 
+            'post_url': glassdoor_url, 
+            'message': f'🏢 [Post on Glassdoor]({glassdoor_url})'
+        }
+        
+        # ============================================
+        # 4. MYJOBMAG - Pre-filled Post Template
+        # ============================================
+        myjobmag_fields = {
+            'job_title': job_title,
+            'specialization': job_department,
+            'experience': '3-5 years',  # Adjust based on level
+            'job_mode': 'Full Time' if job_type.lower() == 'full-time' else 'Onsite',
+            'location': job_location,
+            'relocation': 'No',
+            'qualification': 'Degree',
+            'salary': job_salary if job_salary else 'Competitive',
+            'hiring_company': 'Churchgate Group',
+            'show_company': 'Yes',
+            'description': clean_jd[:3000],
+            'apply_method': 'Use this link to apply',
+            'apply_link': public_url,
+            'deadline': 'Set deadline',
+            'cover_letter': 'No'
+        }
+        
+        myjobmag_message = f"""📋 **MyJobMag Post Ready - Copy these fields:**
+
+**Job Title:** {myjobmag_fields['job_title']}
+**Specialization:** {myjobmag_fields['specialization']}
+**Experience:** {myjobmag_fields['experience']}
+**Job Mode:** {myjobmag_fields['job_mode']}
+**Location:** {myjobmag_fields['location']}
+**Qualification:** {myjobmag_fields['qualification']}
+**Salary:** {myjobmag_fields['salary']}
+**Hiring Company:** Churchgate Group
+**Apply Method:** Use link → {public_url}
+**Deadline:** Set to closing date
+
+**Description:**
+{clean_jd[:500]}...
+
+[Open MyJobMag Post Page](https://www.myjobmag.com/post-job)"""
+        
+        results['myjobmag'] = {
+            'status': 'ready',
+            'message': myjobmag_message,
+            'fields': myjobmag_fields
+        }
+        
+        # ============================================
+        # 5. HOTNIGERIANJOBS - Pre-filled Post Template
+        # ============================================
+        hnj_fields = {
+            'company': 'Churchgate Group',
+            'position_title': job_title,
+            'job_field': job_department,
+            'qualification': 'Degree',
+            'employment_type': job_type,
+            'location': job_location,
+            'city': job_location.split()[-1] if job_location else 'Abuja',
+            'salary_min': job_salary.split('-')[0].strip() if job_salary and '-' in job_salary else '',
+            'salary_max': job_salary.split('-')[1].strip() if job_salary and '-' in job_salary else '',
+            'deadline': '',
+            'description': clean_jd[:3000],
+            'apply_method': 'Direct applications to a different website',
+            'apply_url': public_url
+        }
+        
+        hnj_message = f"""📋 **HotNigerianJobs Post Ready - Copy these fields:**
+
+**Company:** Churchgate Group
+**Position Title:** {hnj_fields['position_title']}
+**Job Field:** {hnj_fields['job_field']}
+**Employment Type:** {hnj_fields['employment_type']}
+**Location:** {hnj_fields['location']}
+**Salary:** {job_salary if job_salary else 'Competitive'}
+**Application Method:** Direct to website → {public_url}
+
+**Description:**
+{clean_jd[:500]}...
+
+[Open HotNigerianJobs Post Page](https://www.hotnigerianjobs.com/employer/post-job)"""
+        
+        results['hotnigerianjobs'] = {
+            'status': 'ready',
+            'message': hnj_message,
+            'fields': hnj_fields
+        }
         
         return results
     
@@ -9945,13 +10066,17 @@ APPLY NOW: {public_url}
             screening_q4 = st.text_input("Screening Question 4", placeholder="e.g., B.Sc. Computer Science or related field")
             
             st.markdown("### Auto-Post Settings")
-            c1, c2, c3 = st.columns(3)
+            c1, c2, c3, c4, c5 = st.columns(5)
             with c1:
-                post_linkedin = st.checkbox("Post to LinkedIn", value=True)
+                post_linkedin = st.checkbox("LinkedIn", value=True)
             with c2:
-                post_indeed = st.checkbox("Post to Indeed", value=True)
+                post_indeed = st.checkbox("Indeed", value=True)
             with c3:
-                post_glassdoor = st.checkbox("Post to Glassdoor", value=True)
+                post_glassdoor = st.checkbox("Glassdoor", value=True)
+            with c4:
+                post_myjobmag = st.checkbox("MyJobMag", value=True)
+            with c5:
+                post_hotnigerianjobs = st.checkbox("HotNigerianJobs", value=True)
             
             submitted = st.form_submit_button("📤 Submit for Approval", use_container_width=True)
             
@@ -9963,7 +10088,7 @@ APPLY NOW: {public_url}
                         'type': employment_type, 'salary': salary_range, 'level': experience_level,
                         'positions': positions, 'closing': closing_date.strftime('%Y-%m-%d'),
                         'jd': jd_text_for_submission, 'screening': [screening_q1, screening_q2, screening_q3, screening_q4],
-                        'posts': {'linkedin': post_linkedin, 'indeed': post_indeed, 'glassdoor': post_glassdoor},
+                        'posts': {'linkedin': post_linkedin, 'indeed': post_indeed, 'glassdoor': post_glassdoor, 'myjobmag': post_myjobmag, 'hotnigerianjobs': post_hotnigerianjobs},
                         'status': 'Pending LM Approval',
                         'submitted_by': user_name, 'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
                         'lm_comment': '', 'admin_comment': '', 'coo_comment': ''
@@ -10209,24 +10334,34 @@ APPLY NOW: {public_url}
                                         
                                         # ===== AUTO-POST TO JOB BOARDS =====
                                         post_settings = req.get('posts', {})
-                                        st.write(f"DEBUG posts: {post_settings}, type: {type(post_settings)}")
                                         posting_results = []
                                         
+                                        # Call auto_post_job ONCE
+                                        result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
+                                        
                                         if post_settings.get('linkedin'):
-                                            result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
                                             posting_results.append(result['linkedin']['message'])
                                         
                                         if post_settings.get('indeed'):
-                                            result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
                                             posting_results.append(result['indeed']['message'])
                                         
                                         if post_settings.get('glassdoor'):
-                                            result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
                                             posting_results.append(result['glassdoor']['message'])
                                         
+                                        if post_settings.get('myjobmag'):
+                                            posting_results.append(result['myjobmag']['message'])
+                                        
+                                        if post_settings.get('hotnigerianjobs'):
+                                            posting_results.append(result['hotnigerianjobs']['message'])
+                                        
                                         if posting_results:
+                                            st.markdown("### 📢 Job Posting Results")
                                             for msg in posting_results:
-                                                st.success(msg)
+                                                if 'MyJobMag' in msg or 'HotNigerianJobs' in msg or 'Copy these fields' in msg:
+                                                    with st.expander("📋 Platform Post Template"):
+                                                        st.markdown(msg)
+                                                else:
+                                                    st.success(msg)
                                         # ===================================
                                         
                                         st.success(f"✅ Job is LIVE on Careers Page!")
