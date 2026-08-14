@@ -2980,22 +2980,58 @@ def employee_management():
     # ============ TAB 4: GENERATE LOGINS ============
     with tab4:
         st.subheader("🔑 Generate Employee Login Credentials")
+        
+        # Build employee dropdown list
+        emp_options_list = []
+        if not employees_df.empty:
+            emp_options_list = [f"{row['first_name']} {row['last_name']} — {row.get('department', '')}" for _, row in employees_df.iterrows()]
+        
         st.markdown("### ⚡ Quick Single Employee")
+        
+        # Employee selector dropdown
+        selected_emp = st.selectbox("👤 Select Employee", ["Select employee..."] + emp_options_list, key="single_emp_dropdown")
+        
+        # Auto-fill from selection
+        if selected_emp != "Select employee...":
+            selected_name = selected_emp.split(" — ")[0].strip()
+            emp_match = employees_df[employees_df.apply(lambda x: f"{x['first_name']} {x['last_name']}".strip() == selected_name, axis=1)]
+            if not emp_match.empty:
+                emp_row = emp_match.iloc[0]
+                emp_full_name = f"{emp_row['first_name']} {emp_row['last_name']}"
+                emp_db_email = emp_row.get('email', '')
+                emp_db_dept = emp_row.get('department', '')
+                emp_db_id = emp_row.get('employee_id', '')
+                emp_db_position = emp_row.get('position', '')
+            else:
+                emp_full_name = selected_name
+                emp_db_email = ''
+                emp_db_dept = ''
+                emp_db_id = ''
+                emp_db_position = ''
+        else:
+            emp_full_name = ''
+            emp_db_email = ''
+            emp_db_dept = ''
+            emp_db_id = ''
+            emp_db_position = ''
+        
         with st.form("single_login_form"):
             c1, c2 = st.columns(2)
             with c1:
-                single_email = st.text_input("Employee Email *", placeholder="e.g., employee@churchgate.com")
-                single_name = st.text_input("Full Name *")
+                single_email = st.text_input("Employee Email *", value=emp_db_email, placeholder="e.g., employee@churchgate.com")
+                single_name = st.text_input("Full Name *", value=emp_full_name)
                 single_pw = st.text_input("Password", value="churchgate2026")
             with c2:
-                single_dept = st.selectbox("Department", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'], key="single_dept")
+                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
+                dept_idx = dept_options.index(emp_db_dept) if emp_db_dept in dept_options else 0
+                single_dept = st.selectbox("Department", dept_options, index=dept_idx, key="single_dept")
                 single_role = st.selectbox("Role", ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin'], key="single_role")
-                single_id = st.text_input("Employee ID", placeholder="e.g., AN00001")
+                single_id = st.text_input("Employee ID", value=emp_db_id, placeholder="e.g., AN00001")
             
             if st.form_submit_button("🔑 Create Single Login", use_container_width=True):
                 if single_email and single_name:
                     try:
-                        db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, 'Staff')
+                        db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, emp_db_position or 'Staff')
                         st.success(f"✅ Login created for {single_name}!")
                         st.info(f"🔗 Login at: https://hris.churchgate.com")
                         try:
@@ -3015,6 +3051,9 @@ def employee_management():
         if not employees_df.empty:
             default_pw = st.text_input("Default Password for Bulk", value="churchgate2026")
             
+            # Search bar
+            bulk_search = st.text_input("🔍 Search employees", placeholder="Type name, department, or email...", key="bulk_search_input")
+            
             # Build employee list with current login status
             emp_list = []
             try:
@@ -3025,13 +3064,22 @@ def employee_management():
             
             for _, emp in employees_df.iterrows():
                 emp_email = str(emp.get('email', ''))
+                emp_name = f"{emp['first_name']} {emp['last_name']}"
+                emp_dept = emp.get('department', '')
+                
+                # Apply search filter
+                if bulk_search:
+                    search_term = bulk_search.lower()
+                    if search_term not in emp_name.lower() and search_term not in emp_dept.lower() and search_term not in emp_email.lower():
+                        continue
+                
                 has_login = emp_email in existing_emails
                 emp_list.append({
                     'Select': False,
-                    'Name': f"{emp['first_name']} {emp['last_name']}",
+                    'Name': emp_name,
                     'ID': emp['employee_id'],
                     'Email': emp_email,
-                    'Department': emp.get('department', ''),
+                    'Department': emp_dept,
                     'Role': str(emp.get('role', 'Team Member')),
                     'Has Login': '✅ Yes' if has_login else '❌ No'
                 })
@@ -3039,7 +3087,6 @@ def employee_management():
             # Display with checkboxes for selection
             st.markdown("**Select employees to generate logins:**")
             
-            # Select all / Deselect all
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("✅ Select All Without Login", use_container_width=True):
@@ -3086,13 +3133,12 @@ def employee_management():
                             except:
                                 pass
                             count += 1
-                        except:
-                            pass
+                        except Exception as e:
+                            st.warning(f"Failed for {emp['Name']}: {str(e)}")
                 st.success(f"✅ {count} logins generated!")
                 st.info(f"🔗 Login URL: https://hris.churchgate.com")
                 st.info(f"🔑 Default password: **{default_pw}**")
                 
-                # Download list for generated logins
                 login_df = pd.DataFrame(selected)
                 st.download_button("📥 Download Login List", login_df[['Name', 'Email', 'ID', 'Department', 'Role']].to_csv(index=False), "logins.csv", "text/csv")
         else:
@@ -7512,12 +7558,104 @@ def performance_okrs():
                     st.info("No appraisal data available for recommendations.")
 
 
+def send_confirmation_reminders():
+    """Send automated reminders for confirmation workflow"""
+    try:
+        from utils.email_service import EmailService
+        es = EmailService()
+        
+        HR_TEAM = ["bsakote@churchgate.com", "ichukwunonye@churchgate.com", "gbalogun@churchgate.com", "eochala@churchgate.com"]
+        
+        # Get probation employees
+        try:
+            all_emp = db.get_all_employees()
+            probation_employees = all_emp[all_emp['status'] == 'Probation'] if not all_emp.empty else pd.DataFrame()
+        except:
+            probation_employees = pd.DataFrame()
+        
+        now = datetime.now()
+        
+        # HOD reminders
+        if not probation_employees.empty:
+            for _, emp in probation_employees.iterrows():
+                # Calculate probation end
+                join_date = emp.get('join_date', '')
+                try:
+                    if isinstance(join_date, str):
+                        jd = datetime.strptime(join_date, '%Y-%m-%d')
+                    else:
+                        jd = pd.to_datetime(join_date)
+                    end_date = jd + timedelta(days=180)
+                except:
+                    continue
+                
+                days_left = (end_date - now).days
+                emp_name = f"{emp['first_name']} {emp['last_name']}"
+                dept = emp.get('department', '')
+                
+                hod_email = ''
+                try:
+                    all_emp_data = db.get_all_employees()
+                    if not all_emp_data.empty:
+                        hod_candidates = all_emp_data[(all_emp_data['department'] == dept) & 
+                            (all_emp_data['position'].str.contains('HOD|Head|Manager|Director', case=False, na=False))]
+                        if not hod_candidates.empty:
+                            hod_email = hod_candidates.iloc[0].get('email', '')
+                except:
+                    pass
+                
+                if days_left <= 7 and days_left >= 0:
+                    if hod_email:
+                        es.send_email(hod_email,
+                            f"⏰ Confirmation Due Soon: {emp_name}",
+                            f"Dear HOD,\n\n{emp_name} ({dept}) is due for confirmation in {days_left} days.\n\nPlease review and submit your recommendation.\n\nChurchgate Group HR")
+                elif days_left < 0:
+                    if hod_email:
+                        es.send_email(hod_email,
+                            f"🚨 OVERDUE Confirmation: {emp_name}",
+                            f"Dear HOD,\n\n{emp_name} ({dept}) confirmation is OVERDUE by {abs(days_left)} days.\n\nImmediate action required.\n\nChurchgate Group HR")
+        
+        # COO and HR reminders
+        reviews = db._get("confirmation_reviews") or []
+        pending_coo = [r for r in reviews if r.get('status') == 'Pending COO Approval']
+        hr_processing = [r for r in reviews if r.get('status') == 'Approved by COO']
+        
+        if pending_coo:
+            es.send_email("jeromedas@churchgate.com",
+                f"📋 Pending Confirmations: {len(pending_coo)} awaiting your approval",
+                f"Dear Jerome,\n\nYou have {len(pending_coo)} confirmation(s) awaiting your approval.\n\nPlease review at: https://hris.churchgate.com\n\nChurchgate Group HR")
+        
+        if hr_processing:
+            for hr_recipient in HR_TEAM:
+                es.send_email(hr_recipient,
+                    f"🏢 HR Processing: {len(hr_processing)} confirmation letters to send",
+                    f"Dear HR Team,\n\n{len(hr_processing)} staff are awaiting confirmation letters.\n\nPlease process at: https://hris.churchgate.com\n\nChurchgate Group HR")
+    except:
+        pass
+
+
 def staff_confirmation():
     """
     Churchgate Group HRIS - Staff Confirmation Module v2.0
     Fortune 500 Standard | Full Confirmation Decision Form | Auto-Notifications | Confirmation Letters
     """
     st.markdown("""<div class="churchgate-header"><h1>✅ Staff Confirmation Board</h1><p>Probation Tracking | Full Decision Form | Performance Rating | HOD Review | COO Approval | Confirmation Letters</p></div>""", unsafe_allow_html=True)
+    
+    # Automated reminders
+    if 'last_reminder_sent' not in st.session_state:
+        st.session_state.last_reminder_sent = None
+    
+    should_send = False
+    if st.session_state.last_reminder_sent:
+        days_since = (datetime.now() - st.session_state.last_reminder_sent).days
+        if days_since >= 2:
+            should_send = True
+    else:
+        should_send = True
+    
+    if should_send:
+        send_confirmation_reminders()
+        st.session_state.last_reminder_sent = datetime.now()
     
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
@@ -7691,6 +7829,16 @@ def staff_confirmation():
             if not probation_employees.empty:
                 # Filters
                 filtered_review = probation_employees.copy()
+                
+                # FILTER: Only show due or overdue employees
+                now_date = datetime.now()
+                due_review = []
+                for _, emp_row in filtered_review.iterrows():
+                    emp_end = calculate_probation_end(emp_row.get('join_date'))
+                    if emp_end and emp_end <= now_date:
+                        due_review.append(emp_row)
+                filtered_review = pd.DataFrame(due_review) if due_review else pd.DataFrame()
+                
                 if is_admin:
                     col1, col2, col3 = st.columns(3)
                     with col1:
@@ -7776,7 +7924,27 @@ def staff_confirmation():
                             with col2:
                                 st.markdown(f"**Position:** {position}")
                                 st.markdown(f"**Join Date:** {join_date}")
-                                st.text_input("Highest Qualification", key=f"qual_{emp_id}", placeholder="e.g., B.Sc.")
+                                st.selectbox("Highest Qualification *", [
+                                    "O'Level (WASSCE)",
+                                    "Diploma/Certificate",
+                                    "National Technical Certificate (NTC)",
+                                    "Nigerian Certificate in Education (NCE)",
+                                    "Ordinary National Diploma (OND)",
+                                    "Higher National Diploma (HND)",
+                                    "Postgraduate Diploma (PGD)",
+                                    "Bachelor of Science (B.Sc)",
+                                    "Bachelor of Art (BA)",
+                                    "Bachelor of Engineering (B.Eng)",
+                                    "Bachelor of Technology (B.Tech)",
+                                    "Bachelor of Law (LLB)",
+                                    "Master of Science (M.Sc)",
+                                    "Master of Art (MA)",
+                                    "Master of Law (LLM)",
+                                    "M.Ed",
+                                    "MBA",
+                                    "DBA",
+                                    "Doctorate (Ph.D.)"
+                                ], key=f"qual_{emp_id}")
                             with col3:
                                 st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
                                 st.text_input("Confirmation Due Date", value=end_date.strftime('%Y-%m-%d') if end_date else '', key=f"due_{emp_id}")
@@ -7860,6 +8028,7 @@ def staff_confirmation():
                                                 "employee_id": emp_id, "employee_name": emp_name,
                                                 "department": dept, "position": position,
                                                 "region": new_region, "subsidiary": new_subsidiary,
+                                                "highest_qualification": st.session_state.get(f"qual_{emp_id}", ""),
                                                 "join_date": str(join_date), "probation_end": end_date.strftime('%Y-%m-%d') if end_date else '',
                                                 "hod_name": user_name, "supervisor_name": supervisor_name,
                                                 "line_manager_name": line_manager,
@@ -7963,7 +8132,7 @@ def staff_confirmation():
                                                     "status":"Approved by COO","coo_decision":"Approved",
                                                     "coo_name":user_name,"approved_date":now.strftime('%Y-%m-%d %H:%M')
                                                 }, {"id":r.get('id')})
-                                                db._patch("employees", {"status":"Active"}, {"employee_id":emp_id})
+                                                db._patch("employees", {"status":"HR Processing", "confirmation_status":"Pending HR Processing"}, {"employee_id":emp_id})
                                                 
                                                 # Generate confirmation letter
                                                 try:
@@ -8009,7 +8178,7 @@ def staff_confirmation():
         try:
             reviews = db._get("confirmation_reviews")
             if reviews:
-                confirmed = [r for r in reviews if r.get('status') == 'Approved by COO']
+                confirmed = [r for r in reviews if r.get('status') in ['Approved by COO', 'Letter Sent']]
                 
                 # ===== FILTERS =====
                 if confirmed and is_admin:
@@ -8177,8 +8346,73 @@ def staff_confirmation():
                                 'Weaknesses': r.get('weaknesses','')[:200], 'Confirmed': r.get('approved_date','')[:10]
                             } for r in confirmed]).to_csv(index=False),
                             "confirmed_full_report.csv", "text/csv", use_container_width=True)
+                
+                # HR PROCESSING QUEUE
+                st.markdown("---")
+                st.markdown("#### 🏢 HR Processing Queue")
+                st.info("Upload confirmation letters and send to employees.")
+                
+                hr_processing = [r for r in reviews if r.get('status') == 'Approved by COO'] if reviews else []
+                
+                if hr_processing:
+                    for r in hr_processing:
+                        emp_name = r.get('employee_name', '')
+                        emp_id = r.get('employee_id', '')
+                        emp_email = ''
+                        
+                        try:
+                            emp_data = db.get_all_employees()
+                            if not emp_data.empty:
+                                match = emp_data[emp_data['employee_id'] == emp_id]
+                                if not match.empty:
+                                    emp_email = match.iloc[0].get('email', '')
+                        except:
+                            pass
+                        
+                        with st.expander(f"🏢 {emp_name} — {r.get('position', '')} | {r.get('department', '')}"):
+                            st.markdown(f"**Employee:** {emp_name}")
+                            st.markdown(f"**Email:** {emp_email or 'N/A'}")
+                            st.markdown(f"**Score:** {r.get('total_performance_score', 'N/A')}/100 — {r.get('performance_rating', 'N/A')}")
+                            
+                            letter_file = st.file_uploader("Upload Confirmation Letter (PDF or DOCX)", type=['pdf', 'docx'], key=f"letter_{emp_id}")
+                            
+                            if st.button("📧 Send Confirmation Letter", key=f"send_letter_{emp_id}", use_container_width=True, type="primary"):
+                                if letter_file:
+                                    if emp_email:
+                                        try:
+                                            letter_ext = "pdf" if letter_file.type == "application/pdf" else "docx"
+                                            letter_url = db.upload_file("confirmation-letters", f"{emp_id}_confirmation_letter.{letter_ext}", letter_file.read(), letter_file.type)
+                                            
+                                            from utils.email_service import EmailService
+                                            EmailService().send_email(
+                                                emp_email,
+                                                f"🎉 Your Confirmation Letter - Churchgate Group",
+                                                f"Dear {emp_name},\n\nWe are delighted to inform you that your employment with Churchgate Group has been formally confirmed, following the successful completion of your probationary period.\n\nYour dedication, performance, and commitment during your probation have been exemplary, and we are pleased to welcome you as a fully confirmed member of our team.\n\nYour confirmation letter is attached to this email. Please review it and keep it for your records.\n\nWe look forward to your continued growth and contributions to the Churchgate Group family.\n\nCongratulations once again!\n\nWarm regards,\n\nChurchgate Group HR Team\nhris@churchgate.com"
+                                            )
+                                            
+                                            db._patch("confirmation_reviews", {
+                                                "status": "Letter Sent",
+                                                "letter_url": letter_url,
+                                                "letter_sent_date": datetime.now().strftime('%Y-%m-%d %H:%M')
+                                            }, {"employee_id": emp_id})
+                                            
+                                            db._patch("employees", {
+                                                "status": "Active",
+                                                "confirmation_status": "Letter Sent"
+                                            }, {"employee_id": emp_id})
+                                            
+                                            st.success(f"✅ Letter sent to {emp_email}!")
+                                            st.balloons()
+                                            time.sleep(1)
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"Error: {str(e)}")
+                                    else:
+                                        st.error("❌ No email found for this employee")
+                                else:
+                                    st.error("❌ Please upload the confirmation letter first")
                 else:
-                    st.info("No confirmed staff match the selected filters.")
+                    st.info("No pending HR processing.")
             else:
                 st.info("No confirmation reviews found.")
         except:
@@ -8197,7 +8431,7 @@ def staff_confirmation():
             if reviews or not all_employees.empty:
                 total_employees = len(all_employees) if not all_employees.empty else 0
                 total_probation = len(all_employees[all_employees['status'] == 'Probation']) if not all_employees.empty else 0
-                total_confirmed = len([r for r in reviews if r.get('status') == 'Approved by COO']) if reviews else 0
+                total_confirmed = len([r for r in reviews if r.get('status') in ['Approved by COO', 'Letter Sent']]) if reviews else 0
                 total_pending = len([r for r in reviews if r.get('status') in ['Pending COO Approval', 'Pending']]) if reviews else 0
                 total_extended = len([r for r in reviews if 'Extension' in str(r.get('status', ''))]) if reviews else 0
                 confirmation_rate = (total_confirmed / max(total_probation + total_confirmed, 1)) * 100
