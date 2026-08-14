@@ -18596,7 +18596,7 @@ def my_profile():
                 else:
                     st.info("No skills added yet.")
                 
-                # Add new skill - outside expander
+                # Add new skill - no rerun
                 new_skill = st.text_input("New Skill", placeholder="e.g., Python, Project Management, BMS", key="new_skill_input")
                 if st.button("➕ Add Skill", key="add_skill_btn_main", use_container_width=True):
                     if new_skill and new_skill.strip():
@@ -18604,7 +18604,8 @@ def my_profile():
                         updated_skills = ', '.join(skills_list)
                         db._patch("users", {"skills": updated_skills}, {"email": user_email})
                         st.success(f"✅ '{new_skill}' added!")
-                        st.rerun()
+                        # Clear the input by using a new key
+                        st.session_state.new_skill_input = ""
                     else:
                         st.warning("Please enter a skill")
             
@@ -18628,7 +18629,7 @@ def my_profile():
                 else:
                     st.info("No certifications added yet.")
                 
-                # Add new certification - outside expander
+                # Add new certification - no rerun
                 new_cert = st.text_input("New Certification", placeholder="e.g., CCNP, PMP, CIPM", key="new_cert_input")
                 if st.button("➕ Add Certification", key="add_cert_btn_main", use_container_width=True):
                     if new_cert and new_cert.strip():
@@ -18636,7 +18637,7 @@ def my_profile():
                         updated_certs = ', '.join(certs_list)
                         db._patch("users", {"certifications": updated_certs}, {"email": user_email})
                         st.success(f"✅ '{new_cert}' added!")
-                        st.rerun()
+                        st.session_state.new_cert_input = ""
                     else:
                         st.warning("Please enter a certification")
             
@@ -18679,7 +18680,7 @@ def my_profile():
                 st.info("No documents uploaded yet.")
             
             st.markdown("---")
-            with st.form("document_upload_form", clear_on_submit=True):
+            with st.form("document_upload_form", clear_on_submit=False):
                 st.markdown("#### 📤 Upload New Document")
                 doc_category = st.selectbox("Document Category", ["personal", "certificate", "contract", "tax", "review"], key="doc_category_form")
                 uploaded_doc = st.file_uploader("Upload Document", type=['pdf', 'docx', 'jpg', 'jpeg', 'png', 'xlsx', 'xls'], key="doc_upload_form")
@@ -18704,9 +18705,9 @@ def my_profile():
                                 "is_public": False
                             })
                             st.success(f"✅ '{doc_name}' saved!")
-                            st.balloons()
-                            time.sleep(1)
-                            st.rerun()
+                            # Clear form fields
+                            st.session_state.doc_name_form = ""
+                            st.session_state.doc_upload_form = None
                         except Exception as e:
                             st.error(f"❌ Upload failed: {str(e)}")
                     else:
