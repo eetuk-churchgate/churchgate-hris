@@ -5964,7 +5964,7 @@ def performance_okrs():
                                         client = Groq(api_key=groq_key)
                                         reasons_text = "\n".join([f"- {r['Employee']} ({r['Department']}, {r['Region']}): {r['Rejection Reason']}" for r in rejections])
                                         response = client.chat.completions.create(
-                                            model="qwen3-27b",
+                                            model="openai/gpt-oss-20b",
                                             messages=[{"role": "system", "content": "Analyze these appraisal rejections. Provide: 1) Top 3 themes 2) Departments with issues 3) Recommendations."},
                                                       {"role": "user", "content": reasons_text}],
                                             temperature=0.5, max_tokens=400
@@ -7069,7 +7069,7 @@ def performance_okrs():
                                     """
                                     
                                     response = client.chat.completions.create(
-                                        model="qwen3-27b",
+                                        model="openai/gpt-oss-20b",
                                         messages=[{
                                             "role": "system",
                                             "content": "You are a Fortune 500 HR Analytics Director. Analyze this appraisal data and provide: 1) Top 3 key findings 2) Department performance comparison 3) Talent risk areas 4) 3 strategic recommendations for leadership 5) Predicted trends for next cycle. Be specific and data-driven."
@@ -8743,7 +8743,7 @@ def staff_confirmation():
                                 if groq_key:
                                     client = Groq(api_key=groq_key)
                                     response = client.chat.completions.create(
-                                        model="qwen3-27b",
+                                        model="openai/gpt-oss-20b",
                                         messages=[{"role": "system", "content": "You are an HR Analytics expert. Provide 3 key findings and 3 recommendations based on staff confirmation data. Be concise."},
                                                   {"role": "user", "content": insights_context}],
                                         temperature=0.5, max_tokens=400
@@ -9423,7 +9423,7 @@ class AIRecruitmentAgent:
         self.use_openai = False
         self.use_groq = False
         self.client = None
-        self.model = "qwen3-27b"
+        self.model = "openai/gpt-oss-20b"
         
         # Try EVERY possible way to get the key
         self.groq_api_key = ""
