@@ -8017,6 +8017,12 @@ def staff_confirmation():
                     if rev_dept != 'All':
                         filtered_review = filtered_review[filtered_review['department'] == rev_dept]
                 
+                # HOD filter: Show only team members reporting directly to this HOD
+                if not is_admin and not filtered_review.empty and 'reports_to' in filtered_review.columns:
+                    filtered_review = filtered_review[
+                        filtered_review['reports_to'].fillna('').str.lower().str.strip() == user_name.lower().strip()
+                    ]
+                
                 st.markdown(f"**{len(filtered_review)} employees to review**")
                 
                 if len(filtered_review) == 0:
@@ -8030,7 +8036,7 @@ def staff_confirmation():
                     join_date = emp.get('join_date', '')
                     end_date = calculate_probation_end(join_date)
                     
-                    if not is_admin and dept != user_dept: continue
+                   # No department check needed - already filtered by reports_to
                     
                     days_left = (end_date - now).days if end_date else 0
                     urgency = "🚨" if days_left < 0 else "⏰" if days_left <= 7 else "📅"
