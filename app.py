@@ -2868,19 +2868,157 @@ def employee_management():
     with tab3:
         st.subheader("📤 Bulk Employee Upload")
         st.info("Upload CSV with columns: employee_id, first_name, last_name, email, phone, department, position, grade, employment_type, join_date, date_of_birth, region, subsidiary, reports_to, gender, status, system_role")
+        
+        # APPROVED DEPARTMENTS
+        APPROVED_DEPARTMENTS = [
+            'Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
+            'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security',
+            'Legal', 'Operations', 'Engineering', 'Admin'
+        ]
+        
+        # SMART DEPARTMENT MAPPING - auto-corrects known alternatives
+        DEPARTMENT_ALIASES = {
+            'facility': 'Facility Management',
+            'facility mgt': 'Facility Management',
+            'facility mgmt': 'Facility Management',
+            'facilities': 'Facility Management',
+            'facilities management': 'Facility Management',
+            'maintenance': 'Facility Management',
+            'sales & marketing': 'Sales, Marketing & Trade Services',
+            'sales and marketing': 'Sales, Marketing & Trade Services',
+            'sales marketing': 'Sales, Marketing & Trade Services',
+            'sales, marketing & trade services': 'Sales, Marketing & Trade Services',
+            'administration': 'Admin',
+            'admin.': 'Admin',
+            'administrative': 'Admin',
+            'security': 'Security',
+            'hr': 'Human Resources',
+            'human resource': 'Human Resources',
+            'human resources': 'Human Resources',
+            'tech': 'Technology Group',
+            'technology': 'Technology Group',
+            'it': 'Technology Group',
+            'accounts': 'Accounts & Finance',
+            'account & finance': 'Accounts & Finance',
+            'accounts and finance': 'Accounts & Finance',
+            'finance': 'Accounts & Finance',
+            'procurement': 'Procurement',
+            'legal': 'Legal',
+            'operations': 'Operations',
+            'engineering': 'Engineering',
+            'senior mgt': 'Senior Management',
+            'senior management': 'Senior Management',
+            'sm': 'Senior Management',
+        }
+        
+        # APPROVED SUBSIDIARIES
+        APPROVED_SUBSIDIARIES = [
+            'Aba Textile Mills PLC', 'Agroline Ventures Limited', 'Associated Textile Manufacturing Company Limited',
+            'First Continental Properties Limited', 'Food & Confectionery Products (Nig.) Limited',
+            'HotelInvest & Resorts Limited', 'Intercott Limited', 'Platinum Travel Limited',
+            'R. B Properties Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited',
+            'World Trade Center(WTC)'
+        ]
+        
+        # SMART SUBSIDIARY MAPPING - auto-corrects known alternatives
+        SUBSIDIARY_ALIASES = {
+            'aba textile mills ltd': 'Aba Textile Mills PLC',
+            'aba textile mills': 'Aba Textile Mills PLC',
+            'aba textile': 'Aba Textile Mills PLC',
+            'agroline': 'Agroline Ventures Limited',
+            'agroline ventures': 'Agroline Ventures Limited',
+            'agroline ventures ltd': 'Agroline Ventures Limited',
+            'associated textile': 'Associated Textile Manufacturing Company Limited',
+            'associated textile manufacturing': 'Associated Textile Manufacturing Company Limited',
+            'associated textile manufacturing ltd': 'Associated Textile Manufacturing Company Limited',
+            'associated textile manufacturing limited': 'Associated Textile Manufacturing Company Limited',
+            'atmcl': 'Associated Textile Manufacturing Company Limited',
+            'first continental': 'First Continental Properties Limited',
+            'first continental properties': 'First Continental Properties Limited',
+            'fcpl': 'First Continental Properties Limited',
+            'food & confectionery': 'Food & Confectionery Products (Nig.) Limited',
+            'food and confectionery': 'Food & Confectionery Products (Nig.) Limited',
+            'food&confectionery': 'Food & Confectionery Products (Nig.) Limited',
+            'food&confectionery products': 'Food & Confectionery Products (Nig.) Limited',
+            'hotelinvest': 'HotelInvest & Resorts Limited',
+            'hotel invest': 'HotelInvest & Resorts Limited',
+            'hotelinvest & resort': 'HotelInvest & Resorts Limited',
+            'hotel invest and resort': 'HotelInvest & Resorts Limited',
+            'intercott': 'Intercott Limited',
+            'platinum travel': 'Platinum Travel Limited',
+            'r. b properties': 'R. B Properties Limited',
+            'r.b properties': 'R. B Properties Limited',
+            'rb properties': 'R. B Properties Limited',
+            'reliance mills': 'Reliance Mills Limited',
+            'vineyard': 'Vineyard Designs Nig. Limited',
+            'vinegard': 'Vineyard Designs Nig. Limited',
+            'vineguard': 'Vineyard Designs Nig. Limited',
+            'vineyard design': 'Vineyard Designs Nig. Limited',
+            'wtc': 'World Trade Center(WTC)',
+            'world trade center': 'World Trade Center(WTC)',
+            'world trade centre': 'World Trade Center(WTC)',
+        }
+        
+        # SMART CORRECTION FUNCTIONS
+        def smart_department_correction(dept_name):
+            if not dept_name:
+                return ''
+            dept_clean = str(dept_name).strip().lower()
+            if dept_clean in DEPARTMENT_ALIASES:
+                return DEPARTMENT_ALIASES[dept_clean]
+            # Exact match after strip
+            for approved in APPROVED_DEPARTMENTS:
+                if dept_clean == approved.lower():
+                    return approved
+            # Contains match
+            for approved in APPROVED_DEPARTMENTS:
+                if approved.lower() in dept_clean or dept_clean in approved.lower():
+                    return approved
+            return ''  # Unknown - leave blank for HR
+        
+        def smart_subsidiary_correction(sub_name):
+            if not sub_name:
+                return ''
+            sub_clean = str(sub_name).strip().lower()
+            if sub_clean in SUBSIDIARY_ALIASES:
+                return SUBSIDIARY_ALIASES[sub_clean]
+            # Exact match after strip
+            for approved in APPROVED_SUBSIDIARIES:
+                if sub_clean == approved.lower():
+                    return approved
+            # Contains match
+            for approved in APPROVED_SUBSIDIARIES:
+                if approved.lower() in sub_clean or sub_clean in approved.lower():
+                    return approved
+            return ''  # Unknown - leave blank for HR
+        
         template_df = pd.DataFrame(columns=['employee_id', 'first_name', 'last_name', 'email', 'phone', 'department', 'position', 'grade', 'employment_type', 'join_date', 'date_of_birth', 'region', 'subsidiary', 'reports_to', 'gender', 'status', 'system_role'])
         st.download_button("📥 Download Template", template_df.to_csv(index=False), "employee_template.csv", "text/csv")
         uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
         if uploaded_file:
             df = pd.read_csv(uploaded_file)
             st.write(f"**{len(df)} employees in file**")
+            
+            # PREVIEW: Show how departments will be corrected
+            if 'department' in df.columns:
+                dept_preview = []
+                for dept in df['department'].dropna().unique():
+                    corrected = smart_department_correction(dept)
+                    dept_preview.append({'Original': str(dept).strip(), 'Will Become': corrected if corrected else '⚠️ BLANK (HR assign)'})
+                
+                if dept_preview:
+                    st.markdown("**📋 Department Preview:**")
+                    st.dataframe(pd.DataFrame(dept_preview), use_container_width=True, hide_index=True)
+            
             st.dataframe(df.head(), use_container_width=True)
             if st.button("📤 Upload All", use_container_width=True):
                 success, fail = 0, 0
+                corrected_count = 0
+                blank_dept_count = 0
+                blank_sub_count = 0
                 progress_bar = st.progress(0)
                 total = len(df)
                 
-                # Pre-load existing IDs for fast duplicate checking
                 existing_ids = set()
                 try:
                     all_emp = db._get("employees")
@@ -2893,12 +3031,10 @@ def employee_management():
                     try:
                         emp_id = str(row.get('employee_id', '')).strip()
                         
-                        # Fast duplicate check
                         if emp_id in existing_ids:
                             fail += 1
                             continue
                         
-                        # Quick date conversion
                         join_date = str(row.get('join_date', '')).strip()
                         dob = str(row.get('date_of_birth', '')).strip()
                         
@@ -2912,13 +3048,29 @@ def employee_management():
                             if len(parts) == 3 and len(parts[2]) == 4:
                                 dob = f"{parts[2]}-{parts[1].zfill(2)}-{parts[0].zfill(2)}"
                         
+                        # SMART DEPARTMENT CORRECTION
+                        raw_dept = str(row.get('department', '')).strip()
+                        corrected_dept = smart_department_correction(raw_dept)
+                        if corrected_dept and corrected_dept != raw_dept:
+                            corrected_count += 1
+                        if not corrected_dept:
+                            blank_dept_count += 1
+                        
+                        # SMART SUBSIDIARY CORRECTION
+                        raw_sub = str(row.get('subsidiary', '')).strip()
+                        corrected_sub = smart_subsidiary_correction(raw_sub)
+                        if corrected_sub and corrected_sub != raw_sub:
+                            corrected_count += 1
+                        if not corrected_sub:
+                            blank_sub_count += 1
+                        
                         db._post("employees", {
                             "employee_id": emp_id,
                             "first_name": str(row.get('first_name', '')).strip(),
                             "last_name": str(row.get('last_name', '')).strip(),
                             "email": str(row.get('email', '')).strip(),
                             "phone": str(row.get('phone', '')).strip(),
-                            "department": str(row.get('department', '')).strip(),
+                            "department": corrected_dept,
                             "position": str(row.get('position', '')).strip(),
                             "grade": str(row.get('grade', 'Junior')).strip(),
                             "employment_type": str(row.get('employment_type', 'Full-time')).strip(),
@@ -2926,14 +3078,13 @@ def employee_management():
                             "date_of_birth": dob,
                             "status": str(row.get('status', 'Active')).strip(),
                             "region": str(row.get('region', 'Lagos')).strip(),
-                            "subsidiary": str(row.get('subsidiary', '')).strip(),
+                            "subsidiary": corrected_sub,
                             "reports_to": str(row.get('reports_to', '')).strip(),
                             "gender": str(row.get('gender', 'Male')).strip()
                         })
                         
                         existing_ids.add(emp_id)
                         
-                        # Create user login
                         emp_email = str(row.get('email', '')).strip()
                         emp_name = f"{str(row.get('first_name', '')).strip()} {str(row.get('last_name', '')).strip()}"
                         emp_role = str(row.get('system_role', 'Team Member')).strip()
@@ -2948,13 +3099,12 @@ def employee_management():
                                     "email": emp_email,
                                     "password": default_pw,
                                     "role": emp_role,
-                                    "department": str(row.get('department', '')).strip(),
+                                    "department": corrected_dept,
                                     "position": str(row.get('position', '')).strip()
                                 })
                             except:
                                 pass
                             
-                            # Send welcome email
                             try:
                                 from utils.email_service import EmailService
                                 EmailService().send_welcome_email(emp_name, emp_email, "https://hris.churchgate.com")
@@ -2971,6 +3121,12 @@ def employee_management():
                 if success > 0:
                     st.success(f"✅ {success} uploaded! ({fail} skipped)")
                     st.info(f"📧 Welcome emails sent to {success} new employees")
+                    if corrected_count > 0:
+                        st.success(f"🔧 {corrected_count} department/subsidiary names auto-corrected!")
+                    if blank_dept_count > 0:
+                        st.warning(f"⚠️ {blank_dept_count} employees uploaded WITHOUT department (HR assign manually)")
+                    if blank_sub_count > 0:
+                        st.warning(f"⚠️ {blank_sub_count} employees uploaded WITHOUT subsidiary (HR assign manually)")
                 else:
                     st.warning(f"⚠️ {fail} records skipped. Check for duplicate IDs.")
                 
