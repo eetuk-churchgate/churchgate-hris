@@ -18596,16 +18596,17 @@ def my_profile():
                 else:
                     st.info("No skills added yet.")
                 
-                # Add new skill
-                with st.expander("➕ Add Skill", expanded=False):
-                    new_skill = st.text_input("New Skill", placeholder="e.g., Python, Project Management, BMS", key="new_skill")
-                    if st.button("Add Skill", key="add_skill_btn", use_container_width=True):
-                        if new_skill and new_skill.strip():
-                            skills_list.append(new_skill.strip())
-                            updated_skills = ', '.join(skills_list)
-                            db._patch("users", {"skills": updated_skills}, {"email": user_email})
-                            st.success(f"✅ '{new_skill}' added!")
-                            st.rerun()
+                # Add new skill - outside expander
+                new_skill = st.text_input("New Skill", placeholder="e.g., Python, Project Management, BMS", key="new_skill_input")
+                if st.button("➕ Add Skill", key="add_skill_btn_main", use_container_width=True):
+                    if new_skill and new_skill.strip():
+                        skills_list.append(new_skill.strip())
+                        updated_skills = ', '.join(skills_list)
+                        db._patch("users", {"skills": updated_skills}, {"email": user_email})
+                        st.success(f"✅ '{new_skill}' added!")
+                        st.rerun()
+                    else:
+                        st.warning("Please enter a skill")
             
             with col2:
                 st.markdown("### 🏅 Certifications")
@@ -18627,16 +18628,17 @@ def my_profile():
                 else:
                     st.info("No certifications added yet.")
                 
-                # Add new certification
-                with st.expander("➕ Add Certification", expanded=False):
-                    new_cert = st.text_input("New Certification", placeholder="e.g., CCNP, PMP, CIPM", key="new_cert")
-                    if st.button("Add Certification", key="add_cert_btn", use_container_width=True):
-                        if new_cert and new_cert.strip():
-                            certs_list.append(new_cert.strip())
-                            updated_certs = ', '.join(certs_list)
-                            db._patch("users", {"certifications": updated_certs}, {"email": user_email})
-                            st.success(f"✅ '{new_cert}' added!")
-                            st.rerun()
+                # Add new certification - outside expander
+                new_cert = st.text_input("New Certification", placeholder="e.g., CCNP, PMP, CIPM", key="new_cert_input")
+                if st.button("➕ Add Certification", key="add_cert_btn_main", use_container_width=True):
+                    if new_cert and new_cert.strip():
+                        certs_list.append(new_cert.strip())
+                        updated_certs = ', '.join(certs_list)
+                        db._patch("users", {"certifications": updated_certs}, {"email": user_email})
+                        st.success(f"✅ '{new_cert}' added!")
+                        st.rerun()
+                    else:
+                        st.warning("Please enter a certification")
             
             # Remove functionality (handled via direct edit)
             with st.expander("✏️ Edit All Skills & Certifications", expanded=False):
@@ -18677,32 +18679,38 @@ def my_profile():
                 st.info("No documents uploaded yet.")
             
             st.markdown("---")
-            doc_category = st.selectbox("Document Category", ["personal", "certificate", "contract", "tax", "review"], key="doc_category")
-            uploaded_doc = st.file_uploader("Upload New Document", type=['pdf', 'docx', 'jpg', 'jpeg', 'png', 'xlsx', 'xls'], key="doc_upload")
-            doc_name = st.text_input("Document Name", placeholder="e.g., Employment Contract, Certification", key="doc_name")
-            
-            if uploaded_doc is not None and doc_name:
-                if st.button("📤 Upload & Save Document", use_container_width=True):
-                    try:
-                        doc_bytes = uploaded_doc.read()
-                        file_url = ""
+            with st.form("document_upload_form", clear_on_submit=True):
+                st.markdown("#### 📤 Upload New Document")
+                doc_category = st.selectbox("Document Category", ["personal", "certificate", "contract", "tax", "review"], key="doc_category_form")
+                uploaded_doc = st.file_uploader("Upload Document", type=['pdf', 'docx', 'jpg', 'jpeg', 'png', 'xlsx', 'xls'], key="doc_upload_form")
+                doc_name = st.text_input("Document Name", placeholder="e.g., Employment Contract, Certification", key="doc_name_form")
+                
+                if st.form_submit_button("📤 Upload & Save Document", use_container_width=True):
+                    if uploaded_doc is not None and doc_name:
                         try:
-                            file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, uploaded_doc.type)
-                        except:
-                            pass
-                        db._post("employee_documents", {
-                            "employee_id": user_id,
-                            "document_type": doc_category,
-                            "document_name": doc_name,
-                            "file_url": file_url,
-                            "uploaded_by": user_name,
-                            "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
-                            "is_public": False
-                        })
-                        st.success(f"✅ '{doc_name}' saved!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"❌ Upload failed: {str(e)}")
+                            doc_bytes = uploaded_doc.read()
+                            file_url = ""
+                            try:
+                                file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, uploaded_doc.type)
+                            except:
+                                pass
+                            db._post("employee_documents", {
+                                "employee_id": user_id,
+                                "document_type": doc_category,
+                                "document_name": doc_name,
+                                "file_url": file_url,
+                                "uploaded_by": user_name,
+                                "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                                "is_public": False
+                            })
+                            st.success(f"✅ '{doc_name}' saved!")
+                            st.balloons()
+                            time.sleep(1)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Upload failed: {str(e)}")
+                    else:
+                        st.warning("Please select a document and enter a name")
         
         with tab4:
             st.markdown("### 👥 My Team")
