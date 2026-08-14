@@ -7975,94 +7975,93 @@ def staff_confirmation():
             st.success("🎉 No employees currently on probation!")
     
     # ============================================================
-    # TAB 2: REVIEW & CONFIRM (WITH FILTERS)
-    # ============================================================
-    with tab2:
-        st.subheader("🔍 Review & Confirm Employees")
-        
-        if is_hod or is_admin:
-            if not probation_employees.empty:
-                # Filters
-                filtered_review = probation_employees.copy()
-                
-                # FILTER: Only show due or overdue employees
-                now_date = datetime.now()
-                due_review = []
-                for _, emp_row in filtered_review.iterrows():
-                    emp_end = calculate_probation_end(emp_row.get('join_date'))
-                    if emp_end and emp_end <= now_date:
-                        due_review.append(emp_row)
-                filtered_review = pd.DataFrame(due_review) if due_review else pd.DataFrame()
-                
-                if is_admin:
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        rev_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="rev_region")
-                    with col2:
-                        SUBSIDIARY_OPTIONS_REV = {
-                            'Abuja': ['All', 'World Trade Center(WTC)', 'Agroline Ventures Limited'],
-                            'Lagos': ['All', 'First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
-                            'Aba': ['All', 'Aba Textile Mills PLC']
-                        }
-                        sub_opts = SUBSIDIARY_OPTIONS_REV.get(rev_region, ['All']) if rev_region != 'All' else ['All']
-                        rev_sub = st.selectbox("🏢 Subsidiary", sub_opts, key="rev_sub")
-                    with col3:
-                        all_depts_rev = ['All'] + sorted(list(probation_employees['department'].dropna().unique()))
-                        rev_dept = st.selectbox("🏭 Department", all_depts_rev, key="rev_dept")
+        # TAB 2: REVIEW & CONFIRM (WITH FILTERS)
+        # ============================================================
+        with tab2:
+            st.subheader("🔍 Review & Confirm Employees")
+            
+            if is_hod or is_admin:
+                if not probation_employees.empty:
+                    # Filters
+                    filtered_review = probation_employees.copy()
                     
-                    if rev_region != 'All':
-                        filtered_review = filtered_review[filtered_review['region'] == rev_region]
-                    if rev_sub != 'All':
-                        filtered_review = filtered_review[filtered_review['subsidiary'] == rev_sub]
-                    if rev_dept != 'All':
-                        filtered_review = filtered_review[filtered_review['department'] == rev_dept]
-                
-                # HOD filter: Show only team members reporting directly to this HOD
-                if not is_admin and not filtered_review.empty and 'reports_to' in filtered_review.columns:
-                    filtered_review = filtered_review[
-                        filtered_review['reports_to'].fillna('').str.lower().str.strip() == user_name.lower().strip()
-                    ]
-                
-                st.markdown(f"**{len(filtered_review)} employees to review**")
-                
-                if len(filtered_review) == 0:
-                    st.info("No employees match the selected filters.")
-                
-                for _, emp in filtered_review.iterrows():
-                    emp_name = f"{emp['first_name']} {emp['last_name']}"
-                    emp_id = emp.get('employee_id', '')
-                    dept = emp.get('department', '')
-                    position = emp.get('position', '')
-                    join_date = emp.get('join_date', '')
-                    end_date = calculate_probation_end(join_date)
+                    # HOD filter: Show ALL in same department
+                    if not is_admin:
+                        filtered_review = filtered_review[
+                            filtered_review['department'].str.lower().str.strip() == user_dept.lower().strip()
+                        ]
                     
-                   # No department check needed - already filtered by reports_to
+                    # FILTER: Only show due or overdue employees
+                    if not filtered_review.empty:
+                        now_date = datetime.now()
+                        due_review = []
+                        for _, emp_row in filtered_review.iterrows():
+                            emp_end = calculate_probation_end(emp_row.get('join_date'))
+                            if emp_end and emp_end <= now_date:
+                                due_review.append(emp_row)
+                        filtered_review = pd.DataFrame(due_review) if due_review else pd.DataFrame()
                     
-                    days_left = (end_date - now).days if end_date else 0
-                    urgency = "🚨" if days_left < 0 else "⏰" if days_left <= 7 else "📅"
-                    
-                    with st.expander(f"{urgency} Review: {emp_name} — {position} ({dept}) | {'OVERDUE' if days_left < 0 else f'{days_left}d left'}"):
-                        st.markdown(f"**Probation Period:** {join_date} to {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
-                        st.markdown(f"**Region:** {emp.get('region', 'N/A')} | **Subsidiary:** {emp.get('subsidiary', 'N/A')}")
+                    if is_admin:
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            rev_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="rev_region")
+                        with col2:
+                            SUBSIDIARY_OPTIONS_REV = {
+                                'Abuja': ['All', 'World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                                'Lagos': ['All', 'First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
+                                'Aba': ['All', 'Aba Textile Mills PLC']
+                            }
+                            sub_opts = SUBSIDIARY_OPTIONS_REV.get(rev_region, ['All']) if rev_region != 'All' else ['All']
+                            rev_sub = st.selectbox("🏢 Subsidiary", sub_opts, key="rev_sub")
+                        with col3:
+                            all_depts_rev = ['All'] + sorted(list(probation_employees['department'].dropna().unique()))
+                            rev_dept = st.selectbox("🏭 Department", all_depts_rev, key="rev_dept")
                         
-                        # Check if already reviewed
-                        try:
-                            existing_review = db._get("confirmation_reviews")
-                            already_reviewed = [r for r in existing_review if r.get('employee_id') == emp_id]
-                            if already_reviewed:
-                                latest = already_reviewed[0]
-                                st.info(f"📋 Already reviewed by {latest.get('hod_name','')} on {latest.get('review_date','')[:10]} — Status: {latest.get('status','')}")
-                        except:
-                            pass
+                        if rev_region != 'All':
+                            filtered_review = filtered_review[filtered_review['region'] == rev_region]
+                        if rev_sub != 'All':
+                            filtered_review = filtered_review[filtered_review['subsidiary'] == rev_sub]
+                        if rev_dept != 'All':
+                            filtered_review = filtered_review[filtered_review['department'] == rev_dept]
+                    
+                    st.markdown(f"**{len(filtered_review)} employees to review**")
+                    
+                    if len(filtered_review) == 0:
+                        st.info("No employees match the selected filters.")
+                    
+                    for _, emp in filtered_review.iterrows():
+                        emp_name = f"{emp['first_name']} {emp['last_name']}"
+                        emp_id = emp.get('employee_id', '')
+                        dept = emp.get('department', '')
+                        position = emp.get('position', '')
+                        join_date = emp.get('join_date', '')
+                        end_date = calculate_probation_end(join_date)
                         
-                        # HOD Review - FULL DECISION FORM
-                        if is_hod:
-                            st.markdown("---")
-                            st.markdown("#### 👔 EMPLOYEE CONFIRMATION DECISION FORM")
+                        days_left = (end_date - now).days if end_date else 0
+                        urgency = "🚨" if days_left < 0 else "⏰" if days_left <= 7 else "📅"
+                        
+                        with st.expander(f"{urgency} Review: {emp_name} — {position} ({dept}) | {'OVERDUE' if days_left < 0 else f'{days_left}d left'}"):
+                            st.markdown(f"**Probation Period:** {join_date} to {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                            st.markdown(f"**Region:** {emp.get('region', 'N/A')} | **Subsidiary:** {emp.get('subsidiary', 'N/A')}")
                             
-                            # Get employee data
-                            emp_region = emp.get('region', '')
-                            emp_subsidiary = emp.get('subsidiary', '')
+                            # Check if already reviewed
+                            try:
+                                existing_review = db._get("confirmation_reviews")
+                                already_reviewed = [r for r in existing_review if r.get('employee_id') == emp_id]
+                                if already_reviewed:
+                                    latest = already_reviewed[0]
+                                    st.info(f"📋 Already reviewed by {latest.get('hod_name','')} on {latest.get('review_date','')[:10]} — Status: {latest.get('status','')}")
+                            except:
+                                pass
+                            
+                            # HOD Review - FULL DECISION FORM
+                            if is_hod:
+                                st.markdown("---")
+                                st.markdown("#### 👔 EMPLOYEE CONFIRMATION DECISION FORM")
+                                
+                                # Get employee data
+                                emp_region = emp.get('region', '')
+                                emp_subsidiary = emp.get('subsidiary', '')
                             
                             SUBSIDIARY_OPTIONS_FORM = {
                                 'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
