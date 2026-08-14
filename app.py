@@ -1041,7 +1041,7 @@ def sidebar_navigation():
                 "bullseye", "globe", "book-half", "heart-fill", 
                 "mortarboard-fill", "shield-fill", "graph-up", "person-circle"
             ]
-        elif user_role == 'Manager':
+        elif user_role in ['Manager', 'HOD', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level', 'Senior Management']:
             menu_options = [
                 "🏠 Employee Dashboard", "✅ Staff Confirmation", "💼 Recruitment Hub", 
                 "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "🔄 Requests Hub",
