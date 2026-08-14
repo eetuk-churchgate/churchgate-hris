@@ -2658,7 +2658,7 @@ def employee_management():
                             ec1, ec2, ec3 = st.columns(3)
                             with ec1:
                                 current_dept = str(emp.get('department', 'Technology Group'))
-                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
+                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin', 'Central Stores']
                                 dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 1
                                 new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -2795,7 +2795,7 @@ def employee_management():
                 phone = st.text_input("Phone")
             with c2:
                 employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
-                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
+                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin', 'Central Stores'])
                 position = st.text_input("Position *")
                 grade = st.selectbox("Grade", ['Junior', 'Intermediate', 'Mid-Senior', 'Senior', 'Manager', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level'])
             with c3:
@@ -3178,7 +3178,7 @@ def employee_management():
                 single_name = st.text_input("Full Name *", value=emp_full_name)
                 single_pw = st.text_input("Password", value="churchgate2026")
             with c2:
-                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
+                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin', 'Central Stores']
                 dept_idx = dept_options.index(emp_db_dept) if emp_db_dept in dept_options else 0
                 single_dept = st.selectbox("Department", dept_options, index=dept_idx, key="single_dept")
                 single_role = st.selectbox("Role", ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin'], key="single_role")
@@ -18388,7 +18388,7 @@ def my_profile():
                     new_gender = st.selectbox("Gender", ['Male', 'Female'], index=0 if emp_gender == 'Male' else 1)
                 with c2:
                     new_last = st.text_input("Last Name", value=last_name)
-                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
+                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin', 'Central Stores']
                     dept_idx = dept_list.index(emp_dept) if emp_dept in dept_list else 0
                     new_dept = st.selectbox("Department", dept_list, index=dept_idx)
                     new_region = st.selectbox("Region", ['Abuja', 'Lagos'], index=0 if emp_region == 'Abuja' else 1)
