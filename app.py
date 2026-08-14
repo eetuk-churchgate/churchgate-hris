@@ -4780,15 +4780,14 @@ def performance_okrs():
             hod_cycle = fy_cycle_map.get(hod_fy, hod_fy)
             st.caption(f"📊 Viewing: **{hod_fy}**")
             
-            # ===== SECTION 1: KPI APPROVAL =====
+           # ===== SECTION 1: KPI APPROVAL =====
             st.markdown("### 📊 Team KPI Submissions")
             try:
                 all_perf = db._get("performance_data"); team_submissions = {}
                 for row in (all_perf or []):
                     if row.get('submission_status') == 'Submitted':
-                        # Filter by cycle
                         kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                        matching = [k for k in kpi_list if k.get('cycle', '') == hod_cycle]
+                        matching = kpi_list
                         if not matching:
                             continue
                         clean_name = ' '.join(str(row.get('user_name', '')).split())
