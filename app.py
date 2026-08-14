@@ -18681,42 +18681,43 @@ def my_profile():
             st.markdown("---")
             st.markdown("#### 📤 Upload New Document")
             
-            # File uploader OUTSIDE form
-            uploaded_doc = st.file_uploader("Upload Document", type=['pdf', 'docx', 'jpg', 'jpeg', 'png', 'xlsx', 'xls'], key="doc_uploader_outside")
-            doc_name = st.text_input("Document Name", placeholder="e.g., Employment Contract", key="doc_name_outside")
-            doc_category = st.selectbox("Document Category", ["personal", "certificate", "contract", "tax", "review"], key="doc_cat_outside")
-            
-            if st.button("📤 Upload & Save Document", use_container_width=True, type="primary"):
-                if uploaded_doc is not None and doc_name:
-                    with st.spinner("Uploading document..."):
-                        try:
-                            doc_bytes = uploaded_doc.read()
-                            file_url = ""
+            with st.form("document_upload_form", clear_on_submit=True):
+                uploaded_doc = st.file_uploader("Upload Document", type=['pdf', 'docx', 'jpg', 'jpeg', 'png', 'xlsx', 'xls'])
+                doc_name = st.text_input("Document Name", placeholder="e.g., Employment Contract")
+                doc_category = st.selectbox("Document Category", ["personal", "certificate", "contract", "tax", "review"])
+                
+                submit_doc = st.form_submit_button("📤 Upload & Save Document", use_container_width=True, type="primary")
+                
+                if submit_doc:
+                    if uploaded_doc is not None and doc_name:
+                        with st.spinner("Uploading document..."):
                             try:
-                                file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, uploaded_doc.type)
+                                safe_doc_name = doc_name.replace(' ', '_').replace('(', '').replace(')', '')
+                                doc_bytes = uploaded_doc.read()
+                                file_url = ""
+                                try:
+                                    file_url = db.upload_file("documents", f"{user_id}_{safe_doc_name}", doc_bytes, uploaded_doc.type)
+                                except Exception as e:
+                                    st.warning(f"Storage note: {str(e)}")
+                                
+                                db._post("employee_documents", {
+                                    "employee_id": user_id,
+                                    "document_type": doc_category,
+                                    "document_name": doc_name,
+                                    "file_url": file_url,
+                                    "uploaded_by": user_name,
+                                    "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                                    "is_public": False
+                                })
+                                st.success(f"✅ '{doc_name}' saved!")
+                                st.rerun()
                             except Exception as e:
-                                st.warning(f"Storage upload note: {str(e)}")
-                            
-                            db._post("employee_documents", {
-                                "employee_id": user_id,
-                                "document_type": doc_category,
-                                "document_name": doc_name,
-                                "file_url": file_url,
-                                "uploaded_by": user_name,
-                                "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
-                                "is_public": False
-                            })
-                            st.success(f"✅ '{doc_name}' saved!")
-                            st.balloons()
-                            time.sleep(1)
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"❌ Upload failed: {str(e)}")
-                else:
-                    if uploaded_doc is None:
-                        st.warning("Please select a file to upload")
-                    if not doc_name:
-                        st.warning("Please enter a document name")
+                                st.error(f"❌ Upload failed: {str(e)}")
+                    else:
+                        if uploaded_doc is None:
+                            st.warning("Please select a file to upload")
+                        if not doc_name:
+                            st.warning("Please enter a document name")
         
         with tab4:
             st.markdown("### 👥 My Team")
