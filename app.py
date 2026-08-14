@@ -18558,24 +18558,18 @@ def my_profile():
         with tab3:
             st.subheader("🛠️ My Skills & Certifications")
             
-            import requests as req
-            
-            # Load saved data using direct API
+            # Load saved data
             saved_skills = ""
             saved_certs = ""
             try:
-                supabase_url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
-                supabase_key = os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
-                headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}"}
-                url = f"{supabase_url}/rest/v1/users?select=skills,certifications&email=eq.{user_email}"
-                r = req.get(url, headers=headers)
-                if r.status_code == 200 and r.json():
-                    user_data = r.json()[0]
-                    saved_skills = user_data.get('skills', '') or ""
-                    saved_certs = user_data.get('certifications', '') or ""
+                result = db._get("users", {"email": user_email})
+                if result and len(result) > 0:
+                    saved_skills = result[0].get('skills', '') or ""
+                    saved_certs = result[0].get('certifications', '') or ""
             except:
                 pass
             
+            # Parse skills and certs into lists
             skills_list = [s.strip() for s in saved_skills.split(',') if s.strip()] if saved_skills else []
             certs_list = [c.strip() for c in saved_certs.split(',') if c.strip()] if saved_certs else []
             
@@ -18584,69 +18578,82 @@ def my_profile():
             with col1:
                 st.markdown("### 💻 Technical Skills")
                 
+                # Display skills as stylish tags
                 if skills_list:
-                    for skill in skills_list:
-                        st.markdown(f"✅ {skill}")
+                    st.markdown('<div style="display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0;">', unsafe_allow_html=True)
+                    for i, skill in enumerate(skills_list):
+                        colors = ['#CC0000', '#1a1a1a', '#4a4a4a', '#2d3748', '#718096']
+                        color = colors[i % len(colors)]
+                        st.markdown(f"""
+                            <div style="background: {color}; color: white; padding: 8px 16px; border-radius: 20px; 
+                                        font-size: 0.85rem; font-weight: 500; display: inline-flex; align-items: center; gap: 8px;">
+                                {skill}
+                                <span style="cursor: pointer; font-weight: bold; font-size: 1rem;" 
+                                      title="Remove {skill}">×</span>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
                 else:
                     st.info("No skills added yet.")
                 
-                st.markdown("---")
-                new_skill = st.text_input("New Skill", key="skill_input_new")
-                if st.button("➕ Add Skill", key="skill_btn_new", use_container_width=True):
-                    if new_skill and new_skill.strip():
-                        skills_list.append(new_skill.strip())
-                        updated = ', '.join(skills_list)
-                        try:
-                            supabase_url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
-                            supabase_key = os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
-                            headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}", "Content-Type": "application/json"}
-                            url = f"{supabase_url}/rest/v1/users?email=eq.{user_email}"
-                            r = req.patch(url, json={"skills": updated}, headers=headers)
-                            if r.status_code in [200, 204]:
+                # Add new skill
+                with st.expander("➕ Add Skill", expanded=False):
+                    with st.form("add_skill_form", clear_on_submit=True):
+                        new_skill = st.text_input("New Skill", placeholder="e.g., Python, Project Management, BMS", key="new_skill_form")
+                        if st.form_submit_button("Add Skill", use_container_width=True):
+                            if new_skill and new_skill.strip():
+                                skills_list.append(new_skill.strip())
+                                updated_skills = ', '.join(skills_list)
+                                db._patch("users", {"skills": updated_skills}, {"email": user_email})
                                 st.success(f"✅ '{new_skill}' added!")
-                                st.session_state.skill_input_new = ""
-                            else:
-                                st.error(f"Failed: {r.text[:100]}")
-                        except Exception as e:
-                            st.error(f"Error: {str(e)}")
-                    else:
-                        st.warning("Enter a skill")
+                                st.rerun()
             
             with col2:
                 st.markdown("### 🏅 Certifications")
                 
+                # Display certifications as stylish cards
                 if certs_list:
-                    for cert in certs_list:
-                        st.markdown(f"🏅 {cert}")
+                    for i, cert in enumerate(certs_list):
+                        colors = ['#CC0000', '#1a1a1a', '#4a4a4a', '#2d3748']
+                        color = colors[i % len(colors)]
+                        st.markdown(f"""
+                            <div style="background: {color}; color: white; padding: 10px 16px; border-radius: 10px; 
+                                        margin-bottom: 8px; display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 1.2rem;">🏅</span>
+                                <span style="flex: 1; font-weight: 500;">{cert}</span>
+                                <span style="cursor: pointer; font-weight: bold; font-size: 1rem;" 
+                                      title="Remove {cert}">×</span>
+                            </div>
+                        """, unsafe_allow_html=True)
                 else:
-                    st.info("No certifications yet.")
+                    st.info("No certifications added yet.")
                 
-                st.markdown("---")
-                new_cert = st.text_input("New Certification", key="cert_input_new")
-                if st.button("➕ Add Certification", key="cert_btn_new", use_container_width=True):
-                    if new_cert and new_cert.strip():
-                        certs_list.append(new_cert.strip())
-                        updated = ', '.join(certs_list)
-                        try:
-                            supabase_url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
-                            supabase_key = os.environ.get("SUPABASE_KEY", "sb_publishable_iDYmuO5jfqmzydDPgNhL3w_b21rWMhm")
-                            headers = {"apikey": supabase_key, "Authorization": f"Bearer {supabase_key}", "Content-Type": "application/json"}
-                            url = f"{supabase_url}/rest/v1/users?email=eq.{user_email}"
-                            r = req.patch(url, json={"certifications": updated}, headers=headers)
-                            if r.status_code in [200, 204]:
+                # Add new certification
+                with st.expander("➕ Add Certification", expanded=False):
+                    with st.form("add_cert_form", clear_on_submit=True):
+                        new_cert = st.text_input("New Certification", placeholder="e.g., CCNP, PMP, CIPM", key="new_cert_form")
+                        if st.form_submit_button("Add Certification", use_container_width=True):
+                            if new_cert and new_cert.strip():
+                                certs_list.append(new_cert.strip())
+                                updated_certs = ', '.join(certs_list)
+                                db._patch("users", {"certifications": updated_certs}, {"email": user_email})
                                 st.success(f"✅ '{new_cert}' added!")
-                                st.session_state.cert_input_new = ""
-                            else:
-                                st.error(f"Failed: {r.text[:100]}")
-                        except Exception as e:
-                            st.error(f"Error: {str(e)}")
-                    else:
-                        st.warning("Enter a certification")
+                                st.rerun()
+            
+            # Remove functionality (handled via direct edit)
+            with st.expander("✏️ Edit All Skills & Certifications", expanded=False):
+                st.markdown("**Edit Skills (comma-separated)**")
+                edit_skills = st.text_area("Skills", value=', '.join(skills_list), height=80, key="edit_skills")
+                st.markdown("**Edit Certifications (comma-separated)**")
+                edit_certs = st.text_area("Certifications", value=', '.join(certs_list), height=80, key="edit_certs")
+                if st.button("💾 Save Changes", use_container_width=True):
+                    db._patch("users", {"skills": edit_skills, "certifications": edit_certs}, {"email": user_email})
+                    st.success("✅ Skills & Certifications updated!")
+                    st.rerun()
             
             st.markdown("---")
             st.subheader("📁 My Documents")
             
-            # Load documents
             saved_docs = []
             try:
                 result = db._get("employee_documents", {"employee_id": user_id})
@@ -18657,46 +18664,50 @@ def my_profile():
             
             if saved_docs:
                 for doc in saved_docs[:10]:
-                    col_a, col_b = st.columns([4, 1])
-                    with col_a:
+                    col1, col2, col3 = st.columns([3, 1, 1])
+                    with col1:
                         st.markdown(f"📄 **{doc.get('document_name', 'Document')}**")
-                    with col_b:
+                        st.caption(f"{doc.get('uploaded_at', '')[:10]}")
+                    with col2:
                         if doc.get('file_url'):
                             st.markdown(f"[📥 Download]({doc['file_url']})")
+                    with col3:
+                        if st.button("🗑️", key=f"del_doc_{doc.get('id', '')}"):
+                            db._delete("employee_documents", {"id": doc.get('id')})
+                            st.rerun()
             else:
                 st.info("No documents uploaded yet.")
             
             st.markdown("---")
-            doc_category = st.selectbox("Document Category", ["personal", "certificate", "contract", "tax", "review"], key="doc_cat_new")
-            uploaded_doc = st.file_uploader("Upload Document", type=['pdf', 'docx', 'jpg', 'jpeg', 'png', 'xlsx', 'xls'], key="doc_file_new")
-            doc_name = st.text_input("Document Name", key="doc_name_new")
-            
-            if st.button("📤 Upload & Save", key="doc_btn_new", use_container_width=True):
-                if uploaded_doc is not None and doc_name:
-                    try:
-                        doc_bytes = uploaded_doc.read()
-                        file_url = ""
+            with st.form("doc_upload_form", clear_on_submit=False):
+                doc_category = st.selectbox("Document Category", ["personal", "certificate", "contract", "tax", "review"], key="doc_category_form")
+                uploaded_doc = st.file_uploader("Upload New Document", type=['pdf', 'docx', 'jpg', 'jpeg', 'png', 'xlsx', 'xls'], key="doc_upload_form")
+                doc_name = st.text_input("Document Name", placeholder="e.g., Employment Contract, Certification", key="doc_name_form")
+                
+                if st.form_submit_button("📤 Upload & Save Document", use_container_width=True):
+                    if uploaded_doc is not None and doc_name:
                         try:
-                            file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, uploaded_doc.type)
-                        except:
-                            pass
-                        
-                        db._post("employee_documents", {
-                            "employee_id": user_id,
-                            "document_type": doc_category,
-                            "document_name": doc_name,
-                            "file_url": file_url,
-                            "uploaded_by": user_name,
-                            "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
-                            "is_public": False
-                        })
-                        st.success(f"✅ '{doc_name}' saved!")
-                        st.session_state.doc_name_new = ""
-                        st.session_state.doc_file_new = None
-                    except Exception as e:
-                        st.error(f"❌ Upload failed: {str(e)}")
-                else:
-                    st.warning("Select a document and enter a name")
+                            doc_bytes = uploaded_doc.read()
+                            file_url = ""
+                            try:
+                                file_url = db.upload_file("documents", f"{user_id}_{doc_name}", doc_bytes, uploaded_doc.type)
+                            except:
+                                pass
+                            db._post("employee_documents", {
+                                "employee_id": user_id,
+                                "document_type": doc_category,
+                                "document_name": doc_name,
+                                "file_url": file_url,
+                                "uploaded_by": user_name,
+                                "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M'),
+                                "is_public": False
+                            })
+                            st.success(f"✅ '{doc_name}' saved!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Upload failed: {str(e)}")
+                    else:
+                        st.warning("Select a document and enter a name")
         
         with tab4:
             st.markdown("### 👥 My Team")
