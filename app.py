@@ -3998,8 +3998,10 @@ def performance_okrs():
                         if fy and fy not in available_fy:
                             available_fy.append(fy)
         
-        if not available_fy:
-            available_fy = ['FY 26/27', 'FY 25/26']
+        # Ensure both FYs are always available
+        for fy in ['FY 26/27', 'FY 25/26']:
+            if fy not in available_fy:
+                available_fy.append(fy)
         
         available_fy = sorted(available_fy, reverse=True)
         default_fy = cycle_fy_map.get(st.session_state.appraisal_cycle_name, 'FY 26/27')
@@ -4937,36 +4939,52 @@ def performance_okrs():
                         hod_count = 0
                         
                         for pillar in pillar_order:
-                            pillar_scores = {k: v for k, v in sorted(assessment['scores'].items(), key=natural_sort_key) if k.startswith(pillar)}
+                            # Get ALL scores for this pillar from the assessment
+                            pillar_scores = {}
+                            for score_key, score_val in assessment.get('scores', {}).items():
+                                if score_key.startswith(pillar):
+                                    pillar_scores[score_key] = score_val
+                            
                             if pillar_scores:
-                                pillar_staff_avg = sum(int(v) for v in pillar_scores.values()) / len(pillar_scores)
+                                # Sort scores by their numeric suffix
+                                sorted_pillar_scores = sorted(pillar_scores.items(), key=lambda x: int(x[0].rsplit('_', 1)[1]) if '_' in x[0] and x[0].rsplit('_', 1)[1].isdigit() else 0)
+                                
+                                pillar_staff_avg = sum(int(v) for k, v in sorted_pillar_scores if v) / len(sorted_pillar_scores) if sorted_pillar_scores else 0
                                 st.markdown(f"**{pillar}** (Staff Avg: {pillar_staff_avg:.0f}%)")
-                                for score_key, staff_score in pillar_scores.items():
+                                
+                                for score_key, staff_score in sorted_pillar_scores:
                                     kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
                                     kpi_name = f"KPI {kpi_index + 1}"
+                                    
+                                    # Get KPI name from performance_data
                                     try:
                                         all_p = db._get("performance_data")
                                         for row in (all_p or []):
                                             if row.get('user_name') == staff_name and row.get('pillar_name') == pillar:
                                                 kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                                if kpi_index < len(kpi_list): kpi_name = kpi_list[kpi_index].get('kpi', kpi_name)
-                                                break
-                                    except: pass
+                                                if kpi_index < len(kpi_list):
+                                                    kpi_name = kpi_list[kpi_index].get('kpi', kpi_name)
+                                                    break
+                                    except:
+                                        pass
                                     
+                                    # Get KPI comment (justification)
                                     kpi_comment = assessment.get('pillar_comments', {}).get(pillar, '')
+                                    
                                     st.markdown(f"**{kpi_name}**")
                                     if kpi_comment:
                                         st.markdown(f"<div style='background:#faf8f2;padding:0.6rem;border-radius:4px;border-left:3px solid #D4AF37;font-size:0.8rem;margin-top:0.3rem;'>💬 {kpi_comment}</div>", unsafe_allow_html=True)
                                     
                                     c1, c2 = st.columns(2)
-                                    with c1: st.markdown(f"<small>Staff: {staff_score}%</small>", unsafe_allow_html=True)
+                                    with c1:
+                                        st.markdown(f"<small>Staff: {staff_score}%</small>", unsafe_allow_html=True)
                                     with c2:
                                         prev_hod = assessment.get('hod_scores', {}).get(score_key, 0) if is_re_review else 0
                                         hod_scores[score_key] = st.number_input("HOD Score", 0, 100, int(prev_hod) if prev_hod else 0, 1, key=f"hod_{staff_name}_{score_key}")
                                     
-                                    staff_total += int(staff_score)
+                                    staff_total += int(staff_score) if staff_score else 0
                                     staff_count += 1
-                                    hod_total += int(hod_scores[score_key])
+                                    hod_total += int(hod_scores[score_key]) if hod_scores[score_key] else 0
                                     hod_count += 1
                                 st.markdown("---")
                         
