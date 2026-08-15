@@ -3144,7 +3144,7 @@ def employee_management():
         
         st.markdown("### ⚡ Quick Single Employee")
         
-        # Employee selector dropdown - OUTSIDE FORM
+        # Employee selector dropdown - OUTSIDE FORM for instant response
         selected_emp = st.selectbox("👤 Select Employee", ["Select employee..."] + emp_options_list, key="single_emp_dropdown")
         
         # Auto-fill from selection
@@ -3184,22 +3184,32 @@ def employee_management():
             single_role = st.selectbox("Role", ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin'], key="single_role_input")
             single_id = st.text_input("Employee ID", value=emp_db_id, placeholder="e.g., AN00001", key="single_id_input")
         
-        # Submit button - NOT in form
+        # Submit button - Use session state to prevent reload
         if st.button("🔑 Create Single Login", use_container_width=True, type="primary", key="single_login_btn"):
             if single_email and single_name:
                 try:
+                    # Create user first (fast operation)
                     db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, emp_db_position or 'Staff')
                     st.success(f"✅ Login created for {single_name}!")
                     st.info(f"🔗 Login at: https://hris.churchgate.com")
+                    
+                    # Send email WITHOUT blocking UI
                     try:
                         from utils.email_service import EmailService
-                        EmailService().send_welcome_email(single_name, single_email, "https://hris.churchgate.com")
-                        st.info(f"📧 Welcome email sent to {single_email}")
-                    except:
-                        pass
+                        with st.spinner("📧 Sending welcome email..."):
+                            EmailService().send_welcome_email(single_name, single_email, "https://hris.churchgate.com")
+                            st.success(f"📧 Welcome email sent to {single_email}")
+                    except Exception as e:
+                        st.warning(f"⚠️ Login created but email failed: {str(e)}")
+                    
                     st.balloons()
-                except:
-                    st.warning(f"⚠️ A login for {single_email} may already exist.")
+                    
+                    # Clear cached users to reflect new login
+                    if 'cached_get_users' in globals():
+                        cached_get_users.clear()
+                    
+                except Exception as e:
+                    st.warning(f"⚠️ A login for {single_email} may already exist. Error: {str(e)}")
             else:
                 st.error("❌ Email and Name required!")
         
@@ -3240,27 +3250,31 @@ def employee_management():
                     'Has Login': '✅ Yes' if has_login else '❌ No'
                 })
             
-            # Display with checkboxes
+            # Display with checkboxes using columns
             st.markdown("**Select employees to generate logins:**")
             
+            # Select All / Deselect All WITHOUT st.rerun()
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("✅ Select All Without Login", use_container_width=True, key="select_all_btn"):
                     for emp in emp_list:
                         if emp['Has Login'] == '❌ No':
                             emp['Select'] = True
-                    st.rerun()
+                    # No st.rerun() - Streamlit will update checkboxes naturally
+            
             with col2:
                 if st.button("🔄 Deselect All", use_container_width=True, key="deselect_all_btn"):
                     for emp in emp_list:
                         emp['Select'] = False
-                    st.rerun()
+                    # No st.rerun() - Streamlit will update checkboxes naturally
             
             # Table with checkboxes
             for i, emp in enumerate(emp_list):
                 cols = st.columns([0.5, 2, 1, 2, 1, 1, 1])
                 with cols[0]:
-                    emp['Select'] = st.checkbox("", value=emp['Select'], key=f"sel_{i}", label_visibility="collapsed")
+                    # Use session state key that persists
+                    checkbox_key = f"bulk_sel_{emp['ID']}"
+                    emp['Select'] = st.checkbox("", value=emp['Select'], key=checkbox_key, label_visibility="collapsed")
                 with cols[1]:
                     st.markdown(f"<small>{emp['Name'][:25]}</small>", unsafe_allow_html=True)
                 with cols[2]:
@@ -3277,27 +3291,57 @@ def employee_management():
             selected = [e for e in emp_list if e['Select']]
             st.markdown(f"**{len(selected)} employee(s) selected**")
             
-            # Bulk generate button - NOT in form
+            # Bulk generate button
             if st.button(f"🔑 Generate Logins for {len(selected)} Selected", use_container_width=True, disabled=len(selected)==0, key="bulk_gen_btn"):
                 count = 0
-                for emp in selected:
+                email_failures = []
+                
+                # Progress bar for bulk operation
+                progress_bar = st.progress(0)
+                
+                for idx, emp in enumerate(selected):
                     if emp['Email'] and emp['Email'] != 'N/A' and '@' in emp['Email']:
                         try:
+                            # Create user (fast)
                             db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, emp['Role'], emp['Department'], 'Staff')
+                            count += 1
+                            
+                            # Send email (don't block UI)
                             try:
                                 from utils.email_service import EmailService
                                 EmailService().send_welcome_email(emp['Name'], emp['Email'], "https://hris.churchgate.com")
                             except:
-                                pass
-                            count += 1
+                                email_failures.append(emp['Email'])
+                            
                         except Exception as e:
                             st.warning(f"Failed for {emp['Name']}: {str(e)}")
+                    
+                    # Update progress
+                    progress_bar.progress((idx + 1) / len(selected))
+                
+                # Show results
                 st.success(f"✅ {count} logins generated!")
                 st.info(f"🔗 Login URL: https://hris.churchgate.com")
                 st.info(f"🔑 Default password: **{default_pw}**")
                 
-                login_df = pd.DataFrame(selected)
-                st.download_button("📥 Download Login List", login_df[['Name', 'Email', 'ID', 'Department', 'Role']].to_csv(index=False), "logins.csv", "text/csv")
+                if email_failures:
+                    st.warning(f"⚠️ {len(email_failures)} emails failed to send: {', '.join(email_failures[:5])}")
+                
+                # Download list
+                login_df = pd.DataFrame([{
+                    'Name': e['Name'],
+                    'Email': e['Email'],
+                    'ID': e['ID'],
+                    'Department': e['Department'],
+                    'Role': e['Role']
+                } for e in selected if e['Email'] and '@' in e['Email']])
+                
+                if not login_df.empty:
+                    st.download_button("📥 Download Login List", login_df.to_csv(index=False), "logins.csv", "text/csv")
+                
+                # Clear cached users
+                if 'cached_get_users' in globals():
+                    cached_get_users.clear()
         else:
             st.info("No employees found.")
     
