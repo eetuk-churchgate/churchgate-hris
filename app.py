@@ -3137,22 +3137,20 @@ def employee_management():
     with tab4:
         st.subheader("🔑 Generate Employee Login Credentials")
         
-        # Load employees for dropdown
-        emp_list = []
+        # Build employee dropdown list
+        emp_options_list = []
         if not employees_df.empty:
-            emp_list = [f"{row['first_name']} {row['last_name']} — {row.get('department', '')}" for _, row in employees_df.iterrows()]
+            emp_options_list = [f"{row['first_name']} {row['last_name']} — {row.get('department', '')}" for _, row in employees_df.iterrows()]
         
-        # ===== QUICK SINGLE EMPLOYEE =====
         st.markdown("### ⚡ Quick Single Employee")
         
-        # Employee dropdown
-        selected_emp = st.selectbox("👤 Select Employee *", ["Select employee..."] + emp_list)
+        # Employee selector dropdown
+        selected_emp = st.selectbox("👤 Select Employee", ["Select employee..."] + emp_options_list, key="single_emp_dropdown")
         
+        # Auto-fill from selection
         if selected_emp != "Select employee...":
-            # Get selected employee details
             selected_name = selected_emp.split(" — ")[0].strip()
             emp_match = employees_df[employees_df.apply(lambda x: f"{x['first_name']} {x['last_name']}".strip() == selected_name, axis=1)]
-            
             if not emp_match.empty:
                 emp_row = emp_match.iloc[0]
                 emp_full_name = f"{emp_row['first_name']} {emp_row['last_name']}"
@@ -3176,17 +3174,14 @@ def employee_management():
         with st.form("single_login_form"):
             c1, c2 = st.columns(2)
             with c1:
-                single_email = st.text_input("Employee Email *", 
-                    value=emp_db_email, 
-                    placeholder="e.g., employee@churchgate.com",
-                    help="Auto-filled from database")
+                single_email = st.text_input("Employee Email *", value=emp_db_email, placeholder="e.g., employee@churchgate.com")
                 single_name = st.text_input("Full Name *", value=emp_full_name)
                 single_pw = st.text_input("Password", value="churchgate2026")
             with c2:
-                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering']
+                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
                 dept_idx = dept_options.index(emp_db_dept) if emp_db_dept in dept_options else 0
                 single_dept = st.selectbox("Department", dept_options, index=dept_idx, key="single_dept")
-                single_role = st.selectbox("Role", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], key="single_role")
+                single_role = st.selectbox("Role", ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin'], key="single_role")
                 single_id = st.text_input("Employee ID", value=emp_db_id, placeholder="e.g., AN00001")
             
             if st.form_submit_button("🔑 Create Single Login", use_container_width=True):
@@ -3194,81 +3189,114 @@ def employee_management():
                     try:
                         db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, emp_db_position or 'Staff')
                         st.success(f"✅ Login created for {single_name}!")
+                        st.info(f"🔗 Login at: https://hris.churchgate.com")
+                        try:
+                            from utils.email_service import EmailService
+                            EmailService().send_welcome_email(single_name, single_email, "https://hris.churchgate.com")
+                            st.info(f"📧 Welcome email sent to {single_email}")
+                        except:
+                            pass
                         st.balloons()
                     except:
-                        st.warning("User may already exist.")
+                        st.warning(f"⚠️ A login for {single_email} may already exist.")
                 else:
                     st.error("❌ Email and Name required!")
         
-        # ===== BULK GENERATE =====
         st.markdown("---")
         st.markdown("### 👥 Bulk Generate Logins")
-        st.info("Search and select employees from the database to generate logins.")
-        
         if not employees_df.empty:
             default_pw = st.text_input("Default Password for Bulk", value="churchgate2026")
             
             # Search bar
-            bulk_search = st.text_input("🔍 Search employees", placeholder="Type name, department, or email...", key="bulk_search")
+            bulk_search = st.text_input("🔍 Search employees", placeholder="Type name, department, or email...", key="bulk_search_input")
             
-            # Build searchable list
-            emp_options = []
+            # Build employee list with current login status
+            emp_list = []
+            try:
+                existing_users = db._get("users")
+                existing_emails = {u.get('email', '') for u in (existing_users or [])}
+            except:
+                existing_emails = set()
+            
             for _, emp in employees_df.iterrows():
-                full_name = f"{emp['first_name']} {emp['last_name']}"
-                dept = emp.get('department', '')
-                email_val = emp.get('email', '')
-                emp_id = emp.get('employee_id', '')
-                role_val = emp.get('role', emp.get('position', 'Team Member'))
+                emp_email = str(emp.get('email', ''))
+                emp_name = f"{emp['first_name']} {emp['last_name']}"
+                emp_dept = emp.get('department', '')
                 
-                display = f"{full_name} | {dept} | {email_val or 'No email'} | {role_val}"
-                emp_options.append({"name": full_name, "dept": dept, "email": email_val, "id": emp_id, "display": display, "role": role_val})
+                # Apply search filter
+                if bulk_search:
+                    search_term = bulk_search.lower()
+                    if search_term not in emp_name.lower() and search_term not in emp_dept.lower() and search_term not in emp_email.lower():
+                        continue
+                
+                has_login = emp_email in existing_emails
+                emp_list.append({
+                    'Select': False,
+                    'Name': emp_name,
+                    'ID': emp['employee_id'],
+                    'Email': emp_email,
+                    'Department': emp_dept,
+                    'Role': str(emp.get('role', 'Team Member')),
+                    'Has Login': '✅ Yes' if has_login else '❌ No'
+                })
             
-            # Filter by search
-            if bulk_search:
-                s = bulk_search.lower()
-                emp_options = [e for e in emp_options if s in e['name'].lower() or s in e['dept'].lower() or s in e['email'].lower()]
+            # Display with checkboxes for selection
+            st.markdown("**Select employees to generate logins:**")
             
-            # Multi-select display
-            display_options = [e['display'] for e in emp_options]
-            selected_employees = st.multiselect("Select employees to generate logins", display_options, key="bulk_emp_select")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("✅ Select All Without Login", use_container_width=True):
+                    for emp in emp_list:
+                        if emp['Has Login'] == '❌ No':
+                            emp['Select'] = True
+                    st.rerun()
+            with col2:
+                if st.button("🔄 Deselect All", use_container_width=True):
+                    for emp in emp_list:
+                        emp['Select'] = False
+                    st.rerun()
             
-            if selected_employees:
-                st.success(f"✅ {len(selected_employees)} employee(s) selected")
+            # Show table with checkboxes
+            for i, emp in enumerate(emp_list):
+                cols = st.columns([0.5, 2, 1, 2, 1, 1, 1])
+                with cols[0]:
+                    emp['Select'] = st.checkbox("", value=emp['Select'], key=f"sel_{i}", label_visibility="collapsed")
+                with cols[1]:
+                    st.markdown(f"<small>{emp['Name'][:25]}</small>", unsafe_allow_html=True)
+                with cols[2]:
+                    st.markdown(f"<small>{emp['Department'][:15]}</small>", unsafe_allow_html=True)
+                with cols[3]:
+                    st.markdown(f"<small>{emp['Email'][:25]}</small>", unsafe_allow_html=True)
+                with cols[4]:
+                    st.markdown(f"<small>{emp['Role']}</small>", unsafe_allow_html=True)
+                with cols[5]:
+                    st.markdown(f"<small>{emp['Has Login']}</small>", unsafe_allow_html=True)
+                with cols[6]:
+                    st.markdown(f"<small>{emp['ID']}</small>", unsafe_allow_html=True)
+            
+            selected = [e for e in emp_list if e['Select']]
+            st.markdown(f"**{len(selected)} employee(s) selected**")
+            
+            if st.button(f"🔑 Generate Logins for {len(selected)} Selected", use_container_width=True, disabled=len(selected)==0):
+                count = 0
+                for emp in selected:
+                    if emp['Email'] and emp['Email'] != 'N/A' and '@' in emp['Email']:
+                        try:
+                            db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, emp['Role'], emp['Department'], 'Staff')
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_welcome_email(emp['Name'], emp['Email'], "https://hris.churchgate.com")
+                            except:
+                                pass
+                            count += 1
+                        except Exception as e:
+                            st.warning(f"Failed for {emp['Name']}: {str(e)}")
+                st.success(f"✅ {count} logins generated!")
+                st.info(f"🔗 Login URL: https://hris.churchgate.com")
+                st.info(f"🔑 Default password: **{default_pw}**")
                 
-                # Preview table
-                preview_data = []
-                for display in selected_employees:
-                    matched = [e for e in emp_options if e['display'] == display]
-                    if matched:
-                        emp = matched[0]
-                        has_login = "✅ Yes" if emp['email'] else "❌ No"
-                        preview_data.append({
-                            'Name': emp['name'], 'Department': emp['dept'], 'Email': emp['email'] or 'N/A',
-                            'Role': emp['role'], 'Has Email': has_login, 'Employee ID': emp['id']
-                        })
-                
-                if preview_data:
-                    st.dataframe(pd.DataFrame(preview_data), use_container_width=True, hide_index=True)
-                
-                if st.button("🔑 Generate Logins for Selected", use_container_width=True, type="primary"):
-                    count = 0
-                    for display in selected_employees:
-                        matched = [e for e in emp_options if e['display'] == display]
-                        if matched:
-                            emp = matched[0]
-                            if emp['email'] and '@' in emp['email']:
-                                try:
-                                    db.create_user(emp['id'], emp['name'], emp['email'], default_pw, emp['role'], emp['dept'], 'Staff')
-                                    count += 1
-                                except:
-                                    pass
-                    st.success(f"✅ {count} logins generated!")
-                    st.info(f"Default password: **{default_pw}**")
-                    st.download_button("📥 Download Login List", 
-                        pd.DataFrame(preview_data).to_csv(index=False), 
-                        "logins.csv", "text/csv")
-            else:
-                st.info("👆 Use the search bar and select employees from the dropdown.")
+                login_df = pd.DataFrame(selected)
+                st.download_button("📥 Download Login List", login_df[['Name', 'Email', 'ID', 'Department', 'Role']].to_csv(index=False), "logins.csv", "text/csv")
         else:
             st.info("No employees found.")
     
