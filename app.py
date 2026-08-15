@@ -2565,6 +2565,7 @@ def employee_management():
             items_per_page = 10
             total_pages = max(1, (len(filtered_df) + items_per_page - 1) // items_per_page)
             
+            # Initialize pagination state
             if 'dir_page' not in st.session_state:
                 st.session_state.dir_page = 1
             
@@ -2572,21 +2573,34 @@ def employee_management():
             if st.session_state.dir_page > total_pages:
                 st.session_state.dir_page = total_pages
             
+            # Callback functions for pagination - single click works
+            def go_previous():
+                if st.session_state.dir_page > 1:
+                    st.session_state.dir_page -= 1
+            
+            def go_next():
+                if st.session_state.dir_page < total_pages:
+                    st.session_state.dir_page += 1
+            
             pg_col1, pg_col2, pg_col3 = st.columns([1, 2, 1])
             with pg_col1:
-                # Previous button - NO st.rerun()
-                prev_clicked = st.button("⬅️ Previous", disabled=st.session_state.dir_page <= 1, use_container_width=True, key=f"prev_btn_{st.session_state.dir_page}")
-                if prev_clicked:
-                    st.session_state.dir_page -= 1
+                # Previous button - on_click callback for instant response
+                st.button("⬅️ Previous", 
+                         disabled=st.session_state.dir_page <= 1, 
+                         use_container_width=True, 
+                         key="prev_page_button",
+                         on_click=go_previous)
             
             with pg_col2:
                 st.markdown(f"<p style='text-align:center;color:#666;'>Page <strong>{st.session_state.dir_page}</strong> of <strong>{total_pages}</strong></p>", unsafe_allow_html=True)
             
             with pg_col3:
-                # Next button - NO st.rerun()
-                next_clicked = st.button("Next ➡️", disabled=st.session_state.dir_page >= total_pages, use_container_width=True, key=f"next_btn_{st.session_state.dir_page}")
-                if next_clicked:
-                    st.session_state.dir_page += 1
+                # Next button - on_click callback for instant response
+                st.button("Next ➡️", 
+                         disabled=st.session_state.dir_page >= total_pages, 
+                         use_container_width=True, 
+                         key="next_page_button",
+                         on_click=go_next)
             
             start_idx = (st.session_state.dir_page - 1) * items_per_page
             end_idx = min(start_idx + items_per_page, len(filtered_df))
@@ -3135,10 +3149,6 @@ def employee_management():
     with tab4:
         st.subheader("🔑 Generate Employee Login Credentials")
         
-        # Initialize session state for selections
-        if 'selected_employees' not in st.session_state:
-            st.session_state.selected_employees = []
-        
         # Build employee dropdown list
         emp_options_list = []
         if not employees_df.empty:
@@ -3187,12 +3197,14 @@ def employee_management():
                 try:
                     db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, st.session_state.get('single_position', 'Staff'))
                     st.success(f"✅ Login created for {single_name}!")
+                    st.info(f"🔗 Login at: https://hris.churchgate.com")
                     try:
                         from utils.email_service import EmailService
                         EmailService().send_welcome_email(single_name, single_email, "https://hris.churchgate.com")
                         st.info(f"📧 Welcome email sent to {single_email}")
                     except:
                         pass
+                    st.balloons()
                 except:
                     st.warning(f"⚠️ A login for {single_email} may already exist.")
             else:
@@ -3204,9 +3216,20 @@ def employee_management():
         if not employees_df.empty:
             default_pw = st.text_input("Default Password for Bulk", value="churchgate2026", key="bulk_pw")
             
-            # Use multiselect instead of checkboxes
+            # Search bar
+            bulk_search = st.text_input("🔍 Search employees", placeholder="Type name, department, or email...", key="bulk_search")
+            
+            # Get existing users
+            try:
+                existing_users = db._get("users")
+                existing_emails = {u.get('email', ''): u for u in (existing_users or [])}
+            except:
+                existing_emails = {}
+            
+            # Build employee list with login status
             emp_display_list = []
             emp_data_map = {}
+            
             for _, emp in employees_df.iterrows():
                 full_name = f"{emp['first_name']} {emp['last_name']}"
                 emp_email = str(emp.get('email', ''))
@@ -3214,46 +3237,71 @@ def employee_management():
                 emp_id = emp.get('employee_id', '')
                 emp_role = str(emp.get('role', 'Team Member'))
                 
-                display = f"{full_name} | {emp_dept} | {emp_email or 'No Email'}"
+                # Check if has login
+                has_login = emp_email in existing_emails
+                login_status = "✅" if has_login else "❌"
+                
+                # Filter by search
+                if bulk_search:
+                    search_term = bulk_search.lower()
+                    if search_term not in full_name.lower() and search_term not in emp_dept.lower() and search_term not in emp_email.lower():
+                        continue
+                
+                # Display with login status
+                display = f"{login_status} | {full_name} | {emp_dept} | {emp_email or 'No Email'}"
                 emp_display_list.append(display)
                 emp_data_map[display] = {
                     'Name': full_name,
                     'Email': emp_email,
                     'Department': emp_dept,
                     'ID': emp_id,
-                    'Role': emp_role
+                    'Role': emp_role,
+                    'Has Login': has_login
                 }
             
-            # MULTISELECT - This works on Railway!
+            # Show legend
+            st.markdown("**Legend:** ✅ = Already has login | ❌ = No login yet")
+            
+            # MULTISELECT with login status
             selected_displays = st.multiselect(
                 "Select employees to generate logins",
                 emp_display_list,
-                key="bulk_multiselect"
+                key="bulk_multiselect",
+                help="✅ = Already has login | ❌ = Needs login"
             )
             
-            st.markdown(f"**{len(selected_displays)} employee(s) selected**")
+            # Show selected count with breakdown
+            selected_with_login = [d for d in selected_displays if emp_data_map[d]['Has Login']]
+            selected_without_login = [d for d in selected_displays if not emp_data_map[d]['Has Login']]
+            
+            st.markdown(f"**{len(selected_displays)} selected:** {len(selected_without_login)} need login, {len(selected_with_login)} already have login")
             
             if st.button("🔑 Generate Logins for Selected", use_container_width=True, type="primary", key="bulk_generate_button", disabled=len(selected_displays)==0):
                 count = 0
+                skipped = 0
                 progress_bar = st.progress(0)
                 
                 for idx, display in enumerate(selected_displays):
                     emp = emp_data_map.get(display)
                     if emp and emp['Email'] and '@' in emp['Email']:
-                        try:
-                            db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, emp['Role'], emp['Department'], 'Staff')
-                            count += 1
+                        if emp['Has Login']:
+                            skipped += 1
+                            st.warning(f"⚠️ {emp['Name']} already has login - skipped")
+                        else:
                             try:
-                                from utils.email_service import EmailService
-                                EmailService().send_welcome_email(emp['Name'], emp['Email'], "https://hris.churchgate.com")
+                                db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, emp['Role'], emp['Department'], 'Staff')
+                                count += 1
+                                try:
+                                    from utils.email_service import EmailService
+                                    EmailService().send_welcome_email(emp['Name'], emp['Email'], "https://hris.churchgate.com")
+                                except:
+                                    pass
                             except:
-                                pass
-                        except:
-                            pass
+                                st.warning(f"Failed for {emp['Name']}")
                     
                     progress_bar.progress((idx + 1) / len(selected_displays))
                 
-                st.success(f"✅ {count} logins generated!")
+                st.success(f"✅ {count} logins generated! ({skipped} skipped - already had login)")
                 st.info(f"🔑 Default password: **{default_pw}**")
         else:
             st.info("No employees found.")
