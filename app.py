@@ -2436,7 +2436,7 @@ def employee_management():
         with c3: st.metric("🏢 Departments", len(employees_df['department'].unique()) if not employees_df.empty else 0)
         with c4: st.metric("🆕 New This Month", new_this_month)
         
-       # Birthdays this month
+        # Birthdays this month
         st.markdown("---")
         
         # Get today's date
@@ -2452,16 +2452,6 @@ def employee_management():
             ("Benjamin Okhueleigbe", 20), ("Kazeem Tijani", 23), ("Olatunde Obe", 24), ("Geraldine Ejimonye", 25),
             ("Anand Bora", 28), ("Yemisi Kolawole", 29)
         ] if b[1] == current_day]
-        
-        todays_anniversaries = [a for a in [
-            ("Sanjeev Purwar", 29), ("John Peter", 25), ("Geraldine Ejimonye", 17), ("Boniface Ali", 17),
-            ("Robert Akinniyi", 17), ("Safdar Hasnain", 12), ("Charles Onwukwe", 10), ("Magesh Gopal", 10),
-            ("Partab Lalchandani", 10), ("Bamidele Mayaki", 10), ("Nchor Agba", 10), ("Chisom Nwachinemere", 10),
-            ("Dinesh Vadher", 7), ("Olatunde Obe", 6), ("Kefas Mathew", 5), ("Ujunwa Onyemechalu", 3),
-            ("Kayode Oniyide", 3), ("Martins Ezeh", 3), ("Thankgod Ochayi", 3), ("Gabriel Jeremiah", 3),
-            ("Tabitha Mallo", 3), ("Dandy Shemang", 3), ("Alfred Obot", 3), ("Edwin Adobi", 3),
-            ("Shedrack Augustine", 3), ("Soji Alademehin", 2), ("Raphael Ayeomoni", 1), ("David Oyinbo", 1)
-        ] if a[1] == current_day]  # This is years, not day - so this won't match perfectly. Let's just show celebrations differently.
         
         # Today's Celebrations
         if todays_birthdays:
@@ -2529,26 +2519,24 @@ def employee_management():
                     st.markdown(f"**{milestone}**")
                     for name in names:
                         st.markdown(f"• {name}")
-                else:
-                    st.markdown("None this month")
         
         st.markdown("---")
         
         # Search & Filters
         c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1])
         with c1:
-            search = st.text_input("🔍 Search", placeholder="Name, ID, email, department, position...")
+            search = st.text_input("🔍 Search", placeholder="Name, ID, email, department, position...", key="dir_search")
         with c2:
             all_depts = ['All'] + sorted(list(employees_df['department'].dropna().unique())) if not employees_df.empty else ['All']
-            dept_filter = st.selectbox("Department", all_depts)
+            dept_filter = st.selectbox("Department", all_depts, key="dir_dept_filter")
         with c3:
             all_regions = ['All'] + sorted(list(employees_df['region'].dropna().unique())) if not employees_df.empty and 'region' in employees_df.columns else ['All']
-            region_filter = st.selectbox("Region", all_regions)
+            region_filter = st.selectbox("Region", all_regions, key="dir_region_filter")
         with c4:
             all_grades = ['All'] + sorted(list(employees_df['grade'].dropna().unique())) if not employees_df.empty else ['All']
-            grade_filter = st.selectbox("Grade", all_grades)
+            grade_filter = st.selectbox("Grade", all_grades, key="dir_grade_filter")
         with c5:
-            status_filter = st.selectbox("Status", ["All", "Active", "On Leave", "Probation", "Terminated", "Archived", "Inactive"])
+            status_filter = st.selectbox("Status", ["All", "Active", "On Leave", "Probation", "Terminated", "Archived", "Inactive"], key="dir_status_filter")
         
         filtered_df = employees_df.copy()
         if not filtered_df.empty:
@@ -2580,15 +2568,25 @@ def employee_management():
             if 'dir_page' not in st.session_state:
                 st.session_state.dir_page = 1
             
+            # Ensure page is within bounds
+            if st.session_state.dir_page > total_pages:
+                st.session_state.dir_page = total_pages
+            
             pg_col1, pg_col2, pg_col3 = st.columns([1, 2, 1])
             with pg_col1:
-                if st.button("⬅️ Previous", disabled=st.session_state.dir_page <= 1, use_container_width=True):
-                    st.session_state.dir_page -= 1; st.rerun()
+                # Previous button - NO st.rerun()
+                prev_clicked = st.button("⬅️ Previous", disabled=st.session_state.dir_page <= 1, use_container_width=True, key=f"prev_btn_{st.session_state.dir_page}")
+                if prev_clicked:
+                    st.session_state.dir_page -= 1
+            
             with pg_col2:
                 st.markdown(f"<p style='text-align:center;color:#666;'>Page <strong>{st.session_state.dir_page}</strong> of <strong>{total_pages}</strong></p>", unsafe_allow_html=True)
+            
             with pg_col3:
-                if st.button("Next ➡️", disabled=st.session_state.dir_page >= total_pages, use_container_width=True):
-                    st.session_state.dir_page += 1; st.rerun()
+                # Next button - NO st.rerun()
+                next_clicked = st.button("Next ➡️", disabled=st.session_state.dir_page >= total_pages, use_container_width=True, key=f"next_btn_{st.session_state.dir_page}")
+                if next_clicked:
+                    st.session_state.dir_page += 1
             
             start_idx = (st.session_state.dir_page - 1) * items_per_page
             end_idx = min(start_idx + items_per_page, len(filtered_df))
@@ -2682,7 +2680,6 @@ def employee_management():
                                         current_join_date_val = date.today()
                                 else:
                                     current_join_date_val = date.today()
-                                # Ensure join date is within valid range
                                 if current_join_date_val and current_join_date_val >= date(1950, 1, 1) and current_join_date_val <= date.today():
                                     display_date = current_join_date_val
                                 else:
@@ -2694,12 +2691,10 @@ def employee_management():
                                 gender_idx = 0 if current_gender == 'Male' else 1
                                 new_gender = st.selectbox("Gender", gender_options, index=gender_idx, key=f"gen_{emp['employee_id']}_{st.session_state.dir_page}")
                             with ec3:
-                                # Get current role, default to Team Member
                                 current_role = str(emp.get('role', 'Team Member'))
                                 role_options = ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin']
                                 role_idx = role_options.index(current_role) if current_role in role_options else 0
-                                new_role = st.selectbox("System Role", role_options, index=role_idx,
-                                    key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
+                                new_role = st.selectbox("System Role", role_options, index=role_idx, key=f"role_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_email = st.text_input("Email", value=str(emp.get('email', '')), key=f"eml_{emp['employee_id']}_{st.session_state.dir_page}")
                                 new_leave = st.number_input("Leave Days", value=int(emp.get('leave_balance', 20) or 20), min_value=0, max_value=365, key=f"leave_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -2727,7 +2722,7 @@ def employee_management():
                                     }, {"employee_id": emp['employee_id']})
                                     db._patch("users", {"role": new_role, "department": new_dept, "name": f"{emp['first_name']} {emp['last_name']}"}, {"email": new_email})
                                     st.success(f"✅ {emp['first_name']} {emp['last_name']} updated!")
-                                    st.cache_data.clear(); time.sleep(1); st.rerun()
+                                    st.cache_data.clear()
                                 except Exception as e:
                                     st.error(f"Update failed: {str(e)}")
                         
@@ -2742,11 +2737,13 @@ def employee_management():
                             if current_status == 'Archived':
                                 if st.button("🔄 Restore", key=f"restore_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
                                     db._patch("employees", {"status": "Active"}, {"employee_id": emp['employee_id']})
-                                    st.success(f"✅ Restored!"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                                    st.success(f"✅ Restored!")
+                                    st.cache_data.clear()
                             else:
                                 if st.button("📦 Archive", key=f"archive_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
                                     db._patch("employees", {"status": "Archived"}, {"employee_id": emp['employee_id']})
-                                    st.success(f"📦 Archived!"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                                    st.success(f"📦 Archived!")
+                                    st.cache_data.clear()
                         with action_col3:
                             del_pending_key = f"del_pending_{emp['employee_id']}_{st.session_state.dir_page}"
                             if st.button("🗑️ Delete", key=f"del_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
@@ -2758,7 +2755,8 @@ def employee_management():
                                         ok = db._delete("employees", {"employee_id": emp['employee_id']})
                                         del st.session_state[del_pending_key]
                                         if ok:
-                                            st.success("🗑️ Deleted!"); st.cache_data.clear(); time.sleep(1); st.rerun()
+                                            st.success("🗑️ Deleted!")
+                                            st.cache_data.clear()
                                         else:
                                             st.error("Delete failed — the employee may still be referenced by other records (appraisals, documents, etc).")
                                     except Exception as e: st.error(f"Failed: {str(e)}")
@@ -3133,17 +3131,13 @@ def employee_management():
                 st.balloons()
                 st.cache_data.clear()
     
-     # ============ TAB 4: GENERATE LOGINS ============
+    # ============ TAB 4: GENERATE LOGINS ============
     with tab4:
         st.subheader("🔑 Generate Employee Login Credentials")
         
-        # Initialize session state
-        if 'bulk_selections' not in st.session_state:
-            st.session_state.bulk_selections = {}
-        if 'single_submitted' not in st.session_state:
-            st.session_state.single_submitted = False
-        if 'bulk_submitted' not in st.session_state:
-            st.session_state.bulk_submitted = False
+        # Initialize session state for selections
+        if 'selected_employees' not in st.session_state:
+            st.session_state.selected_employees = []
         
         # Build employee dropdown list
         emp_options_list = []
@@ -3152,58 +3146,55 @@ def employee_management():
         
         st.markdown("### ⚡ Quick Single Employee")
         
-        selected_emp = st.selectbox("👤 Select Employee", ["Select employee..."] + emp_options_list, key="single_emp_dd")
+        # Single employee - NOT in form, use session state
+        selected_emp = st.selectbox("👤 Select Employee", ["Select employee..."] + emp_options_list, key="single_emp_select")
         
+        # Auto-fill using session state
         if selected_emp != "Select employee...":
             selected_name = selected_emp.split(" — ")[0].strip()
             emp_match = employees_df[employees_df.apply(lambda x: f"{x['first_name']} {x['last_name']}".strip() == selected_name, axis=1)]
             if not emp_match.empty:
                 emp_row = emp_match.iloc[0]
-                emp_full_name = f"{emp_row['first_name']} {emp_row['last_name']}"
-                emp_db_email = emp_row.get('email', '')
-                emp_db_dept = emp_row.get('department', '')
-                emp_db_id = emp_row.get('employee_id', '')
-                emp_db_position = emp_row.get('position', '')
-            else:
-                emp_full_name = selected_name
-                emp_db_email = ''
-                emp_db_dept = ''
-                emp_db_id = ''
-                emp_db_position = ''
-        else:
-            emp_full_name = ''
-            emp_db_email = ''
-            emp_db_dept = ''
-            emp_db_id = ''
-            emp_db_position = ''
+                # Store in session state
+                st.session_state.single_email = emp_row.get('email', '')
+                st.session_state.single_name = f"{emp_row['first_name']} {emp_row['last_name']}"
+                st.session_state.single_dept = emp_row.get('department', '')
+                st.session_state.single_id = emp_row.get('employee_id', '')
+                st.session_state.single_position = emp_row.get('position', '')
         
+        # Input fields with session state defaults
         c1, c2 = st.columns(2)
         with c1:
-            single_email = st.text_input("Employee Email *", value=emp_db_email, key="s_email")
-            single_name = st.text_input("Full Name *", value=emp_full_name, key="s_name")
-            single_pw = st.text_input("Password", value="churchgate2026", key="s_pw")
+            single_email = st.text_input("Employee Email *", 
+                value=st.session_state.get('single_email', ''), 
+                key="single_email_input")
+            single_name = st.text_input("Full Name *", 
+                value=st.session_state.get('single_name', ''), 
+                key="single_name_input")
+            single_pw = st.text_input("Password", value="churchgate2026", key="single_pw_input")
         with c2:
             dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
-            dept_idx = dept_options.index(emp_db_dept) if emp_db_dept in dept_options else 0
-            single_dept = st.selectbox("Department", dept_options, index=dept_idx, key="s_dept")
-            single_role = st.selectbox("Role", ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin'], key="s_role")
-            single_id = st.text_input("Employee ID", value=emp_db_id, key="s_id")
+            current_dept = st.session_state.get('single_dept', 'Senior Management')
+            dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 0
+            single_dept = st.selectbox("Department", dept_options, index=dept_idx, key="single_dept_select")
+            single_role = st.selectbox("Role", ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin'], key="single_role_select")
+            single_id = st.text_input("Employee ID", 
+                value=st.session_state.get('single_id', ''), 
+                key="single_id_input")
         
-        if st.button("🔑 Create Single Login", use_container_width=True, type="primary", key="btn_single"):
+        if st.button("🔑 Create Single Login", use_container_width=True, type="primary", key="single_login_button"):
             if single_email and single_name:
-                with st.spinner("Creating login..."):
+                try:
+                    db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, st.session_state.get('single_position', 'Staff'))
+                    st.success(f"✅ Login created for {single_name}!")
                     try:
-                        db.create_user(single_id, single_name, single_email, single_pw, single_role, single_dept, emp_db_position or 'Staff')
-                        st.success(f"✅ Login created for {single_name}!")
-                        try:
-                            from utils.email_service import EmailService
-                            EmailService().send_welcome_email(single_name, single_email, "https://hris.churchgate.com")
-                            st.info(f"📧 Welcome email sent to {single_email}")
-                        except:
-                            pass
-                        st.balloons()
+                        from utils.email_service import EmailService
+                        EmailService().send_welcome_email(single_name, single_email, "https://hris.churchgate.com")
+                        st.info(f"📧 Welcome email sent to {single_email}")
                     except:
-                        st.warning(f"⚠️ A login for {single_email} may already exist.")
+                        pass
+                except:
+                    st.warning(f"⚠️ A login for {single_email} may already exist.")
             else:
                 st.error("❌ Email and Name required!")
         
@@ -3211,112 +3202,59 @@ def employee_management():
         st.markdown("### 👥 Bulk Generate Logins")
         
         if not employees_df.empty:
-            default_pw = st.text_input("Default Password for Bulk", value="churchgate2026", key="b_pw")
-            bulk_search = st.text_input("🔍 Search employees", placeholder="Type name, department, or email...", key="b_search")
+            default_pw = st.text_input("Default Password for Bulk", value="churchgate2026", key="bulk_pw")
             
-            # Build employee list
-            emp_list = []
-            try:
-                existing_users = db._get("users")
-                existing_emails = {u.get('email', '') for u in (existing_users or [])}
-            except:
-                existing_emails = set()
-            
+            # Use multiselect instead of checkboxes
+            emp_display_list = []
+            emp_data_map = {}
             for _, emp in employees_df.iterrows():
+                full_name = f"{emp['first_name']} {emp['last_name']}"
                 emp_email = str(emp.get('email', ''))
-                emp_name = f"{emp['first_name']} {emp['last_name']}"
                 emp_dept = emp.get('department', '')
+                emp_id = emp.get('employee_id', '')
+                emp_role = str(emp.get('role', 'Team Member'))
                 
-                if bulk_search:
-                    search_term = bulk_search.lower()
-                    if search_term not in emp_name.lower() and search_term not in emp_dept.lower() and search_term not in emp_email.lower():
-                        continue
-                
-                has_login = emp_email in existing_emails
-                emp_key = emp['employee_id']
-                
-                # Use session state for selection
-                is_selected = st.session_state.bulk_selections.get(emp_key, False)
-                
-                emp_list.append({
-                    'Key': emp_key,
-                    'Name': emp_name,
-                    'ID': emp['employee_id'],
+                display = f"{full_name} | {emp_dept} | {emp_email or 'No Email'}"
+                emp_display_list.append(display)
+                emp_data_map[display] = {
+                    'Name': full_name,
                     'Email': emp_email,
                     'Department': emp_dept,
-                    'Role': str(emp.get('role', 'Team Member')),
-                    'Has Login': has_login,
-                    'Selected': is_selected
-                })
+                    'ID': emp_id,
+                    'Role': emp_role
+                }
             
-            # Select All / Deselect All
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                if st.button("✅ Select Without Login", use_container_width=True, key="btn_select_no_login"):
-                    for emp in emp_list:
-                        if not emp['Has Login']:
-                            st.session_state.bulk_selections[emp['Key']] = True
-                    st.rerun()
-            with col2:
-                if st.button("✅ Select All", use_container_width=True, key="btn_select_all"):
-                    for emp in emp_list:
-                        st.session_state.bulk_selections[emp['Key']] = True
-                    st.rerun()
-            with col3:
-                if st.button("🔄 Clear All", use_container_width=True, key="btn_clear_all"):
-                    st.session_state.bulk_selections = {}
-                    st.rerun()
+            # MULTISELECT - This works on Railway!
+            selected_displays = st.multiselect(
+                "Select employees to generate logins",
+                emp_display_list,
+                key="bulk_multiselect"
+            )
             
-            # Table with checkboxes using session state
-            for emp in emp_list:
-                cols = st.columns([0.4, 2, 1.2, 2, 1, 0.8, 0.8])
-                with cols[0]:
-                    new_val = st.checkbox("", value=st.session_state.bulk_selections.get(emp['Key'], False), 
-                                         key=f"chk_{emp['Key']}")
-                    st.session_state.bulk_selections[emp['Key']] = new_val
-                with cols[1]:
-                    st.markdown(f"<small>{emp['Name'][:22]}</small>", unsafe_allow_html=True)
-                with cols[2]:
-                    st.markdown(f"<small>{emp['Department'][:14]}</small>", unsafe_allow_html=True)
-                with cols[3]:
-                    st.markdown(f"<small>{emp['Email'][:22]}</small>", unsafe_allow_html=True)
-                with cols[4]:
-                    st.markdown(f"<small>{emp['Role']}</small>", unsafe_allow_html=True)
-                with cols[5]:
-                    icon = "✅" if emp['Has Login'] else "❌"
-                    st.markdown(f"<small>{icon}</small>", unsafe_allow_html=True)
-                with cols[6]:
-                    st.markdown(f"<small>{emp['ID']}</small>", unsafe_allow_html=True)
+            st.markdown(f"**{len(selected_displays)} employee(s) selected**")
             
-            selected = [e for e in emp_list if st.session_state.bulk_selections.get(e['Key'], False)]
-            st.markdown(f"**{len(selected)} employee(s) selected**")
-            
-            if st.button(f"🔑 Generate Logins for {len(selected)} Selected", use_container_width=True, 
-                        disabled=len(selected)==0, key="btn_bulk_generate"):
+            if st.button("🔑 Generate Logins for Selected", use_container_width=True, type="primary", key="bulk_generate_button", disabled=len(selected_displays)==0):
                 count = 0
-                with st.spinner(f"Generating {len(selected)} logins..."):
-                    for emp in selected:
-                        if emp['Email'] and '@' in emp['Email']:
+                progress_bar = st.progress(0)
+                
+                for idx, display in enumerate(selected_displays):
+                    emp = emp_data_map.get(display)
+                    if emp and emp['Email'] and '@' in emp['Email']:
+                        try:
+                            db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, emp['Role'], emp['Department'], 'Staff')
+                            count += 1
                             try:
-                                db.create_user(emp['ID'], emp['Name'], emp['Email'], default_pw, emp['Role'], emp['Department'], 'Staff')
-                                try:
-                                    from utils.email_service import EmailService
-                                    EmailService().send_welcome_email(emp['Name'], emp['Email'], "https://hris.churchgate.com")
-                                except:
-                                    pass
-                                count += 1
+                                from utils.email_service import EmailService
+                                EmailService().send_welcome_email(emp['Name'], emp['Email'], "https://hris.churchgate.com")
                             except:
                                 pass
+                        except:
+                            pass
+                    
+                    progress_bar.progress((idx + 1) / len(selected_displays))
                 
                 st.success(f"✅ {count} logins generated!")
                 st.info(f"🔑 Default password: **{default_pw}**")
-                st.session_state.bulk_selections = {}
-                
-                login_df = pd.DataFrame([{
-                    'Name': e['Name'], 'Email': e['Email'], 'ID': e['ID'],
-                    'Department': e['Department'], 'Role': e['Role']
-                } for e in selected])
-                st.download_button("📥 Download Login List", login_df.to_csv(index=False), "logins.csv", "text/csv")
         else:
             st.info("No employees found.")
     
