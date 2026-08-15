@@ -12,11 +12,18 @@ cat > .streamlit/config.toml <<EOF
 [server]
 headless = true
 address = "0.0.0.0"
-port = ${PORT:-8501}
+port = ${PORT:-8080}
 enableCORS = false
 enableXsrfProtection = false
+fileWatcherType = "none"
+runOnSave = false
+maxUploadSize = 200
+
 [browser]
 gatherUsageStats = false
+
+[runner]
+fastReruns = true
 EOF
 
 # --- Materialize secrets.toml from environment variables ---
@@ -66,5 +73,15 @@ done
 # shared links show a proper preview card (best-effort; never blocks startup).
 python scripts/patch_streamlit_meta.py || true
 
-exec streamlit run app.py --server.port "${PORT:-8501}" --server.address 0.0.0.0
-exec streamlit run app.py --server.port "${PORT:-8501}" --server.address 0.0.0.0 --server.enableStaticServing=true
+# Start Streamlit ONCE with all optimizations
+exec streamlit run app.py \
+    --server.port "${PORT:-8080}" \
+    --server.address 0.0.0.0 \
+    --server.headless true \
+    --server.enableCORS false \
+    --server.enableXsrfProtection false \
+    --server.fileWatcherType none \
+    --browser.gatherUsageStats false \
+    --runner.fastReruns true \
+    --server.maxUploadSize 200 \
+    --server.enableStaticServing true
