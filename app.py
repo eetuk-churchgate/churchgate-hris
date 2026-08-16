@@ -4759,8 +4759,8 @@ def performance_okrs():
                 else:
                     st.warning(f"🔄 Awaiting {reviewer_type} re-review")
     
-    # ============================================================
-    # TAB 4: HOD REVIEW - ABSOLUTE FINAL FIX
+     # ============================================================
+    # TAB 4: HOD REVIEW - ABSOLUTE FINAL WORKING VERSION
     # ============================================================
     with tab4:
         st.markdown('<div class="glass-card"><h3>👔 HOD Review Hub</h3></div>', unsafe_allow_html=True)
@@ -4785,7 +4785,6 @@ def performance_okrs():
                     key="hod_fy")
             
             hod_cycles = FY_TO_CYCLES.get(hod_fy, ['Half-Year Appraisal'])
-            hod_cycle = hod_cycles[0]
             st.caption(f"📊 Viewing: **{hod_fy}**")
             
             if is_admin:
@@ -4796,7 +4795,7 @@ def performance_okrs():
             
             is_dept_view = (view_mode == "👔 HOD View")
             
-            # ===== SECTION 1: KPI APPROVAL (UNCHANGED) =====
+            # ===== SECTION 1: KPI APPROVAL =====
             st.markdown("### 📊 Team KPI Submissions")
             try:
                 all_perf = db._get("performance_data"); team_submissions = {}
@@ -4845,7 +4844,7 @@ def performance_okrs():
                 else: st.info("No pending KPI submissions.")
             except Exception as e: st.error(f"Error: {str(e)}")
             
-            # ===== SECTION 1B: APPROVED KPIs (UNCHANGED) =====
+            # ===== SECTION 1B: APPROVED KPIs =====
             st.markdown("---"); st.markdown("### ✅ Team Approved KPIs")
             try:
                 all_perf = db._get("performance_data"); team_approved = {}
@@ -4887,54 +4886,59 @@ def performance_okrs():
             # ===== SECTION 2: APPRAISAL REVIEW =====
             st.markdown("---"); st.markdown("### 📝 Appraisal Review")
             
+            # LOAD APPRAISALS DIRECTLY FROM DATABASE - FRESH QUERY
             try:
                 all_appraisals_db = db.get_all_appraisals()
                 for a in all_appraisals_db:
                     uname = a.get('user_name', '')
                     if uname:
-                        scores_data = a.get('scores', {})
-                        if isinstance(scores_data, str):
-                            try: scores_data = json.loads(scores_data)
-                            except: scores_data = {}
+                        # Parse scores - handle both string and dict
+                        scores_raw = a.get('scores', {})
+                        if isinstance(scores_raw, str):
+                            try: scores_raw = json.loads(scores_raw)
+                            except: scores_raw = {}
+                        if not scores_raw: scores_raw = {}
                         
-                        hod_scores_data = a.get('hod_scores', {})
-                        if isinstance(hod_scores_data, str):
-                            try: hod_scores_data = json.loads(hod_scores_data)
-                            except: hod_scores_data = {}
+                        hod_scores_raw = a.get('hod_scores', {})
+                        if isinstance(hod_scores_raw, str):
+                            try: hod_scores_raw = json.loads(hod_scores_raw)
+                            except: hod_scores_raw = {}
+                        if not hod_scores_raw: hod_scores_raw = {}
                         
-                        pillar_comments_data = a.get('pillar_comments', {})
-                        if isinstance(pillar_comments_data, str):
-                            try: pillar_comments_data = json.loads(pillar_comments_data)
-                            except: pillar_comments_data = {}
+                        pillar_comments_raw = a.get('pillar_comments', {})
+                        if isinstance(pillar_comments_raw, str):
+                            try: pillar_comments_raw = json.loads(pillar_comments_raw)
+                            except: pillar_comments_raw = {}
+                        if not pillar_comments_raw: pillar_comments_raw = {}
                         
                         st.session_state.self_assessments[uname] = {
-                            'scores': scores_data, 
+                            'scores': scores_raw,
                             'comments': a.get('comments', ''),
-                            'pillar_comments': pillar_comments_data, 
+                            'pillar_comments': pillar_comments_raw,
                             'date': a.get('submitted_date', ''),
-                            'status': a.get('status', 'Submitted'), 
+                            'status': a.get('status', 'Submitted'),
                             'department': a.get('department', ''),
-                            'email': a.get('user_email', ''), 
-                            'hod_scores': hod_scores_data,
-                            'hod_comments': a.get('hod_comments'), 
-                            'hod_pillar_comments': a.get('hod_pillar_comments'),
-                            'acceptance': a.get('acceptance'), 
+                            'email': a.get('user_email', ''),
+                            'hod_scores': hod_scores_raw,
+                            'hod_comments': a.get('hod_comments'),
+                            'acceptance': a.get('acceptance'),
                             'sr_decision': a.get('sr_decision'),
-                            'rejection_comment': a.get('rejection_comment', ''), 
+                            'rejection_comment': a.get('rejection_comment', ''),
                             'rejection_docs': a.get('rejection_docs', '[]'),
                             'reviewer_type': a.get('reviewer_type', 'HOD'),
-                            'tl_scores': a.get('tl_scores'), 
+                            'tl_scores': a.get('tl_scores'),
                             'tl_comments': a.get('tl_comments'),
                             'cycle_name': a.get('cycle_name', ''),
                             'evidence_files': a.get('evidence_files', ''),
+                            'reject_count': a.get('reject_count', 0),
                         }
-            except:
-                pass
+            except Exception as e:
+                st.error(f"Error loading appraisals: {str(e)}")
             
+            # NO CYCLE FILTER - SHOW ALL SUBMITTED APPRAISALS
             submitted_appraisals = {k: v for k, v in st.session_state.self_assessments.items() 
                                    if (not is_dept_view or get_employee_dept(k) == user_dept)
-                                   and v.get('status') in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL', 'Escalated to HOD from TL']
-                                   and (v.get('cycle_name', '') in hod_cycles or v.get('cycle_name', '') == '')}
+                                   and v.get('status') in ['Submitted', 'Awaiting HOD Re-review', 'Escalated from TL', 'Escalated to HOD from TL']}
             
             if submitted_appraisals:
                 st.success(f"📋 {len(submitted_appraisals)} appraisal(s) for review")
@@ -5004,92 +5008,105 @@ def performance_okrs():
                         
                         st.markdown("---"); st.markdown("### 📊 Score Review")
                         
-                        # ========== FORM WRAPS EVERYTHING ==========
-                        with st.form(f"hod_review_form_{staff_name}_{hod_fy}_{view_mode}"):
-                            hod_scores = {}
-                            pillar_order = get_pillars(hod_fy)
-                            pillar_order = sorted(pillar_order, key=lambda x: int(x.split('.')[0]) if x.split('.')[0].isdigit() else 99)
-                            
-                            staff_total = 0
-                            staff_count = 0
+                        # USE ORIGINAL LOGIC - NO FORM - DISPLAY ONLY FIRST, THEN INPUTS
+                        hod_scores = {}
+                        pillar_order = get_pillars(hod_fy)
+                        pillar_order = sorted(pillar_order, key=lambda x: int(x.split('.')[0]) if x.split('.')[0].isdigit() else 99)
+                        
+                        staff_total = 0
+                        staff_count = 0
+                        
+                        assessment_scores = assessment.get('scores', {})
+                        if isinstance(assessment_scores, str):
+                            try: assessment_scores = json.loads(assessment_scores)
+                            except: assessment_scores = {}
+                        
+                        # DISPLAY ALL SCORES FIRST
+                        for pillar in pillar_order:
+                            pillar_scores = {k: v for k, v in sorted(assessment_scores.items(), key=natural_sort_key) if k.startswith(pillar)}
+                            if pillar_scores:
+                                pillar_staff_avg = sum(int(v) for v in pillar_scores.values()) / len(pillar_scores)
+                                st.markdown(f"**{pillar}** (Staff Avg: {pillar_staff_avg:.0f}%)")
+                                for score_key, staff_score in pillar_scores.items():
+                                    kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
+                                    kpi_name = f"KPI {kpi_index + 1}"
+                                    try:
+                                        all_p = db._get("performance_data")
+                                        for row in (all_p or []):
+                                            if row.get('user_name') == staff_name and row.get('pillar_name') == pillar:
+                                                kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                                if kpi_index < len(kpi_list): kpi_name = kpi_list[kpi_index].get('kpi', kpi_name)
+                                                break
+                                    except: pass
+                                    
+                                    kpi_comment = assessment.get('pillar_comments', {}).get(pillar, '')
+                                    st.markdown(f"**{kpi_name}**")
+                                    if kpi_comment:
+                                        st.markdown(f"<div style='background:#faf8f2;padding:0.6rem;border-radius:4px;border-left:3px solid #D4AF37;font-size:0.8rem;margin-top:0.3rem;'>💬 {kpi_comment}</div>", unsafe_allow_html=True)
+                                    st.markdown(f"<small>Staff: {staff_score}%</small>", unsafe_allow_html=True)
+                                    staff_total += int(staff_score) if staff_score else 0
+                                    staff_count += 1
+                                st.markdown("---")
+                        
+                        staff_avg = staff_total / staff_count if staff_count > 0 else 0
+                        
+                        # NOW CREATE FORM FOR HOD INPUTS
+                        with st.form(f"hod_form_{staff_name}_{hod_fy}"):
+                            st.markdown("### 👔 HOD Scoring")
                             hod_total = 0
                             hod_count = 0
                             
-                            assessment_scores = assessment.get('scores', {})
-                            if isinstance(assessment_scores, str):
-                                try: assessment_scores = json.loads(assessment_scores)
-                                except: assessment_scores = {}
-                            
                             for pillar in pillar_order:
-                                pillar_scores = {}
-                                for score_key, score_val in assessment_scores.items():
-                                    if score_key.startswith(pillar):
-                                        pillar_scores[score_key] = score_val
-                                
+                                pillar_scores = {k: v for k, v in sorted(assessment_scores.items(), key=natural_sort_key) if k.startswith(pillar)}
                                 if pillar_scores:
-                                    sorted_pillar_scores = sorted(pillar_scores.items(), key=lambda x: int(x[0].rsplit('_', 1)[1]) if '_' in x[0] and x[0].rsplit('_', 1)[1].isdigit() else 0)
-                                    
-                                    pillar_staff_avg = sum(int(v) for k, v in sorted_pillar_scores if v) / len(sorted_pillar_scores) if sorted_pillar_scores else 0
-                                    st.markdown(f"**{pillar}** (Staff Avg: {pillar_staff_avg:.0f}%)")
-                                    
-                                    for score_key, staff_score in sorted_pillar_scores:
+                                    st.markdown(f"**{pillar}**")
+                                    for score_key, staff_score in pillar_scores.items():
                                         kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
                                         kpi_name = f"KPI {kpi_index + 1}"
-                                        
                                         try:
                                             all_p = db._get("performance_data")
                                             for row in (all_p or []):
                                                 if row.get('user_name') == staff_name and row.get('pillar_name') == pillar:
                                                     kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                                    if kpi_index < len(kpi_list):
-                                                        kpi_name = kpi_list[kpi_index].get('kpi', kpi_name)
-                                                        break
-                                        except:
-                                            pass
+                                                    if kpi_index < len(kpi_list): kpi_name = kpi_list[kpi_index].get('kpi', kpi_name)
+                                                    break
+                                        except: pass
                                         
-                                        kpi_comment = assessment.get('pillar_comments', {}).get(pillar, '')
-                                        
-                                        st.markdown(f"**{kpi_name}**")
-                                        if kpi_comment:
-                                            st.markdown(f"<div style='background:#faf8f2;padding:0.6rem;border-radius:4px;border-left:3px solid #D4AF37;font-size:0.8rem;margin-top:0.3rem;'>💬 {kpi_comment}</div>", unsafe_allow_html=True)
+                                        hod_scores_data = assessment.get('hod_scores', {})
+                                        if isinstance(hod_scores_data, str):
+                                            try: hod_scores_data = json.loads(hod_scores_data)
+                                            except: hod_scores_data = {}
+                                        prev_hod = hod_scores_data.get(score_key, 0) if is_re_review else 0
                                         
                                         c1, c2 = st.columns(2)
                                         with c1:
-                                            st.markdown(f"<small>Staff: {staff_score}%</small>", unsafe_allow_html=True)
+                                            st.markdown(f"<small>{kpi_name[:50]}... (Staff: {staff_score}%)</small>", unsafe_allow_html=True)
                                         with c2:
-                                            hod_scores_data = assessment.get('hod_scores', {})
-                                            if isinstance(hod_scores_data, str):
-                                                try: hod_scores_data = json.loads(hod_scores_data)
-                                                except: hod_scores_data = {}
-                                            prev_hod = hod_scores_data.get(score_key, 0) if is_re_review else 0
                                             hod_scores[score_key] = st.number_input("HOD Score", 0, 100, int(prev_hod) if prev_hod else 0, 1, key=f"hod_input_{staff_name}_{score_key}_{hod_fy}")
                                         
-                                        staff_total += int(staff_score) if staff_score else 0
-                                        staff_count += 1
                                         hod_total += int(hod_scores[score_key]) if hod_scores[score_key] else 0
                                         hod_count += 1
                                     st.markdown("---")
                             
-                            staff_avg = staff_total / staff_count if staff_count > 0 else 0
-                            hod_avg = hod_total / hod_count if hod_count > 0 else 0
-                            
-                            c1, c2, c3 = st.columns(3)
-                            with c1:
-                                st.metric("📊 Staff Overall Avg", f"{staff_avg:.1f}%")
-                            with c2:
-                                st.metric("👔 HOD Overall Avg", f"{hod_avg:.1f}%")
-                            with c3:
-                                diff = staff_avg - hod_avg
-                                st.metric("📈 Difference", f"{diff:+.1f}%")
-                            
-                            hod_overall = st.text_area(f"Your Overall Comments *", value=assessment.get('hod_comments', '') if is_re_review else '', key=f"hod_overall_{staff_name}_{hod_fy}")
+                            hod_overall = st.text_area(f"Your Overall Comments *", value=assessment.get('hod_comments', '') if is_re_review else '', key=f"hod_overall_textarea_{staff_name}_{hod_fy}")
                             
                             if is_re_review or is_escalated:
                                 submit_btn = st.form_submit_button(f"✅ Submit Revised Review", use_container_width=True, type="primary")
                             else:
                                 submit_btn = st.form_submit_button(f"✅ Submit HOD Review", use_container_width=True, type="primary")
                         
-                        # Handle submission OUTSIDE form
+                        # Show averages
+                        hod_avg = hod_total / hod_count if hod_count > 0 else 0
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
+                            st.metric("📊 Staff Overall Avg", f"{staff_avg:.1f}%")
+                        with c2:
+                            st.metric("👔 HOD Overall Avg", f"{hod_avg:.1f}%")
+                        with c3:
+                            diff = staff_avg - hod_avg
+                            st.metric("📈 Difference", f"{diff:+.1f}%")
+                        
+                        # Handle submission
                         if submit_btn:
                             if not hod_overall:
                                 st.error("❌ Comments required!")
@@ -5105,7 +5122,7 @@ def performance_okrs():
                                 st.success("✅ Submitted!")
                                 st.balloons()
                         
-                        # Extra buttons OUTSIDE form
+                        # Extra buttons
                         if is_re_review or is_escalated:
                             c1, c2 = st.columns(2)
                             with c1:
