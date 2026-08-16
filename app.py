@@ -128,6 +128,86 @@ if logo_icon.exists():
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
 
+# ============================================================
+# GLOBAL HEADER STYLING - Standardize all header sizes
+# ============================================================
+st.markdown("""
+<style>
+    /* Section headers (###) - smaller and consistent */
+    h3 {
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 0.5rem !important;
+        margin-top: 1rem !important;
+        color: #1a1a1a !important;
+    }
+    
+    /* Sub headers (####) - even smaller */
+    h4 {
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 0.4rem !important;
+        margin-top: 0.8rem !important;
+        color: #2d2d2d !important;
+    }
+    
+    /* Small headers (#####) */
+    h5 {
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 0.3rem !important;
+        margin-top: 0.6rem !important;
+        color: #4a4a4a !important;
+    }
+    
+    /* GLASS CARD HEADERS - Keep these prominent */
+    .glass-card h1 {
+        font-size: 1.5rem !important;
+        font-weight: 800 !important;
+        margin: 0 !important;
+        color: #1a1a1a !important;
+    }
+    
+    .glass-card h3 {
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+        color: #1a1a1a !important;
+    }
+    
+    .glass-card p {
+        font-size: 0.8rem !important;
+        margin: 0.3rem 0 0 0 !important;
+    }
+    
+    /* Churchgate header - keep prominent */
+    .churchgate-header h1 {
+        font-size: 1.5rem !important;
+        font-weight: 800 !important;
+    }
+    
+    .churchgate-header p {
+        font-size: 0.85rem !important;
+    }
+    
+    /* Streamlit default subheader */
+    .stSubheader {
+        font-size: 1rem !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Metrics labels */
+    .metric-mini .label {
+        font-size: 0.65rem !important;
+    }
+    
+    /* KPI card titles */
+    .kpi-card strong {
+        font-size: 0.85rem !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # =============================================
 # SCROLLABLE TABS FOR ALL MODULES
 # =============================================
@@ -7087,7 +7167,7 @@ def performance_okrs():
                     
                     st.markdown("---")
                     
-                    # ============================================================
+                     # ============================================================
                     # REVIEWER & COMMITTEE RECOMMENDATIONS BREAKDOWN
                     # ============================================================
                     st.subheader("📋 Recommendations Breakdown")
@@ -7100,21 +7180,33 @@ def performance_okrs():
                         sc = get_emp_score(emp_name)
                         if sc == 0: continue
                         
-                        # Reviewer recommendation
-                        comments = assessment.get('hod_comments', '') or assessment.get('tl_comments', '')
-                        if assessment.get('acceptance') == 'Accepted':
-                            if 'promot' in comments.lower():
-                                reviewer_recs['Promote'] += 1
-                            elif 'salary' in comments.lower() or 'increment' in comments.lower():
-                                reviewer_recs['Salary Review'] += 1
-                            elif 'train' in comments.lower() or 'develop' in comments.lower():
-                                reviewer_recs['Training'] += 1
-                            elif 'pip' in comments.lower() or 'improve' in comments.lower():
-                                reviewer_recs['PIP'] += 1
-                            elif 'status quo' in comments.lower() or 'maintain' in comments.lower():
-                                reviewer_recs['Status Quo'] += 1
+                        # Get comments - check ALL possible sources
+                        comments = assessment.get('hod_comments', '') or assessment.get('tl_comments', '') or assessment.get('comments', '')
+                        
+                        # Check acceptance status
+                        acceptance = assessment.get('acceptance', '')
+                        status = assessment.get('status', '')
+                        
+                        # Count recommendation if accepted OR completed
+                        if acceptance == 'Accepted' or status == 'Completed':
+                            if comments and isinstance(comments, str) and len(comments.strip()) > 0:
+                                comments_lower = comments.lower()
+                                if 'promot' in comments_lower:
+                                    reviewer_recs['Promote'] += 1
+                                elif 'salary' in comments_lower or 'increment' in comments_lower:
+                                    reviewer_recs['Salary Review'] += 1
+                                elif 'train' in comments_lower or 'develop' in comments_lower or 'mentor' in comments_lower:
+                                    reviewer_recs['Training'] += 1
+                                elif 'pip' in comments_lower or 'improve' in comments_lower or 'underperform' in comments_lower:
+                                    reviewer_recs['PIP'] += 1
+                                elif 'status quo' in comments_lower or 'maintain' in comments_lower:
+                                    reviewer_recs['Status Quo'] += 1
+                                elif 'exceed' in comments_lower or 'outstanding' in comments_lower or 'excellent' in comments_lower:
+                                    reviewer_recs['Exceeds Expectations'] += 1
+                                else:
+                                    reviewer_recs['Completed - No Specific Rec'] += 1
                             else:
-                                reviewer_recs['Completed - No Specific Rec'] += 1
+                                reviewer_recs['Completed - No Comments'] += 1
                         
                         # Committee recommendation
                         sr_decision = assessment.get('sr_decision', '')
@@ -7128,11 +7220,11 @@ def performance_okrs():
                     col1, col2, col3 = st.columns(3)
                     
                     with col1:
-                        st.subheader("Reviewer Recommendation")
+                        st.markdown("<h5>Reviewer Recommendation</h5>", unsafe_allow_html=True)
                         if reviewer_recs:
                             rec_df = pd.DataFrame({'Recommendation': list(reviewer_recs.keys()), 'Count': list(reviewer_recs.values())})
                             fig_rec = px.pie(rec_df, values='Count', names='Recommendation', hole=0.5,
-                                            color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#CC0000', '#FFD700', '#a0aec0'])
+                                            color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#CC0000', '#FFD700', '#a0aec0', '#FF6B35'])
                             fig_rec.update_layout(height=300)
                             st.plotly_chart(fig_rec, use_container_width=True)
                             st.caption(f"Total Participants: {sum(reviewer_recs.values())}")
@@ -7140,7 +7232,7 @@ def performance_okrs():
                             st.info("No recommendations yet.")
                     
                     with col2:
-                        st.subheader("Committee Decision")
+                        st.markdown("<h5>Committee Decision</h5>", unsafe_allow_html=True)
                         if committee_recs:
                             com_df = pd.DataFrame({'Decision': list(committee_recs.keys()), 'Count': list(committee_recs.values())})
                             fig_com = px.pie(com_df, values='Count', names='Decision', hole=0.5,
@@ -7152,7 +7244,7 @@ def performance_okrs():
                             st.info("No committee decisions yet.")
                     
                     with col3:
-                        st.subheader("Classification Summary")
+                        st.markdown("<h5>Classification Summary</h5>", unsafe_allow_html=True)
                         class_counts = defaultdict(int)
                         for e in all_emps_scored:
                             class_counts[e['class']] += 1
