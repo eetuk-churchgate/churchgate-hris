@@ -31,7 +31,7 @@ sys.path.append(str(Path(__file__).parent))
 # ============================================================
 # GLOBAL PLOTLY DARK THEME - AUTO-APPLIES TO ALL CHARTS
 # ============================================================
-pio.templates["wtc_dark"] = pio.templates["plotly_dark"]
+pio.templates["wtc_dark"] =pio.templates["plotly_dark"]
 pio.templates["wtc_dark"].update({
     "layout": {
         "paper_bgcolor": "#1E1E1E",
@@ -1429,6 +1429,24 @@ st.markdown("""
     [data-testid="stFileUploader"] button:hover {
         background-color: #B3913A !important;
         border-color: #B3913A !important;
+    }
+    
+    /* ===== REMOVING THE HUGE RAILWAY GAP ===== */
+    section[data-testid="stMain"] > div,
+    [data-testid="stAppViewContainer"] > div {
+        margin-top: 0px !important;
+        padding-top: 0px !important;
+    }
+    [data-testid="stVerticalBlock"] > div {
+        gap: 0px !important;
+    }
+    .block-container {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+        margin-top: 0rem !important;
+    }
+    [data-testid="stSidebar"] {
+        min-width: 280px !important;
     }
 </style>
 """, unsafe_allow_html=True)
