@@ -7399,10 +7399,10 @@ def performance_okrs():
                                                         <br><small>Status: <span class="badge {status_badge}">{e['status']}</span> | Rejections: {e['reject_count']}</small>
                                                     </div>
                                                 </div>
-                                                {f'<small>💬 Employee: {e["comments"][:100]}...</small><br>' if e['comments'] and e['comments'] != 'N/A' else ''}
-                                                {f'<small>👔 HOD: {e["hod_comments"][:100]}...</small><br>' if e.get('hod_comments') else ''}
-                                                {f'<small>👥 TL: {e["tl_comments"][:100]}...</small><br>' if e.get('tl_comments') else ''}
-                                                {f'<small>🚫 Rejection: {e["rejection"][:100]}...</small>' if e.get('rejection') else ''}
+                                                {f'<div style="margin-top:0.5rem;padding:0.5rem;background:#f8f9fa;border-radius:4px;"><small>💬 <strong>Employee:</strong> {e["comments"]}</small></div>' if e['comments'] and e['comments'] != 'N/A' else ''}
+                                                {f'<div style="margin-top:0.3rem;padding:0.5rem;background:#f0f4ff;border-radius:4px;"><small>👔 <strong>HOD:</strong> {e["hod_comments"]}</small></div>' if e.get('hod_comments') else ''}
+                                                {f'<div style="margin-top:0.3rem;padding:0.5rem;background:#f0fff4;border-radius:4px;"><small>👥 <strong>TL:</strong> {e["tl_comments"]}</small></div>' if e.get('tl_comments') else ''}
+                                                {f'<div style="margin-top:0.3rem;padding:0.5rem;background:#fff5f5;border-radius:4px;"><small>🚫 <strong>Rejection:</strong> {e["rejection"]}</small></div>' if e.get('rejection') else ''}
                                             </div>
                                             """, unsafe_allow_html=True)
                 else:
