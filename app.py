@@ -4977,14 +4977,20 @@ def performance_okrs():
                     dept_items = current_dept_groups[dept]
                     dept_count = len(dept_appraisals[dept])
                     
-                    with st.expander(f"🏭 {dept} ({dept_count} appraisal(s) total)", expanded=True):
-                        for staff_name, assessment in dept_items:
-                            is_escalated = 'Escalated' in assessment.get('status', '')
-                            is_re_review = assessment.get('status') == 'Awaiting HOD Re-review'
-                            
-                            expander_title = f"{'🚨 ESCALATED: ' if is_escalated else '🔄 RE-REVIEW: ' if is_re_review else '📋 '}{staff_name}"
-                            
-                            with st.expander(expander_title, expanded=False):
+                    # Department header (NOT an expander - just a styled markdown)
+                    st.markdown(f"""
+                    <div style="background:linear-gradient(135deg, #1a1a1a, #2d2d2d);color:white;padding:0.8rem 1.2rem;border-radius:10px;margin:0.8rem 0 0.4rem 0;font-weight:700;border-left:5px solid #CC0000;">
+                        🏭 {dept} ({dept_count} appraisal(s) total)
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    for staff_name, assessment in dept_items:
+                        is_escalated = 'Escalated' in assessment.get('status', '')
+                        is_re_review = assessment.get('status') == 'Awaiting HOD Re-review'
+                        
+                        expander_title = f"{'🚨 ESCALATED: ' if is_escalated else '🔄 RE-REVIEW: ' if is_re_review else '📋 '}{staff_name}"
+                        
+                        with st.expander(expander_title, expanded=False):
                                 if is_re_review:
                                     st.warning(f"⚠️ Staff rejected your review (Rejection #{assessment.get('reject_count', 1)})")
                                     st.markdown(f"**Rejection Reason:** {assessment.get('rejection_comment', 'No comment provided')}")
