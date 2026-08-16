@@ -4789,7 +4789,7 @@ def performance_okrs():
             st.caption(f"📊 Viewing: **{hod_fy}**")
             
             # ===== SECTION 1: TEAM KPI SUBMISSIONS - GROUPED + PAGINATED =====
-            st.markdown("### 📊 Team KPI Submissions")
+            st.markdown("<h5 style='margin-bottom:0.5rem;'>📊 Team KPI Submissions</h5>", unsafe_allow_html=True)
             try:
                 all_perf = db._get("performance_data"); team_submissions = {}
                 for row in (all_perf or []):
@@ -4899,7 +4899,7 @@ def performance_okrs():
             except Exception as e: st.error(f"Error: {str(e)}")
             
             # ===== SECTION 1B: APPROVED KPIs - GROUPED + PAGINATED =====
-            st.markdown("---"); st.markdown("### ✅ Team Approved KPIs")
+            st.markdown("---"); st.markdown("<h5 style='margin-bottom:0.5rem;'>✅ Team Approved KPIs</h5>", unsafe_allow_html=True)
             try:
                 all_perf = db._get("performance_data"); team_approved = {}
                 for row in all_perf:
@@ -5000,7 +5000,7 @@ def performance_okrs():
             except: pass
             
             # ===== SECTION 2: APPRAISAL REVIEW - GROUPED + PAGINATED =====
-            st.markdown("---"); st.markdown("### 📝 Appraisal Review")
+            st.markdown("---"); st.markdown("<h5 style='margin-bottom:0.5rem;'>📝 Appraisal Review</h5>", unsafe_allow_html=True)
             
             # Refresh self_assessments from database (YOUR ORIGINAL)
             try:
