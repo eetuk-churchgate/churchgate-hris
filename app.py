@@ -1448,6 +1448,37 @@ st.markdown("""
     [data-testid="stSidebar"] {
         min-width: 280px !important;
     }
+    
+    /* ===== FORCE MAIN CONTENT AREA TO THE TOP (MATCH SIDEBAR) ===== */
+
+    /* 1. Kill the massive top padding on the entire main block container */
+    .block-container,
+    div[data-testid="stAppViewContainer"] > div > div,
+    section[data-testid="stMain"] > div {
+        padding-top: 0rem !important;
+        margin-top: 0rem !important;
+    }
+
+    /* 2. Target the specific internal container holding your header */
+    div[data-testid="stVerticalBlock"] > div:first-child {
+        padding-top: 0rem !important;
+        margin-top: 0rem !important;
+    }
+
+    /* 3. Kill header gaps */
+    div[data-testid="stHeader"] {
+        display: none !important;
+    }
+    div[data-testid="stToolbar"] {
+        top: 10px !important;
+        right: 10px !important;
+        position: absolute !important;
+    }
+
+    /* 4. Reset padding on the main content wrapper */
+    div[class*="stApp"] {
+        padding-top: 0px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
