@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
 from datetime import datetime, timedelta, date
 import hashlib
 from pathlib import Path
@@ -26,6 +27,90 @@ from PIL import Image
 import calendar
 
 sys.path.append(str(Path(__file__).parent))
+
+# ============================================================
+# GLOBAL PLOTLY DARK THEME - AUTO-APPLIES TO ALL CHARTS
+# ============================================================
+pio.templates["wtc_dark"] = pio.templates["plotly_dark"]
+pio.templates["wtc_dark"].update({
+    "layout": {
+        "paper_bgcolor": "#1E1E1E",
+        "plot_bgcolor": "#1E1E1E",
+        "font": {
+            "color": "#F0E6D3",
+            "family": "Inter, sans-serif"
+        },
+        "title": {
+            "font": {
+                "color": "#C9A84C",
+                "family": "Georgia, serif"
+            }
+        },
+        "legend": {
+            "font": {"color": "#F0E6D3"},
+            "bgcolor": "rgba(0,0,0,0)"
+        },
+        "xaxis": {
+            "gridcolor": "#2A2A2A",
+            "zerolinecolor": "#2A2A2A",
+            "tickfont": {"color": "#F0E6D3"},
+            "title_font": {"color": "#C9A84C"}
+        },
+        "yaxis": {
+            "gridcolor": "#2A2A2A",
+            "zerolinecolor": "#2A2A2A",
+            "tickfont": {"color": "#F0E6D3"},
+            "title_font": {"color": "#C9A84C"}
+        }
+    }
+})
+pio.templates.default = "wtc_dark"
+
+
+
+# ============================================================
+# GLOBAL CHART DARK THEME - Forces ALL text visible
+# ============================================================
+def get_dark_chart_layout(use_gold_text=True):
+    """Forces all chart texts to be visible on a dark background."""
+    font_color = "#C9A84C" if use_gold_text else "#E0E0E0"
+    
+    layout = dict(
+        font=dict(color=font_color),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(
+            tickfont=dict(color="#E0E0E0"),
+            titlefont=dict(color="#E0E0E0"),
+            gridcolor="#333333"
+        ),
+        yaxis=dict(
+            tickfont=dict(color="#E0E0E0"),
+            titlefont=dict(color="#E0E0E0"),
+            gridcolor="#333333"
+        ),
+        legend=dict(
+            font=dict(color="#E0E0E0"),
+            bgcolor="rgba(0,0,0,0)"
+        ),
+        annotations=dict(font=dict(color="#FFFFFF"))
+    )
+    return layout
+
+
+def make_dark(fig):
+    """Force dark theme on any Plotly figure"""
+    fig.update_layout(
+        paper_bgcolor='#1E1E1E',
+        plot_bgcolor='#1E1E1E',
+        font=dict(color='#F0E6D3'),
+        title_font=dict(color='#C9A84C'),
+        legend=dict(font=dict(color='#F0E6D3'), bgcolor='rgba(0,0,0,0)')
+    )
+    fig.update_xaxes(gridcolor='#2A2A2A', zerolinecolor='#2A2A2A', tickfont=dict(color='#F0E6D3'))
+    fig.update_yaxes(gridcolor='#2A2A2A', zerolinecolor='#2A2A2A', tickfont=dict(color='#F0E6D3'))
+    return fig
+
 
 # =============================================
 # FIX: READ SECRETS FROM HUGGING FACE ENVIRONMENT
@@ -127,6 +212,1702 @@ if logo_icon.exists():
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon=str(logo_icon), layout="wide", initial_sidebar_state="expanded")
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
+
+# ============================================================
+# GLOBAL WTC PREMIUM DARK THEME - ULTIMATE FIX
+# ============================================================
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Georgia&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    /* ===== FORCE DARK EVERYWHERE ===== */
+    .stApp, .main, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        background: #141414 !important;
+    }
+    
+    /* ALL text visible */
+    .stMarkdown, .stText, p, label, span, div, small {
+        color: #f0e6d3 !important;
+    }
+    
+    /* ===== HEADERS - GOLD SERIF ===== */
+    h1, h2, h3 {
+        color: #C9A84C !important;
+        font-family: 'Georgia', serif !important;
+        font-weight: 700 !important;
+    }
+    h4, h5, h6 {
+        color: #f0e6d3 !important;
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 600 !important;
+    }
+    
+    /* ===== SUBHEADERS - GOLD ===== */
+    .stSubheader {
+        color: #C9A84C !important;
+        font-family: 'Georgia', serif !important;
+        font-weight: 700 !important;
+    }
+    
+    /* ===== SELECTBOX LABELS - VISIBLE ===== */
+    [data-testid="stSelectbox"] label,
+    [data-testid="stTextInput"] label,
+    [data-testid="stNumberInput"] label,
+    [data-testid="stDateInput"] label,
+    [data-testid="stMultiselect"] label {
+        color: #C9A84C !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+    }
+    
+    /* ===== SELECTBOX VALUES - VISIBLE ===== */
+    [data-testid="stSelectbox"] div,
+    [data-testid="stSelectbox"] span,
+    [data-testid="stSelectbox"] p {
+        color: #f0e6d3 !important;
+    }
+    
+    /* ===== SEARCH INPUT - VISIBLE ===== */
+    input[type="text"], input[type="search"] {
+        background: #1e1e1e !important;
+        color: #f0e6d3 !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+        border-radius: 6px !important;
+    }
+    input::placeholder {
+        color: #9a8a78 !important;
+    }
+    
+    /* ===== EXPANDER HEADERS - GOLD NO WHITE GLOW ===== */
+    [data-testid="stExpander"] details {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.35) !important;
+        border-radius: 6px !important;
+        margin-bottom: 0.3rem !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+    [data-testid="stExpander"] details summary {
+        background: #1e1e1e !important;
+        border-left: 4px solid #B8960C !important;
+        border-radius: 6px !important;
+        padding: 0.6rem 1rem !important;
+        box-shadow: none !important;
+        outline: none !important;
+    }
+    [data-testid="stExpander"] details summary p,
+    [data-testid="stExpander"] details summary span,
+    [data-testid="stExpander"] details summary div {
+        color: #C9A84C !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+    }
+    [data-testid="stExpander"] details summary svg {
+        fill: #C9A84C !important;
+        color: #C9A84C !important;
+    }
+    [data-testid="stExpander"] details div {
+        background: #1a1a1a !important;
+    }
+    
+    /* ===== EXPANDER CONTENT - ALL VISIBLE ===== */
+    [data-testid="stExpander"] details div p,
+    [data-testid="stExpander"] details div span,
+    [data-testid="stExpander"] details div small,
+    [data-testid="stExpander"] details div div {
+        color: #f0e6d3 !important;
+    }
+    [data-testid="stExpander"] details div strong {
+        color: #C9A84C !important;
+    }
+    [data-testid="stExpander"] details div small {
+        color: #9a8a78 !important;
+    }
+    
+    /* ===== GLASS CARDS ===== */
+    .glass-card {
+        background: linear-gradient(135deg, #1e1e1e, #252525) !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 8px 32px rgba(184, 150, 12, 0.15) !important;
+        padding: 1.5rem !important;
+        margin-bottom: 1rem !important;
+    }
+    .glass-card h1, .glass-card h2, .glass-card h3 {
+        color: #C9A84C !important;
+        font-family: 'Georgia', serif !important;
+    }
+    .glass-card p {
+        color: #9a8a78 !important;
+    }
+    
+    /* ===== CHURCHGATE HEADER ===== */
+    .churchgate-header {
+        background: linear-gradient(135deg, #1a1a1a, #2d2d2d) !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+        border-left: 4px solid #C9A84C !important;
+        border-radius: 10px !important;
+        padding: 1rem 1.5rem !important;
+    }
+    .churchgate-header h1 {
+        color: #C9A84C !important;
+        font-family: 'Georgia', serif !important;
+    }
+    .churchgate-header p {
+        color: #9a8a78 !important;
+    }
+    
+    /* ===== KPI CARDS ===== */
+    .kpi-card {
+        background: #1e1e1e !important;
+        border-left: 4px solid #B8960C !important;
+        border-radius: 8px !important;
+        color: #f0e6d3 !important;
+        box-shadow: none !important;
+    }
+    .kpi-card strong {
+        color: #C9A84C !important;
+    }
+    .kpi-card small, .kpi-card p, .kpi-card div {
+        color: #f0e6d3 !important;
+    }
+    
+    /* ===== METRICS ===== */
+    .metric-card, .metric-mini, [data-testid="stMetric"] {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.25) !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+    }
+    .metric-value, .metric-mini .value, [data-testid="stMetricValue"] {
+        color: #C9A84C !important;
+        font-family: 'Georgia', serif !important;
+    }
+    .metric-label, .metric-mini .label, [data-testid="stMetricLabel"] {
+        color: #9a8a78 !important;
+    }
+    
+    /* ===== MISSION BANNER ===== */
+    .mission-banner {
+        background: #1e1e1e !important;
+        border: 2px solid #B8960C !important;
+        border-radius: 8px !important;
+    }
+    .mission-banner h2, .mission-banner h3 {
+        color: #C9A84C !important;
+    }
+    .mission-banner p {
+        color: #f0e6d3 !important;
+    }
+    
+    /* ===== MISSION ITEMS ===== */
+    .mission-item, .value-card {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+        border-radius: 6px !important;
+    }
+    .mission-item h3, .value-card h4 {
+        color: #C9A84C !important;
+    }
+    .mission-item p, .value-card p {
+        color: #9a8a78 !important;
+    }
+    
+    /* ===== GREETING HEADER ===== */
+    .greeting-header {
+        background: linear-gradient(135deg, #1a1a1a, #2d2d2d) !important;
+        border-left: 4px solid #C9A84C !important;
+        border-radius: 10px !important;
+    }
+    .greeting-header h1 {
+        color: #C9A84C !important;
+        font-family: 'Georgia', serif !important;
+    }
+    .greeting-header p {
+        color: #9a8a78 !important;
+    }
+    
+    /* ===== BUTTONS - GOLD ===== */
+    .stButton > button {
+        background: linear-gradient(135deg, #C9A84C 0%, #8B6914 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 4px !important;
+        font-weight: 600 !important;
+    }
+    
+    /* ===== TABS - GOLD ACCENT (NOT WHITE) ===== */
+    .stTabs [data-baseweb="tab-list"] {
+        background: #1e1e1e !important;
+        border-radius: 6px !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+        padding: 4px !important;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #C9A84C !important;
+        font-weight: 600 !important;
+        border-radius: 4px !important;
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.5) !important;
+    }
+    .stTabs [data-baseweb="tab"] * {
+        color: #C9A84C !important;
+        font-weight: 600 !important;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background: rgba(184, 150, 12, 0.2) !important;
+        border-color: #C9A84C !important;
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #C9A84C 0%, #8B6914 100%) !important;
+        color: white !important;
+        border: 1px solid #C9A84C !important;
+        border-radius: 4px !important;
+    }
+    .stTabs [aria-selected="true"] * {
+        color: white !important;
+    }
+    
+    /* ===== PASSWORD EYE ICON - GOLD VISIBLE ===== */
+    button[aria-label*="password"],
+    [data-testid="stTextInput"] button,
+    [data-testid="stTextInput"] svg,
+    [data-testid="stTextInput"] button svg {
+        color: #C9A84C !important;
+        fill: #C9A84C !important;
+        background: transparent !important;
+    }
+    [data-testid="stTextInput"] button:hover {
+        background: rgba(184, 150, 12, 0.15) !important;
+    }
+    
+    /* ===== SIDEBAR - DARK ===== */
+    [data-testid="stSidebar"] {
+        background: #1a1a1a !important;
+        border-right: 1px solid #2e2e2e !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: #f0e6d3 !important;
+    }
+    [data-testid="stSidebar"] .nav-link span {
+        color: #f0e6d3 !important;
+    }
+    [data-testid="stSidebar"] .nav-link svg {
+        color: #C9A84C !important;
+    }
+    [data-testid="stSidebar"] .nav-link-selected {
+        background: rgba(184, 150, 12, 0.15) !important;
+        border-left: 3px solid #C9A84C !important;
+    }
+    [data-testid="stSidebar"] .nav-link-selected span {
+        color: #C9A84C !important;
+    }
+    
+    /* ===== INPUTS ===== */
+    input, textarea, select {
+        background: #1e1e1e !important;
+        color: #f0e6d3 !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+        border-radius: 6px !important;
+    }
+    input:focus, textarea:focus, select:focus {
+        border-color: #B8960C !important;
+        box-shadow: 0 0 0 3px rgba(184, 150, 12, 0.15) !important;
+    }
+    
+    /* ===== EMPLOYEE DASHBOARD - ALL TEXT VISIBLE ===== */
+    
+    /* Running ticker text */
+    .greeting-header + div marquee,
+    [data-testid="stMarkdown"] marquee {
+        color: #f0e6d3 !important;
+        background: #1e1e1e !important;
+        padding: 0.5rem 1rem !important;
+        border-radius: 6px !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+    }
+    
+    /* ===== Upcoming Holidays - GOLD TEXT ===== */
+    div[style*="background:linear-gradient(135deg, #f0f8ff"] {
+        background: #2d2d2d !important;
+        border: 1px solid rgba(184, 150, 12, 0.5) !important;
+        border-left: 4px solid #B8960C !important;
+        border-radius: 10px !important;
+    }
+    div[style*="background:linear-gradient(135deg, #f0f8ff"] strong,
+    div[style*="background:linear-gradient(135deg, #f0f8ff"] span,
+    div[style*="background:linear-gradient(135deg, #f0f8ff"] small,
+    div[style*="background:linear-gradient(135deg, #f0f8ff"] div {
+        color: #C9A84C !important;
+    }
+    div[style*="background:linear-gradient(135deg, #f0f8ff"] span[style*="font-size:1.1rem"] {
+        color: #f0e6d3 !important;
+        font-weight: 700 !important;
+    }
+    
+    /* ===== Plotly Charts - DARK GREY background (NOT WHITE) ===== */
+    [data-testid="stPlotlyChart"] {
+        background: #2d2d2d !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+        border-radius: 8px !important;
+        padding: 0.5rem !important;
+    }
+    
+    /* ===== Dataframe - VISIBLE TEXT ===== */
+    [data-testid="stDataFrame"] {
+        background: #2d2d2d !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+        border-radius: 6px !important;
+    }
+    [data-testid="stDataFrame"] th {
+        color: #C9A84C !important;
+        background: #3d3d3d !important;
+        font-weight: 700 !important;
+        border-bottom: 2px solid #B8960C !important;
+    }
+    [data-testid="stDataFrame"] td {
+        color: #f0e6d3 !important;
+        background: #2d2d2d !important;
+    }
+    [data-testid="stDataFrame"] span,
+    [data-testid="stDataFrame"] p,
+    [data-testid="stDataFrame"] div {
+        color: #f0e6d3 !important;
+    }
+    
+    /* ===== Dropdowns - VISIBLE ===== */
+    [data-testid="stSelectbox"] label {
+        color: #C9A84C !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stSelectbox"] [data-baseweb="select"] {
+        background: #2d2d2d !important;
+        border: 1px solid rgba(184, 150, 12, 0.5) !important;
+        border-radius: 6px !important;
+    }
+    [data-testid="stSelectbox"] [data-baseweb="select"] * {
+        color: #f0e6d3 !important;
+    }
+    [data-testid="stSelectbox"] [data-baseweb="select"] span {
+        color: #f0e6d3 !important;
+    }
+    
+    /* ===== Sliders - GOLD ===== */
+    [data-testid="stSlider"] label {
+        color: #C9A84C !important;
+        font-weight: 600 !important;
+    }
+    [data-testid="stSlider"] [role="slider"] {
+        background: #C9A84C !important;
+        border: 2px solid #B8960C !important;
+        box-shadow: 0 0 10px rgba(184, 150, 12, 0.6) !important;
+    }
+    [data-testid="stSlider"] input {
+        accent-color: #C9A84C !important;
+    }
+    [data-testid="stSlider"] [data-baseweb="slider"] {
+        background: #B8960C !important;
+    }
+    [data-testid="stSlider"] div[role="slider"] {
+        background: #C9A84C !important;
+        border-color: #B8960C !important;
+    }
+    
+    /* ===== EMPLOYEE & EXECUTIVE DASHBOARD - FIX ALL INLINE STYLES ===== */
+    
+    /* All divs with white background inside main content */
+    .stApp div[style*="background:white"],
+    .stApp div[style*="background: white"] {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+    }
+    
+    /* All divs with white background - force dark */
+    div[style*="background:white"] {
+        background: #1e1e1e !important;
+    }
+    
+    /* Text with #888 color - make visible */
+    [style*="color:#888"],
+    [style*="color: #888"] {
+        color: #9a8a78 !important;
+    }
+    
+    /* Text with #666 color - make visible */
+    [style*="color:#666"],
+    [style*="color: #666"] {
+        color: #f0e6d3 !important;
+    }
+    
+    /* Text with #333 color - make visible */
+    [style*="color:#333"],
+    [style*="color: #333"] {
+        color: #f0e6d3 !important;
+    }
+    
+    /* Strong text inside white divs - GOLD */
+    div[style*="background:white"] strong,
+    div[style*="background: white"] strong {
+        color: #C9A84C !important;
+    }
+    
+    /* Small text inside white divs - visible */
+    div[style*="background:white"] small,
+    div[style*="background: white"] small {
+        color: #9a8a78 !important;
+    }
+    
+    /* Span text inside white divs - visible */
+    div[style*="background:white"] span,
+    div[style*="background: white"] span {
+        color: #f0e6d3 !important;
+    }
+    
+    /* KPI Progress pillars */
+    div[style*="padding:0.7rem"] span,
+    div[style*="padding:0.8rem 1rem"] span {
+        color: #f0e6d3 !important;
+    }
+    
+    /* Profile card */
+    div[style*="padding:1.5rem"] h3 {
+        color: #C9A84C !important;
+    }
+    div[style*="padding:1.5rem"] p {
+        color: #f0e6d3 !important;
+    }
+    
+    /* Recognition Wall */
+    div[style*="border:1px dashed"] p,
+    div[style*="border:1px dashed"] small {
+        color: #f0e6d3 !important;
+    }
+    
+    /* Upcoming Holidays */
+    div[style*="border-left:4px solid #3182ce"] strong,
+    div[style*="border-left:4px solid #3182ce"] span,
+    div[style*="border-left:4px solid #3182ce"] small {
+        color: #f0e6d3 !important;
+    }
+    
+    /* Org Structure cards */
+    div[style*="border-top:3px solid"] strong {
+        color: #C9A84C !important;
+    }
+    div[style*="border-top:3px solid"] small {
+        color: #9a8a78 !important;
+    }
+    
+    /* Department Heads cards */
+    div[style*="border:1px solid #e0e0e0"] strong {
+        color: #C9A84C !important;
+    }
+    div[style*="border:1px solid #e0e0e0"] small {
+        color: #9a8a78 !important;
+    }
+    
+    /* Activity Feed */
+    div[style*="border-left:3px solid #CC0000"] strong {
+        color: #C9A84C !important;
+    }
+    div[style*="border-left:3px solid #CC0000"] small {
+        color: #9a8a78 !important;
+    }
+    
+    /* Alert bar */
+    div[style*="background:#fff3cd"] {
+        background: rgba(184, 150, 12, 0.15) !important;
+        border-left: 4px solid #B8960C !important;
+    }
+    div[style*="background:#fff3cd"] strong {
+        color: #C9A84C !important;
+    }
+    
+    /* Celebration bar */
+    div[style*="background: linear-gradient(135deg, #fff5f5"] {
+        background: rgba(184, 150, 12, 0.1) !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+    }
+    div[style*="background: linear-gradient(135deg, #fff5f5"] strong {
+        color: #C9A84C !important;
+    }
+    
+    /* Organogram (Plotly charts) - WHITE BACKGROUND */
+    [data-testid="stPlotlyChart"] {
+        background: #ffffff !important;
+        border-radius: 8px !important;
+        padding: 0.5rem !important;
+    }
+    
+    /* Expander - NO WHITE GLOW */
+    [data-testid="stExpander"] details summary {
+        box-shadow: none !important;
+        outline: none !important;
+    }
+    
+    /* Dataframe - VISIBLE */
+    [data-testid="stDataFrame"] {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+    }
+    [data-testid="stDataFrame"] * {
+        color: #f0e6d3 !important;
+    }
+    [data-testid="stDataFrame"] th {
+        color: #C9A84C !important;
+    }
+    
+    /* ===== FIX: Realtime ticker - VISIBLE ===== */
+    div[style*="background:#d5d5d5"] {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+    }
+    div[style*="background:#d5d5d5"] marquee {
+        color: #C9A84C !important;
+        font-weight: 600 !important;
+    }
+    
+    /* ===== FIX: Upcoming Holidays - GOLD ===== */
+    div[style*="border-left:4px solid #3182ce"] {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+        border-left: 4px solid #B8960C !important;
+    }
+    div[style*="border-left:4px solid #3182ce"] strong,
+    div[style*="border-left:4px solid #3182ce"] span {
+        color: #C9A84C !important;
+    }
+    div[style*="border-left:4px solid #3182ce"] span[style*="font-size:1.1rem"] {
+        color: #f0e6d3 !important;
+    }
+    div[style*="border-left:4px solid #3182ce"] small {
+        color: #9a8a78 !important;
+    }
+    
+    /* ===== FIX: Org Chart expander - DARK/GOLD ===== */
+    [data-testid="stExpander"] details summary {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.5) !important;
+        border-left: 4px solid #B8960C !important;
+        box-shadow: none !important;
+    }
+    
+    /* ===== FIX: Organogram - DARK/GOLD not white ===== */
+    [data-testid="stPlotlyChart"] {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+        border-radius: 8px !important;
+        padding: 0.5rem !important;
+    }
+    
+    /* ===== FIX: Department Heads dataframe - VISIBLE ===== */
+    [data-testid="stDataFrame"] {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+        border-radius: 6px !important;
+    }
+    [data-testid="stDataFrame"] * {
+        color: #f0e6d3 !important;
+    }
+    [data-testid="stDataFrame"] th {
+        color: #C9A84C !important;
+        font-weight: 700 !important;
+        background: #2d2d2d !important;
+    }
+    [data-testid="stDataFrame"] td {
+        color: #f0e6d3 !important;
+        background: #1a1a1a !important;
+    }
+    
+    /* ===== FIX: Sliders - VISIBLE ===== */
+    [data-testid="stSlider"] {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+        border-radius: 6px !important;
+        padding: 0.5rem !important;
+    }
+    [data-testid="stSlider"] * {
+        color: #f0e6d3 !important;
+    }
+    [data-testid="stSlider"] label,
+    [data-testid="stSlider"] span {
+        color: #C9A84C !important;
+    }
+    [data-testid="stSlider"] [data-testid="stSliderThumb"] {
+        background: #C9A84C !important;
+        border: 2px solid #B8960C !important;
+    }
+    [data-testid="stSlider"] [data-testid="stSliderTrack"] {
+        background: #B8960C !important;
+    }
+    [data-testid="stSlider"] input {
+        accent-color: #C9A84C !important;
+    }
+    
+    /* ===== FIX: Chart boxes - NOT WHITE ===== */
+    [data-testid="stPlotlyChart"] {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+        border-radius: 8px !important;
+    }
+    
+    /* ===== BADGES ===== */
+    .badge-green { background: rgba(56, 161, 105, 0.2) !important; color: #6bcb77 !important; }
+    .badge-yellow { background: rgba(184, 150, 12, 0.2) !important; color: #C9A84C !important; }
+    .badge-gray { background: rgba(255, 255, 255, 0.1) !important; color: #a0aec0 !important; }
+    .badge-red { background: rgba(204, 0, 0, 0.2) !important; color: #ff6b6b !important; }
+    .badge-escalated { background: rgba(204, 0, 0, 0.3) !important; color: #ff6b6b !important; }
+    
+    /* ===== STATUS BADGES ===== */
+    .status-active { background: rgba(56, 161, 105, 0.2) !important; color: #6bcb77 !important; }
+    .status-pending { background: rgba(184, 150, 12, 0.2) !important; color: #C9A84C !important; }
+    .status-at-risk { background: rgba(204, 0, 0, 0.2) !important; color: #ff6b6b !important; }
+    
+    /* ===== TIER BADGES ===== */
+    .tier-1-badge { background: rgba(56, 161, 105, 0.2) !important; color: #6bcb77 !important; }
+    .tier-2-badge { background: rgba(184, 150, 12, 0.3) !important; color: #C9A84C !important; }
+    .tier-3-badge { background: rgba(204, 0, 0, 0.2) !important; color: #ff6b6b !important; }
+    
+    /* ===== ALERTS ===== */
+    .stAlert {
+        background: #1e1e1e !important;
+        border: 1px solid #2e2e2e !important;
+        color: #f0e6d3 !important;
+    }
+    .stSuccess { background: rgba(56, 161, 105, 0.1) !important; color: #6bcb77 !important; }
+    .stWarning { background: rgba(184, 150, 12, 0.1) !important; color: #C9A84C !important; }
+    .stError { background: rgba(204, 0, 0, 0.1) !important; color: #ff6b6b !important; }
+    .stInfo { background: rgba(184, 150, 12, 0.1) !important; color: #C9A84C !important; }
+    
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar-track { background: #1a1a1a !important; }
+    ::-webkit-scrollbar-thumb { background: #B8960C !important; }
+    
+    /* ===== DIVIDER ===== */
+    hr { border-color: #2e2e2e !important; }
+    
+    /* ===== DATAFRAMES ===== */
+    [data-testid="stDataFrame"] {
+        background: #1e1e1e !important;
+        border: 1px solid #2e2e2e !important;
+    }
+    
+    /* ===== LOGIN PAGE BUTTONS - GOLD ACCENT ===== */
+    [data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+        background: linear-gradient(135deg, #C9A84C 0%, #8B6914 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 4px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.05em !important;
+    }
+    
+    /* Login form inputs */
+    [data-testid="stForm"] input {
+        background: #1e1e1e !important;
+        color: #f0e6d3 !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+        border-radius: 6px !important;
+    }
+    [data-testid="stForm"] input::placeholder {
+        color: #9a8a78 !important;
+    }
+    
+    /* Password eye icon - MAXIMUM AGGRESSIVE */
+    [data-testid="stTextInput"] button {
+        background: #1e1e1e !important;
+        border: 2px solid #B8960C !important;
+        border-radius: 4px !important;
+        padding: 6px !important;
+        cursor: pointer !important;
+    }
+    [data-testid="stTextInput"] button * {
+        color: #C9A84C !important;
+        fill: #C9A84C !important;
+        stroke: #C9A84C !important;
+        opacity: 1 !important;
+        filter: none !important;
+    }
+    [data-testid="stTextInput"] button svg {
+        width: 22px !important;
+        height: 22px !important;
+        min-width: 22px !important;
+        min-height: 22px !important;
+    }
+    [data-testid="stTextInput"] button svg path {
+        fill: #C9A84C !important;
+        stroke: #C9A84C !important;
+        stroke-width: 2px !important;
+    }
+    [data-testid="stTextInput"] button:hover {
+        background: rgba(184, 150, 12, 0.3) !important;
+        border-color: #C9A84C !important;
+    }
+    [data-testid="stTextInput"] button img {
+        filter: invert(65%) sepia(60%) saturate(500%) hue-rotate(5deg) brightness(95%) contrast(90%) !important;
+        opacity: 1 !important;
+        width: 20px !important;
+        height: 20px !important;
+    }
+    
+    /* ===== GLOBAL ROOT FORCE DARK - NUCLEAR OVERRIDE ===== */
+    :root {
+        --dropdown-bg: #1E1E1E !important;
+        --dropdown-border: #333333 !important;
+        --dropdown-text: #FFFFFF !important;
+        --dropdown-hover: #333333 !important;
+        --dropdown-accent: #C9A84C !important;
+    }
+
+    /* 1. FORCE the popup container background (Ignores DOM depth) */
+    div[class*="dropdown-menu"], 
+    div[class*="select__menu"], 
+    ul[role="listbox"],
+    [data-baseweb="popover"],
+    [data-baseweb="menu"],
+    [data-testid="stSelectbox"] [data-baseweb="popover"],
+    [data-testid="stMultiselect"] [data-baseweb="popover"],
+    div[role="listbox"] {
+        background: #1E1E1E !important;
+        background-color: #1E1E1E !important;
+        border: 1px solid #333333 !important;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.9) !important;
+        color: #FFFFFF !important;
+        z-index: 99999999 !important;
+    }
+
+    /* 2. EXPLICITLY target all option text and search input blocks */
+    div[class*="select__option"],
+    div[class*="select__input"],
+    div[class*="select__menu"] input,
+    ul[role="listbox"] li,
+    [data-baseweb="option"],
+    [data-testid="stSelectbox"] [data-baseweb="option"],
+    [data-testid="stMultiselect"] [data-baseweb="option"],
+    div[role="option"] {
+        background-color: transparent !important;
+        background: transparent !important;
+        color: #FFFFFF !important;
+        opacity: 1.0 !important;
+    }
+
+    /* 3. Force input placeholder text to be visible */
+    div[class*="select__placeholder"] {
+        color: #A0A0A0 !important;
+    }
+
+    /* 4. HARD HOVER OVERRIDES */
+    div[class*="select__option"]:hover,
+    div[class*="dropdown-item"]:hover,
+    [data-baseweb="option"]:hover,
+    [data-testid="stSelectbox"] [data-baseweb="option"]:hover,
+    [data-testid="stMultiselect"] [data-baseweb="option"]:hover,
+    div[role="option"]:hover {
+        background-color: #333333 !important;
+        background: #333333 !important;
+        color: #C9A84C !important;
+    }
+
+    /* 5. SELECTED STATE */
+    div[class*="select__option--is-selected"],
+    [aria-selected="true"] {
+        background-color: rgba(201, 168, 76, 0.15) !important;
+        color: #C9A84C !important;
+    }
+
+    /* 6. CRITICAL: Override inline library styles that use "style" attributes */
+    div[style*="background-color: white"],
+    div[style*="background-color: #fff"],
+    div[style*="background: white"],
+    div[style*="background: #fff"] {
+        background: #1E1E1E !important;
+        background-color: #1E1E1E !important;
+    }
+    
+    /* ===== EXTREME OVERRIDE: ELIMINATE WHITE BOXES & BORDERS ===== */
+
+    /* 1. The "White Box" Trick: Override all parent layout containers */
+    html body div[data-testid="stVerticalBlock"],
+    html body div[data-testid="stHorizontalBlock"],
+    html body section[data-testid="stExpander"] {
+        background-color: #141414 !important;
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
+    /* 2. Target the actual Expander (DETAILS) */
+    html body div[data-testid="stExpander"] > details {
+        background-color: #1E1E1E !important;
+        border: 1px solid #2A2A2A !important; 
+        border-radius: 6px !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    /* 3. Force the clickable header (SUMMARY) to be dark */
+    html body div[data-testid="stExpander"] > details > summary {
+        background-color: #1E1E1E !important;
+        border: none !important;
+        border-bottom: 1px solid #2A2A2A !important;
+        color: #E0E0E0 !important;
+        border-radius: 6px 6px 0 0 !important;
+    }
+
+    /* 4. The Gold Accent on Hover */
+    html body div[data-testid="stExpander"] > details:hover,
+    html body div[data-testid="stExpander"] > details > summary:hover {
+        border-color: #C9A84C !important;
+        box-shadow: 0 0 8px rgba(201, 168, 76, 0.15) !important;
+    }
+
+    /* 5. FORCE KILL ANY LEFT-OVER WHITE BACKGROUNDS (Brute Force) */
+    div[style*="background-color: white"],
+    div[style*="background-color: #fff"],
+    div[style*="background-color: #FFFFFF"],
+    div[style*="background: white"],
+    div[style*="background: #fff"],
+    section[style*="background-color: white"],
+    section[style*="background: white"] {
+        background-color: #1E1E1E !important;
+        border-color: #2A2A2A !important;
+    }
+    
+    /* ===== BRUTAL FORCE: GLOBAL GOLD ACCENT THEME ===== */
+
+    /* 1. Define the Gold Master Variables */
+    :root {
+        --primary-gold: #C9A84C;
+        --primary-gold-hover: #B3913A;
+        --primary-gold-light: #E8D18C;
+        --primary-gold-shadow: rgba(201, 168, 76, 0.3);
+    }
+
+    /* 2. NUCLEAR TARGET: All Buttons, Pagination, Action Links */
+    html body button,
+    html body input[type="button"],
+    html body input[type="submit"],
+    html body .btn,
+    html body [role="button"],
+    html body .pagination,
+    html body .pagination a,
+    html body .stButton button,
+    html body .stActionButton button {
+        background: var(--primary-gold) !important;
+        background-color: var(--primary-gold) !important;
+        border: 1px solid var(--primary-gold) !important;
+        border-radius: 6px !important;
+        color: #111111 !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+
+    /* 3. HOVER STATE: Darker Gold */
+    html body button:hover,
+    html body input[type="button"]:hover,
+    html body .btn:hover,
+    html body [role="button"]:hover,
+    html body .stButton button:hover {
+        background: var(--primary-gold-hover) !important;
+        background-color: var(--primary-gold-hover) !important;
+        border-color: var(--primary-gold-hover) !important;
+        box-shadow: 0 0 10px var(--primary-gold-shadow) !important;
+        color: #000000 !important;
+    }
+
+    /* 4. KILL THE RED IN PAGINATION & NAV */
+    html body .pagination .active {
+        background: var(--primary-gold) !important;
+        border-color: var(--primary-gold) !important;
+        color: #000000 !important;
+    }
+    html body .pagination .page-link {
+        background: transparent !important;
+        color: var(--primary-gold) !important;
+        border: 1px solid var(--primary-gold) !important;
+    }
+
+    /* 5. CRITICAL: Override Inline Styling for RED buttons */
+    button[style*="background-color: red"],
+    button[style*="background: red"],
+    button[style*="background-color: #ff"],
+    button[style*="background-color: rgb(255"],
+    button[style*="background-color: #dc"],
+    button[style*="background-color: #CC0000"],
+    button[style*="background: #CC0000"] {
+        background-color: var(--primary-gold) !important;
+        background: var(--primary-gold) !important;
+        border-color: var(--primary-gold) !important;
+        color: #111111 !important;
+    }
+    
+    /* ===== EXTREME FORCE: DIMMING BRIGHT WHITE TABLES & EDITORS ===== */
+
+    /* 1. NUCLEAR BACKGROUND & TEXT OVERRIDE FOR ALL DATA TABLES */
+    html body table,
+    html body div[data-testid="stDataFrame"],
+    html body div[data-testid="stTable"],
+    html body [role="table"],
+    html body [role="grid"],
+    html body .dataframe {
+        background-color: #2C2C2C !important;
+        border: 1px solid #3A3A3A !important;
+        border-radius: 8px !important;
+        color: #E0E0E0 !important;
+    }
+
+    /* 2. TARGET TABLE HEADERS & CELLS */
+    html body table th,
+    html body table td,
+    html body div[data-testid="stDataFrame"] th,
+    html body div[data-testid="stDataFrame"] td,
+    html body div[data-testid="stTable"] td {
+        background-color: #2C2C2C !important; 
+        border-color: #3A3A3A !important;
+        color: #E0E0E0 !important;
+    }
+
+    /* 3. TABLE HEADER SPECIFIC - Gold headers */
+    html body table thead th {
+        background-color: #242424 !important; 
+        color: #C9A84C !important;
+    }
+
+    /* 4. ATTACKING THE RICH TEXT EDITOR (Brute force shadow penetration) */
+    html body div[class*="stTextArea"],
+    html body div[role="textbox"],
+    html body div[contenteditable="true"],
+    html body .DraftEditor-root,
+    html body .ProseMirror,
+    html body .CodeMirror {
+        background-color: #2C2C2C !important;
+        color: #E0E0E0 !important;
+        border: 1px solid #3A3A3A !important;
+        caret-color: #E0E0E0 !important;
+    }
+
+    /* 5. TOOLBAR BUTTONS IN THE TEXT EDITOR */
+    html body div[class*="toolbar"] button,
+    html body div[class*="menu"] button,
+    html body .tox-toolbar button {
+        background-color: #1E1E1E !important;
+        color: #A0A0A0 !important;
+        border: 1px solid #333333 !important;
+    }
+
+    html body div[class*="toolbar"] button:hover {
+        background-color: #333333 !important;
+        color: #C9A84C !important;
+    }
+
+    /* 6. KILL ANY REMNANT WHITE BOXES */
+    div[style*="background-color: white"],
+    div[style*="background-color: #fff"],
+    div[style*="background: white"],
+    div[style*="background: #fff"],
+    div[style*="background-color: rgb(255, 255, 255)"] {
+        background-color: #2C2C2C !important;
+        border-color: #3A3A3A !important;
+    }
+    
+    /* ===== FORCE DARK ON EXTERNAL LIBRARY CLASSES ===== */
+
+    /* TinyMCE / Rich Text Editor specific */
+    .tox-tinymce, 
+    .mce-content-body, 
+    .mce-edit-area,
+    .tox .tox-edit-area {
+        background-color: #2C2C2C !important;
+        border: 1px solid #3A3A3A !important;
+    }
+    .mce-content-body p, 
+    .mce-content-body span, 
+    .mce-content-body div {
+        color: #E0E0E0 !important;
+    }
+
+    /* AG-Grid / Streamlit specific Table classes */
+    .ag-root-wrapper, 
+    .ag-root-wrapper-body, 
+    .ag-header, 
+    .ag-header-row, 
+    .ag-row {
+        background-color: #2C2C2C !important;
+        border-color: #3A3A3A !important;
+        color: #E0E0E0 !important;
+    }
+    .ag-header-cell-text {
+        color: #C9A84C !important;
+    }
+    
+    /* ===== ULTIMATE FALLBACK: Invert colors if penetration fails ===== */
+    iframe, 
+    .tox-tinymce,
+    .mce-content-body {
+        filter: invert(1) hue-rotate(180deg) !important;
+    }
+
+    /* Re-invert images inside the editor so they remain normal */
+    iframe img, 
+    .tox-tinymce img, 
+    .mce-content-body img {
+        filter: invert(1) hue-rotate(180deg) !important;
+    }
+    
+    /* ===== CSV PREVIEW GRID - STREAMLIT AG-GRID SPECIFIC ===== */
+    [data-testid="stDataFrame"], 
+    .stDataFrame, 
+    .ag-root-wrapper, 
+    .ag-root-wrapper-body {
+        background-color: #1E1E1E !important;
+    }
+
+    .ag-theme-streamlit,
+    .ag-theme-streamlit .ag-root-wrapper,
+    .ag-theme-streamlit .ag-root-wrapper-body {
+        background-color: #1E1E1E !important;
+    }
+
+    /* Override AG-Grid CSS Variables (CRITICAL FIX) */
+    .ag-theme-streamlit {
+        --ag-background-color: #1E1E1E !important;
+        --ag-foreground-color: #E0E0E0 !important;
+        --ag-header-background-color: #242424 !important;
+        --ag-header-foreground-color: #C9A84C !important;
+        --ag-border-color: #3A3A3A !important;
+        --ag-row-hover-color: #2C2C2C !important;
+    }
+    
+    /* ===== DATAFRAME DARK THEME - CSS ONLY ===== */
+    [data-testid="stDataFrame"] {
+        background-color: #2C2C2C !important;
+    }
+    [data-testid="stDataFrame"] [data-testid="stDataFrameResizable"] {
+        background-color: #2C2C2C !important;
+    }
+    [data-testid="stDataFrame"] .glide-data-grid {
+        background-color: #2C2C2C !important;
+    }
+    [data-testid="stDataFrame"] canvas {
+        background-color: #2C2C2C !important;
+    }
+    [data-testid="stDataFrame"] [class*="glide"],
+    [data-testid="stDataFrame"] [class*="dvn"] {
+        background-color: #2C2C2C !important;
+    }
+    
+    /* ===== CANVAS VISIBILITY FIX - INVERT ===== */
+    [data-testid="stDataFrame"],
+    [data-testid="stDataFrame"] canvas,
+    [data-testid="stDataFrame"] .glide-data-grid {
+        filter: invert(0.85) hue-rotate(180deg) !important;
+        background-color: transparent !important;
+    }
+    [data-testid="stDataFrame"] img,
+    [data-testid="stDataFrame"] svg {
+        filter: invert(0.85) hue-rotate(180deg) !important;
+    }
+    
+    /* ===== DARK HTML TABLE ===== */
+    .dark-csv-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background-color: #1E1E1E !important;
+        border: 1px solid #333333 !important;
+        border-radius: 6px !important;
+        overflow: hidden !important;
+        color: #E0E0E0 !important;
+        font-size: 0.85rem !important;
+    }
+    .dark-csv-table th {
+        background-color: #242424 !important;
+        color: #C9A84C !important;
+        padding: 10px 12px !important;
+        text-align: left !important;
+        border-bottom: 2px solid #B8960C !important;
+        font-weight: 700 !important;
+    }
+    .dark-csv-table td {
+        padding: 8px 12px !important;
+        border-bottom: 1px solid #2A2A2A !important;
+        color: #E0E0E0 !important;
+    }
+    .dark-csv-table tr:last-child td {
+        border-bottom: none !important;
+    }
+    .dark-csv-table tr:hover {
+        background-color: #2C2C2C !important;
+    }
+    
+    /* ===== FIX FOR INVISIBLE SLIDER NUMBERS ===== */
+
+    /* Target the outer containers of the progress bars */
+    div[class*="progress"],
+    div[class*="slider"],
+    div[class*="metric"],
+    div[class*="bar"] {
+        color: #E0E0E0 !important;
+    }
+
+    /* Target the specific numbers that are floating on the sliders */
+    div[class*="progress"] div[class*="value"],
+    div[class*="slider"] span,
+    div[class*="metric"] span,
+    div[class*="bar"] span,
+    div[class*="progress"] b, 
+    div[class*="progress"] strong {
+        color: #E0E0E0 !important;
+        font-weight: bold !important;
+    }
+
+    /* Make tooltip numbers inside colored bars visible */
+    div[class*="progress"] div[style*="background-color: red"],
+    div[class*="progress"] div[style*="background: red"] {
+        color: #E0E0E0 !important;
+    }
+    
+    /* Streamlit progress bars specifically */
+    [data-testid="stProgress"] {
+        color: #E0E0E0 !important;
+    }
+    [data-testid="stProgress"] div,
+    [data-testid="stProgress"] span {
+        color: #E0E0E0 !important;
+    }
+    
+    /* Streamlit sliders */
+    [data-testid="stSlider"] {
+        color: #C9A84C !important;
+    }
+    [data-testid="stSlider"] span,
+    [data-testid="stSlider"] div,
+    [data-testid="stSlider"] label {
+        color: #C9A84C !important;
+    }
+    [data-testid="stSlider"] [data-testid="stSliderThumb"] {
+        background-color: #C9A84C !important;
+        border-color: #B8960C !important;
+    }
+    [data-testid="stSlider"] [data-testid="stSliderTrack"] {
+        background-color: #B8960C !important;
+    }
+    [data-testid="stSlider"] input {
+        accent-color: #C9A84C !important;
+    }
+    
+    /* ===== AGGRESSIVE FILE UPLOADER DARK THEME ===== */
+
+    /* 1. Kill the blinding white background of the drop zone */
+    [data-testid="stFileUploader"] section,
+    [data-testid="stFileUploader"] div[class*="dropzone"],
+    [data-testid="stFileUploader"] div[data-testid="stFileUploadDropzone"],
+    div[class*="stFileUploader"] > div {
+        background-color: #1E1E1E !important;
+        border: 1px solid #3A3A3A !important;
+        border-radius: 6px !important;
+        color: #E0E0E0 !important;
+    }
+
+    /* 2. Kill the white text ("No file chosen", upload limits) */
+    [data-testid="stFileUploader"] small,
+    [data-testid="stFileUploader"] p,
+    [data-testid="stFileUploader"] span,
+    [data-testid="stFileUploader"] div[class*="text"] {
+        color: #A0A0A0 !important;
+    }
+
+    /* 3. Force the "Browse files" / Upload button inside the widget to be Gold */
+    [data-testid="stFileUploader"] button,
+    [data-testid="stFileUploader"] div[role="button"],
+    [data-testid="baseButton-secondary"] {
+        background-color: #C9A84C !important;
+        color: #111111 !important;
+        border: 1px solid #C9A84C !important;
+    }
+
+    /* 4. Hover state for the Gold button */
+    [data-testid="stFileUploader"] button:hover {
+        background-color: #B3913A !important;
+        border-color: #B3913A !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ADD JAVASCRIPT HERE - RIGHT AFTER THE CSS
+st.markdown("""
+<script>
+// MutationObserver - Watches for dropdown elements and forces dark theme
+const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        mutation.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1) {
+                const dropdowns = node.querySelectorAll('[data-baseweb="menu"], [data-baseweb="popover"], ul[role="listbox"], div[role="listbox"]');
+                dropdowns.forEach(function(dropdown) {
+                    dropdown.style.backgroundColor = '#1E1E1E';
+                    dropdown.style.color = '#FFFFFF';
+                    dropdown.style.border = '1px solid #333333';
+                    
+                    const options = dropdown.querySelectorAll('[data-baseweb="option"], div[role="option"], li');
+                    options.forEach(function(option) {
+                        option.style.backgroundColor = '#1E1E1E';
+                        option.style.color = '#FFFFFF';
+                        option.style.opacity = '1';
+                        
+                        option.addEventListener('mouseenter', function() {
+                            option.style.backgroundColor = '#333333';
+                            option.style.color = '#C9A84C';
+                        });
+                    });
+                });
+            }
+        });
+    });
+});
+
+observer.observe(document.body, { childList: true, subtree: true });
+</script>
+""", unsafe_allow_html=True)
+
+
+st.markdown("""
+<script>
+// Shadow DOM Injection method - Fixes Streamlit expander borders
+function fixBorders(targetNode) {
+    if (targetNode.matches && targetNode.matches('[data-testid="stExpander"]')) {
+        if (targetNode.shadowRoot) {
+            targetNode.shadowRoot.querySelectorAll('div, summary').forEach(el => {
+                el.style.border = '1px solid #2A2A2A';
+                el.style.outline = 'none';
+                el.style.boxShadow = 'none';
+                el.style.backgroundColor = '#1E1E1E';
+            });
+        }
+    }
+}
+
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === 1) {
+                fixBorders(node); 
+                node.querySelectorAll('[data-testid="stExpander"]').forEach(fixBorders);
+                
+                // Also fix any parent containers with white backgrounds
+                node.querySelectorAll('div[style*="background"]').forEach(el => {
+                    const style = el.getAttribute('style') || '';
+                    if (style.includes('white') || style.includes('#fff') || style.includes('#FFFFFF')) {
+                        el.style.backgroundColor = '#1E1E1E';
+                        el.style.border = '1px solid #2A2A2A';
+                    }
+                });
+            }
+        });
+    });
+});
+
+observer.observe(document.getElementById('root') || document.body, { childList: true, subtree: true });
+</script>
+""", unsafe_allow_html=True)
+
+
+
+st.markdown("""
+<script>
+// Absolute DOM enforcement: Replaces any red button with Gold
+const buttonFixer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        mutation.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1) {
+                if (node.matches && (node.matches('button, .btn, [role="button"]'))) {
+                    fixButton(node);
+                }
+                node.querySelectorAll('button, .btn, [role="button"]').forEach(fixButton);
+            }
+        });
+    });
+});
+
+function fixButton(el) {
+    el.classList.remove('btn-danger', 'bg-red', 'text-red');
+    el.style.setProperty('background-color', '#C9A84C', 'important');
+    el.style.setProperty('background', '#C9A84C', 'important');
+    el.style.setProperty('border-color', '#C9A84C', 'important');
+    el.style.setProperty('color', '#111111', 'important');
+}
+
+buttonFixer.observe(document.body, { childList: true, subtree: true });
+</script>
+""", unsafe_allow_html=True)
+
+
+
+st.markdown("""
+<script>
+// ===== ULTIMATE BRUTE FORCE: DARK MODE HIJACK =====
+
+function ultimateDarkForce() {
+    // 1. Attack all divs that look like rich text editors regardless of ShadowDOM
+    const allEditorHosts = document.querySelectorAll('div[contenteditable="true"], .tox-edit-area, .mce-content-body, .ProseMirror, .CodeMirror, [data-testid="stTextArea"] div');
+    
+    allEditorHosts.forEach(el => {
+        el.style.setProperty('background-color', '#2C2C2C', 'important');
+        el.style.setProperty('color', '#E0E0E0', 'important');
+        el.style.setProperty('border-color', '#3A3A3A', 'important');
+        
+        el.querySelectorAll('p, span, div, h1, h2, h3, li').forEach(child => {
+            child.style.setProperty('color', '#E0E0E0', 'important');
+            child.style.setProperty('background-color', 'transparent', 'important');
+        });
+    });
+
+    // 2. Attack all Tables and DataGrids
+    document.querySelectorAll('table, .dataframe, [data-testid="stDataFrame"], .ag-root-wrapper').forEach(table => {
+        table.style.setProperty('background-color', '#2C2C2C', 'important');
+        table.style.setProperty('color', '#E0E0E0', 'important');
+        table.style.setProperty('border-color', '#3A3A3A', 'important');
+        
+        table.querySelectorAll('th, td, tr').forEach(cell => {
+            cell.style.setProperty('background-color', '#2C2C2C', 'important');
+            cell.style.setProperty('color', '#E0E0E0', 'important');
+            cell.style.setProperty('border-color', '#3A3A3A', 'important');
+        });
+    });
+
+    // 3. IFRAME HYPER-PENETRATION
+    document.querySelectorAll('iframe').forEach(iframe => {
+        try {
+            let doc;
+            if (iframe.contentDocument) {
+                doc = iframe.contentDocument;
+            } else if (iframe.contentWindow) {
+                doc = iframe.contentWindow.document;
+            }
+
+            if (doc) {
+                const body = doc.querySelector('body') || doc.body;
+                if (body) {
+                    body.style.setProperty('background-color', '#2C2C2C', 'important');
+                    body.style.setProperty('color', '#E0E0E0', 'important');
+                    
+                    body.querySelectorAll('*').forEach(innerEl => {
+                        if (innerEl.tagName !== 'HTML' && innerEl.tagName !== 'HEAD') {
+                            innerEl.style.setProperty('background-color', 'transparent', 'important');
+                            innerEl.style.setProperty('color', '#E0E0E0', 'important');
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            // Silently skip cross-origin iframes
+        }
+    });
+}
+
+// 4. Firing the nuclear option on a rapid loop
+ultimateDarkForce();
+
+// Run every 500 milliseconds - catches everything
+setInterval(ultimateDarkForce, 500);
+</script>
+""", unsafe_allow_html=True)
+
+
+
+st.markdown("""
+<script>
+// ===== CSV PREVIEW GRID - DEDICATED SHADOW DOM INJECTOR =====
+function injectDarkGridTheme() {
+    document.querySelectorAll('[data-testid="stDataFrame"], .stDataFrame').forEach(container => {
+        if (container.dataset.darkThemeInjected === "true") return;
+
+        const shadowRoot = container.shadowRoot;
+        if (shadowRoot) {
+            const style = document.createElement('style');
+            style.textContent = `
+                .ag-theme-streamlit {
+                    --ag-background-color: #1E1E1E !important;
+                    --ag-foreground-color: #E0E0E0 !important;
+                    --ag-header-background-color: #242424 !important;
+                    --ag-header-foreground-color: #C9A84C !important;
+                    --ag-border-color: #3A3A3A !important;
+                    --ag-row-hover-color: #2C2C2C !important;
+                }
+                .ag-theme-streamlit .ag-root-wrapper {
+                    background-color: #1E1E1E !important;
+                }
+                .ag-theme-streamlit .ag-cell {
+                    color: #E0E0E0 !important;
+                }
+                .ag-theme-streamlit .ag-header-cell {
+                    background-color: #242424 !important;
+                }
+            `;
+            shadowRoot.appendChild(style);
+            container.dataset.darkThemeInjected = "true";
+        }
+    });
+    
+    // ADDITIONAL: Attack Streamlit canvas-based dataframes
+    document.querySelectorAll('[data-testid="stDataFrame"]').forEach(df => {
+        df.style.setProperty('background-color', '#2C2C2C', 'important');
+        df.querySelectorAll('canvas, div, [class*="glide"], [class*="dvn"]').forEach(inner => {
+            inner.style.setProperty('background-color', '#2C2C2C', 'important');
+        });
+    });
+}
+
+const gridObserver = new MutationObserver(() => injectDarkGridTheme());
+gridObserver.observe(document.body, { childList: true, subtree: true });
+
+injectDarkGridTheme();
+
+// Also run every 1 second as backup
+setInterval(injectDarkGridTheme, 1000);
+</script>
+""", unsafe_allow_html=True)
+
+
+
+st.markdown("""
+<script>
+// Force visibility on slider numbers
+function fixSliderNumbers() {
+    document.querySelectorAll('div[class*="progress"], div[class*="slider"], [data-testid="stProgress"], [data-testid="stSlider"]').forEach(el => {
+        el.style.setProperty('color', '#E0E0E0', 'important');
+        
+        el.querySelectorAll('span, b, strong, div').forEach(child => {
+            child.style.setProperty('color', '#E0E0E0', 'important');
+        });
+    });
+}
+
+// Run immediately and on interval
+fixSliderNumbers();
+setInterval(fixSliderNumbers, 500);
+</script>
+""", unsafe_allow_html=True)
+
+
+
+st.markdown("""
+<script>
+// Force dark mode on file uploaders
+function fixFileUploaders() {
+    document.querySelectorAll('[data-testid="stFileUploader"]').forEach(el => {
+        el.style.setProperty('background-color', '#1E1E1E', 'important');
+        
+        const dropzone = el.querySelector('section, div[class*="dropzone"]');
+        if(dropzone) {
+            dropzone.style.setProperty('background-color', '#1E1E1E', 'important');
+            dropzone.style.setProperty('border-color', '#3A3A3A', 'important');
+        }
+        
+        const btn = el.querySelector('button, div[role="button"]');
+        if(btn) {
+            btn.style.setProperty('background-color', '#C9A84C', 'important');
+            btn.style.setProperty('color', '#111111', 'important');
+        }
+    });
+}
+
+// Run immediately
+fixFileUploaders();
+
+// Run every 500ms
+setInterval(fixFileUploaders, 500);
+</script>
+""", unsafe_allow_html=True)
+
+
+
+
+
+# ============================================================
+# SIDEBAR - WTC PREMIUM GOLD DARK THEME
+# ============================================================
+st.markdown("""
+<style>
+    /* Sidebar background - Dark premium */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1a1a1a 0%, #141414 100%) !important;
+        border-right: 1px solid rgba(184, 150, 12, 0.3) !important;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3) !important;
+    }
+    
+    /* Sidebar all text - Light visible */
+    [data-testid="stSidebar"] * {
+        color: #f0e6d3 !important;
+    }
+    
+    /* Sidebar headers - Gold serif */
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] h4 {
+        color: #C9A84C !important;
+        font-family: 'Georgia', serif !important;
+        font-weight: 700 !important;
+    }
+    
+    /* Sidebar "app" and "Careers" - GOLD VISIBLE (NO GLOW) */
+    [data-testid="stSidebar"] a,
+    [data-testid="stSidebar"] a span,
+    [data-testid="stSidebar"] .stMarkdown a,
+    [data-testid="stSidebar"] a * {
+        color: #C9A84C !important;
+        font-weight: 700 !important;
+        text-decoration: none !important;
+    }
+    [data-testid="stSidebar"] a:hover {
+        color: #ffffff !important;
+    }
+    
+    /* Sidebar logo text */
+    [data-testid="stSidebar"] .stMarkdown strong {
+        color: #C9A84C !important;
+        font-family: 'Georgia', serif !important;
+    }
+    
+    /* Sidebar logo image - NO GOLD CIRCLE, fit properly */
+    [data-testid="stSidebar"] [data-testid="stImage"] {
+        border: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stImage"] img {
+        border: none !important;
+        border-radius: 0 !important;
+        max-width: 85% !important;
+        margin: 0 auto !important;
+        display: block !important;
+    }
+    
+    /* Navigation menu items */
+    [data-testid="stSidebar"] .nav-link {
+        color: #f0e6d3 !important;
+        border-radius: 4px !important;
+        margin: 2px 0 !important;
+        transition: all 0.2s !important;
+    }
+    [data-testid="stSidebar"] .nav-link:hover {
+        background: rgba(184, 150, 12, 0.1) !important;
+        border-left: 3px solid #C9A84C !important;
+    }
+    [data-testid="stSidebar"] .nav-link span {
+        color: #f0e6d3 !important;
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Navigation icons - Gold */
+    [data-testid="stSidebar"] .nav-link svg {
+        color: #C9A84C !important;
+        fill: #C9A84C !important;
+    }
+    
+    /* Selected navigation item - Gold highlight */
+    [data-testid="stSidebar"] .nav-link-selected {
+        background: linear-gradient(135deg, rgba(201, 168, 76, 0.2) 0%, rgba(139, 105, 20, 0.15) 100%) !important;
+        border-left: 3px solid #C9A84C !important;
+        border-radius: 4px !important;
+    }
+    [data-testid="stSidebar"] .nav-link-selected span {
+        color: #C9A84C !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stSidebar"] .nav-link-selected svg {
+        color: #C9A84C !important;
+        fill: #C9A84C !important;
+    }
+    
+    /* Sidebar buttons - Gold outline */
+    [data-testid="stSidebar"] .stButton > button {
+        background: transparent !important;
+        color: #C9A84C !important;
+        border: 1px solid rgba(184, 150, 12, 0.4) !important;
+        border-radius: 4px !important;
+        font-weight: 600 !important;
+        transition: all 0.2s !important;
+    }
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background: rgba(184, 150, 12, 0.15) !important;
+        border-color: #C9A84C !important;
+    }
+    
+    /* Sidebar selectboxes */
+    [data-testid="stSidebar"] [data-testid="stSelectbox"] div,
+    [data-testid="stSidebar"] [data-testid="stSelectbox"] span {
+        color: #f0e6d3 !important;
+    }
+    [data-testid="stSidebar"] select {
+        background: #1e1e1e !important;
+        color: #f0e6d3 !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+    }
+    
+    /* Sidebar inputs */
+    [data-testid="stSidebar"] input {
+        background: #1e1e1e !important;
+        color: #f0e6d3 !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+    }
+    
+    /* Quick Links, Home, Careers - GOLD VISIBLE */
+    [data-testid="stSidebar"] a {
+        color: #C9A84C !important;
+        text-decoration: none !important;
+    }
+    [data-testid="stSidebar"] a:hover {
+        color: #f0e6d3 !important;
+    }
+    
+    /* Footer text - VISIBLE */
+    [data-testid="stSidebar"] .stMarkdown p,
+    [data-testid="stSidebar"] .stMarkdown span {
+        color: #9a8a78 !important;
+    }
+    
+    /* HRIS version text */
+    [data-testid="stSidebar"] .stMarkdown small {
+        color: #C9A84C !important;
+    }
+    
+    /* Sidebar radio buttons */
+    [data-testid="stSidebar"] [data-testid="stRadio"] label {
+        color: #f0e6d3 !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stRadio"] span {
+        color: #f0e6d3 !important;
+    }
+    
+    /* Sidebar divider */
+    [data-testid="stSidebar"] hr {
+        border-color: rgba(184, 150, 12, 0.3) !important;
+    }
+    
+    /* Sidebar scrollbar */
+    [data-testid="stSidebar"] ::-webkit-scrollbar-track {
+        background: #1a1a1a !important;
+    }
+    [data-testid="stSidebar"] ::-webkit-scrollbar-thumb {
+        background: #B8960C !important;
+    }
+    
+    /* Sidebar collapse button */
+    [data-testid="stSidebar"] button[data-testid="stSidebarCollapseButton"] {
+        color: #C9A84C !important;
+    }
+    
+    /* Sidebar expander */
+    [data-testid="stSidebar"] .streamlit-expanderHeader {
+        background: #1e1e1e !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+        color: #C9A84C !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
 
 # ============================================================
 # GLOBAL HEADER STYLING - Standardize all header sizes
@@ -1613,7 +3394,7 @@ def employee_dashboard():
         else:
             st.info("No celebrations today.")
         
-        # Upcoming Holidays
+       # Upcoming Holidays
         st.markdown("---")
         st.subheader("🏖️ Upcoming Holidays & Events")
         
@@ -1649,13 +3430,13 @@ def employee_dashboard():
             day_str = "Today! 🎉" if days == 0 else f"{days} day{'s' if days > 1 else ''}"
             
             st.markdown(f"""
-            <div style="background:linear-gradient(135deg, #f0f8ff, #e6f2ff);padding:1rem;border-radius:12px;border-left:4px solid #3182ce;margin-bottom:0.8rem;">
+            <div style="background:linear-gradient(135deg, #1E1E1E, #2D2D2D);padding:1rem;border-radius:12px;border:1px solid rgba(184, 150, 12, 0.4);border-left:4px solid #B8960C;margin-bottom:0.8rem;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <span style="font-size:2rem;">📅</span>
                     <div>
-                        <strong style="color:#3182ce;">Next Holiday</strong><br>
-                        <span style="font-size:1.1rem;">{next_holiday[0]}</span>
-                        <br><small style="color:#888;">{next_holiday[1].strftime('%B %d, %Y')} — {day_str} away</small>
+                        <strong style="color:#C9A84C;">Next Holiday</strong><br>
+                        <span style="font-size:1.1rem;color:#F0E6D3;">{next_holiday[0]}</span>
+                        <br><small style="color:#9a8a78;">{next_holiday[1].strftime('%B %d, %Y')} — {day_str} away</small>
                     </div>
                 </div>
             </div>
@@ -1796,7 +3577,12 @@ def employee_dashboard():
             link=dict(source=sources, target=targets, value=values,
                 color=['rgba(204,0,0,0.2)'] * len(sources))
         )])
-        fig.update_layout(height=500)
+        fig.update_layout(
+            height=500,
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+        )
         st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---")
@@ -1813,7 +3599,8 @@ def employee_dashboard():
                         'Position': row['position']
                     })
                 if hod_data:
-                    st.dataframe(pd.DataFrame(hod_data), use_container_width=True, hide_index=True)
+                    html_table = pd.DataFrame(hod_data).to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                    st.markdown(html_table, unsafe_allow_html=True)
         except:
             pass
     # ============ PEER RATING ============
@@ -2160,7 +3947,19 @@ def executive_dashboard():
         fig = go.Figure()
         fig.add_trace(go.Bar(name='Occupancy %', x=portfolio_data['Property'], y=portfolio_data['Occupancy %'], marker_color='#CC0000', text=portfolio_data['Occupancy %'], textposition='outside'))
         fig.add_trace(go.Bar(name='Revenue %', x=portfolio_data['Property'], y=portfolio_data['Revenue %'], marker_color='#4a4a4a', text=portfolio_data['Revenue %'], textposition='outside'))
-        fig.update_layout(height=350, barmode='group', margin=dict(t=20))
+        fig.update_layout(
+            height=350, 
+            barmode='group', 
+            margin=dict(t=20),
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+            legend=dict(font=dict(color='#F0E6D3'))
+        )
+        fig.update_traces(
+            textfont=dict(color='#FFFFFF', size=12),
+            textposition='outside'
+        )
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
@@ -2169,7 +3968,13 @@ def executive_dashboard():
             dept_counts = emp_df['department'].value_counts()
             fig2 = px.pie(values=dept_counts.values, names=dept_counts.index, hole=0.4,
                          color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e', '#805ad5', '#dd6b20', '#2b6cb0', '#718096', '#e53e3e', '#319795', '#d53f8c'])
-            fig2.update_layout(height=350, margin=dict(t=20))
+            fig2.update_layout(
+                height=350, 
+                margin=dict(t=20),
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+            )
             st.plotly_chart(fig2, use_container_width=True)
     
     # ============ ROW 2: STRATEGIC PILLARS + GENDER DIVERSITY ============
@@ -2179,7 +3984,6 @@ def executive_dashboard():
     with col1:
         st.subheader("🎯 Strategic Pillars 2026-2027")
         
-        # Load real performance data
         pillar_progress = {
             '1. Occupancy & Revenue Growth': {'progress': 0, 'color': '#CC0000'},
             '2. Process Simplification': {'progress': 0, 'color': '#38a169'},
@@ -2202,12 +4006,12 @@ def executive_dashboard():
         
         for name, data in pillar_progress.items():
             st.markdown(f"""
-            <div style="background:white;padding:0.8rem 1rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {data['color']};">
+            <div style="background:#1E1E1E;padding:0.8rem 1rem;border-radius:8px;margin-bottom:0.5rem;border-left:4px solid {data['color']};">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-weight:600;font-size:0.9rem;">{name}</span>
+                    <span style="font-weight:600;font-size:0.9rem;color:#F0E6D3;">{name}</span>
                     <span style="color:{data['color']};font-weight:700;">{data['progress']}%</span>
                 </div>
-                <div style="background:#e0e0e0;height:6px;border-radius:3px;margin-top:0.4rem;">
+                <div style="background:#2A2A2A;height:6px;border-radius:3px;margin-top:0.4rem;">
                     <div style="background:{data['color']};width:{data['progress']}%;height:6px;border-radius:3px;"></div>
                 </div>
             </div>
@@ -2218,13 +4022,19 @@ def executive_dashboard():
         if male_count > 0 or female_count > 0:
             gender_data = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [male_count, female_count]})
             fig3 = px.pie(gender_data, values='Count', names='Gender', hole=0.6, color_discrete_sequence=['#3182ce', '#CC0000'])
-            fig3.update_layout(height=300, margin=dict(t=20))
+            fig3.update_layout(
+                height=300, 
+                margin=dict(t=20),
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+            )
             st.plotly_chart(fig3, use_container_width=True)
             
             st.markdown(f"""
             <div style="text-align:center;margin-top:-5rem;position:relative;z-index:1;">
                 <span style="font-size:2rem;font-weight:900;color:#CC0000;">{total_employees}</span><br>
-                <small style="color:#888;">Total Workforce</small>
+                <small style="color:#9a8a78;">Total Workforce</small>
             </div>
             """, unsafe_allow_html=True)
         else:
@@ -2249,8 +4059,16 @@ def executive_dashboard():
         fig4 = go.Figure()
         fig4.add_trace(go.Scatter(x=months, y=actual, mode='lines+markers', name='Actual', line=dict(color='#CC0000', width=3), fill='tozeroy', fillcolor='rgba(204,0,0,0.1)'))
         fig4.add_trace(go.Scatter(x=months, y=target, mode='lines', name='Target', line=dict(color='#4a4a4a', width=2, dash='dash')))
-        fig4.update_layout(height=300, margin=dict(t=20))
+        fig4.update_layout(
+            height=300, 
+            margin=dict(t=20),
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+            legend=dict(font=dict(color='#F0E6D3'))
+        )
         st.plotly_chart(fig4, use_container_width=True)
+
         
         if is_admin or is_sr_mgmt:
             with st.expander("✏️ Edit Revenue Data"):
@@ -3100,9 +4918,11 @@ def employee_management():
                 
                 if dept_preview:
                     st.markdown("**📋 Department Preview:**")
-                    st.dataframe(pd.DataFrame(dept_preview), use_container_width=True, hide_index=True)
+                    html_table = pd.DataFrame(dept_preview).to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                    st.markdown(html_table, unsafe_allow_html=True)
             
-            st.dataframe(df.head(), use_container_width=True)
+            html_table = df.head().to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+            st.markdown(html_table, unsafe_allow_html=True)
             if st.button("📤 Upload All", use_container_width=True):
                 success, fail = 0, 0
                 corrected_count = 0
@@ -3444,7 +5264,14 @@ def employee_management():
                                 fig = px.pie(values=grade_counts.values, names=grade_counts.index, 
                                            hole=0.6, title="Grade Distribution",
                                            color_discrete_sequence=[color, '#d69e2e', '#3182ce', '#38a169', '#888'])
-                                fig.update_layout(height=200, margin=dict(t=30, b=0, l=0, r=0), showlegend=False)
+                                fig.update_layout(
+                                    height=200, 
+                                    margin=dict(t=30, b=0, l=0, r=0), 
+                                    showlegend=False,
+                                    paper_bgcolor='#1E1E1E',
+                                    plot_bgcolor='#1E1E1E',
+                                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                                )
                                 st.plotly_chart(fig, use_container_width=True)
                     
                     # Staff list
@@ -3463,7 +5290,14 @@ def employee_management():
                 if not region_dept.empty:
                     fig2 = px.bar(region_dept, barmode='stack', 
                                  color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169', '#dd6b20', '#805ad5', '#2b6cb0', '#718096', '#e53e3e', '#319795', '#d53f8c', '#FFD700'])
-                    fig2.update_layout(height=400, title="Staff Count by Region & Department")
+                    fig2.update_layout(
+                        height=400, 
+                        title="Staff Count by Region & Department",
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig2, use_container_width=True)
             
             # Department size comparison
@@ -3475,7 +5309,12 @@ def employee_management():
                          color_continuous_scale=['#3182ce', '#d69e2e', '#CC0000'],
                          text='Staff')
             fig3.update_traces(textposition='outside')
-            fig3.update_layout(height=400)
+            fig3.update_layout(
+                height=400,
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+            )
             st.plotly_chart(fig3, use_container_width=True)
             
             # Gender distribution by department
@@ -3487,7 +5326,14 @@ def employee_management():
                 if not gender_dept.empty:
                     fig4 = px.bar(gender_dept, barmode='group',
                                  color_discrete_sequence=['#3182ce', '#CC0000'])
-                    fig4.update_layout(height=400, title="Male/Female Distribution per Department")
+                    fig4.update_layout(
+                        height=400, 
+                        title="Male/Female Distribution per Department",
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig4, use_container_width=True)
             
             # Export
@@ -3500,6 +5346,7 @@ def employee_management():
             st.download_button("📥 Download Department Report", dept_export.to_csv(index=False), "department_report.csv", "text/csv")
         else:
             st.info("No employee data available.")
+
     
     # ============ TAB 6: ORG CHART ============
     with tab6:
@@ -3529,23 +5376,39 @@ def employee_management():
         sources += [17, 17, 18, 18]; targets += [18, 19, 19, 20]; values += [10, 5, 12, 30]
         
         fig = go.Figure(data=[go.Sankey(node=dict(pad=20, thickness=18, label=labels, color=colors), link=dict(source=sources, target=targets, value=values, color=['rgba(204,0,0,0.2)']*len(sources)))])
-        fig.update_layout(height=600)
+        fig.update_layout(
+            height=600,
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+        )
         st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---")
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("### 🏢 Abuja Region — Department Heads")
-            st.dataframe(pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'], 'HOD': ['Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'Adebayo Sakote', 'Jeff Arikawe', 'Ahmed Karim (VP)', 'Anand Bora', 'Usman Sani', 'David Aiyedun', 'Ibukun Adeogun'], 'Team': [12, 20, 8, 6, 8, 12, 6, 15, 3, 10]}), use_container_width=True, hide_index=True)
+            abuja_df = pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'], 'HOD': ['Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'Adebayo Sakote', 'Jeff Arikawe', 'Ahmed Karim (VP)', 'Anand Bora', 'Usman Sani', 'David Aiyedun', 'Ibukun Adeogun'], 'Team': [12, 20, 8, 6, 8, 12, 6, 15, 3, 10]})
+            html_table = abuja_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+            st.markdown(html_table, unsafe_allow_html=True)
         with col2:
             st.markdown("### 🏢 Lagos Region — Department Heads")
-            st.dataframe(pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'], 'HOD': ['Lawal Mohammed', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD'], 'Team': ['TBD']*10}), use_container_width=True, hide_index=True)
+            lagos_df = pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Engineering (MEP)', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations'], 'HOD': ['Lawal Mohammed', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD', 'TBD'], 'Team': ['TBD']*10})
+            html_table = lagos_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+            st.markdown(html_table, unsafe_allow_html=True)
         
         st.markdown("---")
         st.markdown("### 👥 Span of Control")
         span_data = pd.DataFrame({'Leader': ['Vinay Mahtani', 'Jerome Das', 'Ahmed Karim', 'Emmanuel Etuk', 'David Effiong', 'Sanjeev Purwar', 'All HODs (Avg)'], 'Role': ['GMD', 'COO', 'VP Sales', 'HOD Tech (Abuja)', 'HOD FM (Abuja)', 'HOD Engr (MEP)', 'Heads of Dept'], 'Region': ['Group', 'Group', 'Group', 'Abuja', 'Abuja', 'Abuja', 'Group'], 'Direct Reports': [5, 12, 6, 12, 20, 8, 10]})
         fig2 = px.bar(span_data, x='Leader', y='Direct Reports', color='Region', text='Direct Reports', color_discrete_sequence=['#CC0000', '#3182ce', '#38a169'])
-        fig2.update_layout(height=350); fig2.update_traces(textposition='outside')
+        fig2.update_layout(
+            height=350,
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+            legend=dict(font=dict(color='#F0E6D3'))
+        )
+        fig2.update_traces(textposition='outside')
         st.plotly_chart(fig2, use_container_width=True)
         
         st.markdown("---")
@@ -3578,12 +5441,24 @@ def employee_management():
         st.markdown("### 👥 Gender Distribution")
         gender_data = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [38, 18]})
         fig = px.pie(gender_data, values='Count', names='Gender', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000'])
-        fig.update_layout(height=350); st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(
+            height=350,
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+        )
+        st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---"); st.markdown("### 🏢 Department Gender Split")
         dept_gender = pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Human Resources', 'Sales & Marketing', 'Accounts & Finance', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], 'Male': [10, 10, 3, 6, 4, 3, 10, 1, 4, 3], 'Female': [4, 3, 5, 4, 2, 2, 2, 1, 1, 1]})
         fig2 = px.bar(dept_gender, x='Department', y=['Male', 'Female'], barmode='group', color_discrete_sequence=['#3182ce', '#CC0000'])
-        fig2.update_layout(height=400); st.plotly_chart(fig2, use_container_width=True)
+        fig2.update_layout(
+            height=400,
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+        )
+        st.plotly_chart(fig2, use_container_width=True)
         
         st.markdown("---"); st.markdown("### 📅 Tenure Distribution")
         try:
@@ -3602,7 +5477,14 @@ def employee_management():
                 tenure_df = pd.DataFrame(pd.Series(tenure_data).value_counts()).reset_index()
                 tenure_df.columns = ['Tenure', 'Count']
                 fig3 = px.bar(tenure_df, x='Tenure', y='Count', color='Tenure', color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e'])
-                fig3.update_layout(height=350, showlegend=False); st.plotly_chart(fig3, use_container_width=True)
+                fig3.update_layout(
+                    height=350, 
+                    showlegend=False,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                )
+                st.plotly_chart(fig3, use_container_width=True)
         except: pass
         
         st.markdown("---"); st.markdown("### 📊 Grade Distribution")
@@ -3610,7 +5492,13 @@ def employee_management():
             grade_counts = employees_df['grade'].value_counts()
             grade_df = pd.DataFrame({'Grade': grade_counts.index, 'Count': grade_counts.values})
             fig4 = px.pie(grade_df, values='Count', names='Grade', hole=0.4, color_discrete_sequence=['#CC0000', '#3182ce', '#38a169', '#d69e2e', '#805ad5'])
-            fig4.update_layout(height=350); st.plotly_chart(fig4, use_container_width=True)
+            fig4.update_layout(
+                height=350,
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+            )
+            st.plotly_chart(fig4, use_container_width=True)
     
     # ============ TAB 8: EXPORT ============
     with tab8:
@@ -3623,7 +5511,8 @@ def employee_management():
                 dept_df = employees_df[employees_df['department'] == selected_export_dept]
                 st.download_button(f"📥 Download {selected_export_dept} (CSV)", dept_df.to_csv(index=False), f"{selected_export_dept}_employees.csv", "text/csv")
             st.markdown("---"); st.markdown("### 📊 Quick Stats")
-            st.dataframe(employees_df.describe(), use_container_width=True)
+            html_table = employees_df.describe().to_html(classes='dark-csv-table', index=True, border=0, escape=False)
+            st.markdown(html_table, unsafe_allow_html=True)
 
 
 def performance_okrs():
@@ -3637,62 +5526,261 @@ def performance_okrs():
     
     
     # ============================================================
-    # CSS INJECTION
+    # CSS INJECTION - WTC PREMIUM DARK THEME
     # ============================================================
     st.markdown("""
     <style>
+    /* ===== WTC PREMIUM DARK THEME ===== */
+    :root {
+        --gold: #B8960C;
+        --gold-light: #C9A84C;
+        --dark: #141414;
+        --card-bg: #1e1e1e;
+        --card-border: #2e2e2e;
+        --text-primary: #f0e6d3;
+        --text-muted: #9a8a78;
+        --font-serif: 'Georgia', 'Times New Roman', serif;
+        --font-sans: 'Helvetica Neue', Arial, sans-serif;
+    }
+    
+    /* Main app background */
+    .stApp {
+        background: var(--dark);
+    }
+    
+    /* All text default */
+    .stMarkdown, .stText, p, label, span {
+        color: var(--text-primary);
+    }
+    
+    /* Glass card - Dark premium */
     .glass-card {
-        background: rgba(255, 255, 255, 0.85);
+        background: linear-gradient(135deg, #1e1e1e, #252525);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
-        border-radius: 16px;
-        border: 1px solid rgba(204, 0, 0, 0.1);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+        border-radius: 12px;
+        border: 1px solid rgba(184, 150, 12, 0.3);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         padding: 1.5rem;
         margin-bottom: 1rem;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .glass-card:hover { box-shadow: 0 12px 40px rgba(204, 0, 0, 0.12); transform: translateY(-2px); }
+    .glass-card:hover { 
+        box-shadow: 0 12px 40px rgba(184, 150, 12, 0.15); 
+        transform: translateY(-2px); 
+    }
+    
+    /* KPI Card - Dark with gold border */
     .kpi-card {
-        background: white; border-radius: 12px; padding: 1rem; margin: 0.4rem 0;
-        border-left: 5px solid #CC0000; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.25s ease;
+        background: var(--card-bg); 
+        border-radius: 8px; 
+        padding: 1rem; 
+        margin: 0.4rem 0;
+        border-left: 4px solid var(--gold); 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3); 
+        transition: all 0.25s ease;
+        color: var(--text-primary);
     }
-    .kpi-card:hover { box-shadow: 0 6px 20px rgba(204, 0, 0, 0.15); transform: translateX(4px); }
+    .kpi-card:hover { 
+        box-shadow: 0 6px 20px rgba(184, 150, 12, 0.2); 
+        transform: translateX(4px); 
+    }
+    
+    /* Region header - Dark with gold */
     .region-header {
-        background: linear-gradient(135deg, #1a1a1a, #2d2d2d); color: white; padding: 1rem 1.5rem;
-        border-radius: 12px; margin: 1rem 0 0.5rem 0; font-weight: 700; font-size: 1.1rem; border-left: 5px solid #CC0000;
+        background: linear-gradient(135deg, #1a1a1a, #2d2d2d); 
+        color: var(--gold-light); 
+        padding: 1rem 1.5rem;
+        border-radius: 10px; 
+        margin: 1rem 0 0.5rem 0; 
+        font-weight: 700; 
+        font-size: 1.1rem; 
+        border-left: 5px solid var(--gold);
+        font-family: var(--font-serif);
     }
+    
+    /* Subsidiary header - Dark with gold */
     .subsidiary-header {
-        background: linear-gradient(135deg, #2d2d2d, #3d3d3d); color: white; padding: 0.7rem 1.2rem;
-        border-radius: 10px; margin: 0.4rem 0 0.4rem 1.5rem; font-weight: 600; border-left: 4px solid #CC0000;
+        background: linear-gradient(135deg, #222, #333); 
+        color: var(--text-primary); 
+        padding: 0.7rem 1.2rem;
+        border-radius: 8px; 
+        margin: 0.4rem 0 0.4rem 1.5rem; 
+        font-weight: 600; 
+        border-left: 4px solid var(--gold);
     }
+    
+    /* Metric mini - Dark with gold values */
     .metric-mini {
-        background: rgba(255,255,255,0.9); border-radius: 10px; padding: 0.8rem 1rem;
-        text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); backdrop-filter: blur(8px);
+        background: rgba(30, 30, 30, 0.95); 
+        border-radius: 8px; 
+        padding: 0.8rem 1rem;
+        text-align: center; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3); 
+        border: 1px solid rgba(184, 150, 12, 0.2);
     }
-    .metric-mini .value { font-size: 1.5rem; font-weight: 700; color: #CC0000; }
-    .metric-mini .label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
-    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin: 2px; }
-    .badge-green { background: #c6f6d5; color: #22543d; }
-    .badge-yellow { background: #fefcbf; color: #744210; }
-    .badge-gray { background: #e2e8f0; color: #2d3748; }
-    .badge-red { background: #fed7d7; color: #742a2a; }
-    .badge-escalated { background: #fbb6ce; color: #742a2a; }
+    .metric-mini .value { 
+        font-size: 1.5rem; 
+        font-weight: 700; 
+        color: var(--gold-light); 
+        font-family: var(--font-serif); 
+    }
+    .metric-mini .label { 
+        font-size: 0.65rem; 
+        color: var(--text-muted); 
+        text-transform: uppercase; 
+    }
+    
+    /* Badges - Gold/amber tones */
+    .badge { 
+        display: inline-block; 
+        padding: 3px 10px; 
+        border-radius: 12px; 
+        font-size: 0.7rem; 
+        font-weight: 600; 
+        margin: 2px; 
+    }
+    .badge-green { background: rgba(56, 161, 105, 0.2); color: #6bcb77; }
+    .badge-yellow { background: rgba(184, 150, 12, 0.2); color: var(--gold-light); }
+    .badge-gray { background: rgba(255, 255, 255, 0.1); color: #a0aec0; }
+    .badge-red { background: rgba(204, 0, 0, 0.2); color: #ff6b6b; }
+    .badge-escalated { background: rgba(204, 0, 0, 0.3); color: #ff6b6b; }
+    
+    /* Certificate card - Gold premium */
     .certificate-card {
-        background: linear-gradient(135deg, #fffef5, #fff8e1);
-        border: 2px solid #d69e2e;
-        border-radius: 16px;
+        background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+        border: 2px solid var(--gold);
+        border-radius: 12px;
         padding: 2rem;
         text-align: center;
-        box-shadow: 0 8px 32px rgba(214, 158, 46, 0.2);
+        box-shadow: 0 8px 32px rgba(184, 150, 12, 0.2);
     }
+    
+    /* Pulse dot - Gold */
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .pulse-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #38a169; animation: pulse 2s infinite; margin-right: 6px; }
-    input[type="number"] { border: 2px solid #e0e0e0; border-radius: 8px; padding: 8px 12px; font-size: 1rem; transition: all 0.2s; }
-    input[type="number"]:focus { border-color: #CC0000; box-shadow: 0 0 0 3px rgba(204, 0, 0, 0.1); outline: none; }
+    .pulse-dot { 
+        display: inline-block; 
+        width: 8px; 
+        height: 8px; 
+        border-radius: 50%; 
+        background: var(--gold-light); 
+        animation: pulse 2s infinite; 
+        margin-right: 6px; 
+    }
+    
+    /* Inputs - Dark with gold focus */
+    input[type="number"], input[type="text"], input[type="email"], textarea, select {
+        border: 2px solid var(--card-border); 
+        border-radius: 6px; 
+        padding: 8px 12px; 
+        font-size: 1rem; 
+        background: var(--card-bg) !important;
+        color: var(--text-primary) !important;
+        transition: all 0.2s; 
+    }
+    input[type="number"]:focus, input[type="text"]:focus, textarea:focus, select:focus { 
+        border-color: var(--gold) !important; 
+        box-shadow: 0 0 0 3px rgba(184, 150, 12, 0.15) !important; 
+        outline: none; 
+    }
+    
+    /* Scrollbar - Gold */
     ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb { background: #CC0000; border-radius: 3px; }
+    ::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 3px; }
+    
+    /* Headers - Serif font with gold */
+    h1, h2, h3 {
+        font-family: var(--font-serif);
+        color: var(--gold-light);
+    }
+    
+    h4, h5, h6 {
+        font-family: var(--font-sans);
+        color: var(--text-primary);
+    }
+    
+    /* Streamlit expanders */
+    .streamlit-expanderHeader {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--card-border) !important;
+        border-radius: 6px !important;
+        color: var(--text-primary) !important;
+    }
+    
+    /* Streamlit metrics */
+    [data-testid="stMetric"] {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 10px;
+    }
+    [data-testid="stMetricValue"] {
+        color: var(--gold-light);
+        font-family: var(--font-serif);
+    }
+    [data-testid="stMetricLabel"] {
+        color: var(--text-muted);
+    }
+    
+    /* Streamlit buttons */
+    .stButton > button {
+        background: linear-gradient(135deg, #C9A84C 0%, #8B6914 100%);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+    }
+    .stButton > button:hover {
+        opacity: 0.85;
+        transform: translateY(-1px);
+    }
+    
+    /* Streamlit tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background: var(--card-bg);
+        border-radius: 6px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: var(--text-muted);
+    }
+    .stTabs [aria-selected="true"] {
+        background: var(--gold) !important;
+        color: white !important;
+    }
+    
+    /* Streamlit sidebar */
+    [data-testid="stSidebar"] {
+        background: #1a1a1a;
+        border-right: 1px solid var(--card-border);
+    }
+    
+    /* Dataframes */
+    [data-testid="stDataFrame"] {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 6px;
+    }
+    
+    /* Success/Warning/Error messages */
+    .stAlert {
+        background: var(--card-bg) !important;
+        border: 1px solid var(--card-border) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    /* Info boxes */
+    .stInfo {
+        background: rgba(184, 150, 12, 0.1) !important;
+        border: 1px solid rgba(184, 150, 12, 0.3) !important;
+        color: var(--gold-light) !important;
+    }
+    
+    /* Divider */
+    hr {
+        border-color: var(--card-border) !important;
+    }
     </style>
     """, unsafe_allow_html=True)
     
@@ -5705,7 +7793,13 @@ def performance_okrs():
                 cat_df = pd.DataFrame(list(cat_counts.items()), columns=['Category', 'Count'])
                 fig = px.pie(cat_df, values='Count', names='Category', hole=0.4, 
                            color_discrete_sequence=['#CC0000', '#1a1a1a', '#4a4a4a', '#3182ce', '#38a169', '#d69e2e', '#718096', '#2d3748'])
-                fig.update_layout(height=350, margin=dict(t=10, b=10))
+                fig.update_layout(
+                    height=350, 
+                    margin=dict(t=10, b=10),
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                )
                 st.plotly_chart(fig, use_container_width=True)
         
         # Achievement timeline
@@ -6082,7 +8176,13 @@ def performance_okrs():
                             region_chart_data.append({'Region': region, 'Completed': total_c, 'Rejected': total_r})
                     if region_chart_data:
                         chart_df = pd.DataFrame(region_chart_data)
-                        fig = px.bar(chart_df, x='Region', y=['Completed', 'Rejected'], barmode='group', color_discrete_sequence=['#38a169', '#CC0000']); fig.update_layout(height=350)
+                        fig = px.bar(chart_df, x='Region', y=['Completed', 'Rejected'], barmode='group', color_discrete_sequence=['#38a169', '#CC0000'])
+                        fig.update_layout(
+                            height=350,
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                        )
                         st.plotly_chart(fig, use_container_width=True)
                 
                 # ============================================================
@@ -6132,7 +8232,13 @@ def performance_okrs():
                                     if reviews: dept_avg_scores[dept] = sum(r['avg_score'] for r in reviews) / len(reviews)
                         if dept_avg_scores:
                             dept_avg_df = pd.DataFrame({'Department': list(dept_avg_scores.keys()), 'Avg Reviewer Score': list(dept_avg_scores.values())})
-                            fig = px.bar(dept_avg_df, x='Department', y='Avg Reviewer Score', color='Avg Reviewer Score', color_continuous_scale=['#38a169', '#d69e2e', '#CC0000']); fig.update_layout(height=350)
+                            fig = px.bar(dept_avg_df, x='Department', y='Avg Reviewer Score', color='Avg Reviewer Score', color_continuous_scale=['#38a169', '#d69e2e', '#CC0000'])
+                            fig.update_layout(
+                                height=350,
+                                paper_bgcolor='#1E1E1E',
+                                plot_bgcolor='#1E1E1E',
+                                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                            )
                             st.plotly_chart(fig, use_container_width=True)
                 
                 # ============================================================
@@ -6677,7 +8783,14 @@ def performance_okrs():
                 dept_avg = all_perf_data[all_perf_data['department'] == user_dept]['progress'].mean() if not all_perf_data.empty and 'progress' in all_perf_data.columns else 0
                 group_avg = all_perf_data['progress'].mean() if not all_perf_data.empty and 'progress' in all_perf_data.columns else 0
                 bench_data = pd.DataFrame({'Metric': ['My Score', 'Dept Average', 'Group Average', 'Target'], 'Score': [total_prog, dept_avg, group_avg, 85]})
-                fig = px.bar(bench_data, x='Metric', y='Score', color='Metric', color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#38a169']); fig.add_hline(y=85, line_dash="dash", line_color="#38a169"); fig.update_layout(height=350)
+                fig = px.bar(bench_data, x='Metric', y='Score', color='Metric', color_discrete_sequence=['#CC0000', '#4a4a4a', '#888888', '#38a169'])
+                fig.add_hline(y=85, line_dash="dash", line_color="#38a169")
+                fig.update_layout(
+                    height=350,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                )
                 st.plotly_chart(fig, use_container_width=True)
             
             st.markdown("---"); st.subheader("📜 My Appraisal History")
@@ -7015,7 +9128,14 @@ def performance_okrs():
                         
                         fig_kpi = px.pie(kpi_data, values='Count', names='Status', hole=0.6,
                                         color_discrete_sequence=['#38a169', '#d69e2e', '#a0aec0', '#CC0000'])
-                        fig_kpi.update_layout(height=350, title="KPI Objective Status")
+                        fig_kpi.update_layout(
+                            height=350, 
+                            title="KPI Objective Status",
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            title_font=dict(color='#C9A84C', family='Georgia, serif')
+                        )
                         st.plotly_chart(fig_kpi, use_container_width=True)
                         
                         # KPI stats
@@ -7030,7 +9150,6 @@ def performance_okrs():
                     
                     with col2:
                         st.subheader("📋 Objective Performance")
-                        # Calculate from actual KPI data
                         at_risk_count = 0
                         behind_count = 0
                         on_track_count = 0
@@ -7051,7 +9170,7 @@ def performance_okrs():
                         
                         total_kpis = at_risk_count + behind_count + on_track_count + completed_kpi_count
                         if total_kpis == 0:
-                            total_kpis = 1  # Avoid division by zero
+                            total_kpis = 1
                         
                         obj_perf = pd.DataFrame({
                             'Performance': ['At Risk', 'Behind Schedule', 'On Track', 'Completed'],
@@ -7069,7 +9188,15 @@ def performance_okrs():
                                         color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169'],
                                         text='Pct')
                         fig_obj.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-                        fig_obj.update_layout(height=350, title="Objective Performance Distribution", showlegend=False)
+                        fig_obj.update_layout(
+                            height=350, 
+                            title="Objective Performance Distribution", 
+                            showlegend=False,
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            title_font=dict(color='#C9A84C', family='Georgia, serif')
+                        )
                         st.plotly_chart(fig_obj, use_container_width=True)
                         
                         for _, row in obj_perf.iterrows():
@@ -7082,9 +9209,7 @@ def performance_okrs():
                     
                     st.markdown("---")
                     
-                    # ============================================================
                     # APPRAISAL COMPLETION STATUS
-                    # ============================================================
                     st.subheader("📋 Appraisal Completion Status")
                     
                     completion_data = {
@@ -7108,7 +9233,14 @@ def performance_okrs():
                     with col1:
                         fig_comp = px.pie(comp_df, values='Count', names='Stage', hole=0.5,
                                          color_discrete_sequence=['#a0aec0', '#3182ce', '#d69e2e', '#FFD700', '#CC0000', '#38a169', '#ff4444'])
-                        fig_comp.update_layout(height=400, title="Appraisal Completion Status")
+                        fig_comp.update_layout(
+                            height=400, 
+                            title="Appraisal Completion Status",
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            title_font=dict(color='#C9A84C', family='Georgia, serif')
+                        )
                         st.plotly_chart(fig_comp, use_container_width=True)
                     
                     with col2:
@@ -7125,9 +9257,7 @@ def performance_okrs():
                     
                     st.markdown("---")
                     
-                    # ============================================================
                     # AVERAGE SCORE BY DEPARTMENT
-                    # ============================================================
                     st.subheader("📊 Average Score by Department")
                     
                     dept_scores = defaultdict(list)
@@ -7152,22 +9282,27 @@ def performance_okrs():
                                          color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'],
                                          text='Avg Score')
                         fig_dept.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-                        fig_dept.update_layout(height=400, title="Average Score by Department")
+                        fig_dept.update_layout(
+                            height=400, 
+                            title="Average Score by Department",
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            title_font=dict(color='#C9A84C', family='Georgia, serif')
+                        )
                         st.plotly_chart(fig_dept, use_container_width=True)
                     
                     with col2:
-                        st.dataframe(dept_avg_df, use_container_width=True, hide_index=True,
-                                    column_config={
-                                        'Department': 'Department',
-                                        'Avg Score': st.column_config.NumberColumn('Avg Score', format='%.1f%%'),
-                                        'Employees': 'Employees',
-                                        'Min': st.column_config.NumberColumn('Min', format='%.0f%%'),
-                                        'Max': st.column_config.NumberColumn('Max', format='%.0f%%')
-                                    })
+                        # Format percentage columns
+                        dept_avg_df['Avg Score'] = dept_avg_df['Avg Score'].astype(str) + '%'
+                        dept_avg_df['Min'] = dept_avg_df['Min'].astype(str) + '%'
+                        dept_avg_df['Max'] = dept_avg_df['Max'].astype(str) + '%'
+                        html_table = dept_avg_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                        st.markdown(html_table, unsafe_allow_html=True)
                     
                     st.markdown("---")
                     
-                     # ============================================================
+                    # ============================================================
                     # REVIEWER & COMMITTEE RECOMMENDATIONS BREAKDOWN
                     # ============================================================
                     st.subheader("📋 Recommendations Breakdown")
@@ -7225,7 +9360,12 @@ def performance_okrs():
                             rec_df = pd.DataFrame({'Recommendation': list(reviewer_recs.keys()), 'Count': list(reviewer_recs.values())})
                             fig_rec = px.pie(rec_df, values='Count', names='Recommendation', hole=0.5,
                                             color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#CC0000', '#FFD700', '#a0aec0', '#FF6B35'])
-                            fig_rec.update_layout(height=300)
+                            fig_rec.update_layout(
+                                height=300,
+                                paper_bgcolor='#1E1E1E',
+                                plot_bgcolor='#1E1E1E',
+                                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                            )
                             st.plotly_chart(fig_rec, use_container_width=True)
                             st.caption(f"Total Participants: {sum(reviewer_recs.values())}")
                         else:
@@ -7237,7 +9377,12 @@ def performance_okrs():
                             com_df = pd.DataFrame({'Decision': list(committee_recs.keys()), 'Count': list(committee_recs.values())})
                             fig_com = px.pie(com_df, values='Count', names='Decision', hole=0.5,
                                             color_discrete_sequence=['#38a169', '#CC0000', '#d69e2e'])
-                            fig_com.update_layout(height=300)
+                            fig_com.update_layout(
+                                height=300,
+                                paper_bgcolor='#1E1E1E',
+                                plot_bgcolor='#1E1E1E',
+                                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                            )
                             st.plotly_chart(fig_com, use_container_width=True)
                             st.caption(f"Total Decisions: {sum(committee_recs.values())}")
                         else:
@@ -7251,7 +9396,12 @@ def performance_okrs():
                         class_df = pd.DataFrame({'Class': list(class_counts.keys()), 'Count': list(class_counts.values())})
                         fig_cls = px.pie(class_df, values='Count', names='Class', hole=0.5,
                                         color_discrete_sequence=['#E5E4E2', '#FFD700', '#C0C0C0', '#CD7F32', '#71797E', '#A0AEC0'])
-                        fig_cls.update_layout(height=300)
+                        fig_cls.update_layout(
+                            height=300,
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                        )
                         st.plotly_chart(fig_cls, use_container_width=True)
                     
                     st.markdown("---")
@@ -7861,7 +10011,12 @@ def performance_okrs():
                                      title="Score Distribution")
                     fig.add_vline(x=avg_score, line_dash="dash", line_color="#d69e2e", 
                                  annotation_text=f"Avg: {avg_score:.1f}%")
-                    fig.update_layout(height=300)
+                    fig.update_layout(
+                        height=300,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
                     st.plotly_chart(fig, use_container_width=True)
             
             # ============================================================
@@ -7950,7 +10105,14 @@ def performance_okrs():
                             rec_df = pd.DataFrame({'Recommendation': list(rec_summary.keys()), 'Count': list(rec_summary.values())})
                             fig = px.pie(rec_df, values='Count', names='Recommendation', hole=0.5,
                                         color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#CC0000', '#FFD700', '#a0aec0'])
-                            fig.update_layout(height=350, title="Recommendations from Reviews")
+                            fig.update_layout(
+                                height=350, 
+                                title="Recommendations from Reviews",
+                                paper_bgcolor='#1E1E1E',
+                                plot_bgcolor='#1E1E1E',
+                                font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                                title_font=dict(color='#C9A84C', family='Georgia, serif')
+                            )
                             st.plotly_chart(fig, use_container_width=True)
                     
                     with c2:
@@ -7962,7 +10124,15 @@ def performance_okrs():
                             region_df = pd.DataFrame({'Region': list(region_recs.keys()), 'Count': list(region_recs.values())})
                             fig2 = px.bar(region_df, x='Region', y='Count', color='Region',
                                          color_discrete_sequence=['#CC0000', '#1a1a1a', '#38a169'])
-                            fig2.update_layout(height=350, title="Recommendations by Region")
+                            fig2.update_layout(
+                                height=350, 
+                                title="Recommendations by Region",
+                                paper_bgcolor='#1E1E1E',
+                                plot_bgcolor='#1E1E1E',
+                                font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                                title_font=dict(color='#C9A84C', family='Georgia, serif'),
+                                legend=dict(font=dict(color='#F0E6D3'))
+                            )
                             st.plotly_chart(fig2, use_container_width=True)
                     
                     st.markdown("---")
@@ -8934,7 +11104,16 @@ def staff_confirmation():
                     if status_data:
                         fig1 = px.pie(values=list(status_data.values()), names=list(status_data.keys()), hole=0.6,
                                     color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000', '#dd6b20'])
-                        fig1.update_layout(height=350, margin=dict(t=40, b=20, l=20, r=20), title="Status Distribution", title_font_size=13)
+                        fig1.update_layout(
+                            height=350, 
+                            margin=dict(t=40, b=20, l=20, r=20), 
+                            title="Status Distribution", 
+                            title_font_size=13,
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            title_font=dict(color='#C9A84C', family='Georgia, serif')
+                        )
                         fig1.update_traces(textposition='inside', textinfo='percent+label', textfont_size=10)
                         st.plotly_chart(fig1, use_container_width=True)
                 
@@ -8954,9 +11133,19 @@ def staff_confirmation():
                         dept_df = pd.DataFrame([{'Department': d, **s} for d, s in dept_confirm_data.items()])
                         fig2 = px.bar(dept_df, x='Department', y=['Confirmed', 'Pending', 'Extended'],
                                     barmode='stack', color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce'])
-                        fig2.update_layout(height=350, margin=dict(t=40, b=80, l=20, r=20), title="By Department", 
-                                          title_font_size=13, legend=dict(font=dict(size=9), orientation="h", yanchor="bottom", y=1.02),
-                                          xaxis_tickangle=-45, xaxis_tickfont=dict(size=9))
+                        fig2.update_layout(
+                            height=350, 
+                            margin=dict(t=40, b=80, l=20, r=20), 
+                            title="By Department", 
+                            title_font_size=13, 
+                            legend=dict(font=dict(size=9, color='#F0E6D3'), orientation="h", yanchor="bottom", y=1.02),
+                            xaxis_tickangle=-45, 
+                            xaxis_tickfont=dict(size=9, color='#F0E6D3'),
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            title_font=dict(color='#C9A84C', family='Georgia, serif')
+                        )
                         st.plotly_chart(fig2, use_container_width=True)
                 
                 st.markdown("---")
@@ -8976,8 +11165,17 @@ def staff_confirmation():
                         region_df = pd.DataFrame([{'Region': r, **s} for r, s in region_data.items()])
                         fig3 = px.bar(region_df, x='Region', y=['Confirmed', 'Pending'], barmode='group',
                                     color_discrete_sequence=['#38a169', '#d69e2e'])
-                        fig3.update_layout(height=350, margin=dict(t=40, b=40, l=20, r=20), title="By Region",
-                                          title_font_size=13, legend=dict(font=dict(size=9), orientation="h", yanchor="bottom", y=1.02))
+                        fig3.update_layout(
+                            height=350, 
+                            margin=dict(t=40, b=40, l=20, r=20), 
+                            title="By Region",
+                            title_font_size=13, 
+                            legend=dict(font=dict(size=9, color='#F0E6D3'), orientation="h", yanchor="bottom", y=1.02),
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            title_font=dict(color='#C9A84C', family='Georgia, serif')
+                        )
                         st.plotly_chart(fig3, use_container_width=True)
                 
                 with col4:
@@ -8992,9 +11190,19 @@ def staff_confirmation():
                         rating_values = [rating_data.get(r, 0) for r in rating_order]
                         fig4 = px.bar(x=rating_order, y=rating_values, color=rating_order,
                                     color_discrete_sequence=['#38a169', '#3182ce', '#d69e2e', '#dd6b20', '#CC0000'])
-                        fig4.update_layout(height=350, showlegend=False, margin=dict(t=40, b=60, l=20, r=20),
-                                        title="Performance Ratings", title_font_size=13,
-                                        xaxis_tickangle=-30, xaxis_tickfont=dict(size=10))
+                        fig4.update_layout(
+                            height=350, 
+                            showlegend=False, 
+                            margin=dict(t=40, b=60, l=20, r=20),
+                            title="Performance Ratings", 
+                            title_font_size=13,
+                            xaxis_tickangle=-30, 
+                            xaxis_tickfont=dict(size=10, color='#F0E6D3'),
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            title_font=dict(color='#C9A84C', family='Georgia, serif')
+                        )
                         st.plotly_chart(fig4, use_container_width=True)
                 
                 st.markdown("---")
@@ -9037,7 +11245,7 @@ def staff_confirmation():
                         status = r.get('status', 'Pending')
                         icon = '✅' if 'Approved' in str(status) else '⏳' if 'Pending' in str(status) else '🔄' if 'Extension' in str(status) else '❌'
                         color = '#38a169' if 'Approved' in str(status) else '#d69e2e' if 'Pending' in str(status) else '#3182ce'
-                        st.markdown(f"""<div style="padding:0.3rem 0.6rem;margin:0.15rem 0;border-left:3px solid {color};background:white;border-radius:3px;font-size:0.8rem;"><strong>{icon} {r.get('employee_name','')}</strong> — {r.get('position','')} | {status} | {r.get('review_date','')[:10]}</div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div style="padding:0.3rem 0.6rem;margin:0.15rem 0;border-left:3px solid {color};background:#1E1E1E;border-radius:3px;font-size:0.8rem;color:#f0e6d3;"><strong style="color:#C9A84C;">{icon} {r.get('employee_name','')}</strong> — {r.get('position','')} | {status} | {r.get('review_date','')[:10]}</div>""", unsafe_allow_html=True)
                 
                 # Export
                 st.markdown("---")
@@ -11278,7 +13486,8 @@ APPLY NOW: {public_url}
                                 job_candidates = candidates[candidates['job_id'] == req['id']] if not candidates.empty else []
                                 st.metric("Total Applicants", len(job_candidates))
                                 if len(job_candidates) > 0:
-                                    st.dataframe(job_candidates[['first_name', 'last_name', 'email', 'status']], use_container_width=True)
+                                    html_table = job_candidates[['first_name', 'last_name', 'email', 'status']].to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                                    st.markdown(html_table, unsafe_allow_html=True)
                             except:
                                 st.info("No application data available.")
                     with c2:
@@ -12002,13 +14211,23 @@ APPLY NOW: {public_url}
                     tier3 = len(candidates[candidates['ai_tier'].str.contains('Tier 3', na=False)]) if 'ai_tier' in candidates.columns else 0
                     tier4 = len(candidates[candidates['ai_tier'].str.contains('Tier 4', na=False)]) if 'ai_tier' in candidates.columns else 0
                     fig = px.pie(values=[tier1, tier2, tier3, tier4, total-screened], names=['T1⭐','T2👍','T3🔶','T4❌','Pending'], hole=0.5, color_discrete_sequence=['#38a169','#d69e2e','#dd6b20','#CC0000','#a0aec0'])
-                    fig.update_layout(height=350)
+                    fig.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
                     st.plotly_chart(fig, use_container_width=True)
                 with col2:
                     scores = candidates[candidates['ai_score'] > 0]['ai_score'].dropna() if 'ai_score' in candidates.columns else []
                     if len(scores) > 0:
                         fig2 = px.histogram(scores, nbins=10, color_discrete_sequence=['#CC0000'])
-                        fig2.update_layout(height=350)
+                        fig2.update_layout(
+                            height=350,
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                        )
                         st.plotly_chart(fig2, use_container_width=True)
             
             st.markdown("---")
@@ -12481,14 +14700,27 @@ APPLY NOW: {public_url}
                 with col1:
                     fig = px.pie(values=list(dept_data.values()), names=list(dept_data.keys()), hole=0.5,
                                color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169', '#dd6b20', '#805ad5'])
-                    fig.update_layout(height=350, title="Onboarding by Department")
+                    fig.update_layout(
+                        height=350, 
+                        title="Onboarding by Department",
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig, use_container_width=True)
                 with col2:
                     # Progress distribution
                     progress_data = [o.get('progress', 0) for o in onboard_list]
                     fig2 = px.histogram(progress_data, nbins=5, title="Progress Distribution",
                                       color_discrete_sequence=['#CC0000'])
-                    fig2.update_layout(height=350)
+                    fig2.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig2, use_container_width=True)
                 
                 # Upcoming start dates
@@ -12798,7 +15030,14 @@ APPLY NOW: {public_url}
                         status_data[s] = status_data.get(s, 0) + 1
                     fig = px.pie(values=list(status_data.values()), names=list(status_data.keys()), hole=0.5,
                                color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce', '#CC0000', '#a0aec0'])
-                    fig.update_layout(height=350, title="Status Distribution")
+                    fig.update_layout(
+                        height=350, 
+                        title="Status Distribution",
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig, use_container_width=True)
                 with col2:
                     check_types = {}
@@ -12810,7 +15049,14 @@ APPLY NOW: {public_url}
                     if check_types:
                         fig2 = px.bar(x=list(check_types.keys()), y=list(check_types.values()),
                                     color=list(check_types.values()), color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                        fig2.update_layout(height=350, title="Check Types Requested")
+                        fig2.update_layout(
+                            height=350, 
+                            title="Check Types Requested",
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            title_font=dict(color='#C9A84C', family='Georgia, serif')
+                        )
                         st.plotly_chart(fig2, use_container_width=True)
                 
                 st.download_button("📥 Export BG Check Report (CSV)", 
@@ -12840,13 +15086,23 @@ APPLY NOW: {public_url}
         
         funnel = pd.DataFrame({'Stage': ['Applied', 'Screened', 'Interviewed', 'Offered', 'Hired'], 'Count': [total_apps, int(total_apps*0.6), int(total_apps*0.25), int(total_apps*0.1), int(total_apps*0.05)]})
         fig = px.funnel(funnel, x='Count', y='Stage', color_discrete_sequence=['#CC0000'])
-        fig.update_layout(height=350)
+        fig.update_layout(
+            height=350,
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+        )
         st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---")
         st.markdown("### 🌍 Diversity & Inclusion")
         div_data = pd.DataFrame({'Category': ['Male', 'Female', 'Other'], 'Applicants': [28, 17, 2]})
         fig2 = px.pie(div_data, values='Applicants', names='Category', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000', '#718096'])
+        fig2.update_layout(
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+        )
         st.plotly_chart(fig2, use_container_width=True)
         
         st.markdown("---")
@@ -13134,7 +15390,8 @@ def ai_recruitment_agent():
                                 display_cols.append(col)
                         
                         scorecard_df = pd.DataFrame(scorecard_data)[display_cols]
-                        st.dataframe(scorecard_df, use_container_width=True, hide_index=True)
+                        html_table = scorecard_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                        st.markdown(html_table, unsafe_allow_html=True)
                         
                         # Detailed breakdown for each candidate
                         st.markdown("---")
@@ -13158,7 +15415,8 @@ def ai_recruitment_agent():
                                             'Evidence': comp.get('evidence', '')[:80]
                                         })
                                     if comp_data:
-                                        st.dataframe(pd.DataFrame(comp_data), use_container_width=True, hide_index=True)
+                                        html_table = pd.DataFrame(comp_data).to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                                        st.markdown(html_table, unsafe_allow_html=True)
                                     
                                     # Visual competency bars
                                     for comp in competencies:
@@ -13667,8 +15925,14 @@ def ai_recruitment_agent():
                 st.markdown("---")
                 div_data = pd.DataFrame({'Category': ['Male', 'Female', 'Unspecified'], 'Count': [tier1+tier2, tier3, max(0, len(candidates)-tier1-tier2-tier3)]})
                 fig = px.pie(div_data, values='Count', names='Category', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000', '#718096'])
+                fig.update_layout(
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                )
                 st.plotly_chart(fig, use_container_width=True)
-                st.dataframe(candidates[['first_name', 'last_name', 'email', 'job_id', 'ai_score', 'ai_tier', 'status']], use_container_width=True, hide_index=True)
+                html_table = candidates[['first_name', 'last_name', 'email', 'job_id', 'ai_score', 'ai_tier', 'status']].to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                st.markdown(html_table, unsafe_allow_html=True)
         except:
             st.info("Tiering data will appear here.")
     
@@ -13692,7 +15956,12 @@ def ai_recruitment_agent():
                     skill_scores[skill] = random.randint(10, 35)
             skills_df = pd.DataFrame({'Skill': list(skill_scores.keys()), 'Score': list(skill_scores.values())})
             fig = px.bar(skills_df, x='Skill', y='Score', color='Score', color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-            fig.update_layout(height=350)
+            fig.update_layout(
+                height=350,
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+            )
             st.plotly_chart(fig, use_container_width=True)
             
             st.markdown("---")
@@ -14697,7 +16966,8 @@ def training_development():
             if day == 25: events.append("🌐 Sustainable Building")
             if day == 28: events.append("👔 Leadership Masterclass")
             cal_data.append({"Day": f"June {day}", "Events": ", ".join(events) if events else "—"})
-        st.dataframe(pd.DataFrame(cal_data), use_container_width=True, hide_index=True)
+        html_table = pd.DataFrame(cal_data).to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+        st.markdown(html_table, unsafe_allow_html=True)
     
     # ============ TAB 8: VIDEOS & PODCASTS ============
     with tab8:
@@ -14838,7 +17108,12 @@ def reports_analytics():
                     pillar_avg = perf_data.groupby('pillar_name')['progress'].mean().reset_index()
                     fig = px.bar(pillar_avg, x='pillar_name', y='progress', color='progress',
                                color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                    fig.update_layout(height=300)
+                    fig.update_layout(
+                        height=300,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
                     st.plotly_chart(fig, use_container_width=True)
                 else:
                     st.info("Set KPIs in Performance & OKRs to see data.")
@@ -14851,7 +17126,12 @@ def reports_analytics():
                 dept_health = emp_df.groupby('department').size().reset_index(name='count')
                 fig2 = px.treemap(dept_health, path=['department'], values='count', color='count',
                                 color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                fig2.update_layout(height=300)
+                fig2.update_layout(
+                    height=300,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                )
                 st.plotly_chart(fig2, use_container_width=True)
     
     # ============ WORKFORCE ANALYTICS ============
@@ -14871,13 +17151,27 @@ def reports_analytics():
                 dept_counts = emp_df['department'].value_counts()
                 fig = px.bar(x=dept_counts.index, y=dept_counts.values, color=dept_counts.values,
                            color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                fig.update_layout(height=350, xaxis_title="Department", yaxis_title="Employees")
+                fig.update_layout(
+                    height=350, 
+                    xaxis_title="Department", 
+                    yaxis_title="Employees",
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    xaxis=dict(gridcolor='#2A2A2A', tickfont=dict(color='#F0E6D3')),
+                    yaxis=dict(gridcolor='#2A2A2A', tickfont=dict(color='#F0E6D3'))
+                )
                 st.plotly_chart(fig, use_container_width=True)
         with col2:
             exp_data = pd.DataFrame({'Experience': ['0-2 yrs', '3-5 yrs', '6-10 yrs', '10+ yrs'], 'Count': [8, 15, 22, 12]})
             fig = px.pie(exp_data, values='Count', names='Experience', hole=0.4,
                        color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169'])
-            fig.update_layout(height=350)
+            fig.update_layout(
+                height=350,
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+            )
             st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---")
@@ -14885,7 +17179,12 @@ def reports_analytics():
         if not emp_df.empty:
             heatmap_data = emp_df.groupby(['department', 'grade']).size().unstack(fill_value=0)
             fig3 = px.imshow(heatmap_data, text_auto=True, aspect="auto", color_continuous_scale='Reds')
-            fig3.update_layout(height=400)
+            fig3.update_layout(
+                height=400,
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+            )
             st.plotly_chart(fig3, use_container_width=True)
     
     # ============ RECRUITMENT FUNNEL ============
@@ -14916,7 +17215,12 @@ def reports_analytics():
             funnel = pd.DataFrame({'Stage': ['Applied', 'Screened', 'Interviewed', 'Offered', 'Hired'], 
                                   'Count': [total_candidates, int(total_candidates*0.6), int(total_candidates*0.25), int(total_candidates*0.1), int(total_candidates*0.05)]})
             fig = px.funnel(funnel, x='Count', y='Stage', color_discrete_sequence=['#CC0000'])
-            fig.update_layout(height=350)
+            fig.update_layout(
+                height=350,
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+            )
             st.plotly_chart(fig, use_container_width=True)
         with col2:
             st.subheader("⏱️ Time-to-Hire Prediction")
@@ -14936,11 +17240,22 @@ def reports_analytics():
                     dept_scores = perf_data.groupby('department')['progress'].mean().reset_index()
                     fig = px.bar(dept_scores, x='department', y='progress', color='progress',
                                color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                    fig.update_layout(height=350)
+                    fig.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
                     st.plotly_chart(fig, use_container_width=True)
                 with col2:
                     fig2 = px.box(perf_data, x='pillar_name', y='progress', color='pillar_name')
-                    fig2.update_layout(height=350, showlegend=False)
+                    fig2.update_layout(
+                        height=350, 
+                        showlegend=False,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
                     st.plotly_chart(fig2, use_container_width=True)
                 
                 st.markdown("---")
@@ -14951,7 +17266,13 @@ def reports_analytics():
                 fig3 = go.Figure()
                 fig3.add_trace(go.Scatter(x=forecast_data['Month'], y=forecast_data['Predicted'], mode='lines+markers', name='Forecast', line=dict(color='#CC0000', width=3)))
                 fig3.add_trace(go.Scatter(x=forecast_data['Month'], y=forecast_data['Target'], mode='lines', name='Target', line=dict(color='#38a169', width=2, dash='dash')))
-                fig3.update_layout(height=300)
+                fig3.update_layout(
+                    height=300,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    legend=dict(font=dict(color='#F0E6D3'))
+                )
                 st.plotly_chart(fig3, use_container_width=True)
             else:
                 st.info("Set KPIs to see performance trends.")
@@ -14974,7 +17295,8 @@ def reports_analytics():
                     avg_score = 0
                 scorecard_data.append({'Department': dept, 'Employees': dept_emp, 'Avg Performance': f"{avg_score:.0f}%"})
             
-            st.dataframe(pd.DataFrame(scorecard_data), use_container_width=True, hide_index=True)
+            html_table = pd.DataFrame(scorecard_data).to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+            st.markdown(html_table, unsafe_allow_html=True)
         else:
             st.info("Employee data loading...")
     
@@ -14987,7 +17309,12 @@ def reports_analytics():
             with col1:
                 gender_df = pd.DataFrame({'Gender': ['Male', 'Female'], 'Count': [male_count, female_count]})
                 fig = px.pie(gender_df, values='Count', names='Gender', hole=0.5, color_discrete_sequence=['#3182ce', '#CC0000'])
-                fig.update_layout(height=400)
+                fig.update_layout(
+                    height=400,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                )
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
                 st.metric("Male", f"{round(male_count/total_emp*100)}%" if total_emp > 0 else "N/A")
@@ -15027,13 +17354,24 @@ def reports_analytics():
             fig = go.Figure()
             fig.add_trace(go.Bar(name='Revenue (₦B)', x=fin_data['Month'], y=fin_data['Revenue'], marker_color='#CC0000'))
             fig.add_trace(go.Bar(name='Cost (₦B)', x=fin_data['Month'], y=fin_data['Cost'], marker_color='#4a4a4a'))
-            fig.update_layout(height=350, barmode='group')
+            fig.update_layout(
+                height=350, 
+                barmode='group',
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+            )
             st.plotly_chart(fig, use_container_width=True)
         with col2:
             props = list(metrics['portfolio_data'].keys())
             occ_vals = [metrics['portfolio_data'][p]['occupancy'] for p in props]
             fig2 = px.bar(x=props, y=occ_vals, color=occ_vals, color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-            fig2.update_layout(height=350)
+            fig2.update_layout(
+                height=350,
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+            )
             st.plotly_chart(fig2, use_container_width=True)
     
     # ============ COMPARATIVE ANALYSIS ============
@@ -15057,7 +17395,14 @@ def reports_analytics():
                 fig = go.Figure()
                 fig.add_trace(go.Bar(name=dept1, x=comp_data['Metric'], y=comp_data[dept1], marker_color='#CC0000'))
                 fig.add_trace(go.Bar(name=dept2, x=comp_data['Metric'], y=comp_data[dept2], marker_color='#3182ce'))
-                fig.update_layout(height=350, barmode='group')
+                fig.update_layout(
+                    height=350, 
+                    barmode='group',
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    legend=dict(font=dict(color='#F0E6D3'))
+                )
                 st.plotly_chart(fig, use_container_width=True)
     
     # ============ ATTRITION RISK ============
@@ -15073,7 +17418,14 @@ def reports_analytics():
         })
         fig = px.bar(risk_data, x='Department', y=['Low Risk', 'Medium Risk', 'High Risk'],
                     color_discrete_sequence=['#38a169', '#d69e2e', '#CC0000'])
-        fig.update_layout(height=400, barmode='stack')
+        fig.update_layout(
+            height=400, 
+            barmode='stack',
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+            legend=dict(font=dict(color='#F0E6D3'))
+        )
         st.plotly_chart(fig, use_container_width=True)
     
     # ============ TRAINING DASHBOARD ============
@@ -15088,7 +17440,14 @@ def reports_analytics():
         })
         fig = px.bar(training_data, x='Department', y=['Completed', 'In Progress', 'Not Started'],
                     color_discrete_sequence=['#38a169', '#d69e2e', '#CC0000'])
-        fig.update_layout(height=400, barmode='stack')
+        fig.update_layout(
+            height=400, 
+            barmode='stack',
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+            legend=dict(font=dict(color='#F0E6D3'))
+        )
         st.plotly_chart(fig, use_container_width=True)
     
     # ============ COST PER HIRE ============
@@ -15104,7 +17463,12 @@ def reports_analytics():
         cost_data = pd.DataFrame({'Month': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
                                  'Cost': [400000, 380000, 450000, 420000, 480000, 450000]})
         fig = px.line(cost_data, x='Month', y='Cost', markers=True, color_discrete_sequence=['#CC0000'])
-        fig.update_layout(height=350)
+        fig.update_layout(
+            height=350,
+            paper_bgcolor='#1E1E1E',
+            plot_bgcolor='#1E1E1E',
+            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+        )
         st.plotly_chart(fig, use_container_width=True)
     
     # ============ EXPORT ALL ============
@@ -15609,12 +17973,18 @@ def notifications_page():
             
             if digest_data:
                 digest_df = pd.DataFrame(digest_data)
-                st.dataframe(digest_df, use_container_width=True, hide_index=True)
+                html_table = digest_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                st.markdown(html_table, unsafe_allow_html=True)
                 
                 # Chart
                 fig = px.bar(digest_df, x='Category', y='Count', color='Critical',
                            color_continuous_scale=['#38a169', '#d69e2e', '#CC0000'])
-                fig.update_layout(height=300)
+                fig.update_layout(
+                    height=300,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                )
                 st.plotly_chart(fig, use_container_width=True)
 
 def my_documents():
@@ -16054,7 +18424,12 @@ def ideas_box():
                 if categories:
                     cat_df = pd.DataFrame({'Category': list(categories.keys()), 'Count': list(categories.values())})
                     fig = px.pie(cat_df, values='Count', names='Category', hole=0.5)
-                    fig.update_layout(height=300)
+                    fig.update_layout(
+                        height=300,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
                     st.plotly_chart(fig, use_container_width=True)
             
             # Top contributors
@@ -16584,7 +18959,13 @@ def personal_goals():
             with col1:
                 fig = px.pie(values=list(pillar_data.values()), names=list(pillar_data.keys()), hole=0.5,
                            color_discrete_sequence=list(pillar_colors.values()))
-                fig.update_layout(height=350, showlegend=False)
+                fig.update_layout(
+                    height=350, 
+                    showlegend=False,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                )
                 st.plotly_chart(fig, use_container_width=True)
             with col2:
                 for p in pillars:
@@ -17277,7 +19658,8 @@ def requests_hub():
             
             if outbox_data:
                 df_out = pd.DataFrame(outbox_data)
-                st.dataframe(df_out, use_container_width=True, hide_index=True)
+                html_table = df_out.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                st.markdown(html_table, unsafe_allow_html=True)
                 st.download_button("📥 Export CSV", df_out.to_csv(index=False), "outbox.csv", "text/csv")
         else:
             st.info("No requests in outbox.")
@@ -17544,7 +19926,8 @@ def requests_hub():
                             'Status': a.get('status', '')
                         } for a in filtered[-30:]])
                         
-                        st.dataframe(att_df, use_container_width=True, hide_index=True)
+                        html_table = att_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                        st.markdown(html_table, unsafe_allow_html=True)
                         
                         total_hours = sum(float(a.get('work_hours', 0) or 0) for a in filtered[-30:])
                         days_present = len(set(a.get('sync_date', '') for a in filtered[-30:]))
@@ -17606,7 +19989,8 @@ def requests_hub():
                         'Status': a.get('status', '')
                     } for a in display_att])
                     
-                    st.dataframe(df_all, use_container_width=True, hide_index=True)
+                    html_table = df_all.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                    st.markdown(html_table, unsafe_allow_html=True)
                     
                     present_count = len(df_all)
                     on_time = len(df_all[df_all['In'].notna()])
@@ -17677,7 +20061,8 @@ def requests_hub():
                     try:
                         synced = db._get("attendance", {"source": "Biometric"})
                         if synced:
-                            st.dataframe(pd.DataFrame(synced[-20:]), use_container_width=True, hide_index=True)
+                            html_table = pd.DataFrame(synced[-20:]).to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                            st.markdown(html_table, unsafe_allow_html=True)
                         else:
                             st.info("No synced records yet.")
                     except:
@@ -17919,7 +20304,8 @@ def requests_hub():
                     try:
                         df_leave = pd.read_csv(uploaded_leave)
                         st.markdown(f"**{len(df_leave)} records**")
-                        st.dataframe(df_leave.head(10), use_container_width=True)
+                        html_table = df_leave.head(10).to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                        st.markdown(html_table, unsafe_allow_html=True)
                         
                         if st.button(f"📤 Upload {len(df_leave)} Leave Balances", use_container_width=True, type="primary"):
                             success, errors = 0, 0
@@ -17953,7 +20339,7 @@ def requests_hub():
                     except Exception as e:
                         st.error(f"❌ Error: {str(e)}")
     
-    # ============================================================
+     # ============================================================
     # TAB 8: ANALYTICS
     # ============================================================
     with tab8:
@@ -18015,20 +20401,35 @@ def requests_hub():
                     }
                     fig1 = px.pie(values=list(by_status.values()), names=list(by_status.keys()), hole=0.5,
                                 color_discrete_sequence=[status_colors.get(s, '#888') for s in by_status.keys()])
-                    fig1.update_layout(height=350)
+                    fig1.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
                     st.plotly_chart(fig1, use_container_width=True)
                 
                 with col2:
                     st.markdown("### By Type")
                     fig2 = px.pie(values=list(by_type.values()), names=list(by_type.keys()), hole=0.5)
-                    fig2.update_layout(height=350)
+                    fig2.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
                     st.plotly_chart(fig2, use_container_width=True)
                 
                 st.markdown("---")
                 st.markdown("### By Department")
                 fig3 = px.bar(x=list(by_dept.keys()), y=list(by_dept.values()), color=list(by_dept.values()),
                             color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                fig3.update_layout(height=350)
+                fig3.update_layout(
+                    height=350,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                )
                 st.plotly_chart(fig3, use_container_width=True)
                 
                 # Bottleneck analysis
@@ -18043,8 +20444,8 @@ def requests_hub():
                 for stage, count in pending_by_stage.items():
                     color = '#CC0000' if count > 5 else '#d69e2e' if count > 2 else '#38a169'
                     st.markdown(f"""
-                    <div style="display:flex;justify-content:space-between;padding:0.5rem;margin:0.3rem 0;background:white;border-radius:6px;border-left:4px solid {color};">
-                        <strong>{stage}</strong>
+                    <div style="display:flex;justify-content:space-between;padding:0.5rem;margin:0.3rem 0;background:#1E1E1E;border-radius:6px;border-left:4px solid {color};">
+                        <strong style="color:#C9A84C;">{stage}</strong>
                         <span style="font-size:1.2rem;font-weight:700;color:{color};">{count}</span>
                     </div>
                     """, unsafe_allow_html=True)
@@ -19491,6 +21892,12 @@ def lms_dashboard():
                 
                 fig = px.pie(values=list(dept_data.values()), names=list(dept_data.keys()), hole=0.5,
                            title="Enrollments by Department")
+                fig.update_layout(
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif')
+                )
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No enrollment data yet.")
@@ -19964,7 +22371,13 @@ def audit_log_viewer():
                 counts = [hour_data[h] for h in hours]
                 fig = px.bar(x=hours, y=counts, labels={'x': 'Hour', 'y': 'Events'}, 
                            title="Activity by Hour", color_discrete_sequence=['#CC0000'])
-                fig.update_layout(height=300)
+                fig.update_layout(
+                    height=300,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif')
+                )
                 st.plotly_chart(fig, use_container_width=True)
         
         with col2:
@@ -19977,7 +22390,13 @@ def audit_log_viewer():
             if top_users:
                 fig2 = px.bar(x=[u[0] for u in top_users], y=[u[1] for u in top_users],
                             title="Top Users by Activity", color_discrete_sequence=['#3182ce'])
-                fig2.update_layout(height=300)
+                fig2.update_layout(
+                    height=300,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif')
+                )
                 st.plotly_chart(fig2, use_container_width=True)
 
 def advanced_analytics():
@@ -19993,7 +22412,6 @@ def advanced_analytics():
         return
     
     # ===== USER ENGAGEMENT TRACKING =====
-    # Track current page view
     if 'page_views' not in st.session_state:
         st.session_state.page_views = {}
     if 'session_start' not in st.session_state:
@@ -20005,7 +22423,6 @@ def advanced_analytics():
     st.session_state.page_views[current_page]['count'] += 1
     st.session_state.page_views[current_page]['last_visit'] = datetime.now().strftime('%Y-%m-%d %H:%M')
     
-    # Save engagement to database
     try:
         db._post("user_engagement", {
             "user_name": st.session_state.user['name'],
@@ -20084,7 +22501,6 @@ def advanced_analytics():
     except:
         eng_df = pd.DataFrame()
     
-    # Engagement metrics
     total_sessions = len(eng_df['session_id'].unique()) if not eng_df.empty and 'session_id' in eng_df.columns else 0
     unique_users_today = 0
     unique_users_week = 0
@@ -20106,7 +22522,6 @@ def advanced_analytics():
             mobile_users = len(eng_df[eng_df['device'] == 'mobile']['user_email'].unique())
             web_users = len(eng_df[eng_df['device'] == 'web']['user_email'].unique())
     
-    # Module engagement
     module_engagement = {}
     if not eng_df.empty and 'module' in eng_df.columns:
         module_counts = eng_df['module'].value_counts()
@@ -20130,12 +22545,10 @@ def advanced_analytics():
     st.markdown("---")
     st.markdown("### 🤖 AI-Powered Insights")
     
-    # Calculate engagement score
     engagement_score = 0
     if total_emp > 0 and unique_users_month > 0:
         engagement_score = int((unique_users_month / total_emp) * 100)
     
-    # Generate AI insights
     insights = []
     
     if engagement_score >= 70:
@@ -20159,14 +22572,13 @@ def advanced_analytics():
         mobile_pct = int((mobile_users / max(unique_users_month, 1)) * 100)
         insights.append(f"📱 **Mobile Adoption:** {mobile_pct}% of users access via mobile app. Optimize mobile experience.")
     
-    # Most engaged modules
     if module_engagement:
         top_module = max(module_engagement, key=module_engagement.get)
         insights.append(f"🔥 **Most Used Module:** '{top_module}' has the highest engagement with {module_engagement[top_module]} views.")
     
     for insight in insights[:5]:
         st.markdown(f"""
-        <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #CC0000;">
+        <div style="background: #1E1E1E; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem; border-left: 4px solid #B8960C; color: #f0e6d3;">
             {insight}
         </div>
         """, unsafe_allow_html=True)
@@ -20187,7 +22599,13 @@ def advanced_analytics():
                 fig = px.bar(x=dept_counts.index, y=dept_counts.values, 
                            title="Headcount by Department", color=dept_counts.values,
                            color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                fig.update_layout(height=400)
+                fig.update_layout(
+                    height=400,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif')
+                )
                 st.plotly_chart(fig, use_container_width=True)
         
         with col2:
@@ -20196,7 +22614,13 @@ def advanced_analytics():
                 fig2 = px.pie(values=grade_counts.values, names=grade_counts.index, 
                             title="Grade Distribution", hole=0.5,
                             color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169', '#805ad5'])
-                fig2.update_layout(height=400)
+                fig2.update_layout(
+                    height=400,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif')
+                )
                 st.plotly_chart(fig2, use_container_width=True)
         
         # Gender diversity
@@ -20233,7 +22657,14 @@ def advanced_analytics():
                 fig3 = px.bar(tenure_df, x='Tenure', y='Count', color='Tenure',
                             title="Employee Tenure Distribution",
                             color_discrete_sequence=['#CC0000', '#d69e2e', '#3182ce', '#38a169'])
-                fig3.update_layout(height=350, showlegend=False)
+                fig3.update_layout(
+                    height=350, 
+                    showlegend=False,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif')
+                )
                 st.plotly_chart(fig3, use_container_width=True)
     
     # ===== TAB 2: PERFORMANCE ANALYTICS =====
@@ -20248,7 +22679,13 @@ def advanced_analytics():
             fig4 = px.pie(values=appraisal_values, names=appraisal_labels, 
                         title="Appraisal Completion Status", hole=0.5,
                         color_discrete_sequence=['#38a169', '#d69e2e', '#a0aec0'])
-            fig4.update_layout(height=350)
+            fig4.update_layout(
+                height=350,
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                title_font=dict(color='#C9A84C', family='Georgia, serif')
+            )
             st.plotly_chart(fig4, use_container_width=True)
         
         with col2:
@@ -20259,7 +22696,13 @@ def advanced_analytics():
                     fig5 = px.bar(dept_progress, x='department', y='progress', 
                                 title="Avg KPI Progress by Department", color='progress',
                                 color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                    fig5.update_layout(height=350)
+                    fig5.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig5, use_container_width=True)
             except:
                 st.info("Performance data loading...")
@@ -20279,7 +22722,13 @@ def advanced_analytics():
                 fig6 = px.funnel(x=list(stage_counts.values()), y=list(stage_counts.keys()),
                                title="Recruitment Funnel",
                                color_discrete_sequence=['#CC0000'])
-                fig6.update_layout(height=350)
+                fig6.update_layout(
+                    height=350,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif')
+                )
                 st.plotly_chart(fig6, use_container_width=True)
             else:
                 st.info("Pipeline data will appear as candidates progress.")
@@ -20298,7 +22747,13 @@ def advanced_analytics():
                 fig7 = px.pie(values=list(learning_status.values()), names=list(learning_status.keys()),
                             title="Course Completion Rate", hole=0.5,
                             color_discrete_sequence=['#38a169', '#d69e2e'])
-                fig7.update_layout(height=350)
+                fig7.update_layout(
+                    height=350,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif')
+                )
                 st.plotly_chart(fig7, use_container_width=True)
         
         with col2:
@@ -20312,7 +22767,13 @@ def advanced_analytics():
                     fig8 = px.bar(x=list(dept_enrollments.keys()), y=list(dept_enrollments.values()),
                                 title="Enrollments by Department", color=list(dept_enrollments.values()),
                                 color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                    fig8.update_layout(height=350)
+                    fig8.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig8, use_container_width=True)
             except:
                 pass
@@ -20339,7 +22800,13 @@ def advanced_analytics():
                 fig9 = px.pie(values=list(idea_status.values()), names=list(idea_status.keys()),
                             title="Ideas by Status", hole=0.5,
                             color_discrete_sequence=['#a0aec0', '#d69e2e', '#3182ce', '#38a169'])
-                fig9.update_layout(height=350)
+                fig9.update_layout(
+                    height=350,
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif')
+                )
                 st.plotly_chart(fig9, use_container_width=True)
         
         with col2:
@@ -20353,7 +22820,13 @@ def advanced_analytics():
                     fig10 = px.bar(x=list(idea_categories.keys()), y=list(idea_categories.values()),
                                  title="Ideas by Category", color=list(idea_categories.values()),
                                  color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                    fig10.update_layout(height=350)
+                    fig10.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig10, use_container_width=True)
         
         if total_emp > 0 and total_ideas > 0:
@@ -20363,7 +22836,7 @@ def advanced_analytics():
             st.metric("Innovation Participation", f"{participation}%", f"{idea_participants} contributors")
             st.progress(participation / 100)
     
-    # ===== TAB 5: USER ENGAGEMENT (MASSIVE UPGRADE) =====
+    # ===== TAB 5: USER ENGAGEMENT =====
     with tab5:
         st.subheader("📱 User Engagement & Platform Analytics")
         
@@ -20401,13 +22874,11 @@ def advanced_analytics():
             col4.metric("💻 Web", web_visits, f"{int(web_visits/total_visits*100)}%" if total_visits > 0 else "")
             col5.metric("🔄 Avg Sessions/User", f"{avg_sessions_per_user:.1f}")
             
-            # RETENTION RATE
             user_visits = filtered.groupby('user_email').size()
             new_users = len(user_visits[user_visits == 1])
             returning_users = len(user_visits[user_visits > 1])
             retention_rate = int(returning_users / (new_users + returning_users) * 100) if (new_users + returning_users) > 0 else 0
             
-            # ENGAGEMENT SCORE
             engagement_score = 0
             if total_visits > 0:
                 engagement_score += min(unique_users / max(total_emp, 1) * 40, 40)
@@ -20418,16 +22889,15 @@ def advanced_analytics():
             score_label = "Excellent" if engagement_score >= 70 else "Good" if engagement_score >= 40 else "Needs Improvement"
             
             st.markdown(f"""
-            <div style="background: white; padding: 1.5rem; border-radius: 12px; text-align: center; border: 2px solid {score_color}; margin: 1rem 0;">
+            <div style="background: #1E1E1E; padding: 1.5rem; border-radius: 12px; text-align: center; border: 2px solid {score_color}; margin: 1rem 0;">
                 <div style="font-size: 3rem; font-weight: 900; color: {score_color};">{engagement_score:.0f}/100</div>
                 <div style="font-size: 1.2rem; color: {score_color}; font-weight: 600;">⭐ Platform Engagement Score: {score_label}</div>
-                <div style="margin-top: 1rem;"><div style="background: #e0e0e0; height: 10px; border-radius: 5px;"><div style="background: {score_color}; width: {engagement_score}%; height: 10px; border-radius: 5px;"></div></div></div>
+                <div style="margin-top: 1rem;"><div style="background: #2A2A2A; height: 10px; border-radius: 5px;"><div style="background: {score_color}; width: {engagement_score}%; height: 10px; border-radius: 5px;"></div></div></div>
             </div>
             """, unsafe_allow_html=True)
             
             st.markdown("---")
             
-            # MOST ACTIVE USERS
             st.subheader("🏆 Most Active Users")
             
             if 'user_email' in filtered.columns:
@@ -20449,7 +22919,7 @@ def advanced_analytics():
                         name = user.get('user_name', user.get('user_email', 'Unknown'))
                         emp_id = user.get('employee_id', 'N/A')
                         dept = user.get('department', 'N/A')
-                        st.markdown(f"""<div style="background: white; padding: 0.8rem; border-radius: 8px; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 1rem; border-left: 4px solid #CC0000;"><span style="font-size: 1.5rem;">{medal}</span><div style="flex: 1;"><strong>{name}</strong><br><small style="color: #666;">ID: {emp_id} • {dept}</small></div><div style="text-align: right;"><span style="font-weight: 700; font-size: 1.2rem;">{int(user['visits'])}</span><br><small style="color: #888;">visits</small></div></div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div style="background: #1E1E1E; padding: 0.8rem; border-radius: 8px; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 1rem; border-left: 4px solid #B8960C;"><span style="font-size: 1.5rem;">{medal}</span><div style="flex: 1;"><strong style="color:#C9A84C;">{name}</strong><br><small style="color: #9a8a78;">ID: {emp_id} • {dept}</small></div><div style="text-align: right;"><span style="font-weight: 700; font-size: 1.2rem; color: #C9A84C;">{int(user['visits'])}</span><br><small style="color: #9a8a78;">visits</small></div></div>""", unsafe_allow_html=True)
                 
                 with col2:
                     st.markdown("#### 📊 User Activity Distribution")
@@ -20462,14 +22932,19 @@ def advanced_analytics():
                         pie_data.append({'User': 'Others', 'Visits': others_count})
                     pie_df = pd.DataFrame(pie_data)
                     fig_pie = px.pie(pie_df, values='Visits', names='User', hole=0.4, color_discrete_sequence=['#CC0000', '#1a1a1a', '#4a4a4a', '#3182ce', '#38a169', '#d69e2e'])
-                    fig_pie.update_layout(height=300, margin=dict(t=10, b=10))
+                    fig_pie.update_layout(
+                        height=300, 
+                        margin=dict(t=10, b=10),
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
                     st.plotly_chart(fig_pie, use_container_width=True)
                 
                 st.download_button("📥 Download User Activity Report (CSV)", user_activity.to_csv(index=False), "user_activity_report.csv", "text/csv")
             
             st.markdown("---")
             
-            # MODULE ENGAGEMENT
             st.subheader("📊 Module Engagement Analysis")
             
             if 'module' in filtered.columns:
@@ -20477,19 +22952,30 @@ def advanced_analytics():
                 with col1:
                     module_usage = filtered['module'].value_counts().head(10)
                     fig_mod = px.bar(x=module_usage.index, y=module_usage.values, title="Most Used Modules", color=module_usage.values, color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                    fig_mod.update_layout(height=350)
+                    fig_mod.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig_mod, use_container_width=True)
                 with col2:
                     if 'device' in filtered.columns:
                         module_device = filtered.groupby(['module', 'device']).size().unstack(fill_value=0)
                         if not module_device.empty:
                             fig_dev = px.bar(module_device, title="Module Usage by Device", barmode='group', color_discrete_sequence=['#3182ce', '#38a169'])
-                            fig_dev.update_layout(height=350)
+                            fig_dev.update_layout(
+                                height=350,
+                                paper_bgcolor='#1E1E1E',
+                                plot_bgcolor='#1E1E1E',
+                                font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                                title_font=dict(color='#C9A84C', family='Georgia, serif')
+                            )
                             st.plotly_chart(fig_dev, use_container_width=True)
             
             st.markdown("---")
             
-            # PEAK USAGE HEATMAP
             st.subheader("🕐 Peak Usage Hours")
             filtered['hour'] = filtered['timestamp'].dt.hour
             filtered['day'] = filtered['timestamp'].dt.day_name()
@@ -20497,12 +22983,18 @@ def advanced_analytics():
             day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
             hourly_usage = hourly_usage.reindex([d for d in day_order if d in hourly_usage.index])
             fig_heat = go.Figure(data=go.Heatmap(z=hourly_usage.values, x=[f'{h}:00' for h in hourly_usage.columns], y=hourly_usage.index, colorscale=[[0, '#f5f5f5'], [0.5, '#CC0000'], [1, '#1a1a1a']]))
-            fig_heat.update_layout(height=300, title="Hourly Usage Heatmap by Day")
+            fig_heat.update_layout(
+                height=300, 
+                title="Hourly Usage Heatmap by Day",
+                paper_bgcolor='#1E1E1E',
+                plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                title_font=dict(color='#C9A84C', family='Georgia, serif')
+            )
             st.plotly_chart(fig_heat, use_container_width=True)
             
             st.markdown("---")
             
-            # TRAINING RECOMMENDATIONS
             st.subheader("🎓 Training Recommendations")
             if 'user_email' in filtered.columns:
                 low_engagement = user_activity[user_activity['visits'] < 3].head(10)
@@ -20523,21 +23015,31 @@ def advanced_analytics():
             
             st.markdown("---")
             
-            # DEPARTMENT ENGAGEMENT
             st.subheader("🏢 Department Engagement")
             if 'department' in filtered.columns:
                 dept_activity = filtered.groupby('department').agg(users=('user_email', 'nunique'), visits=('module', 'count')).reset_index().sort_values('visits', ascending=False)
                 col1, col2 = st.columns(2)
                 with col1:
                     fig_dept = px.bar(dept_activity.head(10), x='department', y='visits', title="Visits by Department", color='visits', color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                    fig_dept.update_layout(height=350)
+                    fig_dept.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig_dept, use_container_width=True)
                 with col2:
                     fig_users = px.bar(dept_activity.head(10), x='department', y='users', title="Unique Users by Department", color='users', color_continuous_scale=['#3182ce', '#38a169', '#d69e2e'])
-                    fig_users.update_layout(height=350)
+                    fig_users.update_layout(
+                        height=350,
+                        paper_bgcolor='#1E1E1E',
+                        plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                        title_font=dict(color='#C9A84C', family='Georgia, serif')
+                    )
                     st.plotly_chart(fig_users, use_container_width=True)
             
-            # MODULE PREFERENCES PER DEPARTMENT
             st.subheader("🎯 Module Preferences by Department")
             dept_module = filtered.groupby(['department', 'module']).size().reset_index(name='count')
             for dept in dept_module['department'].unique()[:5]:
