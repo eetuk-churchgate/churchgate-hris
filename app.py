@@ -1449,46 +1449,34 @@ st.markdown("""
         min-width: 280px !important;
     }
     
-    /* ===== NUCLEAR FORCE: REMOVE TOP GAP COMPLETELY ===== */
+    /* ===== FORCE MAIN CONTENT AREA TO THE TOP (MATCH SIDEBAR) ===== */
 
-    /* 1. Kill the main layout margin */
+    /* 1. Kill the massive top padding on the entire main block container */
     .block-container,
-    [data-testid="stAppViewContainer"],
-    [data-testid="stMain"] {
+    div[data-testid="stAppViewContainer"] > div > div,
+    section[data-testid="stMain"] > div {
         padding-top: 0rem !important;
         margin-top: 0rem !important;
     }
 
-    /* 2. Target the ACTUAL spacer (The hidden header frame) */
-    header[data-testid="stHeader"],
+    /* 2. Target the specific internal container holding your header */
+    div[data-testid="stVerticalBlock"] > div:first-child {
+        padding-top: 0rem !important;
+        margin-top: 0rem !important;
+    }
+
+    /* 3. Kill header gaps */
     div[data-testid="stHeader"] {
         display: none !important;
-        height: 0px !important;
-        min-height: 0px !important;
-        padding: 0px !important;
-        margin: 0px !important;
+    }
+    div[data-testid="stToolbar"] {
+        top: 10px !important;
+        right: 10px !important;
         position: absolute !important;
-        top: -100px !important;
     }
 
-    /* 3. Target the "App View Container > Vertical Block" directly */
-    [data-testid="stAppViewContainer"] > section[data-testid="stMain"] > div {
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        gap: 0px !important;
-    }
-
-    /* 4. Explicitly kill the element immediately after the header */
-    [data-testid="stHeader"] + div {
-        margin-top: 0px !important;
-        padding-top: 0px !important;
-    }
-
-    /* 5. Override Streamlit's internal padding on the first child */
-    [data-testid="stVerticalBlock"] > div > div:first-child {
-        margin-top: 0px !important;
+    /* 4. Reset padding on the main content wrapper */
+    div[class*="stApp"] {
         padding-top: 0px !important;
     }
 </style>
@@ -1780,28 +1768,6 @@ setInterval(fixFileUploaders, 500);
 """, unsafe_allow_html=True)
 
 
-
-st.markdown("""
-<script>
-// Force the main container to absolute top
-function fixTopMargin() {
-    const mainDiv = document.querySelector('[data-testid="stMain"]');
-    if (mainDiv) {
-        mainDiv.style.marginTop = "0px";
-        mainDiv.style.paddingTop = "0px";
-    }
-    
-    const blockContainer = document.querySelector('.block-container');
-    if (blockContainer) {
-        blockContainer.style.marginTop = "0px";
-        blockContainer.style.paddingTop = "0px";
-    }
-}
-
-// Run continuously
-setInterval(fixTopMargin, 500);
-</script>
-""", unsafe_allow_html=True)
 
 
 
