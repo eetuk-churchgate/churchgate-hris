@@ -29,6 +29,11 @@ import calendar
 sys.path.append(str(Path(__file__).parent))
 
 # ============================================================
+# VERSION CHECK - Show Streamlit version in sidebar (TEMPORARY)
+# ============================================================
+st.sidebar.write(f"Streamlit Version: {st.__version__}")
+
+# ============================================================
 # GLOBAL PLOTLY DARK THEME - AUTO-APPLIES TO ALL CHARTS
 # ============================================================
 pio.templates["wtc_dark"] =pio.templates["plotly_dark"]
