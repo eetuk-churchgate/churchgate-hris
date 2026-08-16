@@ -4769,13 +4769,17 @@ def performance_okrs():
             # ============================================================
             # FY SELECTOR FOR HOD REVIEW
             # ============================================================
-            cycle_fy_map = {
+            CYCLE_TO_FY = {
                 'Half-Year Appraisal': 'FY 26/27',
                 'Full-Year Appraisal': 'FY 25/26',
                 'HOD Mock Appraisal': 'FY 26/27',
                 'Team Mock Appraisal': 'FY 26/27'
             }
-            fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
+            
+            FY_TO_CYCLES = {
+                'FY 26/27': ['Half-Year Appraisal', 'HOD Mock Appraisal', 'Team Mock Appraisal', 'Full-Year Appraisal'],
+                'FY 25/26': ['Full-Year Appraisal']
+            }
             
             col_fy, col_space = st.columns([1, 3])
             with col_fy:
@@ -4783,7 +4787,8 @@ def performance_okrs():
                     index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 1,
                     key="hod_fy")
             
-            hod_cycle = fy_cycle_map.get(hod_fy, hod_fy)
+            hod_cycles = FY_TO_CYCLES.get(hod_fy, ['Half-Year Appraisal'])
+            hod_cycle = hod_cycles[0]
             st.caption(f"📊 Viewing: **{hod_fy}**")
             
            # ===== SECTION 1: KPI APPROVAL =====
