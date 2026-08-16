@@ -4297,6 +4297,8 @@ def performance_okrs():
                             log_audit("KPI Added", f"KPI '{kpi_title}' added to {pillar_choice}")
                         
                         st.cache_data.clear()
+                        get_all_perf_cached.clear()
+                        load_performance_cached.clear()
                         st.success("✅ KPI saved!")
                         if save_done:
                             st.session_state.editing_kpi = None
@@ -4935,7 +4937,7 @@ def performance_okrs():
                         
                         st.markdown("---"); st.markdown("### 📊 Score Review")
                         
-                        # ALL SCORE INPUTS INSIDE FORM - NO RELOAD
+                        # WRAP IN FORM TO PREVENT RELOAD
                         with st.form(f"hod_review_form_{staff_name}"):
                             hod_scores = {}
                             pillar_order = get_pillars(hod_fy)
@@ -4947,21 +4949,18 @@ def performance_okrs():
                             hod_count = 0
                             
                             for pillar in pillar_order:
-                                pillar_scores = {}
-                                for score_key, score_val in assessment.get('scores', {}).items():
-                                    if score_key.startswith(pillar):
-                                        pillar_scores[score_key] = score_val
+                                # USE ORIGINAL FILTERING LOGIC - natural_sort_key
+                                pillar_scores = {k: v for k, v in sorted(assessment['scores'].items(), key=natural_sort_key) if k.startswith(pillar)}
                                 
                                 if pillar_scores:
-                                    sorted_pillar_scores = sorted(pillar_scores.items(), key=lambda x: int(x[0].rsplit('_', 1)[1]) if '_' in x[0] and x[0].rsplit('_', 1)[1].isdigit() else 0)
-                                    
-                                    pillar_staff_avg = sum(int(v) for k, v in sorted_pillar_scores if v) / len(sorted_pillar_scores) if sorted_pillar_scores else 0
+                                    pillar_staff_avg = sum(int(v) for v in pillar_scores.values()) / len(pillar_scores)
                                     st.markdown(f"**{pillar}** (Staff Avg: {pillar_staff_avg:.0f}%)")
                                     
-                                    for score_key, staff_score in sorted_pillar_scores:
+                                    for score_key, staff_score in pillar_scores.items():
                                         kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
                                         kpi_name = f"KPI {kpi_index + 1}"
                                         
+                                        # Get KPI name from performance_data
                                         try:
                                             all_p = db._get("performance_data")
                                             for row in (all_p or []):
@@ -4973,6 +4972,7 @@ def performance_okrs():
                                         except:
                                             pass
                                         
+                                        # Get KPI comment (justification)
                                         kpi_comment = assessment.get('pillar_comments', {}).get(pillar, '')
                                         
                                         st.markdown(f"**{kpi_name}**")
@@ -4991,6 +4991,20 @@ def performance_okrs():
                                         hod_total += int(hod_scores[score_key]) if hod_scores[score_key] else 0
                                         hod_count += 1
                                     st.markdown("---")
+                            
+                            # Calculate averages INSIDE form
+                            staff_avg = staff_total / staff_count if staff_count > 0 else 0
+                            hod_avg = hod_total / hod_count if hod_count > 0 else 0
+                            
+                            # Show averages INSIDE form
+                            c1, c2, c3 = st.columns(3)
+                            with c1:
+                                st.metric("📊 Staff Overall Avg", f"{staff_avg:.1f}%")
+                            with c2:
+                                st.metric("👔 HOD Overall Avg", f"{hod_avg:.1f}%")
+                            with c3:
+                                diff = staff_avg - hod_avg
+                                st.metric("📈 Difference", f"{diff:+.1f}%")
                             
                             hod_overall = st.text_area(f"Your Overall Comments *", value=assessment.get('hod_comments', '') if is_re_review else '', key=f"hod_app_{staff_name}")
                             
@@ -5024,19 +5038,6 @@ def performance_okrs():
                                 log_audit('HOD Review', f'{staff_name} reviewed by HOD')
                                 st.success("✅ Submitted!")
                                 st.balloons()
-                        
-                        # Show averages AFTER form
-                        staff_avg = staff_total / staff_count if staff_count > 0 else 0
-                        hod_avg = hod_total / hod_count if hod_count > 0 else 0
-                        
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            st.metric("📊 Staff Overall Avg", f"{staff_avg:.1f}%")
-                        with c2:
-                            st.metric("👔 HOD Overall Avg", f"{hod_avg:.1f}%")
-                        with c3:
-                            diff = staff_avg - hod_avg
-                            st.metric("📈 Difference", f"{diff:+.1f}%")
                         
                         # Extra buttons OUTSIDE form
                         if is_re_review or is_escalated:
