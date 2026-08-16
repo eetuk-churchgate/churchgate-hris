@@ -5952,14 +5952,22 @@ def performance_okrs():
                         if st.button("🤖 AI Analyze Rejection Patterns", use_container_width=True, type="primary"):
                             with st.spinner("🧠 Analyzing..."):
                                 try:
-                                    import openai
-                                    openai_key = os.environ.get("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", ""))
-                                    if openai_key:
-                                        client = openai.OpenAI(api_key=openai_key)
+                                    from groq import Groq
+                                    groq_key = os.environ.get("GROQ_API_KEY", st.secrets.get("GROQ_API_KEY", ""))
+                                    if groq_key:
+                                        client = Groq(api_key=groq_key)
                                         reasons_text = "\n".join([f"- {r['Employee']} ({r['Department']}, {r['Region']}): {r['Rejection Reason']}" for r in rejections])
-                                        response = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "system", "content": "Analyze these appraisal rejections. Provide: 1) Top 3 themes 2) Departments with issues 3) Recommendations."}, {"role": "user", "content": reasons_text}], temperature=0.5, max_tokens=400)
-                                        st.markdown("### 🤖 AI Analysis"); st.success("Analysis complete!"); st.markdown(response.choices[0].message.content)
-                                    else: st.info("OpenAI API key not configured.")
+                                        response = client.chat.completions.create(
+                                            model="openai/gpt-oss-20b",
+                                            messages=[{"role": "system", "content": "Analyze these appraisal rejections. Provide: 1) Top 3 themes 2) Departments with issues 3) Recommendations."},
+                                                      {"role": "user", "content": reasons_text}],
+                                            temperature=0.5, max_tokens=400
+                                        )
+                                        st.markdown("### 🤖 AI Analysis")
+                                        st.success("Analysis complete!")
+                                        st.markdown(response.choices[0].message.content)
+                                    else:
+                                        st.info("Groq API key not configured.")
                                 except Exception as e:
                                     st.warning(f"AI analysis unavailable: {str(e)}")
                                     st.markdown("### 📊 Manual Analysis\n**Common Themes:** Score disagreements, insufficient evidence review, communication gaps.\n**Recommendations:** Pre-review calibration meetings, ensure evidence acknowledgment, add discussion step.")
@@ -6434,13 +6442,18 @@ def performance_okrs():
                 'HOD Mock Appraisal': 'FY 26/27',
                 'Team Mock Appraisal': 'FY 26/27'
             }
-            fy_cycle_map = {v: k for k, v in cycle_fy_map.items()}
-            
             col_fy, col_space = st.columns([1, 3])
             with col_fy:
                 committee_fy = st.selectbox("📅 Financial Year", ['FY 26/27', 'FY 25/26'],
                     index=0 if 'Half-Year' in st.session_state.appraisal_cycle_name else 1,
                     key="committee_fy")
+            
+            if committee_fy == 'FY 26/27':
+                committee_cycles = ['Half-Year Appraisal', 'Team Mock Appraisal', 'HOD Mock Appraisal']
+            else:
+                committee_cycles = ['Full-Year Appraisal']
+            
+            committee_cycle = committee_cycles[0]
             
             committee_cycle = fy_cycle_map.get(committee_fy, committee_fy)
             st.caption(f"📊 Viewing: **{committee_fy}** ({committee_cycle})")
@@ -6557,7 +6570,7 @@ def performance_okrs():
             # Filter by selected committee cycle
             all_assessments_filtered = {}
             for emp_name, assessment in all_assessments.items():
-                if assessment.get('cycle_name', '') == committee_cycle or not assessment.get('cycle_name'):
+                if assessment.get('cycle_name', '') in committee_cycles or not assessment.get('cycle_name'):
                     all_assessments_filtered[emp_name] = assessment
             all_assessments = all_assessments_filtered
             
@@ -7022,12 +7035,11 @@ def performance_okrs():
                     if st.button("🧠 Generate AI Insights", use_container_width=True, type="primary"):
                         with st.spinner("Analyzing appraisal data with AI..."):
                             try:
-                                import openai
-                                openai_key = os.environ.get("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", ""))
-                                if openai_key:
-                                    client = openai.OpenAI(api_key=openai_key)
+                                from groq import Groq
+                                groq_key = os.environ.get("GROQ_API_KEY", st.secrets.get("GROQ_API_KEY", ""))
+                                if groq_key:
+                                    client = Groq(api_key=groq_key)
                                     
-                                    # Build comprehensive data summary
                                     insights_text = f"""
                                     Appraisal Cycle: {st.session_state.appraisal_cycle_name}
                                     Total Participants: {total_participants}
@@ -7051,7 +7063,7 @@ def performance_okrs():
                                     """
                                     
                                     response = client.chat.completions.create(
-                                        model="gpt-3.5-turbo",
+                                        model="openai/gpt-oss-20b",
                                         messages=[{
                                             "role": "system",
                                             "content": "You are a Fortune 500 HR Analytics Director. Analyze this appraisal data and provide: 1) Top 3 key findings 2) Department performance comparison 3) Talent risk areas 4) 3 strategic recommendations for leadership 5) Predicted trends for next cycle. Be specific and data-driven."
@@ -7067,7 +7079,7 @@ def performance_okrs():
                                     st.success("Analysis complete!")
                                     st.markdown(response.choices[0].message.content)
                                 else:
-                                    st.info("OpenAI API key not configured.")
+                                    st.info("Groq API key not configured.")
                             except Exception as e:
                                 st.warning(f"AI insights unavailable: {str(e)}")
                                 st.markdown("""
@@ -7620,14 +7632,8 @@ def performance_okrs():
                         recommendation_source = "Appraisal Committee"
                     elif acceptance == 'Accepted':
                         comments = hod_comments or tl_comments or ''
-                        if 'promot' in comments.lower():
-                            recommendation = "PROMOTE - " + comments[:100]
-                        elif 'salary' in comments.lower() or 'increment' in comments.lower():
-                            recommendation = "SALARY REVIEW - " + comments[:100]
-                        elif 'train' in comments.lower() or 'develop' in comments.lower():
-                            recommendation = "TRAINING & DEVELOPMENT - " + comments[:100]
-                        elif 'pip' in comments.lower() or 'improve' in comments.lower():
-                            recommendation = "PERFORMANCE IMPROVEMENT PLAN - " + comments[:100]
+                        if comments.strip():
+                            recommendation = comments[:200]
                         else:
                             recommendation = "REVIEW COMPLETED"
                         recommendation_source = f"{reviewer_type} Review"
