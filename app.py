@@ -22508,18 +22508,21 @@ def ai_dlp_monitor_dashboard():
     with c2:
         st.metric("🔑 Keywords", len(SENSITIVE_KEYWORDS))
     with c3:
-        st.metric("🚨 Critical", critical_count, delta_color="inverse")
+        st.metric("🚨 Critical", critical_count)
     with c4:
-        st.metric("⚠️ High", high_count, delta_color="inverse")
+        st.metric("⚠️ High", high_count)
     with c5:
         st.metric("📋 Medium", medium_count)
     with c6:
         st.metric("✅ Low", low_count)
     with c7:
-        status = "🟢 ACTIVE" if st.session_state.dlp_scan_active else "🟡 STANDBY"
+        status = "🟢 ACTIVE" if background_monitor.is_running else "🟡 STANDBY"
         st.metric("🛡️ Status", status)
     with c8:
-        st.metric("📡 Last Scan", st.session_state.dlp_last_scan or "Never")
+        st.metric("📡 Last Scan", background_monitor.last_scan_time or "Never")
+    
+    # Add Scans metric below
+    st.metric("🔄 Scans Completed", background_monitor.scan_count)
     
     st.divider()
     
