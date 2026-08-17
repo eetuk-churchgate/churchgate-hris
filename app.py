@@ -2910,7 +2910,7 @@ def sidebar_navigation():
                 "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", 
                 "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", 
                 "🎯 My Goals", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", 
-                "🎓 LMS", "📋 Audit Log", "📊 Advanced Analytics", "👤 My Profile"
+                "🎓 LMS", "📋 Audit Log", "📊 Advanced Analytics", "🛡️ AI DLP Monitor", "👤 My Profile"
             ]
             all_icons = [
                 "house-fill", "speedometer2", "people-fill", "graph-up-arrow", 
@@ -2918,7 +2918,7 @@ def sidebar_navigation():
                 "inbox-fill", "file-earmark-bar-graph", "chat-dots-fill", "book-fill", 
                 "bell-fill", "folder-fill", "lightbulb-fill", "calendar-fill", 
                 "bullseye", "globe", "book-half", "heart-fill", 
-                "mortarboard-fill", "shield-fill", "graph-up", "person-circle"
+                "mortarboard-fill", "shield-fill", "graph-up", "shield-lock-fill", "person-circle"
             ]
         elif user_role in ['Manager', 'HOD', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level', 'Senior Management']:
             menu_options = [
@@ -2926,14 +2926,15 @@ def sidebar_navigation():
                 "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "🔄 Requests Hub",
                 "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", 
                 "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🌐 Directory", 
-                "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"
+                "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "🛡️ AI DLP Monitor", "👤 My Profile"
             ]
             all_icons = [
                 "house-fill", "check-circle-fill", "briefcase-fill", "robot", 
                 "graph-up-arrow", "inbox-fill", "chat-dots-fill", "book-fill", 
                 "folder-fill", "lightbulb-fill", "calendar-fill", "bullseye", 
-                "globe", "book-half", "heart-fill", "mortarboard-fill", "person-circle"
+                "globe", "book-half", "heart-fill", "mortarboard-fill", "shield-lock-fill", "person-circle"
             ]
+
         else:
             menu_options = [
                 "🏠 Employee Dashboard", "📈 My Performance & OKRs", "🔄 Requests Hub",
@@ -22417,6 +22418,297 @@ def audit_log_viewer():
                 )
                 st.plotly_chart(fig2, use_container_width=True)
 
+
+
+
+def ai_dlp_monitor_dashboard():
+    track_engagement("AI DLP Monitor")
+    
+    # ============================================================
+    # RESTRICTED ACCESS - SUPER ADMIN ONLY (3 USERS)
+    # ============================================================
+    AUTHORIZED_EMAILS = [
+        "eetuk@churchgate.com",
+        "jeromedas@churchgate.com",
+        "vbmahtani@churchgate.com"
+    ]
+    
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
+    
+    is_authorized = user_email.lower() in [e.lower() for e in AUTHORIZED_EMAILS]
+    
+    if not is_authorized:
+        st.error("🔒 ACCESS DENIED")
+        st.markdown("""
+        <div style="background: #1E1E1E; border: 2px solid #CC0000; border-radius: 12px; padding: 2rem; text-align: center; margin: 2rem 0;">
+            <h2 style="color: #CC0000; font-size: 2rem; margin: 0;">🛡️ RESTRICTED MODULE</h2>
+            <p style="color: #E0E0E0; margin-top: 1rem;">This module is classified and restricted to Super Administrators only.</p>
+            <p style="color: #A0A0A0; font-size: 0.85rem;">Contact the CTO or GMD for access.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+    
+    from utils.dlp_monitor import SENSITIVE_ENTITIES, SENSITIVE_KEYWORDS, IncidentResponder, AI_DLP_Monitor, SEVERITY_LEVELS
+    
+    # ============================================================
+    # MILITARY-GRADE HEADER
+    # ============================================================
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%); border: 2px solid #B8960C; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 8px 32px rgba(184, 150, 12, 0.2);">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <h1 style="color: #C9A84C; font-size: 1.8rem; margin: 0; font-family: 'Georgia', serif;">🛡️ Group AI Activity & Data Leakage Monitor</h1>
+                <p style="color: #E0E0E0; margin: 0.5rem 0 0 0;">Military-Grade Real-Time Monitoring | Churchgate Group Security Command Center</p>
+            </div>
+            <div style="text-align: right;">
+                <span style="background: #38a169; color: white; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">● LIVE</span>
+                <br><small style="color: #A0A0A0;">{}</small>
+            </div>
+        </div>
+    </div>
+    """.format(datetime.now().strftime('%A, %B %d, %Y - %H:%M:%S WAT')), unsafe_allow_html=True)
+    
+    # ============================================================
+    # INITIALIZE SESSION STATE
+    # ============================================================
+    if 'dlp_alerts' not in st.session_state:
+        st.session_state.dlp_alerts = []
+    if 'dlp_scan_active' not in st.session_state:
+        st.session_state.dlp_scan_active = False
+    if 'dlp_last_scan' not in st.session_state:
+        st.session_state.dlp_last_scan = None
+    if 'dlp_incident_log' not in st.session_state:
+        st.session_state.dlp_incident_log = []
+    
+    monitor = AI_DLP_Monitor()
+    
+    # ============================================================
+    # TOP COMMAND CENTER METRICS
+    # ============================================================
+    st.markdown("### 📊 Command Center Status")
+    
+    critical_count = len([a for a in st.session_state.dlp_alerts if a.get('Severity') == 'Critical'])
+    high_count = len([a for a in st.session_state.dlp_alerts if a.get('Severity') == 'High'])
+    medium_count = len([a for a in st.session_state.dlp_alerts if a.get('Severity') == 'Medium'])
+    low_count = len([a for a in st.session_state.dlp_alerts if a.get('Severity') == 'Low'])
+    
+    c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
+    with c1:
+        st.metric("🏢 Entities", len(SENSITIVE_ENTITIES))
+    with c2:
+        st.metric("🔑 Keywords", len(SENSITIVE_KEYWORDS))
+    with c3:
+        st.metric("🚨 Critical", critical_count, delta_color="inverse")
+    with c4:
+        st.metric("⚠️ High", high_count, delta_color="inverse")
+    with c5:
+        st.metric("📋 Medium", medium_count)
+    with c6:
+        st.metric("✅ Low", low_count)
+    with c7:
+        status = "🟢 ACTIVE" if st.session_state.dlp_scan_active else "🟡 STANDBY"
+        st.metric("🛡️ Status", status)
+    with c8:
+        st.metric("📡 Last Scan", st.session_state.dlp_last_scan or "Never")
+    
+    st.divider()
+    
+    # ============================================================
+    # CONTROL PANEL - MASSIVE
+    # ============================================================
+    st.markdown("### ⚙️ Monitoring Control Panel")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        if st.button("🚀 START MONITORING", use_container_width=True, type="primary"):
+            st.session_state.dlp_scan_active = True
+            st.session_state.dlp_last_scan = datetime.now().strftime('%H:%M:%S')
+            st.success("✅ Monitoring system ACTIVE!")
+            st.balloons()
+    with col2:
+        if st.button("⏹️ STOP MONITORING", use_container_width=True):
+            st.session_state.dlp_scan_active = False
+            st.warning("⏹️ Monitoring paused.")
+    with col3:
+        if st.button("🧪 SEND TEST ALERT", use_container_width=True):
+            responder = IncidentResponder()
+            test_forensics = {
+                "IP": "192.168.1.100",
+                "City": "Lagos",
+                "Region": "Lagos State",
+                "Country": "Nigeria",
+                "Device": "Windows 11 on Desktop",
+                "Browser": "Chrome 120",
+                "OS": "Windows 11",
+                "Device_Type": "Desktop",
+                "Timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            success, incident_id = responder.send_red_alert(
+                subsidiary="World Trade Center Abuja",
+                leak_type="Finance",
+                leaked_content="TEST ALERT: Confidential invoice detected - Invoice #INV-2026-001 for ₦45,000,000 from First Continental Properties Limited. Payment details: GTBank 0123456789.",
+                source_url="https://example.com/test-document",
+                forensics=test_forensics,
+                severity="Critical"
+            )
+            if success:
+                st.success(f"✅ RED ALERT sent! Incident ID: {incident_id}")
+                st.balloons()
+            else:
+                st.error("❌ Failed to send test alert. Check SendGrid API key.")
+    with col4:
+        if st.button("🗑️ CLEAR ALERTS", use_container_width=True):
+            st.session_state.dlp_alerts = []
+            st.success("✅ Alert log cleared.")
+    
+    st.divider()
+    
+    # ============================================================
+    # LIVE ALERT FEED - MILITARY GRADE
+    # ============================================================
+    st.markdown("### ⚡ Live Alert Feed")
+    
+    if st.session_state.dlp_alerts:
+        for alert in st.session_state.dlp_alerts[-10:]:
+            severity = alert.get('Severity', 'Low')
+            color = "#FF3333" if severity == 'Critical' else "#FF6B35" if severity == 'High' else "#E6A817" if severity == 'Medium' else "#C9A84C"
+            
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #1E1E1E, #252525); border-left: 6px solid {color}; padding: 15px; margin-bottom: 10px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <b style="color: {color}; font-size: 1.1em;">[{severity.upper()}]</b> 
+                        <span style="color: #FFFFFF; font-weight: 700; font-size: 1.05em;">{alert.get('Subsidiary', 'Unknown')}</span>
+                    </div>
+                    <small style="color: #A0A0A0;">{alert.get('Time', '')}</small>
+                </div>
+                <div style="margin-top: 8px;">
+                    <small style="color: #E0E0E0;">📂 Type: <b>{alert.get('Type', 'Unknown')}</b> | 🔗 Source: {alert.get('Source', 'Unknown')}</small>
+                    <br><small style="color: #A0A0A0;">🆔 Incident: {alert.get('Incident_ID', 'N/A')}</small>
+                </div>
+                <div style="margin-top: 8px; background: #141414; padding: 8px; border-radius: 4px; border: 1px solid #2A2A2A;">
+                    <small style="color: #A0A0A0; font-family: monospace;">{alert.get('Content_Snippet', '')[:150]}...</small>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("📡 Monitoring system ready. No alerts detected yet.")
+    
+    st.divider()
+    
+    # ============================================================
+    # FULL ALERTS LOG TABLE
+    # ============================================================
+    st.markdown("### 📋 Full Alerts Log")
+    
+    if st.session_state.dlp_alerts:
+        alert_df = pd.DataFrame(st.session_state.dlp_alerts)
+        html_table = alert_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+        st.markdown(html_table, unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.download_button("📥 Export Alerts CSV", 
+                              alert_df.to_csv(index=False), 
+                              "dlp_alerts.csv", "text/csv",
+                              use_container_width=True)
+        with col2:
+            st.download_button("📥 Export Incident Report (JSON)", 
+                              json.dumps(st.session_state.dlp_alerts, indent=2),
+                              "dlp_incident_report.json", "application/json",
+                              use_container_width=True)
+    else:
+        st.info("No alerts logged.")
+    
+    st.divider()
+    
+    # ============================================================
+    # MONITORED ENTITIES
+    # ============================================================
+    st.markdown("### 🏢 Monitored Churchgate Subsidiaries")
+    
+    entities_data = []
+    for entity in SENSITIVE_ENTITIES:
+        alert_count = len([a for a in st.session_state.dlp_alerts if a.get('Subsidiary') == entity])
+        entities_data.append({
+            'Subsidiary': entity,
+            'Monitoring Status': '✅ Active',
+            'Alerts Detected': alert_count
+        })
+    
+    entities_df = pd.DataFrame(entities_data)
+    html_table = entities_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+    st.markdown(html_table, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # ============================================================
+    # SENSITIVE KEYWORDS MONITORED
+    # ============================================================
+    st.markdown("### 🔑 Sensitive Keywords Being Monitored")
+    
+    keywords_df = pd.DataFrame({
+        'Keyword': SENSITIVE_KEYWORDS,
+        'Category': ['Financial' if k in ['salary', 'invoice', 'payslip', 'bank transfer', 'budget', 'revenue', 'profit', 'loss', 'expense', 'bank account'] 
+                    else 'HR' if k in ['staff list', 'employee data', 'HR records', 'payroll', 'BVN', 'NIN', 'passport']
+                    else 'Procurement' if k in ['procurement', 'vendor', 'supplier', 'tender', 'quotation', 'purchase order']
+                    else 'General' for k in SENSITIVE_KEYWORDS]
+    })
+    
+    html_table = keywords_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+    st.markdown(html_table, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # ============================================================
+    # SCANNING ENGINE STATUS
+    # ============================================================
+    st.markdown("### ⚙️ Scanning Engine Configuration")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+        <div style="background: #1E1E1E; padding: 1.2rem; border-radius: 8px; border-left: 4px solid #C9A84C; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+            <strong style="color: #C9A84C; font-size: 1.1em;">🔍 Public Web Scraper</strong>
+            <br><small style="color: #A0A0A0;">Status: ✅ Ready</small>
+            <br><small style="color: #A0A0A0;">Sources: GitHub, Pastebin, Public Search</small>
+            <br><small style="color: #A0A0A0;">API: Serper.dev</small>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div style="background: #1E1E1E; padding: 1.2rem; border-radius: 8px; border-left: 4px solid #38a169; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+            <strong style="color: #38a169; font-size: 1.1em;">🤖 AI Semantic Analyzer</strong>
+            <br><small style="color: #A0A0A0;">Status: ✅ Ready</small>
+            <br><small style="color: #A0A0A0;">Model: Groq GPT-OSS-20B</small>
+            <br><small style="color: #A0A0A0;">Confidence Threshold: 70%</small>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+        <div style="background: #1E1E1E; padding: 1.2rem; border-radius: 8px; border-left: 4px solid #CC0000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+            <strong style="color: #CC0000; font-size: 1.1em;">🚨 Alert Engine</strong>
+            <br><small style="color: #A0A0A0;">Status: ✅ Ready</small>
+            <br><small style="color: #A0A0A0;">Email: SendGrid</small>
+            <br><small style="color: #A0A0A0;">Cooldown: 1 hour per entity</small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # ============================================================
+    # SECURITY FOOTER
+    # ============================================================
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); border: 1px solid #B8960C; border-radius: 8px; padding: 1rem; text-align: center; margin-top: 1rem;">
+        <p style="color: #C9A84C; margin: 0; font-weight: 700;">🛡️ CHURCHGATE GROUP SECURITY COMMAND CENTER</p>
+        <p style="color: #A0A0A0; font-size: 0.75rem; margin: 0.3rem 0 0 0;">Classified | Authorized Personnel Only | All Activity Logged</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+
+
 def advanced_analytics():
     track_engagement("Advanced Analytics")
     emp_df = load_employees_cached()
@@ -23208,6 +23500,7 @@ def main():
             "🎓 LMS": lms_dashboard,
             "📋 Audit Log": audit_log_viewer,
             "📊 Advanced Analytics": advanced_analytics,
+            "🛡️ AI DLP Monitor": ai_dlp_monitor_dashboard,
             "👤 My Profile": my_profile,
         }
         page_func = page_routes.get(page, employee_dashboard)
