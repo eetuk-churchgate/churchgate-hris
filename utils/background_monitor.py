@@ -101,7 +101,7 @@ class BackgroundMonitorService:
         print(f"[DLP] Starting full scan...")
         for entity in SENSITIVE_ENTITIES:
             for keyword_group in SENSITIVE_KEYWORD_CATEGORIES.values():
-                for keyword in keyword_group[:2]:  # Top 10 keywords per category
+                for keyword in keyword_group[:10]:  # Top 10 keywords per category
                     query = f"{entity} {keyword}"
                     self._scan_and_analyze(query, entity)
         print(f"[DLP] Full scan complete!")
@@ -128,29 +128,34 @@ class BackgroundMonitorService:
             print(f"Scan error for {query}: {e}")
     
     def _search_serper(self, query):
-        """Search using Serper API"""
+        """Search using DuckDuckGo PRIMARY + Serper FALLBACK"""
+        # PRIMARY: DuckDuckGo (FREE - unlimited)
+        try:
+            from duckduckgo_search import DDGS
+            
+            with DDGS() as ddgs:
+                results = list(ddgs.text(f"{query} confidential OR salary OR invoice OR procurement", max_results=10))
+                if results:
+                    return {'organic': results}
+        except Exception as e:
+            print(f"DuckDuckGo error: {e}")
+        
+        # FALLBACK: Serper (if DuckDuckGo fails)
         try:
             api_key = os.environ.get('SERPER_API_KEY', '')
-            headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
-            params = {
-                "q": f"{query} (confidential OR salary OR invoice OR procurement)",
-                "num": 10
-            }
-            
-            import requests
-            response = requests.post(
-                "https://google.serper.dev/search",
-                headers=headers,
-                json=params,
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                return response.json()
-            return None
+            if api_key:
+                headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
+                params = {"q": f"{query} (confidential OR salary OR invoice OR procurement)", "num": 10}
+                
+                import requests
+                response = requests.post("https://google.serper.dev/search", headers=headers, json=params, timeout=10)
+                
+                if response.status_code == 200:
+                    return response.json()
         except Exception as e:
-            print(f"Serper API error: {e}")
-            return None
+            print(f"Serper error: {e}")
+        
+        return None
     
     def _trigger_immediate_alert(self, entity, analysis, content, url):
         """Trigger immediate email alert"""
