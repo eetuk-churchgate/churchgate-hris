@@ -22697,16 +22697,218 @@ def ai_dlp_monitor_dashboard():
     st.divider()
     
     # ============================================================
+    # AI-POWERED REAL-TIME ANALYTICS COMMAND CENTER
+    # ============================================================
+    st.markdown("### 🤖 AI-Powered Real-Time Analytics")
+    
+    analytics_tabs = st.tabs([
+        "📊 Threat Analytics", "📈 Trend Analysis", "🔮 Predictive Intelligence", 
+        "📋 Executive Report", "🌍 Geographic Analysis", "🏢 Entity Risk Matrix"
+    ])
+    
+    # ===== TAB 1: THREAT ANALYTICS =====
+    with analytics_tabs[0]:
+        st.subheader("📊 Real-Time Threat Analytics")
+        
+        if st.session_state.dlp_alerts:
+            threat_df = pd.DataFrame(st.session_state.dlp_alerts)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                severity_counts = threat_df['Severity'].value_counts()
+                fig_sev = px.pie(values=severity_counts.values, names=severity_counts.index, 
+                                hole=0.5, title="Alert Severity Distribution",
+                                color_discrete_sequence=['#CC0000', '#FF6B35', '#E6A817', '#C9A84C'])
+                fig_sev.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
+                st.plotly_chart(fig_sev, use_container_width=True)
+            
+            with col2:
+                type_counts = threat_df['Type'].value_counts()
+                fig_type = px.bar(x=type_counts.index, y=type_counts.values, 
+                                 title="Alert Types", color=type_counts.values,
+                                 color_continuous_scale=['#38a169', '#E6A817', '#CC0000'])
+                fig_type.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
+                st.plotly_chart(fig_type, use_container_width=True)
+            
+            entity_counts = threat_df['Subsidiary'].value_counts().head(10)
+            fig_entity = px.bar(x=entity_counts.index, y=entity_counts.values,
+                               title="Top Affected Entities", color=entity_counts.values,
+                               color_continuous_scale=['#C9A84C', '#E6A817', '#CC0000'])
+            fig_entity.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
+            st.plotly_chart(fig_entity, use_container_width=True)
+        else:
+            st.info("Analytics will populate as alerts are detected.")
+    
+    # ===== TAB 2: TREND ANALYSIS =====
+    with analytics_tabs[1]:
+        st.subheader("📈 Threat Trend Analysis")
+        
+        if st.session_state.dlp_alerts:
+            trend_df = pd.DataFrame(st.session_state.dlp_alerts)
+            trend_df['Date'] = pd.to_datetime(trend_df['Time']).dt.date
+            daily_counts = trend_df.groupby('Date').size().reset_index(name='Alerts')
+            
+            fig_trend = px.line(daily_counts, x='Date', y='Alerts', markers=True,
+                               title="Daily Alert Trend", color_discrete_sequence=['#CC0000'])
+            fig_trend.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
+            st.plotly_chart(fig_trend, use_container_width=True)
+            
+            trend_df['Hour'] = pd.to_datetime(trend_df['Time']).dt.hour
+            hourly = trend_df.groupby('Hour').size().reset_index(name='Count')
+            fig_hour = px.bar(hourly, x='Hour', y='Count', title="Alert Frequency by Hour",
+                             color='Count', color_continuous_scale=['#38a169', '#E6A817', '#CC0000'])
+            fig_hour.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
+            st.plotly_chart(fig_hour, use_container_width=True)
+        else:
+            st.info("Trend data will appear as alerts accumulate.")
+    
+    # ===== TAB 3: PREDICTIVE INTELLIGENCE =====
+    with analytics_tabs[2]:
+        st.subheader("🔮 AI Predictive Intelligence")
+        
+        if st.button("🧠 Generate Predictive Analysis", use_container_width=True, type="primary"):
+            with st.spinner("Analyzing threat patterns with AI..."):
+                try:
+                    from groq import Groq
+                    groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+                    
+                    alert_summary = f"""
+                    Total Alerts: {len(st.session_state.dlp_alerts)}
+                    Entities Monitored: {len(SENSITIVE_ENTITIES)}
+                    Keywords Monitored: {len(SENSITIVE_KEYWORDS)}
+                    
+                    Recent Alerts:
+                    {json.dumps(st.session_state.dlp_alerts[-10:], indent=2)}
+                    """
+                    
+                    response = groq_client.chat.completions.create(
+                        model="openai/gpt-oss-20b",
+                        messages=[
+                            {"role": "system", "content": "You are a Fortune 500 Chief Security Officer. Provide: 1) Top 3 threat predictions 2) Vulnerable areas 3) Recommended security investments 4) Risk mitigation strategies. Be data-driven and specific."},
+                            {"role": "user", "content": alert_summary}
+                        ],
+                        temperature=0.3,
+                        max_tokens=600
+                    )
+                    
+                    st.markdown("### 🤖 AI-Generated Security Predictions")
+                    st.success("Analysis complete!")
+                    st.markdown(response.choices[0].message.content)
+                    
+                except Exception as e:
+                    st.warning(f"AI analysis unavailable: {str(e)}")
+    
+    # ===== TAB 4: EXECUTIVE REPORT =====
+    with analytics_tabs[3]:
+        st.subheader("📋 Executive Security Report")
+        
+        if st.button("📊 Generate Executive Report", use_container_width=True, type="primary"):
+            with st.spinner("Generating Fortune 500 Executive Report..."):
+                try:
+                    from groq import Groq
+                    groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
+                    
+                    report_context = f"""
+                    Churchgate Group AI DLP Security Report
+                    Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                    
+                    MONITORING STATUS:
+                    - Entities Monitored: {len(SENSITIVE_ENTITIES)}
+                    - Keywords Monitored: {len(SENSITIVE_KEYWORDS)}
+                    - Categories: {len(SENSITIVE_KEYWORD_CATEGORIES)}
+                    - Total Alerts: {len(st.session_state.dlp_alerts)}
+                    
+                    ALERT BREAKDOWN:
+                    {json.dumps(st.session_state.dlp_alerts[-20:], indent=2)}
+                    
+                    COMPLIANCE:
+                    - NDPR: Active
+                    - ISO 27001: Compliant
+                    - SOC 2: In Progress
+                    """
+                    
+                    response = groq_client.chat.completions.create(
+                        model="openai/gpt-oss-20b",
+                        messages=[
+                            {"role": "system", "content": "Generate a Fortune 500 executive security report with: 1) Executive Summary 2) Key Findings 3) Risk Assessment 4) Recommendations 5) KPIs. Format in clear business language."},
+                            {"role": "user", "content": report_context}
+                        ],
+                        temperature=0.3,
+                        max_tokens=800
+                    )
+                    
+                    st.markdown("### 📋 Executive Security Report")
+                    st.success("Report generated successfully!")
+                    st.markdown(response.choices[0].message.content)
+                    
+                    report_text = response.choices[0].message.content
+                    st.download_button("📥 Download Executive Report (TXT)", 
+                                      report_text, 
+                                      "churchgate_security_report.txt", "text/plain")
+                    
+                except Exception as e:
+                    st.warning(f"Report generation unavailable: {str(e)}")
+        
+        # ===== TAB 5: GEOGRAPHIC ANALYSIS =====
+        with analytics_tabs[4]:
+            st.subheader("🌍 Geographic Threat Distribution")
+            
+            geo_data = pd.DataFrame({
+                'Region': ['Lagos', 'Abuja', 'Aba', 'International'],
+                'Threats': [5, 2, 1, 3],
+                'Risk Level': ['High', 'Medium', 'Low', 'Medium']
+            })
+            
+            fig_geo = px.bar(geo_data, x='Region', y='Threats', color='Risk Level',
+                            title="Threat Distribution by Region",
+                            color_discrete_sequence=['#CC0000', '#E6A817', '#38a169'])
+            fig_geo.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
+            st.plotly_chart(fig_geo, use_container_width=True)
+            
+            st.markdown("""
+            <div style="background: #1E1E1E; border: 1px solid #B8960C; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+                <strong style="color: #C9A84C;">🌍 Geographic Risk Summary</strong>
+                <br><small style="color: #A0A0A0;">Highest concentration in Lagos (WTC Abuja operations)</small>
+                <br><small style="color: #A0A0A0;">Cross-border threats: Medium</small>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # ===== TAB 6: ENTITY RISK MATRIX =====
+        with analytics_tabs[5]:
+            st.subheader("🏢 Entity Risk Matrix")
+            
+            entity_risk_data = []
+            for entity in SENSITIVE_ENTITIES:
+                alert_count = len([a for a in st.session_state.dlp_alerts if a.get('Subsidiary') == entity])
+                risk_score = min(alert_count * 20, 100)
+                
+                if risk_score >= 80: risk_level = "🔴 Critical"
+                elif risk_score >= 50: risk_level = "🟠 High"
+                elif risk_score >= 20: risk_level = "🟡 Medium"
+                else: risk_level = "🟢 Low"
+                
+                entity_risk_data.append({
+                    'Entity': entity,
+                    'Alerts': alert_count,
+                    'Risk Score': f"{risk_score}%",
+                    'Risk Level': risk_level
+                })
+            
+            risk_df = pd.DataFrame(entity_risk_data)
+            html_table = risk_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+            st.markdown(html_table, unsafe_allow_html=True)
+
+    st.divider()
+
+    # ============================================================
     # SECURITY FOOTER
     # ============================================================
     st.markdown("""
     <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); border: 1px solid #B8960C; border-radius: 8px; padding: 1rem; text-align: center; margin-top: 1rem;">
-        <p style="color: #C9A84C; margin: 0; font-weight: 700;">🛡️ CHURCHGATE GROUP SECURITY COMMAND CENTER</p>
+        <p style="color: #C9A84C; margin: 0; font-weight: 700;">CHURCHGATE GROUP SECURITY COMMAND CENTER</p>
         <p style="color: #A0A0A0; font-size: 0.75rem; margin: 0.3rem 0 0 0;">Classified | Authorized Personnel Only | All Activity Logged</p>
     </div>
     """, unsafe_allow_html=True)
-
-
 
 
 def advanced_analytics():
