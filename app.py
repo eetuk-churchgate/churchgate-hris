@@ -22868,7 +22868,7 @@ def ai_dlp_monitor_dashboard():
             st.markdown("""
             <div style="background: #1E1E1E; border: 1px solid #B8960C; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
                 <strong style="color: #C9A84C;">🌍 Geographic Risk Summary</strong>
-                <br><small style="color: #A0A0A0;">Highest concentration in Lagos (WTC Abuja operations)</small>
+                <br><small style="color: #A0A0A0;">Highest concentration in Lagos (Churchgate Group operations)</small>
                 <br><small style="color: #A0A0A0;">Cross-border threats: Medium</small>
             </div>
             """, unsafe_allow_html=True)
