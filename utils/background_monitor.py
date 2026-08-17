@@ -101,7 +101,7 @@ class BackgroundMonitorService:
         print(f"[DLP] Starting full scan...")
         for entity in SENSITIVE_ENTITIES:
             for keyword_group in SENSITIVE_KEYWORD_CATEGORIES.values():
-                for keyword in keyword_group[:10]:  # Top 10 keywords per category
+                for keyword in keyword_group[:2]:  # Top 10 keywords per category
                     query = f"{entity} {keyword}"
                     self._scan_and_analyze(query, entity)
         print(f"[DLP] Full scan complete!")
