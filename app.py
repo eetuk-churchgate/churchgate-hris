@@ -22538,6 +22538,10 @@ def ai_dlp_monitor_dashboard():
                              help="When ON, scanning runs automatically every 5 minutes")
     
     with mode_col2:
+        # Force check session state for latest status
+        if 'dlp_monitor_running' in st.session_state:
+            background_monitor.is_running = st.session_state.dlp_monitor_running
+        
         status_bg = 'rgba(56, 161, 105, 0.15)' if background_monitor.is_running else 'rgba(204, 0, 0, 0.15)'
         status_border = '#38a169' if background_monitor.is_running else '#CC0000'
         status_text = '🟢 AUTO MONITORING ACTIVE' if background_monitor.is_running else '🔴 AUTO MONITORING PAUSED'
