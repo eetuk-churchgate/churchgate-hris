@@ -1,6 +1,7 @@
 """
 Churchgate Group AI DLP - 24/7 Background Monitoring Service
 Runs independently of Streamlit | Military-Grade Continuous Scanning
+Fortune 500 Grade | Real-Time Progress Tracking | Command Center Ready
 """
 import os
 import json
@@ -30,6 +31,14 @@ class BackgroundMonitorService:
         self.last_scan_time = None
         self.scan_count = 0
         self.error_count = 0
+        self.current_progress = 0
+        self.current_entity = ""
+        self.current_category = ""
+        self.current_keyword = ""
+        self.entities_scanned = 0
+        self.total_searches = 0
+        self.searches_completed = 0
+        self.alerts_found_this_scan = 0
         
         # Restore from session state if exists
         try:
@@ -42,6 +51,8 @@ class BackgroundMonitorService:
                 self.last_scan_time = st.session_state.dlp_last_scan
             if 'dlp_alert_log' in st.session_state:
                 self.alert_log = st.session_state.dlp_alert_log
+            if 'dlp_progress' in st.session_state:
+                self.current_progress = st.session_state.dlp_progress
         except:
             pass
         
@@ -57,6 +68,7 @@ class BackgroundMonitorService:
         st.session_state.dlp_scan_count = self.scan_count
         st.session_state.dlp_last_scan = self.last_scan_time
         st.session_state.dlp_alert_log = self.alert_log
+        st.session_state.dlp_progress = 0
         
         self.scan_thread = threading.Thread(target=self._run_scan_loop, daemon=True)
         self.scan_thread.start()
@@ -71,45 +83,130 @@ class BackgroundMonitorService:
         
         return "Monitoring stopped"
     
+    def _log_progress(self, message):
+        """Print progress with timestamp"""
+        print(f"[DLP {datetime.now().strftime('%H:%M:%S')}] {message}")
+    
     def _run_scan_loop(self):
         """Main 24/7 scanning loop"""
         import streamlit as st
         
-        print(f"[DLP] Scan loop started at {datetime.now()}")
+        self._log_progress("========================================")
+        self._log_progress("SCAN LOOP STARTED - 24/7 MONITORING ACTIVE")
+        self._log_progress("========================================")
         
         while self.is_running:
             try:
-                print(f"[DLP] Performing scan #{self.scan_count + 1}...")
+                self._log_progress(f"PERFORMING SCAN #{self.scan_count + 1}")
+                self._log_progress("----------------------------------------")
+                
                 self._perform_full_scan()
+                
                 self.last_scan_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 self.scan_count += 1
-                print(f"[DLP] Scan #{self.scan_count} completed at {self.last_scan_time}")
                 
-                # Save to session state for persistence
+                self._log_progress("----------------------------------------")
+                self._log_progress(f"SCAN #{self.scan_count} COMPLETE")
+                self._log_progress(f"TIME: {self.last_scan_time}")
+                self._log_progress(f"ENTITIES SCANNED: {self.entities_scanned}")
+                self._log_progress(f"TOTAL SEARCHES: {self.searches_completed}")
+                self._log_progress(f"ALERTS FOUND: {self.alerts_found_this_scan}")
+                self._log_progress(f"TOTAL ALERTS: {len(self.alert_log)}")
+                self._log_progress("========================================")
+                
+                # Save to session state
                 st.session_state.dlp_scan_count = self.scan_count
                 st.session_state.dlp_last_scan = self.last_scan_time
                 st.session_state.dlp_alert_log = self.alert_log
+                st.session_state.dlp_progress = 100
+                st.session_state.dlp_entities_scanned = self.entities_scanned
+                st.session_state.dlp_searches_completed = self.searches_completed
                 
-                time.sleep(300)  # 5 minutes between full cycles
+                time.sleep(300)
             except Exception as e:
                 self.error_count += 1
-                print(f"[DLP] Scan error: {e}")
-                time.sleep(60)  # Wait 1 minute on error
+                self._log_progress(f"ERROR: {e}")
+                st.session_state.dlp_error_count = self.error_count
+                time.sleep(60)
     
     def _perform_full_scan(self):
-        """Perform complete scan of all entities and keywords"""
-        print(f"[DLP] Starting full scan...")
+        """Perform complete scan with FULL progress tracking"""
+        import streamlit as st
+        
+        self._log_progress("STARTING FULL SCAN...")
+        self._log_progress(f"TOTAL ENTITIES: {len(SENSITIVE_ENTITIES)}")
+        self._log_progress(f"TOTAL CATEGORIES: {len(SENSITIVE_KEYWORD_CATEGORIES)}")
+        
+        # Calculate total searches
+        total_entities = len(SENSITIVE_ENTITIES)
+        total_categories = len(SENSITIVE_KEYWORD_CATEGORIES)
+        keywords_per_category = 10
+        self.total_searches = total_entities * total_categories * keywords_per_category
+        self.searches_completed = 0
+        self.alerts_found_this_scan = 0
+        
+        self._log_progress(f"TOTAL SEARCHES TO PERFORM: {self.total_searches}")
+        self._log_progress("========================================")
+        
+        entity_index = 0
         for entity in SENSITIVE_ENTITIES:
-            for keyword_group in SENSITIVE_KEYWORD_CATEGORIES.values():
-                for keyword in keyword_group[:10]:  # Top 10 keywords per category
+            entity_index += 1
+            self.entities_scanned = entity_index
+            self.current_entity = entity
+            
+            # Calculate entity progress
+            entity_progress = (entity_index / total_entities) * 100
+            self.current_progress = entity_progress
+            
+            self._log_progress(f"[ENTITY {entity_index}/{total_entities}] ({entity_progress:.1f}%) SCANNING: {entity}")
+            
+            # Save progress to session state
+            st.session_state.dlp_progress = entity_progress
+            st.session_state.dlp_current_entity = entity
+            
+            category_index = 0
+            for category_name, keywords in SENSITIVE_KEYWORD_CATEGORIES.items():
+                category_index += 1
+                self.current_category = category_name
+                
+                self._log_progress(f"  └─ CATEGORY {category_index}/{total_categories}: {category_name}")
+                
+                keyword_index = 0
+                for keyword in keywords[:10]:
+                    keyword_index += 1
+                    self.current_keyword = keyword
+                    
                     query = f"{entity} {keyword}"
-                    self._scan_and_analyze(query, entity)
-        print(f"[DLP] Full scan complete!")
+                    
+                    self._log_progress(f"     └─ [{keyword_index}/10] Searching: \"{keyword}\"")
+                    
+                    result = self._scan_and_analyze(query, entity)
+                    
+                    self.searches_completed += 1
+                    
+                    # Update progress
+                    search_progress = (self.searches_completed / self.total_searches) * 100
+                    self.current_progress = search_progress
+                    
+                    # Save to session state every 10 searches
+                    if self.searches_completed % 10 == 0:
+                        st.session_state.dlp_progress = search_progress
+                        st.session_state.dlp_searches_completed = self.searches_completed
+                    
+                    if result:
+                        self.alerts_found_this_scan += 1
+                        self._log_progress(f"     🚨 ALERT! Sensitive data found for {entity}")
+        
+        self._log_progress("========================================")
+        self._log_progress(f"FULL SCAN COMPLETE!")
+        self._log_progress(f"ENTITIES: {entity_index}/{total_entities}")
+        self._log_progress(f"SEARCHES: {self.searches_completed}/{self.total_searches}")
+        self._log_progress(f"ALERTS: {self.alerts_found_this_scan}")
+        self._log_progress("========================================")
     
     def _scan_and_analyze(self, query, entity):
-        """Scan public web and analyze results"""
+        """Scan public web and analyze results - returns True if alert triggered"""
         try:
-            # Use Serper API
             results = self._search_serper(query)
             
             if results and 'organic' in results:
@@ -121,11 +218,12 @@ class BackgroundMonitorService:
                         analysis = self.monitor.analyze_content(snippet, url)
                         
                         if analysis.get('is_sensitive'):
-                            self._trigger_immediate_alert(
-                                entity, analysis, snippet, url
-                            )
+                            self._trigger_immediate_alert(entity, analysis, snippet, url)
+                            return True
+            return False
         except Exception as e:
-            print(f"Scan error for {query}: {e}")
+            self._log_progress(f"     ⚠️ Scan error for \"{query}\": {e}")
+            return False
     
     def _search_serper(self, query):
         """Search using DuckDuckGo PRIMARY + Serper FALLBACK"""
@@ -138,7 +236,7 @@ class BackgroundMonitorService:
                 if results:
                     return {'organic': results}
         except Exception as e:
-            print(f"DuckDuckGo error: {e}")
+            self._log_progress(f"     ⚠️ DuckDuckGo error: {e}")
         
         # FALLBACK: Serper (if DuckDuckGo fails)
         try:
@@ -153,7 +251,7 @@ class BackgroundMonitorService:
                 if response.status_code == 200:
                     return response.json()
         except Exception as e:
-            print(f"Serper error: {e}")
+            self._log_progress(f"     ⚠️ Serper error: {e}")
         
         return None
     
@@ -177,16 +275,18 @@ class BackgroundMonitorService:
         )
         
         if success:
-            self.alert_log.append({
+            alert_record = {
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'incident_id': incident_id,
                 'entity': analysis.get('company', entity),
                 'type': leak_type,
                 'severity': severity,
                 'source': url
-            })
+            }
+            self.alert_log.append(alert_record)
             
-            # Save alert log to session state
+            self._log_progress(f"🚨 ALERT EMAIL SENT! Incident: {incident_id}")
+            
             try:
                 import streamlit as st
                 st.session_state.dlp_alert_log = self.alert_log
@@ -194,14 +294,22 @@ class BackgroundMonitorService:
                 pass
     
     def get_status(self):
-        """Get current monitoring status"""
+        """Get current monitoring status with progress"""
         return {
             'is_running': self.is_running,
             'scan_count': self.scan_count,
             'error_count': self.error_count,
             'last_scan_time': self.last_scan_time,
             'total_alerts': len(self.alert_log),
-            'alerts': self.alert_log[-20:]
+            'alerts': self.alert_log[-20:],
+            'progress': self.current_progress,
+            'current_entity': self.current_entity,
+            'current_category': self.current_category,
+            'current_keyword': self.current_keyword,
+            'entities_scanned': self.entities_scanned,
+            'total_searches': self.total_searches,
+            'searches_completed': self.searches_completed,
+            'alerts_found_this_scan': self.alerts_found_this_scan
         }
 
 # Global singleton instance

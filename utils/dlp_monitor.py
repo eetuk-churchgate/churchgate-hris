@@ -472,6 +472,25 @@ class AI_DLP_Monitor:
         self.scan_history = []
         self.total_scans = 0
         self.critical_finds = 0
+        self.current_progress = 0
+        self.current_entity = ""
+        self.current_keyword = ""
+        self.entities_scanned = 0
+        self.total_searches = 0
+        self.searches_completed = 0
+        self.alerts_found_this_scan = 0
+        
+    def get_scan_progress(self):
+        """Get detailed scan progress"""
+        return {
+            'progress': self.current_progress,
+            'current_entity': self.current_entity,
+            'current_keyword': self.current_keyword,
+            'entities_scanned': self.entities_scanned,
+            'total_searches': self.total_searches,
+            'searches_completed': self.searches_completed,
+            'alerts_found_this_scan': self.alerts_found_this_scan
+        }
         
     async def run_continuous_scan(self, callback=None):
         """Continuous real-time scanning - runs forever"""
