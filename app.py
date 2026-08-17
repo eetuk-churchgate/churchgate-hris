@@ -214,6 +214,22 @@ else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
 
 # ============================================================
+# INITIALIZE ALL SESSION STATE VARIABLES
+# ============================================================
+if 'self_assessments' not in st.session_state:
+    st.session_state.self_assessments = {}
+if 'dlp_alerts' not in st.session_state:
+    st.session_state.dlp_alerts = []
+if 'dlp_monitor_running' not in st.session_state:
+    st.session_state.dlp_monitor_running = False
+if 'dlp_scan_count' not in st.session_state:
+    st.session_state.dlp_scan_count = 0
+if 'dlp_last_scan' not in st.session_state:
+    st.session_state.dlp_last_scan = None
+if 'dlp_alert_log' not in st.session_state:
+    st.session_state.dlp_alert_log = []
+
+# ============================================================
 # GLOBAL WTC PREMIUM DARK THEME - ULTIMATE FIX
 # ============================================================
 st.markdown("""
