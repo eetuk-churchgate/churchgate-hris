@@ -177,6 +177,83 @@ class IncidentResponder:
             "jeromedas@churchgate.com",
             "vbmahtani@churchgate.com"
         ]
+    
+    def save_evidence_to_storage(self, incident_id, evidence_data, file_name):
+        """Save evidence to Supabase Storage"""
+        try:
+            from supabase import create_client
+            
+            supabase_url = os.environ.get('SUPABASE_URL', '')
+            supabase_key = os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
+            
+            client = create_client(supabase_url, supabase_key)
+            
+            # Upload evidence file
+            client.storage.from_('dlp-evidence').upload(
+                f"{incident_id}/{file_name}",
+                evidence_data
+            )
+            
+            # Get public URL
+            url = client.storage.from_('dlp-evidence').get_public_url(f"{incident_id}/{file_name}")
+            
+            return url
+        except Exception as e:
+            print(f"Evidence upload failed: {e}")
+            return None
+    
+    def save_alert_to_database(self, incident_id, subsidiary, leak_type, severity, source_url, content_snippet, forensics):
+        """Save alert to Supabase database"""
+        try:
+            from utils.database import db
+            
+            db._post("dlp_alerts", {
+                "incident_id": incident_id,
+                "subsidiary": subsidiary,
+                "leak_type": leak_type,
+                "severity": severity,
+                "source_url": source_url,
+                "content_snippet": content_snippet[:1000],
+                "ip_address": forensics.get('IP', 'Unknown'),
+                "city": forensics.get('City', 'Unknown'),
+                "region": forensics.get('Region', 'Unknown'),
+                "country": forensics.get('Country', 'Unknown'),
+                "device": forensics.get('Device', 'Unknown'),
+                "browser": forensics.get('Browser', 'Unknown'),
+                "os": forensics.get('OS', 'Unknown'),
+                "device_type": forensics.get('Device_Type', 'Unknown'),
+                "detected_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            })
+            return True
+        except Exception as e:
+            print(f"Database save failed: {e}")
+            return False
+    
+    def save_scan_log(self, scan_type, entities_scanned, results_found, alerts_triggered, duration_seconds):
+        """Save scan log to database"""
+        try:
+            from utils.database import db
+            
+            db._post("dlp_scan_log", {
+                "scan_type": scan_type,
+                "entities_scanned": entities_scanned,
+                "results_found": results_found,
+                "alerts_triggered": alerts_triggered,
+                "scan_duration_seconds": duration_seconds,
+                "scanned_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            })
+            return True
+        except:
+            return False
+    
+    def load_alerts_from_database(self):
+        """Load all alerts from database"""
+        try:
+            from utils.database import db
+            alerts = db._get("dlp_alerts")
+            return alerts if alerts else []
+        except:
+            return []
         
     def check_cooldown(self, subsidiary):
         if subsidiary in self.alert_cooldown:
