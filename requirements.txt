@@ -30,3 +30,4 @@ pdf2image
 ipinfo
 user-agents
 aiohttp
+duckduckgo-search
