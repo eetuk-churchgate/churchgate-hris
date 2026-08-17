@@ -22528,6 +22528,10 @@ def ai_dlp_monitor_dashboard():
     
     mode_col1, mode_col2 = st.columns(2)
     with mode_col1:
+        # Sync with session state before creating toggle
+        if 'dlp_monitor_running' in st.session_state:
+            background_monitor.is_running = st.session_state.dlp_monitor_running
+        
         auto_mode = st.toggle("🔄 AUTO MODE (24/7 Continuous)", 
                              value=background_monitor.is_running,
                              key="auto_mode_toggle",
