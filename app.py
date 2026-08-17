@@ -22449,6 +22449,7 @@ def ai_dlp_monitor_dashboard():
         return
     
     from utils.dlp_monitor import SENSITIVE_ENTITIES, SENSITIVE_KEYWORDS, SENSITIVE_KEYWORD_CATEGORIES, IncidentResponder, AI_DLP_Monitor, SEVERITY_LEVELS
+    from utils.background_monitor import background_monitor
     
     # ============================================================
     # MILITARY-GRADE HEADER
@@ -22514,22 +22515,59 @@ def ai_dlp_monitor_dashboard():
     st.divider()
     
     # ============================================================
-    # CONTROL PANEL - MASSIVE
+    # CONTROL PANEL - DUAL FUNCTIONALITY (AUTO + MANUAL)
+    # FORTUNE 500 EXTREME GRADE
     # ============================================================
     st.markdown("### ⚙️ Monitoring Control Panel")
     
+    # Get current status
+    monitor_status = background_monitor.get_status()
+    
+    # ===== MODE SELECTOR =====
+    st.markdown("#### 🎛️ Monitoring Mode")
+    
+    mode_col1, mode_col2 = st.columns(2)
+    with mode_col1:
+        auto_mode = st.toggle("🔄 AUTO MODE (24/7 Continuous)", 
+                             value=background_monitor.is_running,
+                             key="auto_mode_toggle",
+                             help="When ON, scanning runs automatically every 5 minutes")
+    
+    with mode_col2:
+        status_bg = 'rgba(56, 161, 105, 0.15)' if background_monitor.is_running else 'rgba(204, 0, 0, 0.15)'
+        status_border = '#38a169' if background_monitor.is_running else '#CC0000'
+        status_text = '🟢 AUTO MONITORING ACTIVE' if background_monitor.is_running else '🔴 AUTO MONITORING PAUSED'
+        status_color = '#38a169' if background_monitor.is_running else '#CC0000'
+        
+        st.markdown(f"""
+        <div style="background: {status_bg}; border: 2px solid {status_border}; border-radius: 8px; padding: 0.8rem 1rem; text-align: center;">
+            <strong style="color: {status_color}; font-size: 1.1em;">{status_text}</strong>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Handle auto mode toggle
+    if auto_mode and not background_monitor.is_running:
+        background_monitor.start()
+        st.success("✅ Auto monitoring STARTED! Scanning every 5 minutes.")
+    elif not auto_mode and background_monitor.is_running:
+        background_monitor.stop()
+        st.warning("⏹️ Auto monitoring PAUSED!")
+    
+    st.divider()
+    
+    # ===== MANUAL CONTROLS =====
+    st.markdown("#### 🎯 Manual Controls")
+    
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        if st.button("🚀 START MONITORING", use_container_width=True, type="primary"):
-            st.session_state.dlp_scan_active = True
-            st.session_state.dlp_last_scan = datetime.now().strftime('%H:%M:%S')
-            st.success("✅ Monitoring system ACTIVE!")
-            st.balloons()
+        if st.button("🔍 SCAN NOW", use_container_width=True, type="primary", 
+                    help="Perform immediate manual scan of all entities"):
+            with st.spinner("🔍 Scanning all entities..."):
+                background_monitor._perform_full_scan()
+                st.success("✅ Manual scan completed!")
+                st.balloons()
+    
     with col2:
-        if st.button("⏹️ STOP MONITORING", use_container_width=True):
-            st.session_state.dlp_scan_active = False
-            st.warning("⏹️ Monitoring paused.")
-    with col3:
         if st.button("🧪 SEND TEST ALERT", use_container_width=True):
             responder = IncidentResponder()
             test_forensics = {
@@ -22556,10 +22594,27 @@ def ai_dlp_monitor_dashboard():
                 st.balloons()
             else:
                 st.error("❌ Failed to send test alert. Check SendGrid API key.")
+    
+    with col3:
+        if st.button("📊 REFRESH STATUS", use_container_width=True):
+            st.rerun()
+    
     with col4:
         if st.button("🗑️ CLEAR ALERTS", use_container_width=True):
             st.session_state.dlp_alerts = []
             st.success("✅ Alert log cleared.")
+    
+    # ===== MONITORING STATISTICS =====
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #1E1E1E, #252525); border: 1px solid #B8960C; border-radius: 8px; padding: 1rem; margin-top: 0.5rem;">
+        <strong style="color: #C9A84C;">📊 Monitoring Statistics</strong>
+        <br><small style="color: #E0E0E0;">Auto Mode: {'🟢 RUNNING' if background_monitor.is_running else '🔴 PAUSED'}</small>
+        <br><small style="color: #E0E0E0;">Scans Completed: {monitor_status['scan_count']}</small>
+        <br><small style="color: #E0E0E0;">Alerts Triggered: {monitor_status['total_alerts']}</small>
+        <br><small style="color: #E0E0E0;">Last Scan: {monitor_status['last_scan_time'] or 'Not started yet'}</small>
+        <br><small style="color: #E0E0E0;">Errors: {monitor_status['error_count']}</small>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.divider()
     
