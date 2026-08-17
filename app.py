@@ -22448,7 +22448,7 @@ def ai_dlp_monitor_dashboard():
         """, unsafe_allow_html=True)
         return
     
-    from utils.dlp_monitor import SENSITIVE_ENTITIES, SENSITIVE_KEYWORDS, IncidentResponder, AI_DLP_Monitor, SEVERITY_LEVELS
+    from utils.dlp_monitor import SENSITIVE_ENTITIES, SENSITIVE_KEYWORDS, SENSITIVE_KEYWORD_CATEGORIES, IncidentResponder, AI_DLP_Monitor, SEVERITY_LEVELS
     
     # ============================================================
     # MILITARY-GRADE HEADER
