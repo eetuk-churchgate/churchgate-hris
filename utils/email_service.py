@@ -19,6 +19,10 @@ class EmailService:
             except:
                 pass
         
+        # DEBUG - Print key status
+        print(f"[EMAIL DEBUG] Key loaded: {'YES' if self.sendgrid_api_key else 'NO'}")
+        print(f"[EMAIL DEBUG] Key starts: {self.sendgrid_api_key[:10]}..." if self.sendgrid_api_key else "[EMAIL DEBUG] Key is EMPTY!")
+        
         # Sender details - Railway environment first
         self.sender_email = os.environ.get("SMTP_SENDER_EMAIL", os.environ.get("SMTP_EMAIL", ""))
         if not self.sender_email:
