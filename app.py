@@ -18735,13 +18735,15 @@ def company_calendar():
             day_events = [e for e in events if e.get('event_date', '')[:10] == date_str]
             
             is_today = date_str == today.strftime('%Y-%m-%d')
-            bg = "#fff3f3" if is_today else "#fafafa"
+            bg = "#2D1E1E" if is_today else "#1E1E1E"
+            day_text_color = "#FF6B6B" if is_today else "#C9A84C"
+            day_number_color = "#C9A84C" if is_today else "#F0E6D3"
             
             with col:
                 st.markdown(f"""
-                <div style="background:{bg};padding:0.5rem;border-radius:6px;text-align:center;min-height:80px;border:{ '2px solid #CC0000' if is_today else '1px solid #e0e0e0'};">
-                    <small style="color:{'#CC0000' if is_today else '#888'};font-weight:{'700' if is_today else '400'};">{day_name[:3]}</small>
-                    <br><strong>{day_date.day}</strong>
+                <div style="background:{bg};padding:0.5rem;border-radius:6px;text-align:center;min-height:80px;border:{ '2px solid #CC0000' if is_today else '1px solid #2A2A2A'};">
+                    <small style="color:{day_text_color};font-weight:{'700' if is_today else '400'};">{day_name[:3]}</small>
+                    <br><strong style="color:{day_number_color};">{day_date.day}</strong>
                     {''.join([f'<br><small>{event_icons.get(e.get("event_type",""),"📌")}</small>' for e in day_events]) if day_events else ''}
                 </div>
                 """, unsafe_allow_html=True)
@@ -18826,10 +18828,10 @@ def company_calendar():
         
         with col3:
             st.markdown("""
-            <div style="background:white;padding:1.5rem;border-radius:10px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+            <div style="background:#1E1E1E;padding:1.5rem;border-radius:10px;text-align:center;border:1px solid rgba(184, 150, 12, 0.4);box-shadow:0 2px 8px rgba(0,0,0,0.3);">
                 <h2 style="font-size:2.5rem;">📱</h2>
-                <h3>iCal/Outlook</h3>
-                <p style="color:#666;font-size:0.85rem;">Download .ics files for any event to add to Apple Calendar or Outlook.</p>
+                <h3 style="color:#C9A84C;">iCal/Outlook</h3>
+                <p style="color:#F0E6D3;font-size:0.85rem;">Download .ics files for any event to add to Apple Calendar or Outlook.</p>
             </div>
             """, unsafe_allow_html=True)
             
@@ -22145,9 +22147,9 @@ def lms_dashboard():
                     hours_left = int(course.get('duration_hours', 0) * (100 - progress) / 100)
                     
                     st.markdown(f"""
-                    <div style="background:white;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid #3182ce;">
-                        <strong>📖 {course.get('title', 'Course')[:50]}</strong><br>
-                        <small>⏱️ ~{hours_left} hours remaining | 📊 {progress:.0f}% complete</small>
+                    <div style="background:#1E1E1E;padding:0.8rem;border-radius:8px;margin-bottom:0.4rem;border:1px solid #2A2A2A;border-left:4px solid #3182ce;">
+                        <strong style="color:#C9A84C;">📖 {course.get('title', 'Course')[:50]}</strong><br>
+                        <small style="color:#F0E6D3;">⏱️ ~{hours_left} hours remaining | 📊 {progress:.0f}% complete</small>
                     </div>
                     """, unsafe_allow_html=True)
         else:
