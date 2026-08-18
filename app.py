@@ -22523,6 +22523,31 @@ def ai_dlp_monitor_dashboard():
         </div>
         """, unsafe_allow_html=True)
         
+        # Colored toggle - More aggressive CSS
+        toggle_color = "#38a169" if background_monitor.is_running else "#CC0000"
+        st.markdown(f"""
+        <style>
+            [data-testid="stToggle"] [role="switch"] {{
+                background: {toggle_color} !important;
+                border-color: {toggle_color} !important;
+            }}
+            [data-testid="stToggle"] [role="switch"] > div {{
+                background: white !important;
+            }}
+            [data-testid="stToggle"] [data-baseweb="toggle"] {{
+                background: {toggle_color} !important;
+            }}
+            [data-testid="stToggle"] input:checked + div {{
+                background: #38a169 !important;
+                border-color: #38a169 !important;
+            }}
+            [data-testid="stToggle"] input:not(:checked) + div {{
+                background: #CC0000 !important;
+                border-color: #CC0000 !important;
+            }}
+        </style>
+        """, unsafe_allow_html=True)
+        
         auto_mode = st.toggle("AUTO MODE", 
                              value=background_monitor.is_running,
                              key="auto_mode_toggle",
@@ -22630,11 +22655,23 @@ def ai_dlp_monitor_dashboard():
     # Get live status
     live_status = background_monitor.get_status()
     
-    # Progress Bar - Clamped to valid range
+    # Animated Real-Time Progress Bar
     progress = live_status.get('progress', 0)
     progress_value = max(0.0, min(1.0, progress / 100))
-    st.progress(progress_value)
-    st.caption(f"Scan Progress: {min(progress, 100):.1f}%")
+    progress_pct = max(0, min(100, progress))
+    
+    st.markdown(f"""
+    <div style="background:#2A2A2A;height:22px;border-radius:11px;overflow:hidden;margin:0.5rem 0;border:1px solid #B8960C;">
+        <div style="background:linear-gradient(90deg,#C9A84C,#8B6914,#C9A84C);background-size:200% 100%;animation:shimmer 2s infinite;height:100%;width:{progress_pct}%;border-radius:11px;transition:width 0.5s ease;"></div>
+    </div>
+    <style>
+        @keyframes shimmer {{
+            0% {{ background-position: 200% 0; }}
+            100% {{ background-position: -200% 0; }}
+        }}
+    </style>
+    <p style="color:#C9A84C;font-weight:700;text-align:center;margin-top:0.3rem;">Scan Progress: {progress_pct:.1f}%</p>
+    """, unsafe_allow_html=True)
     
     # Live Metrics Row
     scan_col1, scan_col2, scan_col3, scan_col4, scan_col5, scan_col6 = st.columns(6)
@@ -22937,19 +22974,28 @@ def ai_dlp_monitor_dashboard():
                     from groq import Groq
                     groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
                     
+                    # Get REAL-TIME scan data
+                    live_status = background_monitor.get_status()
+                    
                     alert_summary = f"""
-                    Total Alerts: {len(st.session_state.dlp_alerts)}
-                    Entities Monitored: {len(SENSITIVE_ENTITIES)}
-                    Keywords Monitored: {len(SENSITIVE_KEYWORDS)}
+                    REAL-TIME DLP MONITORING DATA:
+                    - Total Scans: {live_status['scan_count']}
+                    - Total Searches: {live_status['searches_completed']}
+                    - Total Alerts: {live_status['total_alerts']}
+                    - Entities Monitored: {len(SENSITIVE_ENTITIES)}
+                    - Keywords Monitored: {len(SENSITIVE_KEYWORDS)}
+                    - Last Scan: {live_status['last_scan_time']}
+                    - Progress: {live_status['progress']:.1f}%
+                    - Errors: {live_status['error_count']}
                     
                     Recent Alerts:
-                    {json.dumps(st.session_state.dlp_alerts[-10:], indent=2)}
+                    {json.dumps(live_status['alerts'][-10:], indent=2) if live_status['alerts'] else 'None'}
                     """
                     
                     response = groq_client.chat.completions.create(
                         model="openai/gpt-oss-20b",
                         messages=[
-                            {"role": "system", "content": "You are a Fortune 500 Chief Security Officer. Provide: 1) Top 3 threat predictions 2) Vulnerable areas 3) Recommended security investments 4) Risk mitigation strategies. Be data-driven and specific."},
+                            {"role": "system", "content": "You are a Fortune 500 Chief Security Officer. Based on the REAL monitoring data provided, generate: 1) Top 3 threat predictions 2) Vulnerable areas 3) Recommended security investments 4) Risk mitigation strategies. Be data-driven and specific."},
                             {"role": "user", "content": alert_summary}
                         ],
                         temperature=0.3,
@@ -22961,7 +23007,8 @@ def ai_dlp_monitor_dashboard():
                     st.markdown(response.choices[0].message.content)
                     
                 except Exception as e:
-                    st.warning(f"AI analysis unavailable: {str(e)}")
+                    st.error(f"❌ AI analysis failed: {str(e)}")
+                    st.info("Please check GROQ_API_KEY in Railway variables.")
     
     # ===== TAB 4: EXECUTIVE REPORT =====
     with analytics_tabs[3]:
@@ -22973,24 +23020,33 @@ def ai_dlp_monitor_dashboard():
                     from groq import Groq
                     groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""))
                     
+                    # Get REAL-TIME status from monitor
+                    live_status = background_monitor.get_status()
+                    
                     report_context = f"""
                     Churchgate Group AI DLP Security Report
-                    Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                    Generated: {get_lagos_time().strftime('%Y-%m-%d %H:%M:%S WAT')}
                     
-                    MONITORING STATUS:
-                    - Entities Monitored: {len(SENSITIVE_ENTITIES)}
-                    - Keywords Monitored: {len(SENSITIVE_KEYWORDS)}
-                    - Categories: {len(SENSITIVE_KEYWORD_CATEGORIES)}
-                    - Total Alerts: {len(st.session_state.dlp_alerts)}
-                    
-                    ALERT BREAKDOWN:
-                    {json.dumps(st.session_state.dlp_alerts[-20:], indent=2)}
-                    
-                    COMPLIANCE:
-                    - NDPR: Active
-                    - ISO 27001: Compliant
-                    - SOC 2: In Progress
-                    """
+                    REAL-TIME MONITORING DATA:
+                        - Entities Monitored: {len(SENSITIVE_ENTITIES)}
+                        - Keywords Monitored: {len(SENSITIVE_KEYWORDS)}
+                        - Categories: {len(SENSITIVE_KEYWORD_CATEGORIES)}
+                        - Total Scans Completed: {live_status['scan_count']}
+                        - Total Searches Performed: {live_status['searches_completed']}
+                        - Total Alerts: {live_status['total_alerts']}
+                        - Last Scan Time: {live_status['last_scan_time']}
+                        - Current Progress: {live_status['progress']:.1f}%
+                        - Errors Encountered: {live_status['error_count']}
+                        
+                        RECENT ALERTS:
+                        {json.dumps(live_status['alerts'][-10:], indent=2) if live_status['alerts'] else 'No alerts detected - data is secure'}
+                        
+                        COMPLIANCE STATUS:
+                        - NDPR: Active
+                        - ISO 27001: Compliant
+                        - SOC 2: In Progress
+                        - CBN Cybersecurity: Active
+                        """
                     
                     response = groq_client.chat.completions.create(
                         model="openai/gpt-oss-20b",
@@ -23007,61 +23063,93 @@ def ai_dlp_monitor_dashboard():
                     st.markdown(response.choices[0].message.content)
                     
                     report_text = response.choices[0].message.content
-                    st.download_button("📥 Download Executive Report (TXT)", 
-                                      report_text, 
-                                      "churchgate_security_report.txt", "text/plain")
+                    
+                    # Save to session state for PDF generation
+                    st.session_state.executive_report = report_text
+                    
+                    col_dl1, col_dl2 = st.columns(2)
+                    with col_dl1:
+                        st.download_button("📥 Download Report (TXT)", 
+                                          report_text, 
+                                          "churchgate_security_report.txt", "text/plain",
+                                          use_container_width=True)
+                    with col_dl2:
+                        if st.button("📄 Generate PDF Report", use_container_width=True):
+                            try:
+                                from fpdf import FPDF
+                                
+                                pdf = FPDF()
+                                pdf.add_page()
+                                pdf.set_font("Arial", "B", 16)
+                                pdf.cell(0, 10, "Churchgate Group AI DLP Security Report", ln=True, align='C')
+                                pdf.ln(5)
+                                pdf.set_font("Arial", "", 10)
+                                
+                                # Add report content
+                                for line in report_text.split('\n'):
+                                    pdf.multi_cell(0, 6, line)
+                                
+                                pdf_output = bytes(pdf.output())
+                                st.download_button("📥 Download PDF", 
+                                                  pdf_output, 
+                                                  "churchgate_security_report.pdf", 
+                                                  "application/pdf",
+                                                  use_container_width=True)
+                                st.success("✅ PDF ready!")
+                            except Exception as e:
+                                st.error(f"PDF generation failed: {str(e)}")
                     
                 except Exception as e:
                     st.warning(f"Report generation unavailable: {str(e)}")
+    
+    # ===== TAB 5: GEOGRAPHIC ANALYSIS =====
+    with analytics_tabs[4]:
+        st.subheader("🌍 Geographic Threat Distribution")
         
-        # ===== TAB 5: GEOGRAPHIC ANALYSIS =====
-        with analytics_tabs[4]:
-            st.subheader("🌍 Geographic Threat Distribution")
+        geo_data = pd.DataFrame({
+            'Region': ['Lagos', 'Abuja', 'Aba', 'International'],
+            'Threats': [5, 2, 1, 3],
+            'Risk Level': ['High', 'Medium', 'Low', 'Medium']
+        })
+        
+        fig_geo = px.bar(geo_data, x='Region', y='Threats', color='Risk Level',
+                        title="Threat Distribution by Region",
+                        color_discrete_sequence=['#CC0000', '#E6A817', '#38a169'])
+        fig_geo.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
+        st.plotly_chart(fig_geo, use_container_width=True)
+        
+        st.markdown("""
+        <div style="background: #1E1E1E; border: 1px solid #B8960C; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+            <strong style="color: #C9A84C;">🌍 Geographic Risk Summary</strong>
+            <br><small style="color: #A0A0A0;">Highest concentration in Lagos (Churchgate Group operations)</small>
+            <br><small style="color: #A0A0A0;">Cross-border threats: Medium</small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # ===== TAB 6: ENTITY RISK MATRIX =====
+    with analytics_tabs[5]:
+        st.subheader("🏢 Entity Risk Matrix")
+        
+        entity_risk_data = []
+        for entity in SENSITIVE_ENTITIES:
+            alert_count = len([a for a in st.session_state.dlp_alerts if a.get('Subsidiary') == entity])
+            risk_score = min(alert_count * 20, 100)
             
-            geo_data = pd.DataFrame({
-                'Region': ['Lagos', 'Abuja', 'Aba', 'International'],
-                'Threats': [5, 2, 1, 3],
-                'Risk Level': ['High', 'Medium', 'Low', 'Medium']
+            if risk_score >= 80: risk_level = "🔴 Critical"
+            elif risk_score >= 50: risk_level = "🟠 High"
+            elif risk_score >= 20: risk_level = "🟡 Medium"
+            else: risk_level = "🟢 Low"
+            
+            entity_risk_data.append({
+                'Entity': entity,
+                'Alerts': alert_count,
+                'Risk Score': f"{risk_score}%",
+                'Risk Level': risk_level
             })
-            
-            fig_geo = px.bar(geo_data, x='Region', y='Threats', color='Risk Level',
-                            title="Threat Distribution by Region",
-                            color_discrete_sequence=['#CC0000', '#E6A817', '#38a169'])
-            fig_geo.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
-            st.plotly_chart(fig_geo, use_container_width=True)
-            
-            st.markdown("""
-            <div style="background: #1E1E1E; border: 1px solid #B8960C; border-radius: 8px; padding: 1rem; margin-top: 1rem;">
-                <strong style="color: #C9A84C;">🌍 Geographic Risk Summary</strong>
-                <br><small style="color: #A0A0A0;">Highest concentration in Lagos (Churchgate Group operations)</small>
-                <br><small style="color: #A0A0A0;">Cross-border threats: Medium</small>
-            </div>
-            """, unsafe_allow_html=True)
         
-        # ===== TAB 6: ENTITY RISK MATRIX =====
-        with analytics_tabs[5]:
-            st.subheader("🏢 Entity Risk Matrix")
-            
-            entity_risk_data = []
-            for entity in SENSITIVE_ENTITIES:
-                alert_count = len([a for a in st.session_state.dlp_alerts if a.get('Subsidiary') == entity])
-                risk_score = min(alert_count * 20, 100)
-                
-                if risk_score >= 80: risk_level = "🔴 Critical"
-                elif risk_score >= 50: risk_level = "🟠 High"
-                elif risk_score >= 20: risk_level = "🟡 Medium"
-                else: risk_level = "🟢 Low"
-                
-                entity_risk_data.append({
-                    'Entity': entity,
-                    'Alerts': alert_count,
-                    'Risk Score': f"{risk_score}%",
-                    'Risk Level': risk_level
-                })
-            
-            risk_df = pd.DataFrame(entity_risk_data)
-            html_table = risk_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
-            st.markdown(html_table, unsafe_allow_html=True)
+        risk_df = pd.DataFrame(entity_risk_data)
+        html_table = risk_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+        st.markdown(html_table, unsafe_allow_html=True)
 
     st.divider()
 
