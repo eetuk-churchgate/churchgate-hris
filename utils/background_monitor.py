@@ -8,7 +8,7 @@ import asyncio
 import aiohttp
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from utils.dlp_monitor import (
     SENSITIVE_ENTITIES, 
     SENSITIVE_KEYWORDS, 
@@ -17,6 +17,14 @@ from utils.dlp_monitor import (
     IncidentResponder, 
     AI_DLP_Monitor
 )
+
+# ============================================================
+# LAGOS TIME HELPER
+# ============================================================
+def get_lagos_time():
+    """Get current Lagos Nigeria time (WAT - West Africa Time UTC+1)"""
+    lagos_tz = timezone(timedelta(hours=1))
+    return datetime.now(lagos_tz)
 
 # ============================================================
 # GLOBAL STATE - Thread-safe shared state
