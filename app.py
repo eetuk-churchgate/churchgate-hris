@@ -19706,13 +19706,13 @@ def requests_hub():
         st.subheader("📅 Leave Calendar")
         st.markdown("*Interactive team leave visualization — color-coded by status*")
         
-        # Legend
+        # Legend - Dark with visible text
         st.markdown("""
         <div style="display:flex;gap:1.5rem;margin:1rem 0;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#3182ce;"></div><span style="font-size:0.85rem;">Submitted</span></div>
-            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#38a169;"></div><span style="font-size:0.85rem;">Approved</span></div>
-            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#805ad5;"></div><span style="font-size:0.85rem;">Processed</span></div>
-            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#CC0000;"></div><span style="font-size:0.85rem;">Holiday</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#3182ce;"></div><span style="font-size:0.85rem;color:#F0E6D3;">Submitted</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#38a169;"></div><span style="font-size:0.85rem;color:#F0E6D3;">Approved</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#805ad5;"></div><span style="font-size:0.85rem;color:#F0E6D3;">Processed</span></div>
+            <div style="display:flex;align-items:center;gap:0.5rem;"><div style="width:16px;height:16px;border-radius:4px;background:#CC0000;"></div><span style="font-size:0.85rem;color:#F0E6D3;">Holiday</span></div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -19721,7 +19721,6 @@ def requests_hub():
         with col1:
             cal_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="cal_region")
         with col2:
-            # Get unique departments
             all_depts_cal = ["All"]
             try:
                 lr_data = db._get("leave_requests")
@@ -19747,7 +19746,6 @@ def requests_hub():
             if lr:
                 for r in lr:
                     if r.get('status') in ['Submitted', 'Approved', 'Completed']:
-                        # Region/Dept filter
                         if cal_region != "All":
                             emp_region = "Lagos"
                             try:
@@ -19790,29 +19788,29 @@ def requests_hub():
         cal = cal_module.TextCalendar(cal_module.SUNDAY)
         month_days = cal.monthdayscalendar(cal_year, cal_month_num)
         
-        # Calendar header
+        # Calendar header - GOLD
         st.markdown(f"""
-        <h3 style="text-align:center;color:#1a1a1a;margin:1rem 0;">
+        <h3 style="text-align:center;color:#C9A84C;margin:1rem 0;">
             {cal_module.month_name[cal_month_num]} {cal_year}
         </h3>
         """, unsafe_allow_html=True)
         
-        # Day headers
+        # Day headers - Dark with gold
         day_names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
         cols = st.columns(7)
         for i, d in enumerate(day_names):
             with cols[i]:
-                st.markdown(f'<div style="text-align:center;font-weight:700;font-size:0.7rem;padding:0.3rem;background:#1a1a1a;color:#D4AF37;border-radius:4px;">{d}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="text-align:center;font-weight:700;font-size:0.7rem;padding:0.3rem;background:#2d2d2d;color:#C9A84C;border-radius:4px;border:1px solid #B8960C;">{d}</div>', unsafe_allow_html=True)
         
         today = datetime.now().date()
         
-        # Calendar grid using st.columns
+        # Calendar grid - DARK THEME
         for week in month_days:
             cols = st.columns(7)
             for i, day in enumerate(week):
                 with cols[i]:
                     if day == 0:
-                        st.markdown('<div style="min-height:55px;background:#faf9f6;border-radius:6px;"></div>', unsafe_allow_html=True)
+                        st.markdown('<div style="min-height:55px;background:#1E1E1E;border-radius:6px;border:1px solid #2A2A2A;"></div>', unsafe_allow_html=True)
                     else:
                         date_str = f"{cal_year}-{cal_month_num:02d}-{day:02d}"
                         is_today = (date_str == today.strftime('%Y-%m-%d'))
@@ -19820,24 +19818,27 @@ def requests_hub():
                         on_leave = [l for l in leave_data if l.get('from_date', '') <= date_str <= l.get('to_date', '')]
                         
                         if is_holiday:
-                            bg = '#ffe6e6'
+                            bg = '#2D1E1E'
                             border = '#CC0000'
+                            day_text_color = '#FF6B6B'
                         elif on_leave:
                             has_approved = any(l.get('status') == 'Approved' for l in on_leave)
-                            bg = '#e6f9e6' if has_approved else '#e6f2ff'
+                            bg = '#1E2D1E' if has_approved else '#1E2430'
                             border = '#38a169' if has_approved else '#3182ce'
+                            day_text_color = '#F0E6D3'
                         else:
-                            bg = '#ffffff'
-                            border = '#e0e0e0'
+                            bg = '#1E1E1E'
+                            border = '#2A2A2A'
+                            day_text_color = '#F0E6D3'
                         
-                        today_border = '2px solid #D4AF37' if is_today else f'1px solid {border}'
+                        today_border = '2px solid #C9A84C' if is_today else f'1px solid {border}'
                         font_weight = 'font-weight:700;' if is_today else ''
                         
-                        holiday_text = f'<br><small style="color:#CC0000;">🎌 {holidays.get(date_str, "")}</small>' if is_holiday else ''
+                        holiday_text = f'<br><small style="color:#FF6B6B;">🎌 {holidays.get(date_str, "")}</small>' if is_holiday else ''
                         leave_text = f'<br><small style="color:{border};">👥 {len(on_leave)} on leave</small>' if on_leave else ''
                         
                         st.markdown(f"""
-                        <div style="min-height:55px;background:{bg};border-radius:6px;border:{today_border};padding:3px;text-align:center;font-size:0.75rem;{font_weight}">
+                        <div style="min-height:55px;background:{bg};border-radius:6px;border:{today_border};padding:3px;text-align:center;font-size:0.75rem;{font_weight}color:{day_text_color};">
                             {day}{holiday_text}{leave_text}
                         </div>
                         """, unsafe_allow_html=True)
@@ -19848,7 +19849,6 @@ def requests_hub():
         if leave_data:
             st.markdown(f"### 👥 {len(leave_data)} Leave Record(s) for {cal_module.month_name[cal_month_num]} {cal_year}")
             
-            # Group by status
             for status, status_label, status_color in [
                 ('Approved', '✅ Approved Leaves', '#38a169'),
                 ('Submitted', '📝 Pending Leaves', '#3182ce'),
@@ -19860,11 +19860,11 @@ def requests_hub():
                     
                     for leave in status_leaves[:10]:
                         st.markdown(f"""
-                        <div style="padding:0.5rem;margin:0.2rem 0;border-left:4px solid {status_color};background:white;border-radius:4px;">
+                        <div style="padding:0.5rem;margin:0.2rem 0;border-left:4px solid {status_color};background:#1E1E1E;border-radius:4px;border:1px solid #2A2A2A;">
                             <div style="display:flex;justify-content:space-between;align-items:center;">
                                 <div>
-                                    <strong>{leave.get('employee_name', '')}</strong> — {leave.get('leave_type', '')}
-                                    <br><small>{leave.get('from_date', '')} to {leave.get('to_date', '')} ({leave.get('no_of_days', 0)} days)</small>
+                                    <strong style="color:#C9A84C;">{leave.get('employee_name', '')}</strong> <span style="color:#F0E6D3;">— {leave.get('leave_type', '')}</span>
+                                    <br><small style="color:#A0A0A0;">{leave.get('from_date', '')} to {leave.get('to_date', '')} ({leave.get('no_of_days', 0)} days)</small>
                                 </div>
                                 <span style="color:{status_color};font-weight:600;">{leave.get('status', '')}</span>
                             </div>
