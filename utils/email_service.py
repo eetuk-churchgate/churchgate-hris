@@ -19,10 +19,6 @@ class EmailService:
             except:
                 pass
         
-        # DEBUG - Print key status
-        print(f"[EMAIL DEBUG] Key loaded: {'YES' if self.sendgrid_api_key else 'NO'}")
-        print(f"[EMAIL DEBUG] Key starts: {self.sendgrid_api_key[:10]}..." if self.sendgrid_api_key else "[EMAIL DEBUG] Key is EMPTY!")
-        
         # Sender details - Railway environment first
         self.sender_email = os.environ.get("SMTP_SENDER_EMAIL", os.environ.get("SMTP_EMAIL", ""))
         if not self.sender_email:
@@ -31,7 +27,8 @@ class EmailService:
             except:
                 self.sender_email = "eetuk@churchgate.com"
         
-        self.sender_name = "Churchgate Group HRIS"    
+        self.sender_name = "Churchgate Group HRIS"
+        
     def _create_html_email(self, subject, body_content):
         """Create professional HTML email with Churchgate gold branding"""
         html = f"""
