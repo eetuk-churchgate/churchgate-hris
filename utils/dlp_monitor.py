@@ -165,7 +165,8 @@ SEVERITY_LEVELS = {
 
 class IncidentResponder:
     def __init__(self):
-        self.sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+        from utils.email_service import EmailService
+        self.email_service = EmailService()
         self.MANAGEMENT_EMAILS = self._load_management_emails()
         self.alert_cooldown = {}
         self.incident_log = []
@@ -443,15 +444,17 @@ NOTIFICATION:
         </html>
         """
         
-        message = Mail(
-            from_email='security-alerts@churchgate.com',
-            to_emails=self.MANAGEMENT_EMAILS,
-            subject=f'🚨 {severity.upper()}: {leak_type} Leak Detected for {subsidiary} [{incident_id}]',
-            html_content=html_content
-        )
-        
         try:
-            response = self.sg.send(message)
+            # Use the EXISTING EmailService that's already working
+            for email in self.MANAGEMENT_EMAILS:
+                success, msg = self.email_service.send_email(
+                    email,
+                    f'🚨 {severity.upper()}: {leak_type} Leak Detected for {subsidiary} [{incident_id}]',
+                    html_content
+                )
+                if not success:
+                    print(f"Email failed for {email}: {msg}")
+            
             self.incident_log.append({
                 'incident_id': incident_id,
                 'subsidiary': subsidiary,
