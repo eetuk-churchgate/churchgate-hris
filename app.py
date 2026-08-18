@@ -4008,7 +4008,8 @@ def executive_dashboard():
                 margin=dict(t=20),
                 paper_bgcolor='#1E1E1E',
                 plot_bgcolor='#1E1E1E',
-                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                legend=dict(font=dict(color='#F0E6D3'))
             )
             st.plotly_chart(fig2, use_container_width=True)
     
@@ -4062,7 +4063,8 @@ def executive_dashboard():
                 margin=dict(t=20),
                 paper_bgcolor='#1E1E1E',
                 plot_bgcolor='#1E1E1E',
-                font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                legend=dict(font=dict(color='#F0E6D3'))
             )
             st.plotly_chart(fig3, use_container_width=True)
             
