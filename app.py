@@ -22516,10 +22516,17 @@ def ai_dlp_monitor_dashboard():
         if 'dlp_monitor_running' in st.session_state:
             background_monitor.is_running = st.session_state.dlp_monitor_running
         
-        auto_mode = st.toggle("🔄 AUTO MODE (24/7 Continuous)", 
+        # Custom label with native browser tooltip
+        st.markdown("""
+        <div style="margin-bottom:0.3rem;">
+            <span style="color:#C9A84C;font-weight:700;" title="When ON, scanning runs automatically every 5 minutes">🔄 AUTO MODE (24/7 Continuous) <span style="color:#B8960C;cursor:pointer;">ⓘ</span></span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        auto_mode = st.toggle("AUTO MODE", 
                              value=background_monitor.is_running,
                              key="auto_mode_toggle",
-                             help="When ON, scanning runs automatically every 5 minutes")
+                             label_visibility="collapsed")
     
     with mode_col2:
         # Get LATEST state from session
@@ -22540,14 +22547,29 @@ def ai_dlp_monitor_dashboard():
     # Handle auto mode toggle
     if auto_mode and not background_monitor.is_running:
         background_monitor.start()
-        st.session_state.dlp_monitor_running = True  # Force state update
+        st.session_state.dlp_monitor_running = True
         st.success("✅ Auto monitoring STARTED! Scanning every 5 minutes.")
-        st.rerun()  # Force immediate refresh
+        time.sleep(0.5)
+        st.rerun()
     elif not auto_mode and background_monitor.is_running:
         background_monitor.stop()
-        st.session_state.dlp_monitor_running = False  # Force state update
+        st.session_state.dlp_monitor_running = False
         st.warning("⏹️ Auto monitoring PAUSED!")
-        st.rerun()  # Force immediate refresh
+        time.sleep(0.5)
+        st.rerun()
+    
+    # Auto-refresh for real-time progress updates
+    if background_monitor.is_running:
+        if 'dlp_auto_refresh_counter' not in st.session_state:
+            st.session_state.dlp_auto_refresh_counter = 0
+        
+        st.session_state.dlp_auto_refresh_counter += 1
+        
+        # Refresh every 3 seconds for live progress
+        if st.session_state.dlp_auto_refresh_counter >= 3:
+            st.session_state.dlp_auto_refresh_counter = 0
+            time.sleep(1)
+            st.rerun()
     
     st.divider()
     
@@ -22608,10 +22630,11 @@ def ai_dlp_monitor_dashboard():
     # Get live status
     live_status = background_monitor.get_status()
     
-    # Progress Bar
+    # Progress Bar - Clamped to valid range
     progress = live_status.get('progress', 0)
-    st.progress(progress / 100)
-    st.caption(f"Scan Progress: {progress:.1f}%")
+    progress_value = max(0.0, min(1.0, progress / 100))
+    st.progress(progress_value)
+    st.caption(f"Scan Progress: {min(progress, 100):.1f}%")
     
     # Live Metrics Row
     scan_col1, scan_col2, scan_col3, scan_col4, scan_col5, scan_col6 = st.columns(6)
