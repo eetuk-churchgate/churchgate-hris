@@ -10558,158 +10558,187 @@ def staff_confirmation():
                                 # Get employee data
                                 emp_region = emp.get('region', '')
                                 emp_subsidiary = emp.get('subsidiary', '')
-                            
-                            SUBSIDIARY_OPTIONS_FORM = {
-                                'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
-                                'Lagos': ['First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
-                                'Aba': ['Aba Textile Mills PLC']
-                            }
-                            
-                            # 1. EMPLOYEE DATA
-                            st.markdown("##### 1. EMPLOYEE DATA")
-                            col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.markdown(f"**Name:** {emp_name}")
-                                st.markdown(f"**Department:** {dept}")
-                                region_options = ['Abuja', 'Lagos', 'Aba']
-                                region_idx = region_options.index(emp_region) if emp_region in region_options else 0
-                                new_region = st.selectbox("Region *", region_options, index=region_idx, key=f"cf_region_{emp_id}")
-                                sub_opts = SUBSIDIARY_OPTIONS_FORM.get(new_region, ['World Trade Center(WTC)'])
-                                sub_idx = sub_opts.index(emp_subsidiary) if emp_subsidiary in sub_opts else 0
-                                new_subsidiary = st.selectbox("Subsidiary *", sub_opts, index=sub_idx, key=f"cf_sub_{emp_id}")
-                            with col2:
-                                st.markdown(f"**Position:** {position}")
-                                st.markdown(f"**Join Date:** {join_date}")
-                                st.selectbox("Highest Qualification *", [
-                                    "O'Level (WASSCE)",
-                                    "Diploma/Certificate",
-                                    "National Technical Certificate (NTC)",
-                                    "Nigerian Certificate in Education (NCE)",
-                                    "Ordinary National Diploma (OND)",
-                                    "Higher National Diploma (HND)",
-                                    "Postgraduate Diploma (PGD)",
-                                    "Bachelor of Science (B.Sc)",
-                                    "Bachelor of Art (BA)",
-                                    "Bachelor of Engineering (B.Eng)",
-                                    "Bachelor of Technology (B.Tech)",
-                                    "Bachelor of Law (LLB)",
-                                    "Master of Science (M.Sc)",
-                                    "Master of Art (MA)",
-                                    "Master of Law (LLM)",
-                                    "M.Ed",
-                                    "MBA",
-                                    "DBA",
-                                    "Doctorate (Ph.D.)"
-                                ], key=f"qual_{emp_id}")
-                            with col3:
-                                st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
-                                st.text_input("Confirmation Due Date", value=end_date.strftime('%Y-%m-%d') if end_date else '', key=f"due_{emp_id}")
-                            
-                            st.markdown("---")
-                            
-                            # 3. PERFORMANCE RATING - OUTSIDE FORM FOR REAL-TIME UPDATES
-                            st.markdown("##### 3. PERFORMANCE RATING (0-10 each)")
-                            perf_criteria = [
-                                "Quality and Quantity of work", "Knowledge of work and procedures",
-                                "Requisite/cognate Technical Skills", "Care and Maintenance of Assets",
-                                "Ability to Communicate", "Interpersonal Relationship & Team Spirit",
-                                "Dependability/Discipline", "Initiative and Creativity",
-                                "Leadership", "Potentialities"
-                            ]
-                            perf_scores = {}
-                            
-                            for i, criterion in enumerate(perf_criteria):
-                                col1, col2 = st.columns([3, 1])
-                                with col1: st.markdown(f"**{criterion}**")
-                                with col2:
-                                    perf_scores[str(i)] = st.number_input("Score", 0, 10, 5, key=f"perf_{i}_{emp_id}")
-                            
-                            total_perf = sum(perf_scores.values())
-                            st.markdown(f"**TOTAL SCORE: {total_perf} / 100**")
-                            
-                            if total_perf >= 90: perf_rating = "Outstanding"; perf_color = "#38a169"
-                            elif total_perf >= 70: perf_rating = "Satisfactory"; perf_color = "#3182ce"
-                            elif total_perf >= 50: perf_rating = "Average"; perf_color = "#d69e2e"
-                            elif total_perf >= 30: perf_rating = "Unsatisfactory"; perf_color = "#dd6b20"
-                            else: perf_rating = "Poor"; perf_color = "#CC0000"
-                            
-                            st.markdown(f"""<div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#888;margin-top:0.3rem;"><span>10-29: Poor</span><span>30-49: Unsatisfactory</span><span>50-69: Average</span><span>70-89: Satisfactory</span><span>90-100: Outstanding</span></div>
-                            <div style="margin-top:0.5rem;padding:0.5rem;background:{perf_color}15;border-radius:6px;border-left:4px solid {perf_color};"><strong>Rating: <span style="color:{perf_color};">{perf_rating}</span></strong></div>""", unsafe_allow_html=True)
-                            
-                            st.markdown("---")
-                            
-                            # REST IN FORM
-                            with st.form(key=f"hod_review_{emp_id}"):
-                                # 2. STRENGTHS / WEAKNESSES
-                                st.markdown("##### 2. EMPLOYEE STRENGTHS / WEAKNESSES")
-                                col1, col2 = st.columns(2)
-                                with col1:
-                                    strengths = st.text_area("AREA OF STRENGTHS *", key=f"strengths_{emp_id}", height=100, placeholder="Key strengths and achievements...")
-                                with col2:
-                                    weaknesses = st.text_area("AREA OF WEAKNESSES *", key=f"weaknesses_{emp_id}", height=100, placeholder="Areas needing improvement...")
                                 
-                                st.markdown("---")
+                                SUBSIDIARY_OPTIONS_FORM = {
+                                    'Abuja': ['World Trade Center(WTC)', 'Agroline Ventures Limited'],
+                                    'Lagos': ['First Continental Properties Limited', 'R. B Properties Limited', 'Churchgate Nigeria Limited', 'Aba Textile Mills PLC', 'Associated Textile Manufacturing Company Limited', 'Food & Confectionery Products (Nig.) Limited', 'First Spinners PLC', 'HotelInvest & Resorts Limited', 'International Textile Industries (Nig.) Limited', 'Intercott Limited', 'Ocean Fisheries (Nig.) Limited', 'Platinum Travel Limited', 'Reliance Mills Limited', 'Vineyard Designs Nig. Limited'],
+                                    'Aba': ['Aba Textile Mills PLC']
+                                }
                                 
-                                # 4. DISCIPLINARY STATUS
-                                st.markdown("##### 4. DISCIPLINARY STATUS")
+                                # 1. EMPLOYEE DATA
+                                st.markdown("##### 1. EMPLOYEE DATA")
                                 col1, col2, col3 = st.columns(3)
-                                with col1: disc_action = st.selectbox("Action", ["None","Caution","Warning","Final Warning","Suspension"], key=f"disc_{emp_id}")
-                                with col2: disc_reason = st.text_input("Reason", key=f"discr_{emp_id}")
-                                with col3: disc_remark = st.text_input("Remark", key=f"disck_{emp_id}")
+                                with col1:
+                                    st.markdown(f"**Name:** {emp_name}")
+                                    st.markdown(f"**Department:** {dept}")
+                                    region_options = ['Abuja', 'Lagos', 'Aba']
+                                    region_idx = region_options.index(emp_region) if emp_region in region_options else 0
+                                    new_region = st.selectbox("Region *", region_options, index=region_idx, key=f"cf_region_{emp_id}")
+                                    sub_opts = SUBSIDIARY_OPTIONS_FORM.get(new_region, ['World Trade Center(WTC)'])
+                                    sub_idx = sub_opts.index(emp_subsidiary) if emp_subsidiary in sub_opts else 0
+                                    new_subsidiary = st.selectbox("Subsidiary *", sub_opts, index=sub_idx, key=f"cf_sub_{emp_id}")
+                                with col2:
+                                    st.markdown(f"**Position:** {position}")
+                                    st.markdown(f"**Join Date:** {join_date}")
+                                    st.selectbox("Highest Qualification *", [
+                                        "O'Level (WASSCE)",
+                                        "Diploma/Certificate",
+                                        "National Technical Certificate (NTC)",
+                                        "Nigerian Certificate in Education (NCE)",
+                                        "Ordinary National Diploma (OND)",
+                                        "Higher National Diploma (HND)",
+                                        "Postgraduate Diploma (PGD)",
+                                        "Bachelor of Science (B.Sc)",
+                                        "Bachelor of Art (BA)",
+                                        "Bachelor of Engineering (B.Eng)",
+                                        "Bachelor of Technology (B.Tech)",
+                                        "Bachelor of Law (LLB)",
+                                        "Master of Science (M.Sc)",
+                                        "Master of Art (MA)",
+                                        "Master of Law (LLM)",
+                                        "M.Ed",
+                                        "MBA",
+                                        "DBA",
+                                        "Doctorate (Ph.D.)"
+                                    ], key=f"qual_{emp_id}")
+                                with col3:
+                                    st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                                    st.text_input("Confirmation Due Date", value=end_date.strftime('%Y-%m-%d') if end_date else '', key=f"due_{emp_id}")
                                 
                                 st.markdown("---")
                                 
-                                # 5. RECOMMENDATIONS
-                                st.markdown("##### 5. RECOMMENDATIONS")
-                                hod_decision = st.radio("Decision *", [
-                                    "✅ Well Fitted / Confirm & Possible Increment",
-                                    "✅ Fitted / Confirm",
-                                    "🔄 Not Fitted / Extend Confirmation (1 Month)",
-                                    "🔄 Not Fitted / Extend Confirmation (2 Months)",
-                                    "🔄 Not Fitted / Extend Confirmation (3 Months)",
-                                    "❌ Not Recommended"
-                                ], key=f"hod_dec_{emp_id}")
+                                # 3. PERFORMANCE RATING
+                                st.markdown("##### 3. PERFORMANCE RATING (0-10 each)")
+                                perf_criteria = [
+                                    "Quality and Quantity of work", "Knowledge of work and procedures",
+                                    "Requisite/cognate Technical Skills", "Care and Maintenance of Assets",
+                                    "Ability to Communicate", "Interpersonal Relationship & Team Spirit",
+                                    "Dependability/Discipline", "Initiative and Creativity",
+                                    "Leadership", "Potentialities"
+                                ]
+                                perf_scores = {}
                                 
-                                hod_comments = st.text_area("HOD / PCH Comment *", key=f"hod_com_{emp_id}", height=80, placeholder="Justification for recommendation...")
+                                for i, criterion in enumerate(perf_criteria):
+                                    col1, col2 = st.columns([3, 1])
+                                    with col1: st.markdown(f"**{criterion}**")
+                                    with col2:
+                                        perf_scores[str(i)] = st.number_input("Score", 0, 10, 5, key=f"perf_{i}_{emp_id}")
+                                
+                                total_perf = sum(perf_scores.values())
+                                st.markdown(f"**TOTAL SCORE: {total_perf} / 100**")
+                                
+                                if total_perf >= 90: perf_rating = "Outstanding"; perf_color = "#38a169"
+                                elif total_perf >= 70: perf_rating = "Satisfactory"; perf_color = "#3182ce"
+                                elif total_perf >= 50: perf_rating = "Average"; perf_color = "#d69e2e"
+                                elif total_perf >= 30: perf_rating = "Unsatisfactory"; perf_color = "#dd6b20"
+                                else: perf_rating = "Poor"; perf_color = "#CC0000"
+                                
+                                st.markdown(f"""<div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#888;margin-top:0.3rem;"><span>10-29: Poor</span><span>30-49: Unsatisfactory</span><span>50-69: Average</span><span>70-89: Satisfactory</span><span>90-100: Outstanding</span></div>
+                                <div style="margin-top:0.5rem;padding:0.5rem;background:{perf_color}15;border-radius:6px;border-left:4px solid {perf_color};"><strong>Rating: <span style="color:{perf_color};">{perf_rating}</span></strong></div>""", unsafe_allow_html=True)
                                 
                                 st.markdown("---")
-                                col1, col2 = st.columns(2)
-                                with col1: supervisor_name = st.text_input("Immediate Supervisor Name", value=user_name, key=f"sup_{emp_id}")
-                                with col2: line_manager = st.text_input("Line Manager Name", key=f"lm_{emp_id}")
                                 
-                                if st.form_submit_button("📤 Submit Confirmation Decision", use_container_width=True, type="primary"):
-                                    if strengths and weaknesses and hod_comments:
-                                        try:
-                                            db._post("confirmation_reviews", {
-                                                "employee_id": emp_id, "employee_name": emp_name,
-                                                "department": dept, "position": position,
-                                                "region": new_region, "subsidiary": new_subsidiary,
-                                                "highest_qualification": st.session_state.get(f"qual_{emp_id}", ""),
-                                                "join_date": str(join_date), "probation_end": end_date.strftime('%Y-%m-%d') if end_date else '',
-                                                "hod_name": user_name, "supervisor_name": supervisor_name,
-                                                "line_manager_name": line_manager,
-                                                "strengths": strengths, "weaknesses": weaknesses,
-                                                "performance_scores": json.dumps(perf_scores),
-                                                "total_performance_score": total_perf,
-                                                "performance_rating": perf_rating,
-                                                "disciplinary_action": disc_action,
-                                                "disciplinary_reason": disc_reason,
-                                                "disciplinary_remark": disc_remark,
-                                                "hod_decision": hod_decision,
-                                                "hod_comments": hod_comments,
-                                                "status": "Pending COO Approval" if "Confirm" in hod_decision else "Extension Recommended",
-                                                "review_date": now.strftime('%Y-%m-%d %H:%M')
-                                            })
-                                        except: pass
-                                        
-                                        if "Confirm" in hod_decision:
-                                            send_confirmation_email("jeromedas@churchgate.com", f"✅ Confirmation Recommended: {emp_name}", f"Dear Jerome,\n\n{user_name} has recommended confirmation for {emp_name}.\n\nScore: {total_perf}/100 ({perf_rating})\n\nhttps://hris.churchgate.com")
-                                            st.success("✅ Submitted! Sent to COO.")
+                                # REST IN FORM
+                                with st.form(key=f"hod_review_{emp_id}"):
+                                    st.markdown("##### 2. EMPLOYEE STRENGTHS / WEAKNESSES")
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        strengths = st.text_area("AREA OF STRENGTHS *", key=f"strengths_{emp_id}", height=100, placeholder="Key strengths and achievements...")
+                                    with col2:
+                                        weaknesses = st.text_area("AREA OF WEAKNESSES *", key=f"weaknesses_{emp_id}", height=100, placeholder="Areas needing improvement...")
+                                    
+                                    st.markdown("---")
+                                    
+                                    st.markdown("##### 4. DISCIPLINARY STATUS")
+                                    col1, col2, col3 = st.columns(3)
+                                    with col1: disc_action = st.selectbox("Action", ["None","Caution","Warning","Final Warning","Suspension"], key=f"disc_{emp_id}")
+                                    with col2: disc_reason = st.text_input("Reason", key=f"discr_{emp_id}")
+                                    with col3: disc_remark = st.text_input("Remark", key=f"disck_{emp_id}")
+                                    
+                                    st.markdown("---")
+                                    
+                                    st.markdown("##### 5. RECOMMENDATIONS")
+                                    hod_decision = st.radio("Decision *", [
+                                        "✅ Well Fitted / Confirm & Possible Increment",
+                                        "✅ Fitted / Confirm",
+                                        "🔄 Not Fitted / Extend Confirmation (1 Month)",
+                                        "🔄 Not Fitted / Extend Confirmation (2 Months)",
+                                        "🔄 Not Fitted / Extend Confirmation (3 Months)",
+                                        "❌ Not Recommended"
+                                    ], key=f"hod_dec_{emp_id}")
+                                    
+                                    hod_comments = st.text_area("HOD / PCH Comment *", key=f"hod_com_{emp_id}", height=80, placeholder="Justification for recommendation...")
+                                    
+                                    st.markdown("---")
+                                    col1, col2 = st.columns(2)
+                                    with col1: supervisor_name = st.text_input("Immediate Supervisor Name", value=user_name, key=f"sup_{emp_id}")
+                                    with col2: line_manager = st.text_input("Line Manager Name", key=f"lm_{emp_id}")
+                                    
+                                    if st.form_submit_button("📤 Submit Confirmation Decision", use_container_width=True, type="primary"):
+                                        if not strengths:
+                                            st.error("❌ Strengths are required!")
+                                        elif not weaknesses:
+                                            st.error("❌ Weaknesses are required!")
+                                        elif not hod_comments:
+                                            st.error("❌ HOD Comments are required!")
                                         else:
-                                            send_confirmation_email("bsakote@churchgate.com", f"🔄 Extension: {emp_name}", f"HR Team,\n\n{user_name} recommended extension for {emp_name}.\n\n{hod_decision}\n\nPlease process.")
-                                            send_confirmation_email(emp.get('email',''), f"🔄 Probation Update", f"Dear {emp_name},\n\nYour probation period has been extended.\n\nYour HOD will discuss this with you.\n\nChurchgate Group HR")
-                                            st.warning("🔄 Extension recommended.")
-                                        st.rerun()
+                                            try:
+                                                db._post("confirmation_reviews", {
+                                                    "employee_id": emp_id,
+                                                    "employee_name": emp_name,
+                                                    "department": dept,
+                                                    "position": position,
+                                                    "region": new_region,
+                                                    "subsidiary": new_subsidiary,
+                                                    "join_date": str(join_date),
+                                                    "probation_end": end_date.strftime('%Y-%m-%d') if end_date else '',
+                                                    "hod_name": user_name,
+                                                    "supervisor_name": supervisor_name,
+                                                    "line_manager_name": line_manager,
+                                                    "strengths": strengths,
+                                                    "weaknesses": weaknesses,
+                                                    "hod_assessment": f"Strengths: {strengths}\n\nWeaknesses: {weaknesses}",
+                                                    "performance_scores": json.dumps(perf_scores),
+                                                    "total_performance_score": total_perf,
+                                                    "performance_rating": perf_rating,
+                                                    "disciplinary_action": disc_action,
+                                                    "disciplinary_reason": disc_reason,
+                                                    "disciplinary_remark": disc_remark,
+                                                    "hod_decision": hod_decision,
+                                                    "hod_comments": hod_comments,
+                                                    "status": "Pending COO Approval" if "Confirm" in hod_decision else "Extension Recommended",
+                                                    "review_date": now.strftime('%Y-%m-%d %H:%M')
+                                                })
+                                                
+                                                if "Confirm" in hod_decision:
+                                                    send_confirmation_email("jeromedas@churchgate.com", 
+                                                        f"✅ Confirmation Recommended: {emp_name}", 
+                                                        f"Dear Jerome,\n\n{user_name} has recommended confirmation for {emp_name}.\n\nScore: {total_perf}/100 ({perf_rating})\n\nhttps://hris.churchgate.com")
+                                                    
+                                                    send_confirmation_email(user_email, 
+                                                        f"📤 Confirmation Submitted: {emp_name}", 
+                                                        f"Dear {user_name},\n\nYour confirmation decision for {emp_name} has been submitted successfully.\n\nDecision: {hod_decision}\nScore: {total_perf}/100 ({perf_rating})\n\nIt has been sent to the COO for approval.\n\nChurchgate Group HR")
+                                                    
+                                                    st.success("✅ Submitted! Sent to COO for approval.")
+                                                else:
+                                                    hr_team = ["bsakote@churchgate.com", "ichukwunonye@churchgate.com", "gbalogun@churchgate.com", "eochala@churchgate.com"]
+                                                    for hr_recipient in hr_team:
+                                                        send_confirmation_email(hr_recipient, 
+                                                            f"🔄 Extension: {emp_name}", 
+                                                            f"HR Team,\n\n{user_name} recommended extension for {emp_name}.\n\n{hod_decision}\n\nPlease process.")
+                                                    send_confirmation_email(emp.get('email',''), 
+                                                        f"🔄 Probation Update", 
+                                                        f"Dear {emp_name},\n\nYour probation period has been extended.\n\nChurchgate Group HR")
+                                                    
+                                                    send_confirmation_email(user_email, 
+                                                        f"📤 Confirmation Submitted: {emp_name}", 
+                                                        f"Dear {user_name},\n\nYour extension decision for {emp_name} has been submitted.\n\nChurchgate Group HR")
+                                                    
+                                                    st.warning("🔄 Extension recommended.")
+                                                
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"Save error: {str(e)}")
                                     else:
                                         st.error("❌ Strengths, Weaknesses, and Comments required!")
                         
@@ -10722,7 +10751,6 @@ def staff_confirmation():
                                         st.markdown("---")
                                         st.markdown("#### 🏢 COO Final Approval - Full Review")
                                         
-                                        # FULL FORM PREVIEW
                                         st.markdown("##### 1. EMPLOYEE DATA")
                                         col1, col2, col3 = st.columns(3)
                                         with col1:
