@@ -10248,20 +10248,27 @@ def send_confirmation_reminders():
                 try:
                     all_emp_data = db.get_all_employees()
                     if not all_emp_data.empty:
-                        hod_candidates = all_emp_data[(all_emp_data['department'] == dept) & 
-                            (all_emp_data['position'].str.contains('HOD|Head|Manager|Director', case=False, na=False))]
-                        if not hod_candidates.empty:
-                            hod_email = hod_candidates.iloc[0].get('email', '')
+                        # Use reports_to field - the ACTUAL supervisor
+                        emp_reports_to = str(emp.get('reports_to', '')).strip()
+                        if emp_reports_to:
+                            hod_match = all_emp_data[all_emp_data.apply(
+                                lambda x: f"{str(x['first_name']).strip()} {str(x['last_name']).strip()}".lower() == emp_reports_to.lower(), 
+                                axis=1
+                            )]
+                            if not hod_match.empty:
+                                hod_email = hod_match.iloc[0].get('email', '')
+                                if not hod_email or hod_email == 'nan' or hod_email == 'None':
+                                    hod_email = ''
                 except:
                     pass
                 
                 if days_left <= 7 and days_left >= 0:
-                    if hod_email:
+                    if hod_email and '@' in str(hod_email):
                         es.send_email(hod_email,
                             f"⏰ Confirmation Due Soon: {emp_name}",
                             f"Dear HOD,\n\n{emp_name} ({dept}) is due for confirmation in {days_left} days.\n\nPlease review and submit your recommendation.\n\nChurchgate Group HR")
                 elif days_left < 0:
-                    if hod_email:
+                    if hod_email and '@' in str(hod_email):
                         es.send_email(hod_email,
                             f"🚨 OVERDUE Confirmation: {emp_name}",
                             f"Dear HOD,\n\n{emp_name} ({dept}) confirmation is OVERDUE by {abs(days_left)} days.\n\nImmediate action required.\n\nChurchgate Group HR")
