@@ -3406,7 +3406,7 @@ def employee_dashboard():
                         st.info("No work anniversaries this month.")
             except: pass
         
-        # Today's Celebrations
+       # Today's Celebrations
         st.markdown("---")
         st.markdown("### 🎉 Today's Celebrations")
         
@@ -3416,14 +3416,14 @@ def employee_dashboard():
         if today_birthdays or today_anniversaries:
             if today_birthdays:
                 st.markdown(f"""
-                <div style="background:linear-gradient(135deg, #fff5f5, #ffe6e6);padding:1rem;border-radius:12px;border-left:4px solid #CC0000;margin-bottom:0.5rem;">
-                    <strong>🎂 Happy Birthday!</strong> {', '.join([b['name'] for b in today_birthdays])}
+                <div style="background:linear-gradient(135deg, #1E1E1E, #2D2D2D);padding:1rem;border-radius:12px;border:1px solid rgba(184, 150, 12, 0.4);border-left:4px solid #CC0000;margin-bottom:0.5rem;">
+                    <strong style="color:#C9A84C;">🎂 Happy Birthday!</strong> <span style="color:#F0E6D3;">{', '.join([b['name'] for b in today_birthdays])}</span>
                 </div>
                 """, unsafe_allow_html=True)
             if today_anniversaries:
                 st.markdown(f"""
-                <div style="background:linear-gradient(135deg, #fffef5, #f5f0e0);padding:1rem;border-radius:12px;border-left:4px solid #D4AF37;margin-bottom:0.5rem;">
-                    <strong>⭐ Work Anniversary!</strong> {', '.join([f"{a['name']} ({a['years']} yrs)" for a in today_anniversaries])}
+                <div style="background:linear-gradient(135deg, #1E1E1E, #2D2D2D);padding:1rem;border-radius:12px;border:1px solid rgba(184, 150, 12, 0.4);border-left:4px solid #D4AF37;margin-bottom:0.5rem;">
+                    <strong style="color:#C9A84C;">⭐ Work Anniversary!</strong> <span style="color:#F0E6D3;">{', '.join([f"{a['name']} ({a['years']} yrs)" for a in today_anniversaries])}</span>
                 </div>
                 """, unsafe_allow_html=True)
         else:
@@ -3895,8 +3895,8 @@ def executive_dashboard():
         
         if has_celebration:
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #fff5f5, #fffbf0); padding: 0.8rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border: 2px solid #CC0000;">
-                <strong>🎉 Today's Celebrations!</strong> There are birthdays or work anniversaries today. Send celebration emails to all employees.
+            <div style="background: linear-gradient(135deg, #1E1E1E, #2D2D2D); padding: 0.8rem 1.5rem; border-radius: 8px; margin-bottom: 1rem; border: 2px solid #B8960C; border-left: 4px solid #CC0000;">
+                <strong style="color:#C9A84C;">🎉 Today's Celebrations!</strong> <span style="color:#F0E6D3;">There are birthdays or work anniversaries today. Send celebration emails to all employees.</span>
             </div>
             """, unsafe_allow_html=True)
             
@@ -4389,12 +4389,12 @@ def employee_management():
         # Today's Celebrations
         if todays_birthdays:
             st.markdown(f"""
-            <div style="background:linear-gradient(135deg, #fff5f5, #ffe6e6);padding:1rem;border-radius:12px;border-left:4px solid #CC0000;margin-bottom:0.5rem;">
+            <div style="background:linear-gradient(135deg, #1E1E1E, #2D2D2D);padding:1rem;border-radius:12px;border:1px solid rgba(184, 150, 12, 0.4);border-left:4px solid #CC0000;margin-bottom:0.5rem;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <span style="font-size:2rem;">🎂</span>
                     <div>
-                        <strong style="color:#CC0000;">Happy Birthday Today!</strong><br>
-                        <span>{', '.join([str(b) for b in todays_birthdays])}</span>
+                        <strong style="color:#C9A84C;">Happy Birthday Today!</strong><br>
+                        <span style="color:#F0E6D3;">{', '.join([str(b) for b in todays_birthdays])}</span>
                     </div>
                 </div>
             </div>
