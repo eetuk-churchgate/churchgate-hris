@@ -1753,6 +1753,131 @@ setInterval(fixFileUploaders, 500);
 """, unsafe_allow_html=True)
 
 
+st.markdown("""
+<script>
+// ===== CHURCHGATE INTERNAL DLP - CLIPBOARD MONITORING =====
+
+const SENSITIVE_PATTERNS = [
+    {name: 'OpenAI API Key', regex: /sk-[a-zA-Z0-9]{20,}/g},
+    {name: 'Groq API Key', regex: /gsk_[a-zA-Z0-9]{20,}/g},
+    {name: 'Google API Key', regex: /AIza[0-9A-Za-z_-]{35}/g},
+    {name: 'SendGrid API Key', regex: /SG\.[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}/g},
+    {name: 'NUBAN Account', regex: /\b\d{10}\b/g},
+    {name: 'Sort Code', regex: /\b\d{3}-\d{3}-\d{4}\b/g},
+    {name: 'BVN', regex: /\b\d{11}\b/g},
+    {name: 'NIN', regex: /\b\d{11}\b/g},
+    {name: 'Naira Amount', regex: /₦\d{1,3}(,\d{3})*(\.\d+)?/g},
+    {name: 'Churchgate', regex: /Churchgate/gi},
+    {name: 'World Trade Center', regex: /World Trade Center/gi},
+    {name: 'First Continental', regex: /First Continental/gi},
+    {name: 'Aba Textile', regex: /Aba Textile/gi},
+    {name: 'Confidential', regex: /confidential/gi},
+    {name: 'Internal Memo', regex: /internal memo/gi},
+    {name: 'Payslip', regex: /payslip/gi},
+    {name: 'Salary', regex: /salary/gi},
+    {name: 'Procurement', regex: /procurement/gi},
+    {name: 'Invoice', regex: /invoice/gi},
+    {name: 'Password', regex: /password/gi},
+    {name: 'API Key', regex: /api[_-]?key/gi}
+];
+
+let lastAlertTime = 0;
+const ALERT_COOLDOWN = 5000; // 5 seconds between alerts
+
+function detectSensitiveContent(text) {
+    let detected = [];
+    
+    SENSITIVE_PATTERNS.forEach(pattern => {
+        if (pattern.regex.test(text)) {
+            detected.push(pattern.name);
+        }
+    });
+    
+    return detected;
+}
+
+function showDLPWarning(detectedPatterns, action) {
+    const now = Date.now();
+    if (now - lastAlertTime < ALERT_COOLDOWN) return;
+    lastAlertTime = now;
+    
+    console.warn('🚨 DLP ALERT:', {
+        action: action,
+        patterns: detectedPatterns,
+        timestamp: new Date().toISOString()
+    });
+    
+    // Show warning overlay
+    const warningDiv = document.createElement('div');
+    warningDiv.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 99999;
+        background: linear-gradient(135deg, #CC0000, #8B0000);
+        color: white; padding: 15px 20px; border-radius: 8px;
+        font-family: Arial, sans-serif; font-size: 14px;
+        box-shadow: 0 4px 20px rgba(204,0,0,0.5);
+        max-width: 400px;
+    `;
+    warningDiv.innerHTML = `
+        <strong>⚠️ CHURCHGATE DLP WARNING</strong><br>
+        <small>Sensitive content detected during ${action}.</small><br>
+        <small>Patterns: ${detectedPatterns.join(', ')}</small><br>
+        <small style="font-size: 10px;">This action has been logged and reported to Security.</small>
+    `;
+    document.body.appendChild(warningDiv);
+    
+    setTimeout(() => warningDiv.remove(), 5000);
+    
+    // Send to Streamlit backend
+    if (window.parent) {
+        window.parent.postMessage({
+            type: 'CHURCHGATE_DLP_ALERT',
+            action: action,
+            patterns: detectedPatterns.join(', '),
+            textSnippet: text.substring(0, 200),
+            timestamp: new Date().toISOString()
+        }, '*');
+    }
+}
+
+// Monitor copy events
+document.addEventListener('copy', function(e) {
+    const text = window.getSelection()?.toString() || '';
+    if (text.length > 5) {
+        const detected = detectSensitiveContent(text);
+        if (detected.length > 0) {
+            showDLPWarning(detected, 'copying');
+        }
+    }
+});
+
+// Monitor paste events
+document.addEventListener('paste', function(e) {
+    const text = e.clipboardData?.getData('text') || '';
+    if (text.length > 5) {
+        const detected = detectSensitiveContent(text);
+        if (detected.length > 0) {
+            showDLPWarning(detected, 'pasting');
+        }
+    }
+});
+
+// Monitor text inputs
+document.addEventListener('input', function(e) {
+    if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) {
+        const text = e.target.value || '';
+        if (text.length > 20) {
+            const detected = detectSensitiveContent(text);
+            if (detected.length > 0) {
+                console.warn('🚨 DLP PATTERN DETECTED in input:', detected);
+            }
+        }
+    }
+});
+
+console.log('✅ Churchgate Internal DLP Clipboard Monitor ACTIVE');
+</script>
+""", unsafe_allow_html=True)
+
 
 
 
@@ -22773,6 +22898,25 @@ def ai_dlp_monitor_dashboard():
     st.divider()
     
     # ============================================================
+    # INTERNAL DLP ALERT RECEIVER
+    # ============================================================
+    st.markdown("""
+    <script>
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'CHURCHGATE_DLP_ALERT') {
+            const alertData = event.data;
+            console.log('DLP Alert received from browser:', alertData);
+            
+            const params = new URLSearchParams(window.location.search);
+            params.set('dlp_alert', JSON.stringify(alertData));
+        }
+    });
+    </script>
+    """, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # ============================================================
     # LIVE ALERT FEED - MILITARY GRADE
     # ============================================================
     st.markdown("### ⚡ Live Alert Feed")
@@ -22802,6 +22946,33 @@ def ai_dlp_monitor_dashboard():
             """, unsafe_allow_html=True)
     else:
         st.info("📡 Monitoring system ready. No alerts detected yet.")
+    
+    st.divider()
+    
+    # ============================================================
+    # INTERNAL DLP ALERTS - CLIPBOARD MONITORING
+    # ============================================================
+    st.markdown("### 🖥️ Internal DLP Alerts (Clipboard Monitoring)")
+    
+    try:
+        from utils.database import db
+        internal_alerts = db._get("dlp_internal_alerts")
+        
+        if internal_alerts:
+            internal_df = pd.DataFrame(internal_alerts)
+            html_table = internal_df.head(20).to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+            st.markdown(html_table, unsafe_allow_html=True)
+        else:
+            st.info("No internal clipboard alerts detected yet.")
+            st.markdown("""
+            <div style="background: #1E1E1E; border: 1px solid #B8960C; border-radius: 8px; padding: 1rem;">
+                <strong style="color: #C9A84C;">🖥️ Internal DLP Active</strong>
+                <br><small style="color: #A0A0A0;">Monitoring clipboard copy/paste for sensitive patterns</small>
+                <br><small style="color: #A0A0A0;">Patterns: API keys, BVN, NIN, salaries, company names, invoices</small>
+            </div>
+            """, unsafe_allow_html=True)
+    except:
+        st.info("Internal DLP monitoring active. Database logging will be available after table creation.")
     
     st.divider()
     
