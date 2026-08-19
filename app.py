@@ -22418,6 +22418,13 @@ def ai_dlp_monitor_dashboard():
     from utils.dlp_monitor import SENSITIVE_ENTITIES, SENSITIVE_KEYWORDS, SENSITIVE_KEYWORD_CATEGORIES, IncidentResponder, AI_DLP_Monitor, SEVERITY_LEVELS
     from utils.background_monitor import background_monitor
     
+    from datetime import timezone, timedelta
+    
+    def get_lagos_time():
+        """Get current Lagos/WAT time"""
+        wat = timezone(timedelta(hours=1))
+        return datetime.now(wat)
+    
     # Auto-refresh every 10 seconds for real-time updates
     if 'dlp_last_refresh' not in st.session_state:
         st.session_state.dlp_last_refresh = time.time()
