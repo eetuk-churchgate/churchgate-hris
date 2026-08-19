@@ -67,6 +67,25 @@ class BackgroundMonitorService:
         self.total_searches = SCAN_STATE['total_searches']
         self.searches_completed = SCAN_STATE['searches_completed']
         self.alerts_found_this_scan = SCAN_STATE['alerts_found']
+    
+    def log_internal_alert(self, alert_data):
+        """Log internal DLP clipboard alert to database"""
+        try:
+            from utils.database import db
+            
+            db._post("dlp_internal_alerts", {
+                "alert_type": alert_data.get('action', 'unknown'),
+                "patterns_detected": alert_data.get('patterns', ''),
+                "text_snippet": alert_data.get('textSnippet', '')[:500],
+                "user_email": alert_data.get('userEmail', ''),
+                "user_name": alert_data.get('userName', ''),
+                "device_info": alert_data.get('deviceInfo', ''),
+                "detected_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            })
+            return True
+        except Exception as e:
+            print(f"Internal alert log failed: {e}")
+            return False
         
     def _log_progress(self, message):
         """Print progress with timestamp"""
@@ -114,7 +133,6 @@ class BackgroundMonitorService:
                 SCAN_STATE['alert_log'] = self.alert_log
                 SCAN_STATE['progress'] = 100
                 
-                # Update local state for dashboard
                 self.last_scan_time = SCAN_STATE['last_scan_time']
                 self.scan_count = SCAN_STATE['scan_count']
                 
@@ -162,15 +180,11 @@ class BackgroundMonitorService:
             
             self._log_progress(f"[ENTITY {entity_index}/{total_entities}] ({entity_progress:.1f}%) SCANNING: {entity}")
             
-            category_index = 0
             for category_name, keywords in SENSITIVE_KEYWORD_CATEGORIES.items():
-                category_index += 1
                 self.current_category = category_name
                 SCAN_STATE['current_category'] = category_name
                 
-                keyword_index = 0
                 for keyword in keywords[:10]:
-                    keyword_index += 1
                     self.current_keyword = keyword
                     SCAN_STATE['current_keyword'] = keyword
                     
