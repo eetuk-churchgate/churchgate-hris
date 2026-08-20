@@ -5243,21 +5243,18 @@ def employee_management():
         c1, c2 = st.columns(2)
         with c1:
             single_email = st.text_input("Employee Email *", 
-                value=st.session_state.get('single_email', ''), 
-                key="single_email_input")
+                value=st.session_state.get('single_email', ''))
             single_name = st.text_input("Full Name *", 
-                value=st.session_state.get('single_name', ''), 
-                key="single_name_input")
-            single_pw = st.text_input("Password", value="churchgate2026", key="single_pw_input")
+                value=st.session_state.get('single_name', ''))
+            single_pw = st.text_input("Password", value="churchgate2026")
         with c2:
             dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
             current_dept = st.session_state.get('single_dept', 'Senior Management')
             dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 0
-            single_dept = st.selectbox("Department", dept_options, index=dept_idx, key="single_dept_select")
-            single_role = st.selectbox("Role", ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin'], key="single_role_select")
+            single_dept = st.selectbox("Department", dept_options, index=dept_idx)
+            single_role = st.selectbox("Role", ['Team Member', 'Team Lead', 'Manager', 'HOD', 'Admin'])
             single_id = st.text_input("Employee ID", 
-                value=st.session_state.get('single_id', ''), 
-                key="single_id_input")
+                value=st.session_state.get('single_id', ''))
         
         if st.button("🔑 Create Single Login", use_container_width=True, type="primary", key="single_login_button"):
             if single_email and single_name:
