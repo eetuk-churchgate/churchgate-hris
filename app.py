@@ -5211,6 +5211,11 @@ def employee_management():
     with tab4:
         st.subheader("🔑 Generate Employee Login Credentials")
         
+        # Initialize session state for auto-fill
+        for key in ['single_email', 'single_name', 'single_dept', 'single_id', 'single_position']:
+            if key not in st.session_state:
+                st.session_state[key] = ''
+        
         # Build employee dropdown list
         emp_options_list = []
         if not employees_df.empty:
@@ -5219,7 +5224,7 @@ def employee_management():
         st.markdown("### ⚡ Quick Single Employee")
         
         # Single employee - NOT in form, use session state
-        selected_emp = st.selectbox("👤 Select Employee", ["Select employee..."] + emp_options_list, key="single_emp_select")
+        selected_emp = st.selectbox("👤 Select Employee", ["Select employee..."] + emp_options_list, key="single_emp_select", on_change=None)
         
         # Auto-fill using session state
         if selected_emp != "Select employee...":
@@ -5228,11 +5233,11 @@ def employee_management():
             if not emp_match.empty:
                 emp_row = emp_match.iloc[0]
                 # Store in session state
-                st.session_state.single_email = emp_row.get('email', '')
+                st.session_state.single_email = str(emp_row.get('email', ''))
                 st.session_state.single_name = f"{emp_row['first_name']} {emp_row['last_name']}"
-                st.session_state.single_dept = emp_row.get('department', '')
-                st.session_state.single_id = emp_row.get('employee_id', '')
-                st.session_state.single_position = emp_row.get('position', '')
+                st.session_state.single_dept = str(emp_row.get('department', ''))
+                st.session_state.single_id = str(emp_row.get('employee_id', ''))
+                st.session_state.single_position = str(emp_row.get('position', ''))
         
         # Input fields with session state defaults
         c1, c2 = st.columns(2)
@@ -22958,21 +22963,28 @@ def ai_dlp_monitor_dashboard():
         from utils.database import db
         internal_alerts = db._get("dlp_internal_alerts")
         
-        if internal_alerts:
+        if internal_alerts and len(internal_alerts) > 0:
             internal_df = pd.DataFrame(internal_alerts)
             html_table = internal_df.head(20).to_html(classes='dark-csv-table', index=False, border=0, escape=False)
             st.markdown(html_table, unsafe_allow_html=True)
         else:
-            st.info("No internal clipboard alerts detected yet.")
             st.markdown("""
             <div style="background: #1E1E1E; border: 1px solid #B8960C; border-radius: 8px; padding: 1rem;">
-                <strong style="color: #C9A84C;">🖥️ Internal DLP Active</strong>
+                <strong style="color: #C9A84C;">🖥️ Internal DLP Monitoring Active</strong>
                 <br><small style="color: #A0A0A0;">Monitoring clipboard copy/paste for sensitive patterns</small>
                 <br><small style="color: #A0A0A0;">Patterns: API keys, BVN, NIN, salaries, company names, invoices</small>
+                <br><small style="color: #38a169;">✅ Database connected and ready</small>
+                <br><small style="color: #A0A0A0;">No clipboard alerts detected yet.</small>
             </div>
             """, unsafe_allow_html=True)
-    except:
-        st.info("Internal DLP monitoring active. Database logging will be available after table creation.")
+    except Exception as e:
+        st.markdown(f"""
+        <div style="background: #1E1E1E; border: 1px solid #CC0000; border-radius: 8px; padding: 1rem;">
+            <strong style="color: #CC0000;">🖥️ Internal DLP Monitoring Active</strong>
+            <br><small style="color: #A0A0A0;">Database connection issue: {str(e)}</small>
+            <br><small style="color: #A0A0A0;">Monitoring still active in browser</small>
+        </div>
+        """, unsafe_allow_html=True)
     
     st.divider()
     
