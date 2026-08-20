@@ -203,15 +203,382 @@ def clear_all_cache():
     """Clear all cached data"""
     st.cache_data.clear()
 
+
+
+
 # ============================================================
 # PAGE CONFIG
 # ============================================================
 logo_icon = Path(__file__).parent / "churchgate-logo.jpeg"
-
 if logo_icon.exists():
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon=str(logo_icon), layout="wide", initial_sidebar_state="expanded")
 else:
     st.set_page_config(page_title="Churchgate Group HRIS", page_icon="🏢", layout="wide", initial_sidebar_state="expanded")
+
+# ============================================================
+# COMPLETE HELP CENTER - GLOBAL SEARCH ACROSS ALL MODULES
+# ============================================================
+
+# Massive Help Database - All Modules
+GLOBAL_HELP_DB = {
+    "Dashboard": {
+        "icon": "🏠",
+        "description": "Your personalized overview of KPIs, celebrations, and quick actions.",
+        "faqs": [
+            {"q": "How do I view my KPI progress?", "a": "Scroll down to the 'My KPI Progress' section. Each strategic pillar shows a progress bar with percentage."},
+            {"q": "How do I see team birthdays?", "a": "Check the right column under 'Birthdays This Month'. Today's birthdays appear highlighted."},
+            {"q": "How do I rate a colleague?", "a": "Scroll down to 'Rate a Colleague'. Select their name, add a star rating (1-5), leave a comment, and submit."},
+            {"q": "How do I check my leave balance?", "a": "Your leave balance appears in the top metrics row as 'Leave Days'."},
+            {"q": "How do I see upcoming holidays?", "a": "Check the right sidebar under 'Upcoming Holidays & Events'."},
+            {"q": "How do I see my performance score?", "a": "The first metric card at the top shows your latest appraisal score."},
+            {"q": "How do I upload my profile picture?", "a": "Click on your name/avatar in the top card to go to My Profile, then upload your photo."},
+            {"q": "How do I see team members?", "a": "The second metric card shows your team size. Click the Directory module for full list."},
+        ]
+    },
+    "Employee Management": {
+        "icon": "👥",
+        "description": "Manage employee records, directory, and organizational structure.",
+        "faqs": [
+            {"q": "How do I add a new employee?", "a": "Click the 'Add Employee' tab, fill all required fields (First Name, Last Name, Employee ID, Department, Position), then click 'Add Employee'."},
+            {"q": "How do I edit employee details?", "a": "In the Directory tab, click any employee card to expand. Use 'Quick Edit' to change department, grade, position, status, region, subsidiary, or reports-to."},
+            {"q": "How do I bulk upload employees?", "a": "Go to 'Bulk Upload' tab. Download the CSV template, fill it with employee data, then upload. Smart correction automatically fixes department names."},
+            {"q": "How do I generate login credentials?", "a": "Go to 'Generate Logins' tab. Select employees (single or bulk), set password, click generate. Welcome emails are sent automatically."},
+            {"q": "How do I archive an employee?", "a": "Click the employee in Directory, scroll to 'Employee Actions', click 'Archive'. Archived employees are hidden but can be restored."},
+            {"q": "How do I delete an employee?", "a": "Click the employee, scroll to 'Employee Actions', click 'Delete'. Confirm deletion. This is permanent."},
+            {"q": "How do I search for an employee?", "a": "Use the search bar at the top of Directory. Search by name, ID, email, department, or position."},
+            {"q": "How do I filter by region?", "a": "Use the Region dropdown filter. Options include Abuja, Lagos, and Aba."},
+            {"q": "How do I see the org chart?", "a": "Click the 'Org Chart' tab. You'll see the Sankey diagram showing GMD → COO → HODs → Teams."},
+            {"q": "How do I export employee data?", "a": "Go to 'Export' tab. Download full directory or filter by department."},
+        ]
+    },
+    "Performance & OKRs": {
+        "icon": "📈",
+        "description": "Set KPIs, submit self-assessments, and manage appraisals.",
+        "faqs": [
+            {"q": "How do I set my KPIs?", "a": "Go to 'My KPIs' tab. Select a Strategic Pillar, enter KPI title, target, weight (%), and deadline. Click Save."},
+            {"q": "How many KPIs can I set?", "a": "Unlimited! You can add as many KPIs as needed per pillar."},
+            {"q": "How do I submit my self-assessment?", "a": "Go to 'Self-Assessment' tab. Score each KPI (0-100%), add justifications, upload evidence files, click 'Submit Self-Assessment'."},
+            {"q": "What happens after I submit?", "a": "Your HOD reviews your scores and comments. You'll be notified when the review is complete."},
+            {"q": "How do I accept or reject a review?", "a": "When your HOD completes the review, you'll see 'Accept Review' or 'Reject - Request Re-review' buttons. Choose accordingly."},
+            {"q": "What if I reject the review?", "a": "Your appraisal is escalated to the Appraisal Committee. They review all evidence and make the final decision."},
+            {"q": "How do I download my certificate?", "a": "Once your appraisal is accepted, go to Dashboard tab and click 'Download Certificate (PDF)'."},
+            {"q": "What are the strategic pillars?", "a": "FY 26/27: 1) Occupancy & Revenue Growth, 2) Process Simplification, 3) Asset Reliability & Digitalization, 4) People & Culture."},
+            {"q": "How is my overall score calculated?", "a": "Weighted average of all pillar scores based on their assigned weights."},
+            {"q": "How do I upload evidence files?", "a": "In Self-Assessment, each pillar has a file uploader. Upload PDFs, Word docs, or images as evidence."},
+        ]
+    },
+    "AI Recruitment Agent": {
+        "icon": "🤖",
+        "description": "AI-powered CV screening and candidate tiering.",
+        "faqs": [
+            {"q": "How do I analyze a Job Description?", "a": "Paste the JD text or upload a file. Click 'Analyze JD with AI'. The AI extracts required skills, experience, and responsibilities."},
+            {"q": "How do I bulk process CVs?", "a": "Upload multiple CVs (PDF/DOCX). Click 'Analyze All CVs'. Each CV is scored against the JD."},
+            {"q": "What is Tier 1?", "a": "Tier 1 = 85-100% match = Strong Fit. Recommended for final interview."},
+            {"q": "What is Tier 2?", "a": "Tier 2 = 65-84% match = Good Fit. Keep in view."},
+            {"q": "What is Tier 3?", "a": "Tier 3 = below 65% = Not Recommended."},
+            {"q": "Can I parse LinkedIn profiles?", "a": "Yes! Use the LinkedIn Parse tab. Enter the profile URL."},
+            {"q": "How do I save candidates?", "a": "After analysis, go to 'Save Results' and click 'Save All Candidates'."},
+            {"q": "What file formats are supported?", "a": "PDF, DOCX, and TXT files."},
+            {"q": "How accurate is the AI scoring?", "a": "The AI matches skills, experience, and education against the JD criteria."},
+            {"q": "Can I analyze multiple JDs?", "a": "Yes, analyze one JD at a time. The system remembers the current JD for CV scoring."},
+        ]
+    },
+    "Recruitment Hub": {
+        "icon": "💼",
+        "description": "Post jobs and manage the recruitment pipeline.",
+        "faqs": [
+            {"q": "How do I post a new job?", "a": "Go to 'Post New Job' tab. Fill title, department, location, type, salary, and JD. Click 'Post Job'."},
+            {"q": "How do I view applications?", "a": "Go to 'Applications' tab to see all candidates with status and AI scores."},
+            {"q": "What is the recruitment pipeline?", "a": "Applied → Screened → Interviewed → Offered → Hired."},
+            {"q": "How do I track a candidate?", "a": "Each candidate has a status badge. Use the pipeline view to see stages."},
+        ]
+    },
+    "Staff Confirmation": {
+        "icon": "✅",
+        "description": "Manage probation reviews and employee confirmation.",
+        "faqs": [
+            {"q": "Who appears in the confirmation review?", "a": "Employees with 'Probation' status whose period ends within 30 days or is overdue."},
+            {"q": "How do I complete the decision form?", "a": "Select the employee, rate 10 performance criteria (0-10 each), add strengths/weaknesses, submit."},
+            {"q": "What happens after HOD submits?", "a": "COO reviews and approves. HR processes the confirmation letter."},
+            {"q": "What if I recommend extension?", "a": "Employee is notified, probation extends 1-3 months, reviewed again."},
+        ]
+    },
+    "Chat & Communications": {
+        "icon": "💬",
+        "description": "Team chat, announcements, and AI assistant.",
+        "faqs": [
+            {"q": "How do I chat with a colleague?", "a": "Go to Team Chat. Click the + button to select from the Directory."},
+            {"q": "Can I use emojis?", "a": "Yes! Click the smiley face icon in the chat input."},
+            {"q": "What is the AI Assistant?", "a": "A chatbot that answers HR questions using real employee data (leave, KPIs, training)."},
+            {"q": "How do I see announcements?", "a": "Click the Announcements tab in Chat & Communications."},
+        ]
+    },
+    "Training & Development": {
+        "icon": "🎓",
+        "description": "Access 150+ courses from world-class institutions.",
+        "faqs": [
+            {"q": "How do I enroll in a course?", "a": "Browse the catalog, click 'Enroll Now' on any course."},
+            {"q": "Are courses free?", "a": "Many are free (Harvard CS50, Google certificates, Udemy). Some have fees."},
+            {"q": "How do I track progress?", "a": "Go to 'My Courses' tab to see enrolled courses and status."},
+            {"q": "What institutions are available?", "a": "Harvard, IBM, Google, Yale, Stanford, Wharton, Udemy, LinkedIn Learning, and more."},
+        ]
+    },
+    "My Profile": {
+        "icon": "👤",
+        "description": "Manage your personal information, skills, and documents.",
+        "faqs": [
+            {"q": "How do I upload a profile photo?", "a": "Go to My Profile → Upload Photo. Select your image."},
+            {"q": "How do I change my password?", "a": "Go to Security tab. Enter current password and new password."},
+            {"q": "How do I add skills?", "a": "Go to Skills tab. Add your technical/professional skills."},
+            {"q": "How do I upload documents?", "a": "Go to Documents tab. Upload personal docs and certificates."},
+            {"q": "How do I reach 100% profile completeness?", "a": "Fill all basic fields + 5 skills + 5 certifications + 2 personal docs + 2 cert docs."},
+        ]
+    },
+    "Leave Requests": {
+        "icon": "🏖️",
+        "description": "Apply for leave and track your requests.",
+        "faqs": [
+            {"q": "How do I apply for leave?", "a": "Go to Requests Hub → Leave tab. Select type, dates, reason. Submit."},
+            {"q": "How do I check my balance?", "a": "Your leave balance shows on the Employee Dashboard."},
+            {"q": "Who approves my leave?", "a": "Your line manager or HOD. You'll be notified of the decision."},
+        ]
+    },
+}
+
+
+@st.dialog("❓ Help Center — Churchgate Group HRIS", width="large")
+def show_help_dialog():
+    """GLOBAL HELP CENTER with search across ALL modules"""
+    
+    # ============================================================
+    # DIALOG DARK THEME CSS - COMPLETE
+    # ============================================================
+    st.markdown("""
+    <style>
+        /* Dialog container - dark background */
+        [data-testid="stDialog"] {
+            background: #1E1E1E !important;
+            border: 2px solid #B8960C !important;
+            border-radius: 12px !important;
+            box-shadow: 0 8px 32px rgba(184, 150, 12, 0.3) !important;
+        }
+        
+        /* Dialog title bar - GOLD */
+        [data-testid="stDialog"] [data-testid="stDialogHeader"] {
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d) !important;
+            border-bottom: 2px solid #B8960C !important;
+            padding: 1rem 1.5rem !important;
+        }
+        
+        /* Dialog title text - GOLD BOLD */
+        [data-testid="stDialog"] [data-testid="stDialogHeader"] h1,
+        [data-testid="stDialog"] [data-testid="stDialogHeader"] h2,
+        [data-testid="stDialog"] [data-testid="stDialogHeader"] h3,
+        [data-testid="stDialog"] [data-testid="stDialogHeader"] p {
+            color: #C9A84C !important;
+            font-family: 'Georgia', serif !important;
+            font-weight: 800 !important;
+            font-size: 1.2rem !important;
+        }
+        
+        /* Close button - GOLD CIRCLE with GOLD X */
+        [data-testid="stDialog"] button[aria-label="Close"],
+        [data-testid="stDialog"] button[data-testid="stDialogCloseButton"] {
+            background: rgba(184, 150, 12, 0.15) !important;
+            border: 2px solid #B8960C !important;
+            border-radius: 50% !important;
+            width: 35px !important;
+            height: 35px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            transition: all 0.2s !important;
+        }
+        
+        /* Close button X icon - GOLD */
+        [data-testid="stDialog"] button[aria-label="Close"] svg,
+        [data-testid="stDialog"] button[data-testid="stDialogCloseButton"] svg {
+            fill: #C9A84C !important;
+            color: #C9A84C !important;
+            stroke: #C9A84C !important;
+            width: 18px !important;
+            height: 18px !important;
+        }
+        
+        /* Close button hover - BRIGHTER GOLD */
+        [data-testid="stDialog"] button[aria-label="Close"]:hover,
+        [data-testid="stDialog"] button[data-testid="stDialogCloseButton"]:hover {
+            background: rgba(184, 150, 12, 0.3) !important;
+            border-color: #E8D18C !important;
+        }
+        
+        [data-testid="stDialog"] button[aria-label="Close"]:hover svg,
+        [data-testid="stDialog"] button[data-testid="stDialogCloseButton"]:hover svg {
+            fill: #E8D18C !important;
+            color: #E8D18C !important;
+            stroke: #E8D18C !important;
+        }
+        
+        /* Dialog headers */
+        [data-testid="stDialog"] h1,
+        [data-testid="stDialog"] h2,
+        [data-testid="stDialog"] h3 {
+            color: #C9A84C !important;
+            font-family: 'Georgia', serif !important;
+        }
+        
+        /* Dialog text */
+        [data-testid="stDialog"] p,
+        [data-testid="stDialog"] span,
+        [data-testid="stDialog"] div,
+        [data-testid="stDialog"] label {
+            color: #E0E0E0 !important;
+        }
+        
+        /* Dialog expanders */
+        [data-testid="stDialog"] [data-testid="stExpander"] details {
+            background: #2A2A2A !important;
+            border: 1px solid #3A3A3A !important;
+        }
+        [data-testid="stDialog"] [data-testid="stExpander"] details summary {
+            background: #2A2A2A !important;
+            border-left: 4px solid #B8960C !important;
+            color: #C9A84C !important;
+        }
+        [data-testid="stDialog"] [data-testid="stExpander"] details summary * {
+            color: #C9A84C !important;
+        }
+        [data-testid="stDialog"] [data-testid="stExpander"] details div {
+            color: #E0E0E0 !important;
+        }
+        
+        /* Dialog inputs */
+        [data-testid="stDialog"] input,
+        [data-testid="stDialog"] textarea,
+        [data-testid="stDialog"] select {
+            background: #2A2A2A !important;
+            color: #E0E0E0 !important;
+            border: 1px solid #B8960C !important;
+            border-radius: 6px !important;
+        }
+        
+        /* Dialog selectbox */
+        [data-testid="stDialog"] [data-testid="stSelectbox"] label {
+            color: #C9A84C !important;
+        }
+        [data-testid="stDialog"] [data-testid="stSelectbox"] [data-baseweb="select"] {
+            background: #2A2A2A !important;
+            border: 1px solid #B8960C !important;
+        }
+        [data-testid="stDialog"] [data-testid="stSelectbox"] [data-baseweb="select"] * {
+            color: #E0E0E0 !important;
+        }
+        
+        /* Dialog info box */
+        [data-testid="stDialog"] .stInfo {
+            background: rgba(184, 150, 12, 0.1) !important;
+            border: 1px solid rgba(184, 150, 12, 0.3) !important;
+            color: #C9A84C !important;
+        }
+        
+        /* Dialog warning */
+        [data-testid="stDialog"] .stWarning {
+            background: rgba(230, 168, 23, 0.1) !important;
+            border: 1px solid rgba(230, 168, 23, 0.3) !important;
+            color: #E6A817 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    current_page = st.session_state.get('current_page', 'Dashboard')
+    
+    # Map current page to help key
+    page_to_help = {
+        "Dashboard": "Dashboard",
+        "🏠 Employee Dashboard": "Dashboard",
+        "📊 Executive Dashboard": "Dashboard",
+        "👥 Employee Management": "Employee Management",
+        "📈 Performance & OKRs": "Performance & OKRs",
+        "📈 My Performance & OKRs": "Performance & OKRs",
+        "🤖 AI Recruitment Agent": "AI Recruitment Agent",
+        "💼 Recruitment Hub": "Recruitment Hub",
+        "✅ Staff Confirmation": "Staff Confirmation",
+        "🔄 Requests Hub": "Leave Requests",
+        "🎓 Training & Development": "Training & Development",
+        "💬 Chat & Communications": "Chat & Communications",
+        "👤 My Profile": "My Profile",
+    }
+    
+    current_help_key = page_to_help.get(current_page, "Dashboard")
+    current_help = GLOBAL_HELP_DB.get(current_help_key, GLOBAL_HELP_DB["Dashboard"])
+    
+    # Header
+    st.markdown(f"### {current_help['icon']} Help for: **{current_help_key}**")
+    st.markdown(f"*{current_help['description']}*")
+    st.markdown("---")
+    
+    # GLOBAL SEARCH
+    search_query = st.text_input("🔍 Search ALL help topics", placeholder="e.g., 'leave', 'KPI', 'upload', 'password'...", key="global_help_search")
+    
+    if search_query:
+        # SEARCH ACROSS ALL MODULES
+        st.markdown(f"### 🔍 Search Results for \"{search_query}\"")
+        st.markdown("---")
+        
+        results_found = 0
+        for module_name, module_data in GLOBAL_HELP_DB.items():
+            matching_faqs = []
+            for faq in module_data["faqs"]:
+                if (search_query.lower() in faq["q"].lower() or 
+                    search_query.lower() in faq["a"].lower() or
+                    search_query.lower() in module_name.lower()):
+                    matching_faqs.append(faq)
+            
+            if matching_faqs:
+                results_found += len(matching_faqs)
+                st.markdown(f"### {module_data['icon']} {module_name}")
+                for faq in matching_faqs:
+                    with st.expander(f"❓ {faq['q']}", expanded=False):
+                        st.markdown(faq["a"])
+                st.markdown("---")
+        
+        if results_found == 0:
+            st.warning("No results found. Try different keywords like 'leave', 'KPI', 'upload', 'password', 'employee', 'appraisal', 'chat', etc.")
+    else:
+        # Show current page FAQs
+        st.markdown(f"### ❓ Frequently Asked Questions — {current_help_key}")
+        for faq in current_help["faqs"]:
+            with st.expander(f"❓ {faq['q']}", expanded=False):
+                st.markdown(faq["a"])
+        
+        st.markdown("---")
+        st.markdown("### 📋 Browse Other Topics")
+        
+        other_modules = [(name, data) for name, data in GLOBAL_HELP_DB.items() if name != current_help_key]
+        
+        selected_module = st.selectbox(
+            "📋 Browse Other Topics",
+            ["Select a module..."] + [f"{data['icon']} {name}" for name, data in other_modules],
+            key="help_browse_select"
+        )
+        
+        if selected_module != "Select a module...":
+            selected_name = selected_module.split(" ", 1)[1] if " " in selected_module else selected_module
+            selected_data = GLOBAL_HELP_DB.get(selected_name)
+            if selected_data:
+                st.markdown("---")
+                st.markdown(f"### {selected_data['icon']} Help for: **{selected_name}**")
+                st.markdown(f"*{selected_data['description']}*")
+                st.markdown("---")
+                for faq in selected_data["faqs"]:
+                    with st.expander(f"❓ {faq['q']}", expanded=False):
+                        st.markdown(faq["a"])
+    
+    st.markdown("---")
+    st.info("📧 Still need help? Contact **HR Support**: hris@churchgate.com | 📞 0702-662 6248CHURCHGATE")
+
+
 
 # ============================================================
 # INITIALIZE ALL SESSION STATE VARIABLES
@@ -1881,6 +2248,9 @@ console.log('✅ Churchgate Internal DLP Clipboard Monitor ACTIVE');
 
 
 
+
+
+
 # ============================================================
 # SIDEBAR - WTC PREMIUM GOLD DARK THEME
 # ============================================================
@@ -3121,6 +3491,8 @@ def sidebar_navigation():
             st.success("✅ Data refreshed!")
             time.sleep(0.5)
             st.rerun()
+        if st.button("❓ Help Center", use_container_width=True, key="help_center_btn"):
+            show_help_dialog()
         if st.session_state.user:
             if st.button("🚪 Sign Out", use_container_width=True):
                 st.session_state.user = None
@@ -24161,6 +24533,10 @@ def main():
     if st.session_state.user is None:
         login_section()
     else:
+        # Help button at top of main content
+        if st.button("❓ Help Center", key="main_help_center_btn", help="Open Help Center"):
+            show_help_dialog()
+        
         page = sidebar_navigation()
         if 'navigate_to' in st.session_state:
             page = st.session_state.pop('navigate_to')
@@ -24193,8 +24569,11 @@ def main():
             "🛡️ AI DLP Monitor": ai_dlp_monitor_dashboard,
             "👤 My Profile": my_profile,
         }
+        
         page_func = page_routes.get(page, employee_dashboard)
         page_func()
+        
+        
 
 # Show pending browser notifications
     if st.session_state.get('pending_notifications'):
