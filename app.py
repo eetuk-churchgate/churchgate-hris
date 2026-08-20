@@ -2246,6 +2246,79 @@ console.log('✅ Churchgate Internal DLP Clipboard Monitor ACTIVE');
 """, unsafe_allow_html=True)
 
 
+st.markdown("""
+<script>
+// ===== CHURCHGATE INTERNAL DLP - CLIPBOARD MONITORING =====
+
+const SENSITIVE_PATTERNS = [
+    {name: 'Churchgate', regex: /Churchgate/gi},
+    {name: 'World Trade Center', regex: /World Trade Center/gi},
+    {name: 'First Continental', regex: /First Continental/gi},
+    {name: 'Salary', regex: /salary/gi},
+    {name: 'Naira Amount', regex: /₦\d{1,3}(,\d{3})*(\.\d+)?/g},
+    {name: 'Confidential', regex: /confidential/gi},
+    {name: 'Invoice', regex: /invoice/gi},
+    {name: 'Password', regex: /password/gi},
+    {name: 'API Key', regex: /api[_-]?key/gi},
+    {name: 'BVN', regex: /\b\d{11}\b/g},
+    {name: 'NIN', regex: /\b\d{11}\b/g}
+];
+
+function detectSensitiveContent(text) {
+    let detected = [];
+    SENSITIVE_PATTERNS.forEach(pattern => {
+        if (pattern.regex.test(text)) {
+            detected.push(pattern.name);
+        }
+    });
+    return detected;
+}
+
+function showDLPWarning(detectedPatterns, action) {
+    const warningDiv = document.createElement('div');
+    warningDiv.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 99999;
+        background: linear-gradient(135deg, #CC0000, #8B0000);
+        color: white; padding: 15px 20px; border-radius: 8px;
+        font-family: Arial, sans-serif; font-size: 14px;
+        box-shadow: 0 4px 20px rgba(204,0,0,0.5);
+        max-width: 400px;
+    `;
+    warningDiv.innerHTML = `
+        <strong>⚠️ CHURCHGATE DLP WARNING</strong><br>
+        <small>Sensitive content detected during ${action}.</small><br>
+        <small>Patterns: ${detectedPatterns.join(', ')}</small><br>
+        <small style="font-size: 10px;">This action has been logged and reported to Security.</small>
+    `;
+    document.body.appendChild(warningDiv);
+    setTimeout(() => warningDiv.remove(), 5000);
+}
+
+document.addEventListener('copy', function(e) {
+    const text = window.getSelection()?.toString() || '';
+    if (text.length > 5) {
+        const detected = detectSensitiveContent(text);
+        if (detected.length > 0) {
+            showDLPWarning(detected, 'copying');
+            console.log('🚨 DLP ALERT - COPY:', detected);
+        }
+    }
+});
+
+document.addEventListener('paste', function(e) {
+    const text = e.clipboardData?.getData('text') || '';
+    if (text.length > 5) {
+        const detected = detectSensitiveContent(text);
+        if (detected.length > 0) {
+            showDLPWarning(detected, 'pasting');
+            console.log('🚨 DLP ALERT - PASTE:', detected);
+        }
+    }
+});
+
+console.log('✅ Churchgate Internal DLP Clipboard Monitor ACTIVE');
+</script>
+""", unsafe_allow_html=True)
 
 
 
@@ -23370,7 +23443,6 @@ def ai_dlp_monitor_dashboard():
     st.markdown("### 🖥️ Internal DLP Alerts (Clipboard Monitoring)")
     
     try:
-        from utils.database import db
         internal_alerts = db._get("dlp_internal_alerts")
         
         if internal_alerts and len(internal_alerts) > 0:
