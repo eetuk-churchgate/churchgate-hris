@@ -3893,7 +3893,7 @@ def executive_dashboard():
         emp_df = db.get_all_employees()
         if not emp_df.empty:
             total_employees = len(emp_df)
-            active_employees = len(emp_df[emp_df['status'] == 'Active'])
+            active_employees = len(emp_df[emp_df['status'] == 'Confirmed'])
             departments = len(emp_df['department'].unique())
             if 'gender' in emp_df.columns:
                 male_count = len(emp_df[emp_df['gender'].str.lower() == 'male'])
@@ -4470,7 +4470,7 @@ def employee_management():
         st.subheader("📋 Employee Directory")
         
         total_emp = len(employees_df)
-        active_emp = len(employees_df[employees_df['status'] == 'Active']) if not employees_df.empty else 0
+        confirmed_emp = len(employees_df[employees_df['status'] == 'Confirmed']) if not employees_df.empty else 0
         new_this_month = 0
         try:
             current_month = datetime.now().month
@@ -4492,7 +4492,7 @@ def employee_management():
         
         c1, c2, c3, c4 = st.columns(4)
         with c1: st.metric("👥 Total", total_emp)
-        with c2: st.metric("✅ Active", active_emp)
+        with c2: st.metric("✅ Confirmed", confirmed_emp)
         with c3: st.metric("🏢 Departments", len(employees_df['department'].unique()) if not employees_df.empty else 0)
         with c4: st.metric("🆕 New This Month", new_this_month)
         
@@ -4670,8 +4670,8 @@ def employee_management():
             
             for _, emp in filtered_df.iloc[start_idx:end_idx].iterrows():
                 initials = generate_initials(f"{emp['first_name']} {emp['last_name']}")
-                status_color = "#38a169" if emp.get('status') == 'Active' else "#d69e2e" if emp.get('status') == 'On Leave' else "#CC0000"
-                status_bg = "#e6f9e6" if emp.get('status') == 'Active' else "#fff8e6" if emp.get('status') == 'On Leave' else "#ffe6e6"
+                status_color = "#38a169" if emp.get('status') == 'Confirmed' else "#d69e2e" if emp.get('status') == 'On Leave' else "#CC0000"
+                status_bg = "#e6f9e6" if emp.get('status') == 'Confirmed' else "#fff8e6" if emp.get('status') == 'On Leave' else "#ffe6e6"
                 border_color = dept_colors.get(emp.get('department', ''), '#CC0000')
                 
                 with st.expander(f"👤 {emp['first_name']} {emp['last_name']} • {emp.get('position', 'N/A')}", expanded=False):
@@ -4684,7 +4684,7 @@ def employee_management():
                         reports_to_str = f" • 👔 Reports to: {emp.get('reports_to', 'N/A')}" if emp.get('reports_to') else ""
                         st.markdown(f"""<div style="line-height:1.6;"><strong style="font-size:1.1rem;">{emp['first_name']} {emp['last_name']}</strong><br><span style="color:#666;">💼 {emp.get('position', 'N/A')}</span><br><span style="color:#888;font-size:0.85rem;">🏢 {emp.get('department', 'N/A')}{region_str}{subsidiary_str}{reports_to_str} • 🆔 {emp.get('employee_id', 'N/A')}</span></div>""", unsafe_allow_html=True)
                     with col3:
-                        st.markdown(f"""<div style="text-align:right;"><span style="background:{status_bg};color:{status_color};padding:0.3rem 0.8rem;border-radius:20px;font-size:0.8rem;font-weight:600;border:1px solid {status_color};">{emp.get('status', 'Active')}</span><br><small style="color:#888;">📅 {emp.get('join_date', 'N/A')}</small></div>""", unsafe_allow_html=True)
+                        st.markdown(f"""<div style="text-align:right;"><span style="background:{status_bg};color:{status_color};padding:0.3rem 0.8rem;border-radius:20px;font-size:0.8rem;font-weight:600;border:1px solid {status_color};">{emp.get('status', 'Confirmed')}</span><br><small style="color:#888;">📅 {emp.get('join_date', 'N/A')}</small></div>""", unsafe_allow_html=True)
                     
                     st.markdown("---")
                     c1, c2, c3, c4 = st.columns(4)
@@ -4741,8 +4741,8 @@ def employee_management():
                             with ec2:
                                 new_position = st.text_input("Position", value=str(emp.get('position', '')), key=f"pos_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
-                                current_status = str(emp.get('status', 'Active'))
-                                status_options = ['Active', 'On Leave', 'Probation', 'Terminated', 'Archived', 'Inactive']
+                                current_status = str(emp.get('status', 'Confirmed'))
+                                status_options = ['Confirmed', 'On Leave', 'Probation', 'Terminated', 'Archived', 'Inactive']
                                 status_idx = status_options.index(current_status) if current_status in status_options else 0
                                 new_status = st.selectbox("Status", status_options, index=status_idx, key=f"sts_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -4810,7 +4810,7 @@ def employee_management():
                         with action_col2:
                             if current_status == 'Archived':
                                 if st.button("🔄 Restore", key=f"restore_{emp['employee_id']}_{st.session_state.dir_page}", use_container_width=True):
-                                    db._patch("employees", {"status": "Active"}, {"employee_id": emp['employee_id']})
+                                    db._patch("employees", {"status": "Confirmed"}, {"employee_id": emp['employee_id']})
                                     st.success(f"✅ Restored!")
                                     st.cache_data.clear()
                             else:
@@ -4875,7 +4875,7 @@ def employee_management():
                 join_date = st.date_input("Join Date", min_value=date(1970, 1, 1), max_value=date.today())
                 date_of_birth = st.date_input("Date of Birth *", min_value=date(1920, 1, 1), max_value=date(2026, 12, 31), value=date(1990, 1, 1))
                 system_role = st.selectbox("System Role *", ['Admin', 'HOD', 'Manager', 'Team Lead', 'Team Member'], index=4)
-                status = st.selectbox("Status", ['Active', 'Probation'])
+                status = st.selectbox("Status", ['Confirmed', 'Probation'])
             
             if st.form_submit_button("✅ Add Employee", use_container_width=True):
                 if first_name and last_name and employee_id and department and position:
@@ -17337,7 +17337,7 @@ def reports_analytics():
         st.subheader("👥 Workforce Analytics")
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Total", total_emp)
-        c2.metric("Active", active_emp)
+        c2.metric("Confirmed", confirmed_emp)
         c3.metric("Departments", departments)
         c4.metric("M:F Ratio", f"{male_count}:{female_count}" if female_count > 0 else "N/A")
         st.markdown("---")
@@ -20953,7 +20953,7 @@ def my_profile():
     emp_grade = emp_data.get('grade', 'N/A') if emp_data else 'N/A'
     emp_join = emp_data.get('join_date', 'N/A') if emp_data else 'N/A'
     emp_leave = int(emp_data.get('leave_balance', 20)) if emp_data else 20
-    emp_status = emp_data.get('status', 'Active') if emp_data else 'Active'
+    emp_status = emp_data.get('status', 'Confirmed') if emp_data else 'Confirmed'
     emp_region = emp_data.get('region', 'Abuja') if emp_data else 'Abuja'
     emp_gender = emp_data.get('gender', 'Male') if emp_data else 'Male'
     
@@ -23385,7 +23385,7 @@ def advanced_analytics():
         emp_df = db.get_all_employees()
         total_emp = len(emp_df) if not emp_df.empty else 0
         dept_count = len(emp_df['department'].unique()) if not emp_df.empty else 0
-        active_emp = len(emp_df[emp_df['status'] == 'Active']) if not emp_df.empty else 0
+        confirmed_emp = len(emp_df[emp_df['status'] == 'Confirmed']) if not emp_df.empty else 0
     except:
         emp_df = pd.DataFrame()
         total_emp = 0
