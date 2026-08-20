@@ -71,9 +71,10 @@ class BackgroundMonitorService:
     def log_internal_alert(self, alert_data):
         """Log internal DLP clipboard alert to database"""
         try:
-            from utils.database import db
+            from utils.database import DatabaseManager
+            db_instance = DatabaseManager()
             
-            db._post("dlp_internal_alerts", {
+            db_instance._post("dlp_internal_alerts", {
                 "alert_type": alert_data.get('action', 'unknown'),
                 "patterns_detected": alert_data.get('patterns', ''),
                 "text_snippet": alert_data.get('textSnippet', '')[:500],
