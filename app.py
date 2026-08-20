@@ -4504,81 +4504,122 @@ def employee_management():
         current_day = today.day
         current_month = today.month
         
-        # Today's celebrations
-        todays_birthdays = [b for b in [
-            ("Denis Ugoh", 1), ("Barry Maigida", 2), ("Benjamin Iwan", 4), ("Chukwunonye Ibeabuchi", 5),
-            ("Andrew Anthony", 6), ("Ikechi Okezie", 7), ("Emmanuel Olagbaju", 8), ("Emmanuel Aiyedebinu", 9),
-            ("George Adaramola", 10), ("Vishwajeet Kamble", 12), ("Aliyu Garba", 18), ("Shegun Orhuamen", 19),
-            ("Benjamin Okhueleigbe", 20), ("Kazeem Tijani", 23), ("Olatunde Obe", 24), ("Geraldine Ejimonye", 25),
-            ("Anand Bora", 28), ("Yemisi Kolawole", 29)
-        ] if b[1] == current_day]
+        # ============ LOAD CELEBRATIONS FROM DATABASE ============
+        todays_birthdays = []
+        todays_anniversaries = []
+        month_birthdays = []
+        month_anniversaries = []
         
-        # Today's Celebrations
+        try:
+            for _, emp in employees_df.iterrows():
+                emp_name = f"{emp['first_name']} {emp['last_name']}".strip()
+                if not emp_name:
+                    continue
+                
+                # Check birthdays
+                dob = emp.get('date_of_birth')
+                if dob and str(dob) != 'None' and str(dob) != 'nan':
+                    try:
+                        dob_date = pd.to_datetime(dob)
+                        if dob_date.month == current_month and dob_date.day == current_day:
+                            todays_birthdays.append(emp_name)
+                        elif dob_date.month == current_month:
+                            month_birthdays.append({'name': emp_name, 'day': dob_date.day})
+                    except:
+                        pass
+                
+                # Check work anniversaries
+                jd = emp.get('join_date')
+                if jd and str(jd) != 'None' and str(jd) != 'nan':
+                    try:
+                        jd_date = pd.to_datetime(jd)
+                        years = today.year - jd_date.year
+                        if years > 0 and jd_date.month == current_month and jd_date.day == current_day:
+                            todays_anniversaries.append({'name': emp_name, 'years': years})
+                        elif years > 0 and jd_date.month == current_month:
+                            month_anniversaries.append({'name': emp_name, 'years': years})
+                    except:
+                        pass
+        except:
+            pass
+        
+        # Today's Birthday Celebrations
         if todays_birthdays:
             st.markdown(f"""
-            <div style="background:linear-gradient(135deg, #1E1E1E, #2D2D2D);padding:1rem;border-radius:12px;border:1px solid rgba(184, 150, 12, 0.4);border-left:4px solid #CC0000;margin-bottom:0.5rem;">
+            <div style="background:linear-gradient(135deg, #fff5f5, #ffe6e6);padding:1rem;border-radius:12px;border-left:4px solid #CC0000;margin-bottom:0.5rem;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <span style="font-size:2rem;">🎂</span>
                     <div>
-                        <strong style="color:#C9A84C;">Happy Birthday Today!</strong><br>
-                        <span style="color:#F0E6D3;">{', '.join([str(b) for b in todays_birthdays])}</span>
+                        <strong style="color:#CC0000;">Happy Birthday Today!</strong><br>
+                        <span>{', '.join(todays_birthdays)}</span>
                     </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
         
-        # This Month's Celebrations - Clean collapsible view
-        with st.expander(f"🎉 This Month's Celebrations ({current_month})", expanded=False):
+        # Today's Work Anniversaries
+        if todays_anniversaries:
+            anniv_text = ', '.join([f"{a['name']} ({a['years']} yrs)" for a in todays_anniversaries])
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg, #fffef5, #f5f0e0);padding:1rem;border-radius:12px;border-left:4px solid #D4AF37;margin-bottom:0.5rem;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:2rem;">⭐</span>
+                    <div>
+                        <strong style="color:#D4AF37;">Work Anniversary Today!</strong><br>
+                        <span>{anniv_text}</span>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # This Month's Celebrations - FROM DATABASE
+        with st.expander(f"🎉 This Month's Celebrations ({today.strftime('%B')})", expanded=False):
             col1, col2 = st.columns(2)
             
             with col1:
                 st.markdown("### 🎂 Birthdays This Month")
-                birthdays_by_week = {}
-                for name, day in [
-                    ("Denis Ugoh", 1), ("Barry Maigida", 2), ("Benjamin Iwan", 4), ("Chukwunonye Ibeabuchi", 5),
-                    ("Andrew Anthony", 6), ("Ikechi Okezie", 7), ("Emmanuel Olagbaju", 8), ("Emmanuel Aiyedebinu", 9),
-                    ("George Adaramola", 10), ("Vishwajeet Kamble", 12), ("Aliyu Garba", 18), ("Shegun Orhuamen", 19),
-                    ("Benjamin Okhueleigbe", 20), ("Kazeem Tijani", 23), ("Olatunde Obe", 24), ("Geraldine Ejimonye", 25),
-                    ("Anand Bora", 28), ("Yemisi Kolawole", 29)
-                ]:
-                    if day <= 7: week = "Week 1 (1-7)"
-                    elif day <= 14: week = "Week 2 (8-14)"
-                    elif day <= 21: week = "Week 3 (15-21)"
-                    else: week = "Week 4 (22-31)"
+                if month_birthdays:
+                    birthdays_by_week = {}
+                    for b in sorted(month_birthdays, key=lambda x: x['day']):
+                        day = b['day']
+                        if day <= 7: week = "Week 1 (1-7)"
+                        elif day <= 14: week = "Week 2 (8-14)"
+                        elif day <= 21: week = "Week 3 (15-21)"
+                        else: week = "Week 4 (22-31)"
+                        
+                        if week not in birthdays_by_week:
+                            birthdays_by_week[week] = []
+                        is_today = " 🎈" if day == current_day else ""
+                        birthdays_by_week[week].append(f"{b['name']} ({day}{is_today})")
                     
-                    if week not in birthdays_by_week: birthdays_by_week[week] = []
-                    is_today = " 🎈" if day == current_day else ""
-                    birthdays_by_week[week].append(f"{name} ({day}{is_today})")
-                
-                for week, names in birthdays_by_week.items():
-                    st.markdown(f"**{week}**")
-                    for name in names:
-                        st.markdown(f"• {name}")
+                    for week, names in birthdays_by_week.items():
+                        st.markdown(f"**{week}**")
+                        for name in names:
+                            st.markdown(f"• {name}")
+                else:
+                    st.markdown("*No birthdays this month*")
             
             with col2:
                 st.markdown("### ⭐ Work Anniversaries")
-                anniversaries_by_years = {}
-                for name, years in [
-                    ("Sanjeev Purwar", 29), ("John Peter", 25), ("Geraldine Ejimonye", 17), ("Boniface Ali", 17),
-                    ("Robert Akinniyi", 17), ("Safdar Hasnain", 12), ("Charles Onwukwe", 10), ("Magesh Gopal", 10),
-                    ("Partab Lalchandani", 10), ("Bamidele Mayaki", 10), ("Nchor Agba", 10), ("Chisom Nwachinemere", 10),
-                    ("Dinesh Vadher", 7), ("Olatunde Obe", 6), ("Kefas Mathew", 5), ("Ujunwa Onyemechalu", 3),
-                    ("Kayode Oniyide", 3), ("Martins Ezeh", 3), ("Thankgod Ochayi", 3), ("Gabriel Jeremiah", 3),
-                    ("Tabitha Mallo", 3), ("Dandy Shemang", 3), ("Alfred Obot", 3), ("Edwin Adobi", 3),
-                    ("Shedrack Augustine", 3), ("Soji Alademehin", 2), ("Raphael Ayeomoni", 1), ("David Oyinbo", 1)
-                ]:
-                    if years >= 20: milestone = "🏆 20+ Years"
-                    elif years >= 10: milestone = "🌟 10-19 Years"
-                    elif years >= 5: milestone = "👔 5-9 Years"
-                    else: milestone = "🌱 1-4 Years"
+                if month_anniversaries:
+                    anniversaries_by_years = {}
+                    for a in month_anniversaries:
+                        years = a['years']
+                        if years >= 20: milestone = "🏆 20+ Years"
+                        elif years >= 10: milestone = "🌟 10-19 Years"
+                        elif years >= 5: milestone = "👔 5-9 Years"
+                        else: milestone = "🌱 1-4 Years"
+                        
+                        if milestone not in anniversaries_by_years:
+                            anniversaries_by_years[milestone] = []
+                        anniversaries_by_years[milestone].append(f"{a['name']} ({years} yrs)")
                     
-                    if milestone not in anniversaries_by_years: anniversaries_by_years[milestone] = []
-                    anniversaries_by_years[milestone].append(f"{name} ({years} yrs)")
-                
-                for milestone, names in anniversaries_by_years.items():
-                    st.markdown(f"**{milestone}**")
-                    for name in names:
-                        st.markdown(f"• {name}")
+                    for milestone, names in anniversaries_by_years.items():
+                        st.markdown(f"**{milestone}**")
+                        for name in names:
+                            st.markdown(f"• {name}")
+                else:
+                    st.markdown("*No work anniversaries this month*")
         
         st.markdown("---")
         
@@ -17734,7 +17775,7 @@ def notifications_page():
                 try:
                     dob_date = pd.to_datetime(dob)
                     if dob_date.month == now.month:
-                        if dob_date.day == now.day:
+                        if dob_date.month == now.month and dob_date.day == now.day:
                             notifications.append({
                                 'id': f"birthday_{emp['employee_id']}",
                                 'title': '🎂 Birthday Today!',
@@ -17745,11 +17786,11 @@ def notifications_page():
                                 'action': 'send_wishes',
                                 'action_label': '🎉 Send Wishes'
                             })
-                        elif 1 <= (dob_date.day - now.day) <= 7:
+                        elif dob_date.month == now.month and 1 <= (dob_date.day - now.day) <= 7:
                             notifications.append({
                                 'id': f"birthday_upcoming_{emp['employee_id']}",
                                 'title': '🎂 Upcoming Birthday',
-                                'message': f"{emp['first_name']} {emp['last_name']}'s birthday is in {dob_date.day - now.day} days (May {dob_date.day})",
+                                'message': f"{emp['first_name']} {emp['last_name']}'s birthday is in {dob_date.day - now.day} days ({dob_date.strftime('%B')} {dob_date.day})",
                                 'time': f'In {dob_date.day - now.day} days',
                                 'category': 'birthday',
                                 'priority': 'low',
