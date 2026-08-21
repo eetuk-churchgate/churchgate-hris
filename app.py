@@ -13999,9 +13999,27 @@ APPLY NOW: {public_url}
                             admin_display = req.get('admin_name', '') or 'Pending'
                             coo_display = req.get('coo_name', '') or 'Pending'
                             
-                            st.markdown(f"**👔 Line Manager:** {lm_display}")
-                            st.markdown(f"**🔍 Admin:** {admin_display}")
-                            st.markdown(f"**🏢 COO:** {coo_display}")
+                            lm_comment_display = req.get('lm_comment', '')
+                            admin_comment_display = req.get('admin_comment', '')
+                            coo_comment_display = req.get('coo_comment', '')
+                            
+                            if lm_display != 'Pending' and lm_comment_display:
+                                st.markdown(f"**👔 Line Manager:** {lm_display}")
+                                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"{lm_comment_display}\"*")
+                            else:
+                                st.markdown(f"**👔 Line Manager:** {lm_display}")
+                            
+                            if admin_display != 'Pending' and admin_comment_display:
+                                st.markdown(f"**🔍 Admin:** {admin_display}")
+                                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"{admin_comment_display}\"*")
+                            else:
+                                st.markdown(f"**🔍 Admin:** {admin_display}")
+                            
+                            if coo_display != 'Pending' and coo_comment_display:
+                                st.markdown(f"**🏢 COO:** {coo_display}")
+                                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"{coo_comment_display}\"*")
+                            else:
+                                st.markdown(f"**🏢 COO:** {coo_display}")
                             
                             # ===== LM APPROVAL =====
                             if req['status'] == 'Pending LM Approval' and is_manager:
@@ -14333,7 +14351,7 @@ APPLY NOW: {public_url}
                         <div style="background: rgba(56, 161, 105, 0.1); border: 1px solid #38a169; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
                             <strong style="color: #38a169;">✅ {req['id']} - {req['title']}</strong><br>
                             <small style="color: #E0E0E0;">{req['department']} | Submitted by {req['submitted_by']}</small><br>
-                            <small style="color: #A0A0A0;">LM: {req.get('lm_name', '')} → Admin: {req.get('admin_name', '')} → COO: {req.get('coo_name', '')}</small>
+                            <small style="color: #A0A0A0;">LM: {req.get('lm_name', '')} ({req.get('lm_comment', '')}) → Admin: {req.get('admin_name', '')} ({req.get('admin_comment', '')}) → COO: {req.get('coo_name', '')} ({req.get('coo_comment', '')})</small>
                         </div>
                         """, unsafe_allow_html=True)
             
