@@ -14388,8 +14388,14 @@ APPLY NOW: {public_url}
                             
                             if is_admin:
                                 if st.button("🗑️ Delete", key=f"delete_req_{i}"):
+                                    # Delete from database first
+                                    try:
+                                        db._delete("job_requisitions", {"req_id": req['id']})
+                                    except:
+                                        pass
+                                    # Then delete from session state
                                     st.session_state.job_requisitions.pop(i)
-                                    st.success("✅ Deleted!")
+                                    st.success("✅ Permanently deleted!")
                                     st.rerun()
             
             # ============ SUB-TAB 5: ANALYTICS ============
@@ -14407,26 +14413,41 @@ APPLY NOW: {public_url}
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.markdown("#### 📊 Status Distribution")
-                    if status_counts:
-                        status_df = pd.DataFrame({
-                            'Status': list(status_counts.keys()),
-                            'Count': list(status_counts.values())
-                        })
-                        status_colors = {
-                            'Pending LM Approval': '#d69e2e',
-                            'Pending Admin Approval': '#3182ce',
-                            'Pending COO Approval': '#805ad5',
-                            'Revision Requested by COO': '#dd6b20',
-                            'Rejected by COO': '#CC0000',
-                            'Approved - Live': '#38a169'
-                        }
-                        fig1 = px.pie(status_df, values='Count', names='Status', hole=0.5,
-                                    color='Status', color_discrete_map=status_colors)
-                        fig1.update_layout(height=350, margin=dict(t=20, b=20, l=20, r=20))
-                        st.plotly_chart(fig1, use_container_width=True)
-                    else:
-                        st.info("No data yet.")
+                        st.markdown("#### 📊 Status Distribution")
+                        if status_counts:
+                            status_df = pd.DataFrame({
+                                'Status': list(status_counts.keys()),
+                                'Count': list(status_counts.values())
+                            })
+                            status_colors = {
+                                'Pending LM Approval': '#d69e2e',
+                                'Pending Admin Approval': '#3182ce',
+                                'Pending COO Approval': '#805ad5',
+                                'Revision Requested by COO': '#dd6b20',
+                                'Rejected by COO': '#CC0000',
+                                'Approved - Live': '#38a169'
+                            }
+                            fig1 = px.pie(status_df, values='Count', names='Status', hole=0.5,
+                                        color='Status', color_discrete_map=status_colors)
+                            fig1.update_layout(
+                                height=350, 
+                                margin=dict(t=20, b=20, l=20, r=20),
+                                paper_bgcolor='#1E1E1E',
+                                plot_bgcolor='#1E1E1E',
+                                font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                                legend=dict(
+                                    font=dict(color='#F0E6D3', size=11),
+                                    bgcolor='rgba(0,0,0,0)',
+                                    orientation='h',
+                                    yanchor='bottom',
+                                    y=-0.3,
+                                    xanchor='center',
+                                    x=0.5
+                                )
+                            )
+                            st.plotly_chart(fig1, use_container_width=True)
+                        else:
+                            st.info("No data yet.")
                 
                 with col2:
                     st.markdown("#### 🏢 Department Breakdown")
@@ -14442,8 +14463,15 @@ APPLY NOW: {public_url}
                         }).sort_values('Count', ascending=False)
                         fig2 = px.bar(dept_df, x='Department', y='Count', color='Department',
                                     color_discrete_sequence=['#CC0000', '#D4AF37', '#3182ce', '#38a169', '#805ad5', '#dd6b20'])
-                        fig2.update_layout(height=350, showlegend=False, margin=dict(t=20, b=60, l=20, r=20),
-                                         xaxis_tickangle=-45)
+                        fig2.update_layout(
+                            height=350, 
+                            showlegend=False, 
+                            margin=dict(t=20, b=60, l=20, r=20),
+                            xaxis_tickangle=-45,
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                        )
                         st.plotly_chart(fig2, use_container_width=True)
                     else:
                         st.info("No data yet.")
@@ -14468,7 +14496,14 @@ APPLY NOW: {public_url}
                         timeline_df = pd.DataFrame(timeline_data)
                         fig3 = px.bar(timeline_df, x='Requisition', y='Days', color='Days',
                                     color_continuous_scale=['#38a169', '#d69e2e', '#CC0000'])
-                        fig3.update_layout(height=300, showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
+                        fig3.update_layout(
+                            height=300, 
+                            showlegend=False, 
+                            margin=dict(t=20, b=20, l=20, r=20),
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                        )
                         st.plotly_chart(fig3, use_container_width=True)
                     else:
                         st.info("No approved requisitions yet.")
@@ -14487,7 +14522,13 @@ APPLY NOW: {public_url}
                         }).sort_values('Month')
                         fig4 = px.line(monthly_df, x='Month', y='Count', markers=True,
                                      color_discrete_sequence=['#CC0000'])
-                        fig4.update_layout(height=300, margin=dict(t=20, b=20, l=20, r=20))
+                        fig4.update_layout(
+                            height=300, 
+                            margin=dict(t=20, b=20, l=20, r=20),
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                        )
                         st.plotly_chart(fig4, use_container_width=True)
                     else:
                         st.info("No data yet.")
