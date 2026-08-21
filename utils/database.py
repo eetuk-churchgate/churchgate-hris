@@ -293,10 +293,14 @@ class DatabaseManager:
         except:
             return False
 
-    def save_job_requisition(self, req_id, title, department, location, job_type, salary, level, positions, closing, jd, screening, posts, status, submitted_by, date, lm_comment, admin_comment, coo_comment):
+    def save_job_requisition(self, req_id, title, department, location, job_type, salary, level, positions, closing, jd, screening, posts, status, submitted_by, date, lm_comment, admin_comment, coo_comment, lm_name='', admin_name='', coo_name='', evidence_files=None):
         existing = self._get("job_requisitions", {"req_id": req_id})
         if existing:
             self._delete("job_requisitions", {"req_id": req_id})
+        
+        if evidence_files is None:
+            evidence_files = []
+        
         self._post("job_requisitions", {
             "req_id": req_id, "title": title, "department": department,
             "location": location, "job_type": job_type, "salary": salary,
@@ -304,12 +308,19 @@ class DatabaseManager:
             "jd": jd, "screening": json.dumps(screening),
             "posts": json.dumps(posts), "status": status,
             "submitted_by": submitted_by, "date": date,
-            "lm_comment": lm_comment, "admin_comment": admin_comment, "coo_comment": coo_comment
+            "lm_comment": lm_comment, "admin_comment": admin_comment, "coo_comment": coo_comment,
+            "lm_name": lm_name, "admin_name": admin_name, "coo_name": coo_name,
+            "evidence_files": json.dumps(evidence_files)
         })
     
     def get_all_job_requisitions(self):
-        data = self._get("job_requisitions")
-        return data if data else []
+        try:
+            reqs = self._get("job_requisitions")
+            if not reqs:
+                return []
+            return reqs
+        except:
+            return []
 
     def get_all_candidates(self):
         data = self._get("candidates")
