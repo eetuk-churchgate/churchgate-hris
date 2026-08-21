@@ -14023,10 +14023,11 @@ APPLY NOW: {public_url}
                                                 supabase_key = os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
                                                 supabase_client = create_client(supabase_url, supabase_key)
                                                 import urllib.parse
-                                                safe_name = urllib.parse.quote(evidence_file.name)
+                                                clean_name = evidence_file.name.replace(' ', '_').replace('%', '_')
+                                                safe_name = urllib.parse.quote(clean_name)
                                                 file_name = f"req_evidence_{req['id']}_{safe_name}"
-                                                supabase_client.storage.from_('dlp-evidence').upload(file_name, evidence_file.getvalue())
-                                                evidence_url = supabase_client.storage.from_('dlp-evidence').get_public_url(file_name)
+                                                supabase_client.storage.from_('recruitment-evidence').upload(file_name, evidence_file.getvalue())
+                                                evidence_url = supabase_client.storage.from_('recruitment-evidence').get_public_url(file_name)
                                                 st.session_state.job_requisitions[i]['evidence_files'].append(evidence_url)
                                             except Exception as e:
                                                 st.error(f"Evidence upload FAILED: {str(e)}")
@@ -14251,10 +14252,12 @@ APPLY NOW: {public_url}
                                                 supabase_url = os.environ.get('SUPABASE_URL', '')
                                                 supabase_key = os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
                                                 supabase_client = create_client(supabase_url, supabase_key)
-                                                clean_name = evidence_file.name.replace(' ', '_')
-                                                file_name = f"req_evidence_{req['id']}_{clean_name}"
-                                                supabase_client.storage.from_('dlp-evidence').upload(file_name, evidence_file.getvalue())
-                                                evidence_url = supabase_client.storage.from_('dlp-evidence').get_public_url(file_name)
+                                                import urllib.parse
+                                                clean_name = evidence_file.name.replace(' ', '_').replace('%', '_')
+                                                safe_name = urllib.parse.quote(clean_name)
+                                                file_name = f"req_evidence_{req['id']}_{safe_name}"
+                                                supabase_client.storage.from_('recruitment-evidence').upload(file_name, evidence_file.getvalue())
+                                                evidence_url = supabase_client.storage.from_('recruitment-evidence').get_public_url(file_name)
                                                 st.session_state.job_requisitions[i]['evidence_files'].append(evidence_url)
                                             except Exception as e:
                                                 st.error(f"Evidence upload FAILED: {str(e)}")
