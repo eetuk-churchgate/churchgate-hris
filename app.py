@@ -13783,6 +13783,40 @@ APPLY NOW: {public_url}
                 closing_date = st.date_input("Application Deadline")
             
             st.markdown("---")
+            st.markdown("### 📋 Hiring Reason *")
+            hiring_reason = st.selectbox("Reason for Hiring *", [
+                "Select Reason...",
+                "Replacement & Backfill",
+                "Voluntary Resignation",
+                "Involuntary Termination / Dismissal",
+                "Retirement",
+                "Internal Transfer / Promotion",
+                "Temporary Leave Coverage (Maternity/Paternity/Sick/Study)",
+                "Growth & Expansion",
+                "Business Expansion / New Headcount",
+                "Project-Based Hire (Fixed-Term)",
+                "Reorganization / Structural Change",
+                "Strategic & Specialized",
+                "Skill Gap Fill (New Technology)",
+                "Role Upgrade / Talent Optimization",
+                "Budget Optimization / Cost Reduction",
+                "Other / Compliance",
+                "Statutory / Compliance Requirement",
+                "Succession Planning",
+                "Other (Please Specify)"
+            ])
+            
+            if hiring_reason == "Other (Please Specify)":
+                other_reason = st.text_input("Please specify other reason *")
+            else:
+                other_reason = ""
+            
+            st.markdown("---")
+            st.markdown("### 📝 Submitter Comments (Justification) *")
+            submitter_comment = st.text_area("Why is this role needed? *", 
+                placeholder="Provide justification for this requisition...")
+            
+            st.markdown("---")
             st.markdown("### 📋 Full Job Description *")
             
             if 'jd_html_content' not in st.session_state:
@@ -13822,7 +13856,21 @@ APPLY NOW: {public_url}
             submitted = st.form_submit_button("📤 Submit for Approval", use_container_width=True)
             
             if submitted:
-                if job_title and department and jd_text_for_submission:
+                if not job_title:
+                    st.error("❌ Job Title is required!")
+                elif not department:
+                    st.error("❌ Department is required!")
+                elif not jd_text_for_submission:
+                    st.error("❌ Job Description is required!")
+                elif hiring_reason == "Select Reason...":
+                    st.error("❌ Please select a hiring reason!")
+                elif hiring_reason == "Other (Please Specify)" and not other_reason:
+                    st.error("❌ Please specify the other reason!")
+                elif not submitter_comment:
+                    st.error("❌ Submitter comments are required!")
+                else:
+                    final_reason = other_reason if other_reason else hiring_reason
+                    
                     req = {
                         'id': f"REQ-{datetime.now().strftime('%Y%m%d%H%M')}",
                         'title': job_title, 'department': department, 'location': location,
@@ -13834,7 +13882,9 @@ APPLY NOW: {public_url}
                         'submitted_by': user_name, 'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
                         'lm_comment': '', 'admin_comment': '', 'coo_comment': '',
                         'lm_name': '', 'admin_name': '', 'coo_name': '',
-                        'evidence_files': []
+                        'evidence_files': [],
+                        'hiring_reason': final_reason,
+                        'submitter_comment': submitter_comment
                     }
                     st.session_state.job_requisitions.append(req)
                     try:
@@ -13861,20 +13911,42 @@ APPLY NOW: {public_url}
                         'Trade Services': 'akarim@churchgate.com'
                     }
                     lm_email = lm_emails.get(department, 'bsakote@churchgate.com')
+                    
+                    # Send email to Line Manager
                     try:
                         from utils.email_service import EmailService
                         EmailService().send_email(
                             lm_email,
                             f"🔔 New Job Requisition Awaiting Authorization: {job_title}",
-                            f"A new job requisition for '{job_title}' ({department}) has been submitted by {user_name}.\n\nPlease review and authorize in the HRIS: https://hris.churchgate.com\n\nRequisition ID: {req['id']}"
+                            f"A new job requisition for '{job_title}' ({department}) has been submitted by {user_name}.\n\n"
+                            f"Hiring Reason: {final_reason}\n"
+                            f"Submitter Comments: {submitter_comment}\n\n"
+                            f"Please review and authorize in the HRIS: https://hris.churchgate.com\n\n"
+                            f"Requisition ID: {req['id']}"
                         )
                     except:
                         pass
                     
-                    st.success(f"✅ Job requisition {req['id']} submitted! Awaiting authorization.")
+                    # Send email to ALL HR team
+                    hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com", "eochala@churchgate.com"]
+                    for hr_email in hr_emails:
+                        try:
+                            EmailService().send_email(
+                                hr_email,
+                                f"🔔 New Job Requisition Submitted: {job_title}",
+                                f"A new job requisition has been submitted.\n\n"
+                                f"Title: {job_title}\n"
+                                f"Department: {department}\n"
+                                f"Submitted By: {user_name}\n"
+                                f"Hiring Reason: {final_reason}\n"
+                                f"Submitter Comments: {submitter_comment}\n\n"
+                                f"Requisition ID: {req['id']}"
+                            )
+                        except:
+                            pass
+                    
+                    st.success(f"✅ Job requisition {req['id']} submitted! HR team notified.")
                     st.balloons()
-                else:
-                    st.error("❌ Required fields missing!")
     
     # ============ TAB 2: APPROVAL DASHBOARD ============
     with tab2:
