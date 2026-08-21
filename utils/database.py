@@ -300,6 +300,10 @@ class DatabaseManager:
         
         if evidence_files is None:
             evidence_files = []
+        if screening is None:
+            screening = []
+        if posts is None:
+            posts = {}
         
         self._post("job_requisitions", {
             "req_id": req_id, "title": title, "department": department,
@@ -312,6 +316,7 @@ class DatabaseManager:
             "lm_name": lm_name, "admin_name": admin_name, "coo_name": coo_name,
             "evidence_files": json.dumps(evidence_files)
         })
+
     
     def get_all_job_requisitions(self):
         try:
