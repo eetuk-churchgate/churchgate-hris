@@ -13718,7 +13718,9 @@ APPLY NOW: {public_url}
                     'lm_name': r.get('lm_name', ''),
                     'admin_name': r.get('admin_name', ''),
                     'coo_name': r.get('coo_name', ''),
-                    'evidence_files': evidence_data
+                    'evidence_files': evidence_data,
+                    'hiring_reason': r.get('hiring_reason', ''),
+                    'submitter_comment': r.get('submitter_comment', '')
                 })
         except:
             pass
@@ -13891,7 +13893,9 @@ APPLY NOW: {public_url}
                         db.save_job_requisition(req['id'], req['title'], req['department'], req['location'],
                             req['type'], req['salary'], req['level'], req['positions'], req['closing'],
                             req['jd'], req['screening'], req['posts'], req['status'], req['submitted_by'], req['date'],
-                            req['lm_comment'], req['admin_comment'], req['coo_comment'])
+                            req['lm_comment'], req['admin_comment'], req['coo_comment'],
+                            req.get('lm_name', ''), req.get('admin_name', ''), req.get('coo_name', ''),
+                            req.get('evidence_files', []), req.get('hiring_reason', ''), req.get('submitter_comment', ''))
                     except:
                         pass
                     
@@ -14004,6 +14008,11 @@ APPLY NOW: {public_url}
                         st.markdown(f"**Department:** {req['department']} | **Location:** {req['location']}")
                         st.markdown(f"**Type:** {req['type']} | **Level:** {req['level']} | **Positions:** {req.get('positions', 1)}")
                         st.markdown(f"**Salary Range:** {req.get('salary', 'Not specified')}")
+                        
+                        if req.get('hiring_reason'):
+                            st.markdown(f"**🎯 Hiring Reason:** {req['hiring_reason']}")
+                        if req.get('submitter_comment'):
+                            st.markdown(f"**📝 Submitter Comments:** {req['submitter_comment']}")
                         
                         st.markdown("---")
                         st.markdown("**📋 Job Description:**")
