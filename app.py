@@ -14251,7 +14251,8 @@ APPLY NOW: {public_url}
                                                 supabase_url = os.environ.get('SUPABASE_URL', '')
                                                 supabase_key = os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
                                                 supabase_client = create_client(supabase_url, supabase_key)
-                                                file_name = f"req_evidence_{req['id']}_{evidence_file.name}"
+                                                clean_name = evidence_file.name.replace(' ', '_')
+                                                file_name = f"req_evidence_{req['id']}_{clean_name}"
                                                 supabase_client.storage.from_('dlp-evidence').upload(file_name, evidence_file.getvalue())
                                                 evidence_url = supabase_client.storage.from_('dlp-evidence').get_public_url(file_name)
                                                 st.session_state.job_requisitions[i]['evidence_files'].append(evidence_url)
