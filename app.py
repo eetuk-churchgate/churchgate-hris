@@ -13957,7 +13957,7 @@ APPLY NOW: {public_url}
                                     <div style="background: rgba(49, 130, 206, 0.1); border: 1px solid #3182ce; border-radius: 6px; padding: 8px; margin-bottom: 6px; text-align: center;">
                                         <span style="font-size: 1.5rem;">📄</span><br>
                                         <small style="color: #3182ce; word-break: break-all;">{ev_name[:30]}</small><br>
-                                        <a href="{ev}" target="_blank" style="color: #3182ce; font-size: 0.7rem; text-decoration: none;">🔗 View</a>
+                                        <a href="{ev}" target="_blank" download style="color: #3182ce; font-size: 0.7rem; text-decoration: none;">🔗 View / Download</a>
                                     </div>
                                     """, unsafe_allow_html=True)
                         
@@ -14022,7 +14022,9 @@ APPLY NOW: {public_url}
                                                 supabase_url = os.environ.get('SUPABASE_URL', '')
                                                 supabase_key = os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
                                                 supabase_client = create_client(supabase_url, supabase_key)
-                                                file_name = f"req_evidence_{req['id']}_{evidence_file.name}"
+                                                import urllib.parse
+                                                safe_name = urllib.parse.quote(evidence_file.name)
+                                                file_name = f"req_evidence_{req['id']}_{safe_name}"
                                                 supabase_client.storage.from_('dlp-evidence').upload(file_name, evidence_file.getvalue())
                                                 evidence_url = supabase_client.storage.from_('dlp-evidence').get_public_url(file_name)
                                                 st.session_state.job_requisitions[i]['evidence_files'].append(evidence_url)
