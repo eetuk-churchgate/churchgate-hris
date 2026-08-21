@@ -3625,13 +3625,31 @@ def sidebar_navigation():
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
         if user_role in ['Admin', 'HR Director']:
             menu_options = [
-                "🏠 Employee Dashboard", "📊 Executive Dashboard", "👥 Employee Management", 
-                "📈 Performance & OKRs", "✅ Staff Confirmation", "🚀 Promotions", 
-                "💼 Recruitment Hub", "🤖 AI Recruitment Agent", "🔄 Requests Hub",
-                "📊 Reports & Analytics", "💬 Chat & Communications", "🎓 Training & Development", 
-                "🔔 Notifications", "📋 My Documents", "💡 Ideas Box", "📅 Calendar", 
-                "🎯 My Goals", "🌐 Directory", "📚 Knowledge Base", "🎉 Wellness & Perks", 
-                "🎓 LMS", "📋 Audit Log", "📊 Advanced Analytics", "🛡️ AI DLP Monitor", "👤 My Profile"
+                "🤖 AI Recruitment Agent",
+                "📊 Advanced Analytics",
+                "🛡️ AI DLP Monitor",
+                "📋 Audit Log",
+                "📅 Calendar",
+                "💬 Chat & Communications",
+                "🌐 Directory",
+                "🏠 Employee Dashboard",
+                "👥 Employee Management",
+                "📊 Executive Dashboard",
+                "💡 Ideas Box",
+                "📚 Knowledge Base",
+                "🎓 LMS",
+                "🎯 My Goals",
+                "📋 My Documents",
+                "👤 My Profile",
+                "🔔 Notifications",
+                "📈 Performance & OKRs",
+                "🚀 Promotions",
+                "💼 Recruitment Hub",
+                "📊 Reports & Analytics",
+                "🔄 Requests Hub",
+                "✅ Staff Confirmation",
+                "🎓 Training & Development",
+                "🎉 Wellness & Perks",
             ]
             all_icons = [
                 "house-fill", "speedometer2", "people-fill", "graph-up-arrow", 
@@ -3643,11 +3661,24 @@ def sidebar_navigation():
             ]
         elif user_role in ['Manager', 'HOD', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level', 'Senior Management']:
             menu_options = [
-                "🏠 Employee Dashboard", "✅ Staff Confirmation", "💼 Recruitment Hub", 
-                "🤖 AI Recruitment Agent", "📈 Performance & OKRs", "🔄 Requests Hub",
-                "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", 
-                "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🌐 Directory", 
-                "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "🛡️ AI DLP Monitor", "👤 My Profile"
+                "🤖 AI Recruitment Agent",
+                "🛡️ AI DLP Monitor",
+                "📅 Calendar",
+                "💬 Chat & Communications",
+                "🌐 Directory",
+                "🏠 Employee Dashboard",
+                "💡 Ideas Box",
+                "📚 Knowledge Base",
+                "🎓 LMS",
+                "🎯 My Goals",
+                "📋 My Documents",
+                "👤 My Profile",
+                "📈 Performance & OKRs",
+                "💼 Recruitment Hub",
+                "🔄 Requests Hub",
+                "✅ Staff Confirmation",
+                "🎓 Training & Development",
+                "🎉 Wellness & Perks",
             ]
             all_icons = [
                 "house-fill", "check-circle-fill", "briefcase-fill", "robot", 
@@ -3658,10 +3689,20 @@ def sidebar_navigation():
 
         else:
             menu_options = [
-                "🏠 Employee Dashboard", "📈 My Performance & OKRs", "🔄 Requests Hub",
-                "💬 Chat & Communications", "🎓 Training & Development", "📋 My Documents", 
-                "💡 Ideas Box", "📅 Calendar", "🎯 My Goals", "🌐 Directory", 
-                "📚 Knowledge Base", "🎉 Wellness & Perks", "🎓 LMS", "👤 My Profile"
+                "📅 Calendar",
+                "💬 Chat & Communications",
+                "🌐 Directory",
+                "🏠 Employee Dashboard",
+                "💡 Ideas Box",
+                "📚 Knowledge Base",
+                "🎓 LMS",
+                "🎯 My Goals",
+                "📋 My Documents",
+                "👤 My Profile",
+                "📈 My Performance & OKRs",
+                "🔄 Requests Hub",
+                "🎓 Training & Development",
+                "🎉 Wellness & Perks",
             ]
             all_icons = [
                 "house-fill", "graph-up-arrow", "inbox-fill", "chat-dots-fill", 
