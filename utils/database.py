@@ -316,7 +316,6 @@ class DatabaseManager:
             "lm_name": lm_name, "admin_name": admin_name, "coo_name": coo_name,
             "evidence_files": json.dumps(evidence_files)
         })
-
     
     def get_all_job_requisitions(self):
         try:
