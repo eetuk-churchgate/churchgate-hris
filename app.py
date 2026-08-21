@@ -1888,45 +1888,139 @@ st.markdown("""
         min-width: 280px !important;
     }
     
-    /* ===== DATE PICKER - AGGRESSIVE DARK ===== */
-    div[data-baseweb="popover"],
-    div[data-baseweb="calendar"],
-    [data-testid="stDateInput"] div[data-baseweb="popover"],
-    [data-testid="stDateInput"] div[data-baseweb="calendar"] {
-        background: #1E1E1E !important;
-        border: 2px solid #B8960C !important;
+    /* ===== DATE PICKER - NUCLEAR AGGRESSIVE ===== */
+    
+    /* Force dark background on calendar container */
+    [data-baseweb="calendar"],
+    [data-baseweb="calendar"] > div,
+    [data-baseweb="calendar"] > div > div,
+    [data-baseweb="calendar"] > div > div > div {
+        background-color: #1E1E1E !important;
     }
-    div[data-baseweb="calendar"] * {
-        color: #E0E0E0 !important;
+    
+    /* Force ALL text inside calendar to be visible */
+    [data-baseweb="calendar"] p,
+    [data-baseweb="calendar"] span,
+    [data-baseweb="calendar"] div,
+    [data-baseweb="calendar"] strong,
+    [data-baseweb="calendar"] b {
+        color: #FFFFFF !important;
+        opacity: 1 !important;
     }
-    div[data-baseweb="calendar"] div[class*="weekday"],
-    div[data-baseweb="calendar"] div[class*="week"],
-    div[data-baseweb="calendar"] div[class*="header"] div {
+    
+    /* Day names M T W T F S S - GOLD */
+    [data-baseweb="calendar"] [class*="weekday"],
+    [data-baseweb="calendar"] [class*="week-header"],
+    [data-baseweb="calendar"] [class*="Week"] {
         color: #C9A84C !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
+        font-size: 14px !important;
     }
-    div[data-baseweb="calendar"] div[class*="day"] {
-        background: #1E1E1E !important;
-        color: #E0E0E0 !important;
+    
+    /* Individual day cells */
+    [data-baseweb="calendar"] [class*="day"],
+    [data-baseweb="calendar"] [class*="date"] {
+        color: #FFFFFF !important;
+        background-color: #1E1E1E !important;
+        border: 1px solid #333333 !important;
+        border-radius: 4px !important;
+        font-size: 14px !important;
+        font-weight: 600 !important;
     }
-    div[data-baseweb="calendar"] div[aria-selected="true"],
-    div[data-baseweb="calendar"] div[class*="selected"] {
-        background: #C9A84C !important;
+    
+    /* Day hover */
+    [data-baseweb="calendar"] [class*="day"]:hover,
+    [data-baseweb="calendar"] [class*="date"]:hover {
+        background-color: #333333 !important;
+        color: #C9A84C !important;
+        border-color: #C9A84C !important;
+    }
+    
+    /* Selected day */
+    [data-baseweb="calendar"] [aria-selected="true"],
+    [data-baseweb="calendar"] [class*="selected"],
+    [data-baseweb="calendar"] [class*="highlighted"] {
+        background-color: #C9A84C !important;
         color: #111111 !important;
+        border-color: #E8D18C !important;
+        font-weight: 800 !important;
     }
-    div[data-baseweb="calendar"] div[class*="day"]:hover {
-        background: #333333 !important;
+    
+    /* Today */
+    [data-baseweb="calendar"] [class*="today"] {
+        border: 2px solid #C9A84C !important;
         color: #C9A84C !important;
     }
-    div[data-baseweb="calendar"] div[class*="month"],
-    div[data-baseweb="calendar"] div[class*="year"] {
+    
+    /* Month and Year header */
+    [data-baseweb="calendar"] [class*="month"],
+    [data-baseweb="calendar"] [class*="year"],
+    [data-baseweb="calendar"] [class*="header"] {
         color: #C9A84C !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
+        font-size: 16px !important;
+        background-color: #1E1E1E !important;
     }
-    div[data-baseweb="calendar"] button {
-        background: transparent !important;
+    
+    /* Navigation arrows */
+    [data-baseweb="calendar"] button,
+    [data-baseweb="calendar"] [class*="arrow"],
+    [data-baseweb="calendar"] [class*="nav"] {
+        background-color: #2D2D2D !important;
         color: #C9A84C !important;
         border: 1px solid #B8960C !important;
+        border-radius: 4px !important;
+    }
+    
+    [data-baseweb="calendar"] button:hover {
+        background-color: #B8960C !important;
+        color: #111111 !important;
+    }
+    
+    /* Date input field itself */
+    [data-testid="stDateInput"] input {
+        background-color: #1E1E1E !important;
+        color: #FFFFFF !important;
+        border: 2px solid #B8960C !important;
+        border-radius: 6px !important;
+        font-size: 14px !important;
+    }
+    
+    /* Popover container */
+    [data-testid="stDateInput"] [data-baseweb="popover"] {
+        background-color: #1E1E1E !important;
+        border: 2px solid #B8960C !important;
+        border-radius: 10px !important;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.8) !important;
+    }
+    
+    /* ===== DATE INPUT - FORCE DARK CONTAINER ===== */
+    [data-testid="stDateInput"] > div,
+    [data-testid="stDateInput"] > div > div,
+    [data-testid="stDateInput"] > div > div > div {
+        background: #1E1E1E !important;
+    }
+    [data-testid="stDateInput"] input {
+        background: #1E1E1E !important;
+        color: #FFFFFF !important;
+        border: 1px solid #B8960C !important;
+        border-radius: 4px !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stDateInput"] [data-baseweb="select"] > div {
+        background: #2D2D2D !important;
+        border: 1px solid #B8960C !important;
+    }
+    [data-testid="stDateInput"] [data-baseweb="select"] span {
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stDateInput"] div[style*="background"] {
+        background: #1E1E1E !important;
+    }
+    [data-testid="stDateInput"] label {
+        color: #C9A84C !important;
+        font-weight: 800 !important;
     }
 </style>
 """, unsafe_allow_html=True)
