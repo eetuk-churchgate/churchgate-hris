@@ -1887,6 +1887,47 @@ st.markdown("""
     [data-testid="stSidebar"] {
         min-width: 280px !important;
     }
+    
+    /* ===== DATE PICKER - AGGRESSIVE DARK ===== */
+    div[data-baseweb="popover"],
+    div[data-baseweb="calendar"],
+    [data-testid="stDateInput"] div[data-baseweb="popover"],
+    [data-testid="stDateInput"] div[data-baseweb="calendar"] {
+        background: #1E1E1E !important;
+        border: 2px solid #B8960C !important;
+    }
+    div[data-baseweb="calendar"] * {
+        color: #E0E0E0 !important;
+    }
+    div[data-baseweb="calendar"] div[class*="weekday"],
+    div[data-baseweb="calendar"] div[class*="week"],
+    div[data-baseweb="calendar"] div[class*="header"] div {
+        color: #C9A84C !important;
+        font-weight: 700 !important;
+    }
+    div[data-baseweb="calendar"] div[class*="day"] {
+        background: #1E1E1E !important;
+        color: #E0E0E0 !important;
+    }
+    div[data-baseweb="calendar"] div[aria-selected="true"],
+    div[data-baseweb="calendar"] div[class*="selected"] {
+        background: #C9A84C !important;
+        color: #111111 !important;
+    }
+    div[data-baseweb="calendar"] div[class*="day"]:hover {
+        background: #333333 !important;
+        color: #C9A84C !important;
+    }
+    div[data-baseweb="calendar"] div[class*="month"],
+    div[data-baseweb="calendar"] div[class*="year"] {
+        color: #C9A84C !important;
+        font-weight: 700 !important;
+    }
+    div[data-baseweb="calendar"] button {
+        background: transparent !important;
+        color: #C9A84C !important;
+        border: 1px solid #B8960C !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
