@@ -13875,9 +13875,6 @@ APPLY NOW: {public_url}
             except:
                 email_svc = None
             
-            # ============================================================
-            # SLA & ANALYTICS METRICS
-            # ============================================================
             st.markdown("### 📊 Approval SLA Metrics")
             
             pending_lm = len([r for r in st.session_state.job_requisitions if r['status'] == 'Pending LM Approval'])
@@ -13895,55 +13892,8 @@ APPLY NOW: {public_url}
             m5.metric("❌ Rejected", rejected)
             m6.metric("✅ Approved", approved)
             
-            # SLA Tracking
-            st.markdown("---")
-            st.markdown("### ⏱️ Approval SLA Tracking")
-            
-            sla_data = []
-            for req in st.session_state.job_requisitions:
-                submitted_date = req.get('date', '')
-                status = req['status']
-                
-                if submitted_date:
-                    try:
-                        submitted_dt = datetime.strptime(submitted_date, '%Y-%m-%d %H:%M')
-                        elapsed_hours = (datetime.now() - submitted_dt).total_seconds() / 3600
-                        
-                        if status == 'Pending LM Approval':
-                            sla = "24h"
-                            sla_met = elapsed_hours <= 24
-                        elif status == 'Pending Admin Approval':
-                            sla = "48h"
-                            sla_met = elapsed_hours <= 48
-                        elif status == 'Pending COO Approval':
-                            sla = "72h"
-                            sla_met = elapsed_hours <= 72
-                        else:
-                            sla = "Completed"
-                            sla_met = True
-                        
-                        sla_data.append({
-                            'Requisition': req['id'],
-                            'Title': req['title'],
-                            'Status': status,
-                            'Submitted': submitted_date,
-                            'Elapsed Hours': f"{elapsed_hours:.1f}h",
-                            'SLA Target': sla,
-                            'SLA Status': '✅ Met' if sla_met else '⚠️ Breached'
-                        })
-                    except:
-                        pass
-            
-            if sla_data:
-                sla_df = pd.DataFrame(sla_data)
-                html_table = sla_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
-                st.markdown(html_table, unsafe_allow_html=True)
-            
             st.markdown("---")
             
-            # ============================================================
-            # SUB-TABS
-            # ============================================================
             approval_subtab1, approval_subtab2, approval_subtab3, approval_subtab4 = st.tabs([
                 f"📋 Pending Action ({pending_lm + pending_admin + pending_coo})",
                 f"🔄 Revisions ({revision_req})",
@@ -13967,7 +13917,6 @@ APPLY NOW: {public_url}
                         
                         with st.expander(f"{req['id']} - {req['title']} | {req['department']} | {req['status']}", expanded=True):
                             
-                            # ===== DETAILS =====
                             st.markdown(f"**Submitted By:** {req['submitted_by']} | **Date:** {req['date']}")
                             st.markdown(f"**Department:** {req['department']} | **Location:** {req['location']}")
                             st.markdown(f"**Type:** {req['type']} | **Level:** {req['level']} | **Positions:** {req.get('positions', 1)}")
@@ -13981,41 +13930,55 @@ APPLY NOW: {public_url}
                             else:
                                 st.markdown(jd_content)
                             
-                            # ===== PLATFORM POSTS + NAMES + COMMENTS =====
                             st.markdown("---")
                             posts = req.get('posts', {})
                             st.markdown(f"**Platform Posts:** LinkedIn: {'✅' if posts.get('linkedin') else '❌'} | Indeed: {'✅' if posts.get('indeed') else '❌'} | Glassdoor: {'✅' if posts.get('glassdoor') else '❌'}")
                             
-                            # Line Manager - NAME + COMMENT
-                            lm_name = req.get('lm_name', '') or 'Awaiting Authorization'
+                            st.markdown("---")
+                            
+                            lm_name = req.get('lm_name', '')
                             lm_comment = req.get('lm_comment', '')
-                            st.markdown(f"**👔 Line Manager:** {lm_name}")
-                            if lm_comment:
-                                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"{lm_comment}\"*")
-                            
-                            # Admin - NAME + COMMENT
-                            admin_name = req.get('admin_name', '') or 'Awaiting Validation'
+                            admin_name = req.get('admin_name', '')
                             admin_comment = req.get('admin_comment', '')
-                            st.markdown(f"**🔍 Admin:** {admin_name}")
-                            if admin_comment:
-                                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"{admin_comment}\"*")
-                            
-                            # COO - NAME + COMMENT
-                            coo_name = req.get('coo_name', '') or 'Awaiting Approval'
+                            coo_name = req.get('coo_name', '')
                             coo_comment = req.get('coo_comment', '')
-                            st.markdown(f"**🏢 COO:** {coo_name}")
-                            if coo_comment:
-                                st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"{coo_comment}\"*")
                             
-                            # ===== LM APPROVAL =====
+                            if lm_name and lm_comment:
+                                st.markdown(f"**👔 Line Manager:** {lm_name}")
+                                st.markdown("&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"" + lm_comment + "\"*")
+                            elif lm_name:
+                                st.markdown(f"**👔 Line Manager:** {lm_name}")
+                            else:
+                                st.markdown("**👔 Line Manager:** Pending")
+                            
+                            if admin_name and admin_comment:
+                                st.markdown(f"**🔍 Admin:** {admin_name}")
+                                st.markdown("&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"" + admin_comment + "\"*")
+                            elif admin_name:
+                                st.markdown(f"**🔍 Admin:** {admin_name}")
+                            else:
+                                st.markdown("**🔍 Admin:** Pending")
+                            
+                            if coo_name and coo_comment:
+                                st.markdown(f"**🏢 COO:** {coo_name}")
+                                st.markdown("&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"" + coo_comment + "\"*")
+                            elif coo_name:
+                                st.markdown(f"**🏢 COO:** {coo_name}")
+                            else:
+                                st.markdown("**🏢 COO:** Pending")
+                            
+                            if req.get('evidence_files'):
+                                st.markdown("---")
+                                st.markdown("**📎 Evidence Files:**")
+                                for ev in req['evidence_files']:
+                                    st.markdown("- 📄 " + ev)
+                            
                             if req['status'] == 'Pending LM Approval' and is_manager:
                                 st.markdown("---")
                                 st.markdown("#### 👔 Line Manager Authorization")
                                 with st.form(key=f"lm_form_{i}"):
                                     edit_jd = st_quill(value=jd_content, html=True, key=f"edit_jd_lm_{i}")
                                     lm_comment_input = st.text_area("Line Manager Comment *", key=f"lm_comment_input_{i}", placeholder="e.g., This position is for expansion purposes")
-                                    
-                                    st.markdown("**📎 Attach Evidence (Optional):**")
                                     evidence_file = st.file_uploader("Upload evidence", key=f"lm_evidence_{i}", type=['pdf', 'docx', 'xlsx', 'png', 'jpg'])
                                     
                                     if st.form_submit_button("✅ Authorize & Send to HR", use_container_width=True):
@@ -14023,7 +13986,7 @@ APPLY NOW: {public_url}
                                             st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
                                             st.session_state.job_requisitions[i]['lm_comment'] = lm_comment_input
                                             st.session_state.job_requisitions[i]['jd'] = edit_jd
-                                            st.session_state.job_requisitions[i]['lm_name'] = user_name  # SAVE NAME
+                                            st.session_state.job_requisitions[i]['lm_name'] = user_name
                                             
                                             if evidence_file:
                                                 try:
@@ -14031,16 +13994,14 @@ APPLY NOW: {public_url}
                                                     supabase_url = os.environ.get('SUPABASE_URL', '')
                                                     supabase_key = os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
                                                     supabase_client = create_client(supabase_url, supabase_key)
-                                                    
                                                     file_name = f"req_evidence_{req['id']}_{evidence_file.name}"
                                                     supabase_client.storage.from_('dlp-evidence').upload(file_name, evidence_file.getvalue())
                                                     evidence_url = supabase_client.storage.from_('dlp-evidence').get_public_url(file_name)
-                                                    
                                                     if 'evidence_files' not in st.session_state.job_requisitions[i]:
                                                         st.session_state.job_requisitions[i]['evidence_files'] = []
                                                     st.session_state.job_requisitions[i]['evidence_files'].append(evidence_url)
                                                 except Exception as e:
-                                                    st.warning(f"Evidence upload failed: {str(e)}")
+                                                    st.warning(f"Evidence upload: {str(e)}")
                                             
                                             try:
                                                 r = st.session_state.job_requisitions[i]
@@ -14058,7 +14019,7 @@ APPLY NOW: {public_url}
                                                         email_svc.send_email(
                                                             hr_email,
                                                             f"🔔 Job Requisition Authorized by LM: {req['title']}",
-                                                            f"Line Manager ({user_name}) has authorized '{req['title']}'.\n\nComment: {lm_comment_input}\n\nValidate at: https://hris.churchgate.com"
+                                                            f"Line Manager ({user_name}) authorized '{req['title']}'.\n\nComment: {lm_comment_input}"
                                                         )
                                                     except:
                                                         pass
@@ -14068,7 +14029,6 @@ APPLY NOW: {public_url}
                                         else:
                                             st.error("❌ Comment required!")
                             
-                            # ===== ADMIN VALIDATION =====
                             if req['status'] == 'Pending Admin Approval' and is_admin:
                                 st.markdown("---")
                                 st.markdown("#### 🔍 HR Admin Validation")
@@ -14083,7 +14043,7 @@ APPLY NOW: {public_url}
                                             st.session_state.job_requisitions[i]['admin_comment'] = admin_comment_input
                                             st.session_state.job_requisitions[i]['jd'] = edit_jd
                                             st.session_state.job_requisitions[i]['salary'] = edit_salary
-                                            st.session_state.job_requisitions[i]['admin_name'] = user_name  # SAVE NAME
+                                            st.session_state.job_requisitions[i]['admin_name'] = user_name
                                             
                                             try:
                                                 r = st.session_state.job_requisitions[i]
@@ -14099,7 +14059,7 @@ APPLY NOW: {public_url}
                                                     email_svc.send_email(
                                                         "jeromedas@churchgate.com",
                                                         f"🔔 Job Requisition Ready for Final Approval: {req['title']}",
-                                                        f"HR ({user_name}) has validated '{req['title']}'.\n\nComment: {admin_comment_input}\n\nApprove at: https://hris.churchgate.com"
+                                                        f"HR ({user_name}) validated '{req['title']}'.\n\nComment: {admin_comment_input}"
                                                     )
                                                 except:
                                                     pass
@@ -14109,7 +14069,6 @@ APPLY NOW: {public_url}
                                         else:
                                             st.error("❌ Comment required!")
                             
-                            # ===== COO APPROVAL =====
                             if req['status'] == 'Pending COO Approval' and (is_admin or user_dept == 'Senior Management'):
                                 st.markdown("---")
                                 st.markdown("#### 🏢 COO Final Approval")
@@ -14127,7 +14086,7 @@ APPLY NOW: {public_url}
                                     if approve_btn and coo_comment_input:
                                         st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
                                         st.session_state.job_requisitions[i]['coo_comment'] = coo_comment_input
-                                        st.session_state.job_requisitions[i]['coo_name'] = user_name  # SAVE NAME
+                                        st.session_state.job_requisitions[i]['coo_name'] = user_name
                                         
                                         job_ref = req['id']
                                         public_url = f"{STREAMLIT_URL}/Careers?job={job_ref}"
@@ -14149,13 +14108,12 @@ APPLY NOW: {public_url}
                                         except:
                                             pass
                                         
-                                        # Email Submitter + ALL HR
                                         if email_svc:
                                             try:
                                                 email_svc.send_email(
                                                     req.get('submitted_by', ''),
                                                     f"✅ Job Posting APPROVED: {req['title']}",
-                                                    f"Your requisition for '{req['title']}' is FULLY APPROVED and LIVE!\n\nURL: {public_url}"
+                                                    f"Your requisition for '{req['title']}' is LIVE!\n\nURL: {public_url}"
                                                 )
                                             except:
                                                 pass
@@ -14166,7 +14124,7 @@ APPLY NOW: {public_url}
                                                     email_svc.send_email(
                                                         hr_email,
                                                         f"✅ Job Posting LIVE: {req['title']}",
-                                                        f"Requisition '{req['title']}' APPROVED by COO ({user_name}).\n\nURL: {public_url}"
+                                                        f"Approved by COO ({user_name}).\n\nURL: {public_url}"
                                                     )
                                                 except:
                                                     pass
@@ -14179,7 +14137,7 @@ APPLY NOW: {public_url}
                                     if reject_btn and coo_comment_input:
                                         st.session_state.job_requisitions[i]['status'] = 'Rejected by COO'
                                         st.session_state.job_requisitions[i]['coo_comment'] = coo_comment_input
-                                        st.session_state.job_requisitions[i]['coo_name'] = user_name  # SAVE NAME
+                                        st.session_state.job_requisitions[i]['coo_name'] = user_name
                                         
                                         try:
                                             r = st.session_state.job_requisitions[i]
@@ -14208,7 +14166,7 @@ APPLY NOW: {public_url}
                                     if revise_btn and coo_comment_input:
                                         st.session_state.job_requisitions[i]['status'] = 'Revision Requested by COO'
                                         st.session_state.job_requisitions[i]['coo_comment'] = coo_comment_input
-                                        st.session_state.job_requisitions[i]['coo_name'] = user_name  # SAVE NAME
+                                        st.session_state.job_requisitions[i]['coo_name'] = user_name
                                         
                                         try:
                                             r = st.session_state.job_requisitions[i]
@@ -14249,7 +14207,31 @@ APPLY NOW: {public_url}
                         
                         with st.expander(f"{req['id']} - {req['title']} | {req['department']}", expanded=True):
                             st.warning(f"**COO Revision Notes:** {req.get('coo_comment', '')}")
-                            st.markdown(f"**COO:** {req.get('coo_name', '')}")
+                            
+                            lm_name = req.get('lm_name', '')
+                            lm_comment = req.get('lm_comment', '')
+                            admin_name = req.get('admin_name', '')
+                            admin_comment = req.get('admin_comment', '')
+                            coo_name = req.get('coo_name', '')
+                            
+                            if lm_name:
+                                st.markdown(f"**👔 Line Manager:** {lm_name}")
+                                if lm_comment:
+                                    st.markdown("&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"" + lm_comment + "\"*")
+                            else:
+                                st.markdown("**👔 Line Manager:** Pending")
+                            
+                            if admin_name:
+                                st.markdown(f"**🔍 Admin:** {admin_name}")
+                                if admin_comment:
+                                    st.markdown("&nbsp;&nbsp;&nbsp;&nbsp;💬 *\"" + admin_comment + "\"*")
+                            else:
+                                st.markdown("**🔍 Admin:** Pending")
+                            
+                            if coo_name:
+                                st.markdown(f"**🏢 COO:** {coo_name}")
+                            else:
+                                st.markdown("**🏢 COO:** Pending")
                             
                             st.markdown("---")
                             st.markdown("**📋 Current JD:**")
@@ -14265,10 +14247,7 @@ APPLY NOW: {public_url}
                                 with st.form(key=f"revise_form_{i}"):
                                     edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"revise_jd_{i}")
                                     edit_salary = st.text_input("Salary Range", value=req.get('salary', ''), key=f"revise_salary_{i}")
-                                    
-                                    st.markdown("**📎 Attach Evidence (Optional):**")
                                     evidence_file = st.file_uploader("Upload evidence", key=f"revise_evidence_{i}", type=['pdf', 'docx', 'xlsx', 'png', 'jpg'])
-                                    
                                     revise_comment = st.text_area("Update Comment *", key=f"revise_comment_{i}")
                                     
                                     if st.form_submit_button("✅ Resubmit for Approval", use_container_width=True):
@@ -14285,16 +14264,14 @@ APPLY NOW: {public_url}
                                                     supabase_url = os.environ.get('SUPABASE_URL', '')
                                                     supabase_key = os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
                                                     supabase_client = create_client(supabase_url, supabase_key)
-                                                    
                                                     file_name = f"req_evidence_{req['id']}_{evidence_file.name}"
                                                     supabase_client.storage.from_('dlp-evidence').upload(file_name, evidence_file.getvalue())
                                                     evidence_url = supabase_client.storage.from_('dlp-evidence').get_public_url(file_name)
-                                                    
                                                     if 'evidence_files' not in st.session_state.job_requisitions[i]:
                                                         st.session_state.job_requisitions[i]['evidence_files'] = []
                                                     st.session_state.job_requisitions[i]['evidence_files'].append(evidence_url)
-                                                except:
-                                                    pass
+                                                except Exception as e:
+                                                    st.warning(f"Evidence upload: {str(e)}")
                                             
                                             try:
                                                 r = st.session_state.job_requisitions[i]
@@ -14330,11 +14307,20 @@ APPLY NOW: {public_url}
                     st.info("No approved requisitions yet.")
                 else:
                     for req in approved_reqs:
+                        lm_name = req.get('lm_name', '')
+                        lm_comment = req.get('lm_comment', '')
+                        admin_name = req.get('admin_name', '')
+                        admin_comment = req.get('admin_comment', '')
+                        coo_name = req.get('coo_name', '')
+                        coo_comment = req.get('coo_comment', '')
+                        
                         st.markdown(f"""
                         <div style="background: rgba(56, 161, 105, 0.1); border: 1px solid #38a169; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
                             <strong style="color: #38a169;">✅ {req['id']} - {req['title']}</strong><br>
                             <small style="color: #E0E0E0;">{req['department']} | Submitted by {req['submitted_by']}</small><br>
-                            <small style="color: #A0A0A0;">LM: {req.get('lm_name', 'N/A')} → Admin: {req.get('admin_name', 'N/A')} → COO: {req.get('coo_name', 'N/A')}</small>
+                            <small style="color: #A0A0A0;">👔 LM: {lm_name or 'N/A'}</small><br>
+                            <small style="color: #A0A0A0;">🔍 Admin: {admin_name or 'N/A'}</small><br>
+                            <small style="color: #A0A0A0;">🏢 COO: {coo_name or 'N/A'}</small>
                         </div>
                         """, unsafe_allow_html=True)
             
@@ -14353,7 +14339,14 @@ APPLY NOW: {public_url}
                         
                         with st.expander(f"❌ {req['id']} - {req['title']} | {req['department']}", expanded=False):
                             st.error(f"**Rejection Reason:** {req.get('coo_comment', '')}")
-                            st.markdown(f"**Rejected by:** {req.get('coo_name', '')}")
+                            
+                            lm_name = req.get('lm_name', '')
+                            admin_name = req.get('admin_name', '')
+                            coo_name = req.get('coo_name', '')
+                            
+                            st.markdown(f"**👔 Line Manager:** {lm_name or 'N/A'}")
+                            st.markdown(f"**🔍 Admin:** {admin_name or 'N/A'}")
+                            st.markdown(f"**🏢 COO:** {coo_name or 'N/A'}")
                             
                             if is_admin:
                                 if st.button("🗑️ Delete Rejected Requisition", key=f"delete_req_{i}"):
