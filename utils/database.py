@@ -293,7 +293,7 @@ class DatabaseManager:
         except:
             return False
 
-    def save_job_requisition(self, req_id, title, department, location, job_type, salary, level, positions, closing, jd, screening, posts, status, submitted_by, date, lm_comment, admin_comment, coo_comment, lm_name='', admin_name='', coo_name='', evidence_files=None):
+    def save_job_requisition(self, req_id, title, department, location, job_type, salary, level, positions, closing, jd, screening, posts, status, submitted_by, date, lm_comment, admin_comment, coo_comment, lm_name='', admin_name='', coo_name='', evidence_files=None, hiring_reason='', submitter_comment=''):
         existing = self._get("job_requisitions", {"req_id": req_id})
         if existing:
             self._delete("job_requisitions", {"req_id": req_id})
@@ -314,7 +314,9 @@ class DatabaseManager:
             "submitted_by": submitted_by, "date": date,
             "lm_comment": lm_comment, "admin_comment": admin_comment, "coo_comment": coo_comment,
             "lm_name": lm_name, "admin_name": admin_name, "coo_name": coo_name,
-            "evidence_files": json.dumps(evidence_files)
+            "evidence_files": json.dumps(evidence_files),
+            "hiring_reason": hiring_reason,
+            "submitter_comment": submitter_comment
         })
     
     def get_all_job_requisitions(self):
