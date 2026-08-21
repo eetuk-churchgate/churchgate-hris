@@ -13689,21 +13689,36 @@ APPLY NOW: {public_url}
         try:
             db_reqs = db.get_all_job_requisitions()
             for r in db_reqs:
+                try:
+                    screening_data = json.loads(r.get('screening', '[]')) if r.get('screening') else []
+                except:
+                    screening_data = []
+                
+                try:
+                    posts_data = json.loads(r.get('posts', '{}')) if r.get('posts') else {}
+                except:
+                    posts_data = {}
+                
+                try:
+                    evidence_data = json.loads(r.get('evidence_files', '[]')) if r.get('evidence_files') else []
+                except:
+                    evidence_data = []
+                
                 st.session_state.job_requisitions.append({
                     'id': r.get('req_id', ''), 'title': r.get('title', ''),
                     'department': r.get('department', ''), 'location': r.get('location', ''),
                     'type': r.get('job_type', ''), 'salary': r.get('salary', ''),
                     'level': r.get('level', ''), 'positions': r.get('positions', 1),
                     'closing': r.get('closing', ''), 'jd': r.get('jd', ''),
-                    'screening': json.loads(r.get('screening', '[]')),
-                    'posts': json.loads(r.get('posts', '{}')),
+                    'screening': screening_data,
+                    'posts': posts_data,
                     'status': r.get('status', ''), 'submitted_by': r.get('submitted_by', ''),
                     'date': r.get('date', ''), 'lm_comment': r.get('lm_comment', ''),
                     'admin_comment': r.get('admin_comment', ''), 'coo_comment': r.get('coo_comment', ''),
                     'lm_name': r.get('lm_name', ''),
                     'admin_name': r.get('admin_name', ''),
                     'coo_name': r.get('coo_name', ''),
-                    'evidence_files': json.loads(r.get('evidence_files', '[]'))
+                    'evidence_files': evidence_data
                 })
         except:
             pass
@@ -13892,11 +13907,12 @@ APPLY NOW: {public_url}
             
             st.markdown("---")
             
-            approval_subtab1, approval_subtab2, approval_subtab3, approval_subtab4 = st.tabs([
+            approval_subtab1, approval_subtab2, approval_subtab3, approval_subtab4, approval_subtab5 = st.tabs([
                 f"📋 Pending Action ({pending_lm + pending_admin + pending_coo})",
                 f"🔄 Revisions ({revision_req})",
                 f"✅ Approved ({approved})",
-                f"❌ Rejected ({rejected})"
+                f"❌ Rejected ({rejected})",
+                "📊 Analytics"
             ])
             
             # ============ SUB-TAB 1: PENDING ============
@@ -13906,6 +13922,10 @@ APPLY NOW: {public_url}
                 for i, req in enumerate(st.session_state.job_requisitions):
                     if req['status'] not in ['Pending LM Approval', 'Pending Admin Approval', 'Pending COO Approval']:
                         continue
+                    
+                    # Ensure evidence_files exists
+                    if 'evidence_files' not in req:
+                        req['evidence_files'] = []
                     
                     with st.expander(f"{req['id']} - {req['title']} | {req['department']} | {req['status']}", expanded=True):
                         st.markdown(f"**Submitted By:** {req['submitted_by']} | **Date:** {req['date']}")
@@ -13923,7 +13943,23 @@ APPLY NOW: {public_url}
                         
                         st.markdown("---")
                         posts = req.get('posts', {})
-                        st.markdown(f"**Platform Posts:** LinkedIn: {'✅' if posts.get('linkedin') else '❌'} | Indeed: {'✅' if posts.get('indeed') else '❌'} | Glassdoor: {'✅' if posts.get('glassdoor') else '❌'}")
+                        st.markdown(f"**Platform Posts:** LinkedIn: {'✅' if posts.get('linkedin') else '❌'} | Indeed: {'✅' if posts.get('indeed') else '❌'} | Glassdoor: {'✅' if posts.get('glassdoor') else '❌'} | MyJobMag: {'✅' if posts.get('myjobmag') else '❌'} | HotNigerianJobs: {'✅' if posts.get('hotnigerianjobs') else '❌'}")
+                        
+                        # Evidence files
+                        if req.get('evidence_files'):
+                            st.markdown("---")
+                            st.markdown("**📎 Evidence Files:**")
+                            ev_cols = st.columns(min(3, len(req['evidence_files'])))
+                            for idx, ev in enumerate(req['evidence_files']):
+                                ev_name = ev.split('/')[-1] if '/' in ev else str(ev)
+                                with ev_cols[idx % 3]:
+                                    st.markdown(f"""
+                                    <div style="background: rgba(49, 130, 206, 0.1); border: 1px solid #3182ce; border-radius: 6px; padding: 8px; margin-bottom: 6px; text-align: center;">
+                                        <span style="font-size: 1.5rem;">📄</span><br>
+                                        <small style="color: #3182ce; word-break: break-all;">{ev_name[:30]}</small><br>
+                                        <a href="{ev}" target="_blank" style="color: #3182ce; font-size: 0.7rem; text-decoration: none;">🔗 View</a>
+                                    </div>
+                                    """, unsafe_allow_html=True)
                         
                         st.markdown("---")
                         
@@ -13959,16 +13995,11 @@ APPLY NOW: {public_url}
                         else:
                             st.markdown("**🏢 COO:** Pending")
                         
-                        # Evidence files
-                        if req.get('evidence_files'):
-                            st.markdown("---")
-                            st.markdown("**📎 Evidence Files:**")
-                            for ev in req['evidence_files']:
-                                st.markdown(f"- 📄 [{ev.split('/')[-1]}]({ev})")
-                        
                         # LM APPROVAL
                         if req['status'] == 'Pending LM Approval' and is_manager:
                             st.markdown("---")
+                            if req.get('coo_comment') and req.get('coo_name'):
+                                st.warning(f"🔄 COO ({req['coo_name']}) requested revision: \"{req['coo_comment']}\"")
                             st.markdown("#### 👔 Line Manager Authorization")
                             with st.form(key=f"lm_form_{i}"):
                                 edit_jd = st_quill(value=jd_content, html=True, key=f"edit_jd_lm_{i}")
@@ -13982,6 +14013,9 @@ APPLY NOW: {public_url}
                                         st.session_state.job_requisitions[i]['jd'] = edit_jd
                                         st.session_state.job_requisitions[i]['lm_name'] = user_name
                                         
+                                        if 'evidence_files' not in st.session_state.job_requisitions[i]:
+                                            st.session_state.job_requisitions[i]['evidence_files'] = []
+                                        
                                         if evidence_file:
                                             try:
                                                 from supabase import create_client
@@ -13991,11 +14025,9 @@ APPLY NOW: {public_url}
                                                 file_name = f"req_evidence_{req['id']}_{evidence_file.name}"
                                                 supabase_client.storage.from_('dlp-evidence').upload(file_name, evidence_file.getvalue())
                                                 evidence_url = supabase_client.storage.from_('dlp-evidence').get_public_url(file_name)
-                                                if 'evidence_files' not in st.session_state.job_requisitions[i]:
-                                                    st.session_state.job_requisitions[i]['evidence_files'] = []
                                                 st.session_state.job_requisitions[i]['evidence_files'].append(evidence_url)
                                             except Exception as e:
-                                                st.warning(f"Evidence upload: {str(e)}")
+                                                st.error(f"Evidence upload FAILED: {str(e)}")
                                         
                                         r = st.session_state.job_requisitions[i]
                                         db.save_job_requisition(
@@ -14008,7 +14040,7 @@ APPLY NOW: {public_url}
                                         )
                                         
                                         if email_svc:
-                                            hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                                            hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com", "eochala@churchgate.com"]
                                             for hr_email in hr_emails:
                                                 try:
                                                     email_svc.send_email(hr_email, f"🔔 Job Requisition Authorized: {req['title']}", f"LM ({user_name}) authorized.\n\nComment: {lm_comment_input}")
@@ -14023,6 +14055,8 @@ APPLY NOW: {public_url}
                         # ADMIN VALIDATION
                         if req['status'] == 'Pending Admin Approval' and is_admin:
                             st.markdown("---")
+                            if req.get('coo_comment') and req.get('coo_name'):
+                                st.warning(f"🔄 COO ({req['coo_name']}) requested revision: \"{req['coo_comment']}\"")
                             st.markdown("#### 🔍 HR Admin Validation")
                             with st.form(key=f"admin_form_{i}"):
                                 edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"edit_jd_admin_{i}")
@@ -14102,7 +14136,7 @@ APPLY NOW: {public_url}
                                             email_svc.send_email(req.get('submitted_by', ''), f"✅ Job APPROVED: {req['title']}", f"LIVE! URL: {public_url}")
                                         except:
                                             pass
-                                        hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                                        hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com", "eochala@churchgate.com"]
                                         for hr_email in hr_emails:
                                             try:
                                                 email_svc.send_email(hr_email, f"✅ Job LIVE: {req['title']}", f"Approved by COO ({user_name}). URL: {public_url}")
@@ -14130,7 +14164,7 @@ APPLY NOW: {public_url}
                                     )
                                     
                                     if email_svc:
-                                        hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                                        hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com", "eochala@churchgate.com"]
                                         for hr_email in hr_emails:
                                             try:
                                                 email_svc.send_email(hr_email, f"❌ Job Rejected: {req['title']}", f"COO ({user_name}) rejected. Reason: {coo_comment_input}")
@@ -14144,6 +14178,10 @@ APPLY NOW: {public_url}
                                     st.session_state.job_requisitions[i]['status'] = 'Revision Requested by COO'
                                     st.session_state.job_requisitions[i]['coo_comment'] = coo_comment_input
                                     st.session_state.job_requisitions[i]['coo_name'] = user_name
+                                    st.session_state.job_requisitions[i]['lm_comment'] = ''
+                                    st.session_state.job_requisitions[i]['lm_name'] = ''
+                                    st.session_state.job_requisitions[i]['admin_comment'] = ''
+                                    st.session_state.job_requisitions[i]['admin_name'] = ''
                                     
                                     r = st.session_state.job_requisitions[i]
                                     db.save_job_requisition(
@@ -14156,27 +14194,36 @@ APPLY NOW: {public_url}
                                     )
                                     
                                     if email_svc:
-                                        hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                                        hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com", "eochala@churchgate.com"]
                                         for hr_email in hr_emails:
                                             try:
                                                 email_svc.send_email(hr_email, f"🔄 Revision Requested: {req['title']}", f"COO ({user_name}) notes: {coo_comment_input}")
                                             except:
                                                 pass
                                     
-                                    st.warning(f"🔄 Revision: {coo_comment_input}")
+                                    st.warning(f"🔄 Revision requested. Sent back to LM for full review cycle.")
                                     st.rerun()
             
             # ============ SUB-TAB 2: REVISIONS ============
             with approval_subtab2:
                 st.subheader("🔄 Revisions Requested")
+                revision_reqs = [r for r in st.session_state.job_requisitions if r['status'] == 'Revision Requested by COO']
+                if not revision_reqs:
+                    st.info("No revisions pending.")
                 for i, req in enumerate(st.session_state.job_requisitions):
                     if req['status'] != 'Revision Requested by COO':
                         continue
                     with st.expander(f"{req['id']} - {req['title']}", expanded=True):
                         st.warning(f"**COO Notes:** {req.get('coo_comment', '')}")
                         st.markdown(f"**🏢 COO:** {req.get('coo_name', '')}")
-                        st.markdown(f"**👔 LM:** {req.get('lm_name', '') or 'N/A'}")
-                        st.markdown(f"**🔍 Admin:** {req.get('admin_name', '') or 'N/A'}")
+                        
+                        st.markdown("---")
+                        st.markdown("**📋 Workflow Trail:**")
+                        st.markdown(f"1. 👔 LM: {req.get('lm_name', '') or 'Pending review'}")
+                        st.markdown(f"2. 🔍 Admin: {req.get('admin_name', '') or 'Pending review'}")
+                        st.markdown(f"3. 🏢 COO: {req.get('coo_name', '')} — Revision requested")
+                        st.markdown("---")
+                        st.markdown("**🔄 Action:** LM must review and resubmit. Then Admin validates before COO sees it again.")
                         
                         if is_admin or is_manager:
                             with st.form(key=f"revise_form_{i}"):
@@ -14185,13 +14232,16 @@ APPLY NOW: {public_url}
                                 evidence_file = st.file_uploader("Evidence", key=f"revise_evidence_{i}", type=['pdf', 'docx', 'xlsx', 'png', 'jpg'])
                                 revise_comment = st.text_area("Update Comment *", key=f"revise_comment_{i}")
                                 
-                                if st.form_submit_button("✅ Resubmit", use_container_width=True):
+                                if st.form_submit_button("✅ Resubmit to Admin", use_container_width=True):
                                     if revise_comment:
-                                        st.session_state.job_requisitions[i]['status'] = 'Pending COO Approval'
+                                        st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
                                         st.session_state.job_requisitions[i]['jd'] = edit_jd
                                         st.session_state.job_requisitions[i]['salary'] = edit_salary
                                         st.session_state.job_requisitions[i]['lm_comment'] = revise_comment
                                         st.session_state.job_requisitions[i]['lm_name'] = user_name
+                                        
+                                        if 'evidence_files' not in st.session_state.job_requisitions[i]:
+                                            st.session_state.job_requisitions[i]['evidence_files'] = []
                                         
                                         if evidence_file:
                                             try:
@@ -14202,11 +14252,9 @@ APPLY NOW: {public_url}
                                                 file_name = f"req_evidence_{req['id']}_{evidence_file.name}"
                                                 supabase_client.storage.from_('dlp-evidence').upload(file_name, evidence_file.getvalue())
                                                 evidence_url = supabase_client.storage.from_('dlp-evidence').get_public_url(file_name)
-                                                if 'evidence_files' not in st.session_state.job_requisitions[i]:
-                                                    st.session_state.job_requisitions[i]['evidence_files'] = []
                                                 st.session_state.job_requisitions[i]['evidence_files'].append(evidence_url)
-                                            except:
-                                                pass
+                                            except Exception as e:
+                                                st.error(f"Evidence upload FAILED: {str(e)}")
                                         
                                         r = st.session_state.job_requisitions[i]
                                         db.save_job_requisition(
@@ -14218,34 +14266,39 @@ APPLY NOW: {public_url}
                                             r.get('evidence_files', [])
                                         )
                                         
-                                        st.success("✅ Resubmitted!")
+                                        st.success("✅ Resubmitted to Admin!")
                                         st.rerun()
             
             # ============ SUB-TAB 3: APPROVED ============
             with approval_subtab3:
                 st.subheader("✅ Approved")
-                for req in st.session_state.job_requisitions:
-                    if req['status'] == 'Approved - Live':
-                        lm_name = req.get('lm_name', '') or 'N/A'
-                        lm_comment = req.get('lm_comment', '')
-                        admin_name = req.get('admin_name', '') or 'N/A'
-                        admin_comment = req.get('admin_comment', '')
-                        coo_name = req.get('coo_name', '') or 'N/A'
-                        coo_comment = req.get('coo_comment', '')
-                        
-                        st.markdown(f"""
-                        <div style="background: rgba(56, 161, 105, 0.1); border: 1px solid #38a169; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
-                            <strong style="color: #38a169;">✅ {req['id']} - {req['title']}</strong><br>
-                            <small style="color: #E0E0E0;">{req['department']} | By {req['submitted_by']}</small><br>
-                            <small style="color: #A0A0A0;">👔 {lm_name}: "{lm_comment}"</small><br>
-                            <small style="color: #A0A0A0;">🔍 {admin_name}: "{admin_comment}"</small><br>
-                            <small style="color: #A0A0A0;">🏢 {coo_name}: "{coo_comment}"</small>
-                        </div>
-                        """, unsafe_allow_html=True)
+                approved_reqs = [r for r in st.session_state.job_requisitions if r['status'] == 'Approved - Live']
+                if not approved_reqs:
+                    st.info("No approved requisitions yet.")
+                for req in approved_reqs:
+                    lm_name = req.get('lm_name', '') or 'N/A'
+                    lm_comment = req.get('lm_comment', '')
+                    admin_name = req.get('admin_name', '') or 'N/A'
+                    admin_comment = req.get('admin_comment', '')
+                    coo_name = req.get('coo_name', '') or 'N/A'
+                    coo_comment = req.get('coo_comment', '')
+                    
+                    st.markdown(f"""
+                    <div style="background: rgba(56, 161, 105, 0.1); border: 1px solid #38a169; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                        <strong style="color: #38a169;">✅ {req['id']} - {req['title']}</strong><br>
+                        <small style="color: #E0E0E0;">{req['department']} | By {req['submitted_by']}</small><br>
+                        <small style="color: #A0A0A0;">👔 {lm_name}: "{lm_comment}"</small><br>
+                        <small style="color: #A0A0A0;">🔍 {admin_name}: "{admin_comment}"</small><br>
+                        <small style="color: #A0A0A0;">🏢 {coo_name}: "{coo_comment}"</small>
+                    </div>
+                    """, unsafe_allow_html=True)
             
             # ============ SUB-TAB 4: REJECTED ============
             with approval_subtab4:
                 st.subheader("❌ Rejected")
+                rejected_reqs = [r for r in st.session_state.job_requisitions if r['status'] == 'Rejected by COO']
+                if not rejected_reqs:
+                    st.info("No rejected requisitions.")
                 for i, req in enumerate(st.session_state.job_requisitions):
                     if req['status'] == 'Rejected by COO':
                         with st.expander(f"❌ {req['id']} - {req['title']}", expanded=False):
@@ -14259,6 +14312,133 @@ APPLY NOW: {public_url}
                                     st.session_state.job_requisitions.pop(i)
                                     st.success("✅ Deleted!")
                                     st.rerun()
+            
+            # ============ SUB-TAB 5: ANALYTICS ============
+            with approval_subtab5:
+                st.subheader("📊 Requisition Analytics")
+                
+                all_reqs = st.session_state.job_requisitions
+                
+                # Status distribution - REAL DATA
+                status_counts = {}
+                for r in all_reqs:
+                    status = r['status']
+                    status_counts[status] = status_counts.get(status, 0) + 1
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("#### 📊 Status Distribution")
+                    if status_counts:
+                        status_df = pd.DataFrame({
+                            'Status': list(status_counts.keys()),
+                            'Count': list(status_counts.values())
+                        })
+                        status_colors = {
+                            'Pending LM Approval': '#d69e2e',
+                            'Pending Admin Approval': '#3182ce',
+                            'Pending COO Approval': '#805ad5',
+                            'Revision Requested by COO': '#dd6b20',
+                            'Rejected by COO': '#CC0000',
+                            'Approved - Live': '#38a169'
+                        }
+                        fig1 = px.pie(status_df, values='Count', names='Status', hole=0.5,
+                                    color='Status', color_discrete_map=status_colors)
+                        fig1.update_layout(height=350, margin=dict(t=20, b=20, l=20, r=20))
+                        st.plotly_chart(fig1, use_container_width=True)
+                    else:
+                        st.info("No data yet.")
+                
+                with col2:
+                    st.markdown("#### 🏢 Department Breakdown")
+                    dept_counts = {}
+                    for r in all_reqs:
+                        dept = r['department']
+                        dept_counts[dept] = dept_counts.get(dept, 0) + 1
+                    
+                    if dept_counts:
+                        dept_df = pd.DataFrame({
+                            'Department': list(dept_counts.keys()),
+                            'Count': list(dept_counts.values())
+                        }).sort_values('Count', ascending=False)
+                        fig2 = px.bar(dept_df, x='Department', y='Count', color='Department',
+                                    color_discrete_sequence=['#CC0000', '#D4AF37', '#3182ce', '#38a169', '#805ad5', '#dd6b20'])
+                        fig2.update_layout(height=350, showlegend=False, margin=dict(t=20, b=60, l=20, r=20),
+                                         xaxis_tickangle=-45)
+                        st.plotly_chart(fig2, use_container_width=True)
+                    else:
+                        st.info("No data yet.")
+                
+                st.markdown("---")
+                
+                col3, col4 = st.columns(2)
+                
+                with col3:
+                    st.markdown("#### ⏱️ Approval Timeline (Days)")
+                    timeline_data = []
+                    for r in all_reqs:
+                        if r['status'] == 'Approved - Live':
+                            try:
+                                submit_date = datetime.strptime(r['date'], '%Y-%m-%d %H:%M')
+                                days_to_approve = (datetime.now() - submit_date).days
+                                timeline_data.append({'Requisition': r['id'][-4:], 'Days': days_to_approve})
+                            except:
+                                pass
+                    
+                    if timeline_data:
+                        timeline_df = pd.DataFrame(timeline_data)
+                        fig3 = px.bar(timeline_df, x='Requisition', y='Days', color='Days',
+                                    color_continuous_scale=['#38a169', '#d69e2e', '#CC0000'])
+                        fig3.update_layout(height=300, showlegend=False, margin=dict(t=20, b=20, l=20, r=20))
+                        st.plotly_chart(fig3, use_container_width=True)
+                    else:
+                        st.info("No approved requisitions yet.")
+                
+                with col4:
+                    st.markdown("#### 📈 Monthly Submissions")
+                    monthly_counts = {}
+                    for r in all_reqs:
+                        month = r['date'][:7] if r.get('date') else 'Unknown'
+                        monthly_counts[month] = monthly_counts.get(month, 0) + 1
+                    
+                    if monthly_counts:
+                        monthly_df = pd.DataFrame({
+                            'Month': list(monthly_counts.keys()),
+                            'Count': list(monthly_counts.values())
+                        }).sort_values('Month')
+                        fig4 = px.line(monthly_df, x='Month', y='Count', markers=True,
+                                     color_discrete_sequence=['#CC0000'])
+                        fig4.update_layout(height=300, margin=dict(t=20, b=20, l=20, r=20))
+                        st.plotly_chart(fig4, use_container_width=True)
+                    else:
+                        st.info("No data yet.")
+                
+                st.markdown("---")
+                
+                # Summary stats - REAL DATA
+                total_reqs = len(all_reqs)
+                approval_rate = (approved / total_reqs * 100) if total_reqs > 0 else 0
+                rejection_rate = (rejected / total_reqs * 100) if total_reqs > 0 else 0
+                revision_rate = (revision_req / total_reqs * 100) if total_reqs > 0 else 0
+                pending_rate = ((pending_lm + pending_admin + pending_coo) / total_reqs * 100) if total_reqs > 0 else 0
+                
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("📋 Total Requisitions", total_reqs)
+                c2.metric("✅ Approval Rate", f"{approval_rate:.0f}%")
+                c3.metric("❌ Rejection Rate", f"{rejection_rate:.0f}%")
+                c4.metric("⏳ Pending Rate", f"{pending_rate:.0f}%")
+                
+                # Export
+                if all_reqs:
+                    export_data = [{
+                        'ID': r['id'], 'Title': r['title'], 'Department': r['department'],
+                        'Status': r['status'], 'Submitted By': r['submitted_by'],
+                        'Date': r['date'], 'LM': r.get('lm_name', ''), 'Admin': r.get('admin_name', ''),
+                        'COO': r.get('coo_name', '')
+                    } for r in all_reqs]
+                    st.download_button("📥 Export Requisitions CSV", 
+                        pd.DataFrame(export_data).to_csv(index=False),
+                        "requisitions_report.csv", "text/csv", use_container_width=True)
                                         
     
     # ============ TAB 3: ACTIVE JOBS ============
