@@ -13511,7 +13511,6 @@ APPLY NOW: {public_url}
         
         messages = []
         
-        # Auto-post to personal profile
         if linkedin_token:
             try:
                 user_url = "https://api.linkedin.com/v2/userinfo"
@@ -13552,7 +13551,6 @@ APPLY NOW: {public_url}
         else:
             messages.append('⚠️ No LinkedIn token')
         
-        # LinkedIn share links
         li_share = f"https://www.linkedin.com/shareArticle?mini=true&url={urllib.parse.quote(public_url)}&title={urllib.parse.quote('WE ARE HIRING: ' + job_title)}&summary={urllib.parse.quote(clean_jd[:200])}"
         messages.append(f'🔗 [Share on LinkedIn]({li_share})')
         
@@ -13569,7 +13567,6 @@ APPLY NOW: {public_url}
         try:
             import xml.etree.ElementTree as ET
             
-            # Create XML for Indeed
             job_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <job>
     <title><![CDATA[{job_title}]]></title>
@@ -13607,12 +13604,12 @@ APPLY NOW: {public_url}
         }
         
         # ============================================
-        # 4. MYJOBMAG - Pre-filled Post Template
+        # 4. MYJOBMAG
         # ============================================
         myjobmag_fields = {
             'job_title': job_title,
             'specialization': job_department,
-            'experience': '3-5 years',  # Adjust based on level
+            'experience': '3-5 years',
             'job_mode': 'Full Time' if job_type.lower() == 'full-time' else 'Onsite',
             'location': job_location,
             'relocation': 'No',
@@ -13627,23 +13624,13 @@ APPLY NOW: {public_url}
             'cover_letter': 'No'
         }
         
-        myjobmag_message = f"""📋 **MyJobMag Post Ready - Copy these fields:**
+        myjobmag_message = f"""📋 **MyJobMag Post Ready:**
 
-**Job Title:** {myjobmag_fields['job_title']}
-**Specialization:** {myjobmag_fields['specialization']}
-**Experience:** {myjobmag_fields['experience']}
-**Job Mode:** {myjobmag_fields['job_mode']}
-**Location:** {myjobmag_fields['location']}
-**Qualification:** {myjobmag_fields['qualification']}
-**Salary:** {myjobmag_fields['salary']}
-**Hiring Company:** Churchgate Group
-**Apply Method:** Use link → {public_url}
-**Deadline:** Set to closing date
-
-**Description:**
-{clean_jd[:500]}...
-
-[Open MyJobMag Post Page](https://www.myjobmag.com/post-job)"""
+**Job Title:** {job_title}
+**Specialization:** {job_department}
+**Location:** {job_location}
+**Salary:** {job_salary if job_salary else 'Competitive'}
+**Apply:** {public_url}"""
         
         results['myjobmag'] = {
             'status': 'ready',
@@ -13652,43 +13639,19 @@ APPLY NOW: {public_url}
         }
         
         # ============================================
-        # 5. HOTNIGERIANJOBS - Pre-filled Post Template
+        # 5. HOTNIGERIANJOBS
         # ============================================
-        hnj_fields = {
-            'company': 'Churchgate Group',
-            'position_title': job_title,
-            'job_field': job_department,
-            'qualification': 'Degree',
-            'employment_type': job_type,
-            'location': job_location,
-            'city': job_location.split()[-1] if job_location else 'Abuja',
-            'salary_min': job_salary.split('-')[0].strip() if job_salary and '-' in job_salary else '',
-            'salary_max': job_salary.split('-')[1].strip() if job_salary and '-' in job_salary else '',
-            'deadline': '',
-            'description': clean_jd[:3000],
-            'apply_method': 'Direct applications to a different website',
-            'apply_url': public_url
-        }
-        
-        hnj_message = f"""📋 **HotNigerianJobs Post Ready - Copy these fields:**
+        hnj_message = f"""📋 **HotNigerianJobs Post Ready:**
 
-**Company:** Churchgate Group
-**Position Title:** {hnj_fields['position_title']}
-**Job Field:** {hnj_fields['job_field']}
-**Employment Type:** {hnj_fields['employment_type']}
-**Location:** {hnj_fields['location']}
+**Position:** {job_title}
+**Field:** {job_department}
+**Location:** {job_location}
 **Salary:** {job_salary if job_salary else 'Competitive'}
-**Application Method:** Direct to website → {public_url}
-
-**Description:**
-{clean_jd[:500]}...
-
-[Open HotNigerianJobs Post Page](https://www.hotnigerianjobs.com/employer/post-job)"""
+**Apply:** {public_url}"""
         
         results['hotnigerianjobs'] = {
             'status': 'ready',
-            'message': hnj_message,
-            'fields': hnj_fields
+            'message': hnj_message
         }
         
         return results
@@ -13697,13 +13660,11 @@ APPLY NOW: {public_url}
     
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
     
-    # Auto-expire jobs past closing date
     try:
         today = datetime.now().strftime('%Y-%m-%d')
         for i, req in enumerate(st.session_state.job_requisitions):
             if req.get('status') == 'Approved - Live' and req.get('closing', '') and req.get('closing', '') < today:
                 st.session_state.job_requisitions[i]['status'] = 'Expired'
-                st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('ref') != req.get('id')]
         st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('closing', '9999-12-31') >= today]
     except:
         pass
@@ -13720,7 +13681,7 @@ APPLY NOW: {public_url}
     
     STREAMLIT_URL = "https://hris.churchgate.com"
     
-    # CHANGE 1: Load from database
+    # Load from database
     if 'job_requisitions' not in st.session_state:
         st.session_state.job_requisitions = []
         try:
@@ -13736,7 +13697,11 @@ APPLY NOW: {public_url}
                     'posts': json.loads(r.get('posts', '{}')),
                     'status': r.get('status', ''), 'submitted_by': r.get('submitted_by', ''),
                     'date': r.get('date', ''), 'lm_comment': r.get('lm_comment', ''),
-                    'admin_comment': r.get('admin_comment', ''), 'coo_comment': r.get('coo_comment', '')
+                    'admin_comment': r.get('admin_comment', ''), 'coo_comment': r.get('coo_comment', ''),
+                    'lm_name': r.get('lm_name', ''),
+                    'admin_name': r.get('admin_name', ''),
+                    'coo_name': r.get('coo_name', ''),
+                    'evidence_files': json.loads(r.get('evidence_files', '[]'))
                 })
         except:
             pass
@@ -13775,19 +13740,16 @@ APPLY NOW: {public_url}
     if 'referrals' not in st.session_state:
         st.session_state.referrals = []
     
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-        "📋 Job Requisition", "📢 Active Jobs", "🌐 Candidate Portal", 
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+        "📋 Job Requisition", "✅ Approval Dashboard", "📢 Active Jobs", "🌐 Candidate Portal", 
         "🤖 AI Screening", "📅 Interviews", "📝 Offer Letters",
         "🎯 Onboarding", "🔍 Background Checks", "📊 Analytics"
     ])
     
-    # ============ TAB 1: JOB REQUISITION ============
+    # ============ TAB 1: JOB REQUISITION (FORM ONLY) ============
     with tab1:
-        st.subheader("📋 Job Requisition & Approval Workflow")
+        st.subheader("📋 Job Requisition Form")
         st.info("Workflow: Line Manager → Super Admin → COO → Job Goes LIVE on Careers Page")
-        
-        
-
         
         with st.form("job_requisition_form"):
             st.markdown("### New Job Requisition")
@@ -13809,7 +13771,6 @@ APPLY NOW: {public_url}
             if 'jd_html_content' not in st.session_state:
                 st.session_state.jd_html_content = ""
             
-            # Rich text editor
             jd_text_for_submission = st_quill(
                 value=st.session_state.jd_html_content,
                 placeholder="Start typing your job description here...",
@@ -13821,15 +13782,12 @@ APPLY NOW: {public_url}
                 st.session_state.jd_html_content = jd_text_for_submission
                 with st.expander("👁️ Live Preview", expanded=True):
                     st.markdown(jd_text_for_submission, unsafe_allow_html=True)
-            else:
-                st.info("👆 Use the rich text editor above to create your job description. Click a template to get started.")
             
             st.markdown("### Screening Questions (Optional)")
-            st.markdown("*Leave blank if not needed*")
-            screening_q1 = st.text_input("Screening Question 1", placeholder="e.g., Cisco Certified (CCNP minimum)")
-            screening_q2 = st.text_input("Screening Question 2", placeholder="e.g., 5+ years experience in similar role")
-            screening_q3 = st.text_input("Screening Question 3", placeholder="e.g., Experience with security systems")
-            screening_q4 = st.text_input("Screening Question 4", placeholder="e.g., B.Sc. Computer Science or related field")
+            screening_q1 = st.text_input("Screening Question 1", key="sq1")
+            screening_q2 = st.text_input("Screening Question 2", key="sq2")
+            screening_q3 = st.text_input("Screening Question 3", key="sq3")
+            screening_q4 = st.text_input("Screening Question 4", key="sq4")
             
             st.markdown("### Auto-Post Settings")
             c1, c2, c3, c4, c5 = st.columns(5)
@@ -13857,10 +13815,11 @@ APPLY NOW: {public_url}
                         'posts': {'linkedin': post_linkedin, 'indeed': post_indeed, 'glassdoor': post_glassdoor, 'myjobmag': post_myjobmag, 'hotnigerianjobs': post_hotnigerianjobs},
                         'status': 'Pending LM Approval',
                         'submitted_by': user_name, 'date': datetime.now().strftime('%Y-%m-%d %H:%M'),
-                        'lm_comment': '', 'admin_comment': '', 'coo_comment': ''
+                        'lm_comment': '', 'admin_comment': '', 'coo_comment': '',
+                        'lm_name': '', 'admin_name': '', 'coo_name': '',
+                        'evidence_files': []
                     }
                     st.session_state.job_requisitions.append(req)
-                    # CHANGE 2: Save to database
                     try:
                         db.save_job_requisition(req['id'], req['title'], req['department'], req['location'],
                             req['type'], req['salary'], req['level'], req['positions'], req['closing'],
@@ -13868,7 +13827,7 @@ APPLY NOW: {public_url}
                             req['lm_comment'], req['admin_comment'], req['coo_comment'])
                     except:
                         pass
-                    # Send email to Line Manager
+                    
                     lm_emails = {
                         'Accounts & Finance': 'jeff@churchgate.com',
                         'Facility Management': 'deffiong@churchgate.com',
@@ -13892,7 +13851,6 @@ APPLY NOW: {public_url}
                             f"🔔 New Job Requisition Awaiting Authorization: {job_title}",
                             f"A new job requisition for '{job_title}' ({department}) has been submitted by {user_name}.\n\nPlease review and authorize in the HRIS: https://hris.churchgate.com\n\nRequisition ID: {req['id']}"
                         )
-                        st.info(f"📧 Authorization request sent to Line Manager")
                     except:
                         pass
                     
@@ -13900,173 +13858,275 @@ APPLY NOW: {public_url}
                     st.balloons()
                 else:
                     st.error("❌ Required fields missing!")
+    
+    # ============ TAB 2: APPROVAL DASHBOARD ============
+    with tab2:
+        st.subheader("✅ Requisition Approval Dashboard")
+        st.info("Workflow: Line Manager → Super Admin → COO → Job Goes LIVE")
         
-        if st.session_state.job_requisitions:
-            st.markdown("---")
-            st.markdown("### 📋 Requisition Approval Dashboard")
-            
-            # Load email service for notifications
+        if not st.session_state.job_requisitions:
+            st.info("No requisitions submitted yet.")
+        else:
             try:
                 from utils.email_service import EmailService
                 email_svc = EmailService()
             except:
                 email_svc = None
             
-            for i, req in enumerate(st.session_state.job_requisitions):
-                with st.expander(f"{req['id']} - {req['title']} | {req['department']} | {req['status']}", expanded=True):
-                    
-                    # ===== FULL DETAIL VIEW =====
-                    st.markdown(f"**Submitted By:** {req['submitted_by']} | **Date:** {req['date']}")
-                    st.markdown(f"**Department:** {req['department']} | **Location:** {req['location']}")
-                    st.markdown(f"**Type:** {req['type']} | **Level:** {req['level']} | **Positions:** {req.get('positions', 1)}")
-                    st.markdown(f"**Salary Range:** {req.get('salary', 'Not specified')}")
-                    st.markdown(f"**Closing Date:** {req.get('closing', 'Not set')}")
-                    
-                    st.markdown("---")
-                    st.markdown("**📋 Job Description:**")
-                    jd_content = req.get('jd', 'No JD provided')
-                    if '<' in jd_content and '>' in jd_content:
-                        st.markdown(jd_content, unsafe_allow_html=True)
-                    else:
-                        formatted = jd_content.replace('\n\n', '<br><br>').replace('\n', '<br>')
-                        st.markdown(formatted, unsafe_allow_html=True)
-                    
-                    if req.get('screening'):
-                        st.markdown("---")
-                        st.markdown("**❓ Screening Questions:**")
-                        for q in req.get('screening', []):
-                            if q:
-                                st.markdown(f"- {q}")
-                    
-                    st.markdown("---")
-                    st.markdown(f"**Platform Posts:** LinkedIn: {'✅' if req.get('posts', {}).get('linkedin') else '❌'} | Indeed: {'✅' if req.get('posts', {}).get('indeed') else '❌'} | Glassdoor: {'✅' if req.get('posts', {}).get('glassdoor') else '❌'}")
-                    
-                    if req.get('lm_comment'):
-                        st.markdown(f"**LM Comment:** {req['lm_comment']}")
-                    if req.get('admin_comment'):
-                        st.markdown(f"**Admin Comment:** {req['admin_comment']}")
-                    if req.get('coo_comment'):
-                        st.markdown(f"**COO Comment:** {req['coo_comment']}")
-                    
-                    # ===== APPROVAL WORKFLOW WITH EDIT ACCESS =====
-                    if is_admin or is_manager:
-                        st.markdown("---")
+            # ============================================================
+            # SLA & ANALYTICS METRICS
+            # ============================================================
+            st.markdown("### 📊 Approval SLA Metrics")
+            
+            pending_lm = len([r for r in st.session_state.job_requisitions if r['status'] == 'Pending LM Approval'])
+            pending_admin = len([r for r in st.session_state.job_requisitions if r['status'] == 'Pending Admin Approval'])
+            pending_coo = len([r for r in st.session_state.job_requisitions if r['status'] == 'Pending COO Approval'])
+            revision_req = len([r for r in st.session_state.job_requisitions if r['status'] == 'Revision Requested by COO'])
+            rejected = len([r for r in st.session_state.job_requisitions if r['status'] == 'Rejected by COO'])
+            approved = len([r for r in st.session_state.job_requisitions if r['status'] == 'Approved - Live'])
+            
+            m1, m2, m3, m4, m5, m6 = st.columns(6)
+            m1.metric("👔 Pending LM", pending_lm)
+            m2.metric("🔍 Pending Admin", pending_admin)
+            m3.metric("🏢 Pending COO", pending_coo)
+            m4.metric("🔄 Revisions", revision_req)
+            m5.metric("❌ Rejected", rejected)
+            m6.metric("✅ Approved", approved)
+            
+            # SLA Tracking
+            st.markdown("---")
+            st.markdown("### ⏱️ Approval SLA Tracking")
+            
+            sla_data = []
+            for req in st.session_state.job_requisitions:
+                submitted_date = req.get('date', '')
+                status = req['status']
+                
+                # Calculate SLA based on status
+                if submitted_date:
+                    try:
+                        submitted_dt = datetime.strptime(submitted_date, '%Y-%m-%d %H:%M')
+                        elapsed_hours = (datetime.now() - submitted_dt).total_seconds() / 3600
                         
-                        # LM APPROVAL
-                        if req['status'] == 'Pending LM Approval':
-                            st.markdown("#### 👔 Line Manager Review")
-                            with st.form(key=f"lm_form_{i}"):
-                                st.markdown("**✏️ Edit Job Description:**")
-                                edit_jd = st_quill(value=jd_content, html=True, key=f"edit_jd_quill_{i}")
-                                edit_screening = st.text_area("Edit Screening Questions (one per line)", value='\n'.join([q for q in req.get('screening', []) if q]), height=80, key=f"edit_screening_{i}")
-                                lm_comment = st.text_area("Line Manager Comment *", key=f"lm_comment_{i}", placeholder="Reason for authorization or any notes...")
-                                
-                                if st.form_submit_button("✅ Authorize & Send to HR", use_container_width=True):
-                                    if lm_comment:
-                                        st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
-                                        st.session_state.job_requisitions[i]['lm_comment'] = lm_comment
-                                        st.session_state.job_requisitions[i]['jd'] = edit_jd
-                                        st.session_state.job_requisitions[i]['screening'] = [s.strip() for s in edit_screening.split('\n') if s.strip()]
-                                        
-                                        try:
-                                            r = st.session_state.job_requisitions[i]
-                                            db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
-                                                r['type'], r['salary'], r['level'], r['positions'], r['closing'],
-                                                r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
-                                                r['lm_comment'], r['admin_comment'], r['coo_comment'])
-                                        except:
-                                            pass
-                                        
-                                        if email_svc:
-                                            try:
-                                                hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
-                                                for hr_email in hr_emails:
-                                                    email_svc.send_email(
-                                                        hr_email,
-                                                        f"🔔 Job Requisition Authorized by LM: {req['title']}",
-                                                        f"Line Manager has authorized '{req['title']}' ({req['department']}).\n\nValidate at: https://hris.churchgate.com\n\nRequisition ID: {req['id']}"
-                                                    )
-                                                st.info("📧 HR team notified")
-                                            except:
-                                                pass
-                                        
-                                        st.success("✅ Authorized!")
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ Comment required!")
+                        # SLA thresholds
+                        if status == 'Pending LM Approval':
+                            sla = "24h"
+                            sla_met = elapsed_hours <= 24
+                        elif status == 'Pending Admin Approval':
+                            sla = "48h"
+                            sla_met = elapsed_hours <= 48
+                        elif status == 'Pending COO Approval':
+                            sla = "72h"
+                            sla_met = elapsed_hours <= 72
+                        elif status == 'Approved - Live':
+                            sla = "Completed"
+                            sla_met = True
+                        elif status == 'Rejected by COO':
+                            sla = "Completed"
+                            sla_met = True
+                        elif status == 'Revision Requested by COO':
+                            sla = "In Revision"
+                            sla_met = True
+                        else:
+                            sla = "N/A"
+                            sla_met = True
                         
-                        # ===== ADMIN VALIDATION =====
-                        if req['status'] == 'Pending Admin Approval':
-                            st.markdown("#### 🔍 HR Admin Validation")
+                        sla_data.append({
+                            'Requisition': req['id'],
+                            'Title': req['title'],
+                            'Status': status,
+                            'Submitted': submitted_date,
+                            'Elapsed Hours': f"{elapsed_hours:.1f}h",
+                            'SLA Target': sla,
+                            'SLA Status': '✅ Met' if sla_met else '⚠️ Breached'
+                        })
+                    except:
+                        pass
+            
+            if sla_data:
+                sla_df = pd.DataFrame(sla_data)
+                html_table = sla_df.to_html(classes='dark-csv-table', index=False, border=0, escape=False)
+                st.markdown(html_table, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
+            # ============================================================
+            # SUB-TABS FOR BETTER ORGANIZATION
+            # ============================================================
+            approval_subtab1, approval_subtab2, approval_subtab3, approval_subtab4 = st.tabs([
+                f"📋 Pending Action ({pending_lm + pending_admin + pending_coo})",
+                f"🔄 Revisions ({revision_req})",
+                f"✅ Approved ({approved})",
+                f"❌ Rejected ({rejected})"
+            ])
+            
+            # ============ SUB-TAB 1: PENDING ACTION ============
+            with approval_subtab1:
+                st.subheader("📋 Requisitions Awaiting Action")
+                
+                pending_reqs = [r for r in st.session_state.job_requisitions 
+                               if r['status'] in ['Pending LM Approval', 'Pending Admin Approval', 'Pending COO Approval']]
+                
+                if not pending_reqs:
+                    st.success("✅ No pending requisitions!")
+                else:
+                    for i, req in enumerate(st.session_state.job_requisitions):
+                        if req['status'] not in ['Pending LM Approval', 'Pending Admin Approval', 'Pending COO Approval']:
+                            continue
+                        
+                        with st.expander(f"{req['id']} - {req['title']} | {req['department']} | {req['status']}", expanded=True):
                             
-                            # JD Preview
-                            st.markdown("**📋 Job Description Preview:**")
+                            # ===== DETAILS =====
+                            st.markdown(f"**Submitted By:** {req['submitted_by']} | **Date:** {req['date']}")
+                            st.markdown(f"**Department:** {req['department']} | **Location:** {req['location']}")
+                            st.markdown(f"**Type:** {req['type']} | **Level:** {req['level']} | **Positions:** {req.get('positions', 1)}")
+                            st.markdown(f"**Salary Range:** {req.get('salary', 'Not specified')}")
+                            
+                            st.markdown("---")
+                            st.markdown("**📋 Job Description:**")
                             jd_content = req.get('jd', 'No JD provided')
                             if '<' in jd_content and '>' in jd_content:
                                 st.markdown(jd_content, unsafe_allow_html=True)
                             else:
                                 st.markdown(jd_content)
-                            st.markdown("---")
                             
-                            with st.form(key=f"admin_form_{i}"):
-                                st.markdown("**✏️ Edit Job Description:**")
-                                edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"edit_jd_admin_quill_{i}")
-                                edit_salary = st.text_input("Edit Salary Range", value=req.get('salary', ''), key=f"edit_salary_{i}")
-                                admin_comment = st.text_area("Admin Validation Comment *", key=f"admin_comment_{i}", placeholder="Confirm JD quality, budget alignment, grade fit...")
-                                
-                                if st.form_submit_button("✅ Validate & Send to COO", use_container_width=True):
-                                    if admin_comment:
-                                        st.session_state.job_requisitions[i]['status'] = 'Pending COO Approval'
-                                        st.session_state.job_requisitions[i]['admin_comment'] = admin_comment
-                                        st.session_state.job_requisitions[i]['jd'] = edit_jd
-                                        st.session_state.job_requisitions[i]['salary'] = edit_salary
-                                        
-                                        try:
-                                            r = st.session_state.job_requisitions[i]
-                                            db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
-                                                r['type'], r['salary'], r['level'], r['positions'], r['closing'],
-                                                r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
-                                                r['lm_comment'], r['admin_comment'], r['coo_comment'])
-                                        except:
-                                            pass
-                                        
-                                        if email_svc:
+                            # Platform Posts + Names
+                            st.markdown("---")
+                            posts = req.get('posts', {})
+                            st.markdown(f"**Platform Posts:** LinkedIn: {'✅' if posts.get('linkedin') else '❌'} | Indeed: {'✅' if posts.get('indeed') else '❌'} | Glassdoor: {'✅' if posts.get('glassdoor') else '❌'}")
+                            
+                            lm_display = req.get('lm_name', '') or 'Pending'
+                            admin_display = req.get('admin_name', '') or 'Pending'
+                            coo_display = req.get('coo_name', '') or 'Pending'
+                            
+                            st.markdown(f"**👔 Line Manager:** {lm_display}")
+                            st.markdown(f"**🔍 Admin:** {admin_display}")
+                            st.markdown(f"**🏢 COO:** {coo_display}")
+                            
+                            # ===== LM APPROVAL =====
+                            if req['status'] == 'Pending LM Approval' and is_manager:
+                                st.markdown("---")
+                                st.markdown("#### 👔 Line Manager Authorization")
+                                with st.form(key=f"lm_form_{i}"):
+                                    edit_jd = st_quill(value=jd_content, html=True, key=f"edit_jd_lm_{i}")
+                                    lm_comment = st.text_area("Line Manager Comment *", key=f"lm_comment_{i}", placeholder="e.g., This position is for expansion purposes")
+                                    
+                                    st.markdown("**📎 Attach Evidence (Optional):**")
+                                    evidence_file = st.file_uploader("Upload evidence", key=f"lm_evidence_{i}", type=['pdf', 'docx', 'xlsx', 'png', 'jpg'])
+                                    
+                                    if st.form_submit_button("✅ Authorize & Send to HR", use_container_width=True):
+                                        if lm_comment:
+                                            st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
+                                            st.session_state.job_requisitions[i]['lm_comment'] = lm_comment
+                                            st.session_state.job_requisitions[i]['jd'] = edit_jd
+                                            st.session_state.job_requisitions[i]['lm_name'] = user_name
+                                            
+                                            if evidence_file:
+                                                try:
+                                                    from supabase import create_client
+                                                    supabase_url = os.environ.get('SUPABASE_URL', '')
+                                                    supabase_key = os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
+                                                    supabase_client = create_client(supabase_url, supabase_key)
+                                                    
+                                                    file_name = f"req_evidence_{req['id']}_{evidence_file.name}"
+                                                    supabase_client.storage.from_('dlp-evidence').upload(file_name, evidence_file.getvalue())
+                                                    evidence_url = supabase_client.storage.from_('dlp-evidence').get_public_url(file_name)
+                                                    
+                                                    if 'evidence_files' not in st.session_state.job_requisitions[i]:
+                                                        st.session_state.job_requisitions[i]['evidence_files'] = []
+                                                    st.session_state.job_requisitions[i]['evidence_files'].append(evidence_url)
+                                                    st.success(f"✅ Evidence uploaded")
+                                                except Exception as e:
+                                                    st.warning(f"Evidence upload failed: {str(e)}")
+                                            
                                             try:
-                                                email_svc.send_email(
-                                                    "jeromedas@churchgate.com",
-                                                    f"🔔 Job Requisition Ready for Final Approval: {req['title']}",
-                                                    f"HR has validated '{req['title']}' ({req['department']}).\n\nApprove at: https://hris.churchgate.com\n\nRequisition ID: {req['id']}\nAdmin Comment: {admin_comment}"
-                                                )
-                                                st.info("📧 Email sent to COO (Jerome Das)")
+                                                r = st.session_state.job_requisitions[i]
+                                                db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                                    r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                                    r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                                    r['lm_comment'], r['admin_comment'], r['coo_comment'])
                                             except:
                                                 pass
-                                        
-                                        st.success("✅ Validated! Sent to COO for final approval.")
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ Comment required!")
-                        
-                        # COO APPROVAL
-                        if req['status'] == 'Pending COO Approval':
-                            st.markdown("#### 🏢 COO Final Approval")
-                            with st.form(key=f"coo_form_{i}"):
-                                st.markdown("**Review:** Full requisition details are shown above.")
-                                coo_comment = st.text_area("COO Comment *", key=f"coo_comment_{i}", placeholder="Final approval notes, rejection reason, or revision request...")
-                                
-                                col_coo1, col_coo2, col_coo3 = st.columns(3)
-                                with col_coo1:
-                                    approve_btn = st.form_submit_button("✅ Approve & Activate", use_container_width=True)
-                                with col_coo2:
-                                    reject_btn = st.form_submit_button("❌ Reject", use_container_width=True)
-                                with col_coo3:
-                                    revise_btn = st.form_submit_button("🔄 Request Revision", use_container_width=True)
-                                
-                                if approve_btn:
-                                    if coo_comment:
+                                            
+                                            if email_svc:
+                                                hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                                                for hr_email in hr_emails:
+                                                    try:
+                                                        email_svc.send_email(
+                                                            hr_email,
+                                                            f"🔔 Job Requisition Authorized by LM: {req['title']}",
+                                                            f"Line Manager ({user_name}) has authorized '{req['title']}'.\n\nComment: {lm_comment}\n\nValidate at: https://hris.churchgate.com"
+                                                        )
+                                                    except:
+                                                        pass
+                                            
+                                            st.success("✅ Authorized!")
+                                            st.rerun()
+                                        else:
+                                            st.error("❌ Comment required!")
+                            
+                            # ===== ADMIN VALIDATION =====
+                            if req['status'] == 'Pending Admin Approval' and is_admin:
+                                st.markdown("---")
+                                st.markdown("#### 🔍 HR Admin Validation")
+                                with st.form(key=f"admin_form_{i}"):
+                                    edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"edit_jd_admin_{i}")
+                                    edit_salary = st.text_input("Edit Salary Range", value=req.get('salary', ''), key=f"edit_salary_{i}")
+                                    admin_comment = st.text_area("Admin Validation Comment *", key=f"admin_comment_{i}", placeholder="e.g., Approved for expansion purposes")
+                                    
+                                    if st.form_submit_button("✅ Validate & Send to COO", use_container_width=True):
+                                        if admin_comment:
+                                            st.session_state.job_requisitions[i]['status'] = 'Pending COO Approval'
+                                            st.session_state.job_requisitions[i]['admin_comment'] = admin_comment
+                                            st.session_state.job_requisitions[i]['jd'] = edit_jd
+                                            st.session_state.job_requisitions[i]['salary'] = edit_salary
+                                            st.session_state.job_requisitions[i]['admin_name'] = user_name
+                                            
+                                            try:
+                                                r = st.session_state.job_requisitions[i]
+                                                db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                                    r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                                    r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                                    r['lm_comment'], r['admin_comment'], r['coo_comment'])
+                                            except:
+                                                pass
+                                            
+                                            if email_svc:
+                                                try:
+                                                    email_svc.send_email(
+                                                        "jeromedas@churchgate.com",
+                                                        f"🔔 Job Requisition Ready for Final Approval: {req['title']}",
+                                                        f"HR ({user_name}) has validated '{req['title']}'.\n\nComment: {admin_comment}\n\nApprove at: https://hris.churchgate.com"
+                                                    )
+                                                except:
+                                                    pass
+                                            
+                                            st.success("✅ Validated! Sent to COO.")
+                                            st.rerun()
+                                        else:
+                                            st.error("❌ Comment required!")
+                            
+                            # ===== COO APPROVAL =====
+                            if req['status'] == 'Pending COO Approval' and (is_admin or user_dept == 'Senior Management'):
+                                st.markdown("---")
+                                st.markdown("#### 🏢 COO Final Approval")
+                                with st.form(key=f"coo_form_{i}"):
+                                    coo_comment = st.text_area("COO Comment *", key=f"coo_comment_{i}", placeholder="e.g., Is it budgeted in the manpower budget?")
+                                    
+                                    col_coo1, col_coo2, col_coo3 = st.columns(3)
+                                    with col_coo1:
+                                        approve_btn = st.form_submit_button("✅ Approve", use_container_width=True)
+                                    with col_coo2:
+                                        reject_btn = st.form_submit_button("❌ Reject", use_container_width=True)
+                                    with col_coo3:
+                                        revise_btn = st.form_submit_button("🔄 Revision", use_container_width=True)
+                                    
+                                    if approve_btn and coo_comment:
                                         st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
                                         st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
+                                        st.session_state.job_requisitions[i]['coo_name'] = user_name
+                                        
                                         job_ref = req['id']
-                                        STREAMLIT_URL = "https://hris.churchgate.com"
                                         public_url = f"{STREAMLIT_URL}/Careers?job={job_ref}"
                                         
                                         st.session_state.active_jobs.append({
@@ -14086,61 +14146,40 @@ APPLY NOW: {public_url}
                                         except:
                                             pass
                                         
+                                        # Email Submitter + LM + ALL HR
                                         if email_svc:
+                                            # Submitter
                                             try:
-                                                submitter_email = req.get('submitted_by', '')
-                                                if '@' in str(submitter_email):
-                                                    email_svc.send_email(
-                                                        submitter_email,
-                                                        f"✅ Job Posting LIVE: {req['title']}",
-                                                        f"The job requisition for '{req['title']}' has been fully approved and is now LIVE on the Careers Page.\n\nPublic URL: {public_url}\n\nShare this link with candidates!"
-                                                    )
+                                                email_svc.send_email(
+                                                    req.get('submitted_by', ''),
+                                                    f"✅ Job Posting APPROVED: {req['title']}",
+                                                    f"Your requisition for '{req['title']}' is FULLY APPROVED and LIVE!\n\nURL: {public_url}"
+                                                )
                                             except:
                                                 pass
+                                            
+                                            # ALL HR
+                                            hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                                            for hr_email in hr_emails:
+                                                try:
+                                                    email_svc.send_email(
+                                                        hr_email,
+                                                        f"✅ Job Posting LIVE: {req['title']}",
+                                                        f"Requisition '{req['title']}' APPROVED by COO ({user_name}).\n\nURL: {public_url}"
+                                                    )
+                                                except:
+                                                    pass
                                         
-                                        # ===== AUTO-POST TO JOB BOARDS =====
-                                        post_settings = req.get('posts', {})
-                                        posting_results = []
-                                        
-                                        # Call auto_post_job ONCE
-                                        result = auto_post_job(req['title'], req['department'], req['location'], req['type'], req.get('salary', ''), req['jd'], job_ref, public_url)
-                                        
-                                        if post_settings.get('linkedin'):
-                                            posting_results.append(result['linkedin']['message'])
-                                        
-                                        if post_settings.get('indeed'):
-                                            posting_results.append(result['indeed']['message'])
-                                        
-                                        if post_settings.get('glassdoor'):
-                                            posting_results.append(result['glassdoor']['message'])
-                                        
-                                        if post_settings.get('myjobmag'):
-                                            posting_results.append(result['myjobmag']['message'])
-                                        
-                                        if post_settings.get('hotnigerianjobs'):
-                                            posting_results.append(result['hotnigerianjobs']['message'])
-                                        
-                                        if posting_results:
-                                            st.markdown("### 📢 Job Posting Results")
-                                            for msg in posting_results:
-                                                if 'MyJobMag' in msg or 'HotNigerianJobs' in msg or 'Copy these fields' in msg:
-                                                    with st.expander("📋 Platform Post Template"):
-                                                        st.markdown(msg)
-                                                else:
-                                                    st.success(msg)
-                                        # ===================================
-                                        
-                                        st.success(f"✅ Job is LIVE on Careers Page!")
-                                        st.code(public_url, language=None)
+                                        st.success("✅ Job LIVE!")
+                                        st.code(public_url)
                                         st.balloons()
                                         st.rerun()
-                                    else:
-                                        st.error("❌ Comment required!")
-                                
-                                if reject_btn:
-                                    if coo_comment:
+                                    
+                                    if reject_btn and coo_comment:
                                         st.session_state.job_requisitions[i]['status'] = 'Rejected by COO'
                                         st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
+                                        st.session_state.job_requisitions[i]['coo_name'] = user_name
+                                        
                                         try:
                                             r = st.session_state.job_requisitions[i]
                                             db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
@@ -14149,26 +14188,27 @@ APPLY NOW: {public_url}
                                                 r['lm_comment'], r['admin_comment'], r['coo_comment'])
                                         except:
                                             pass
+                                        
                                         if email_svc:
-                                            try:
-                                                submitter_email = req.get('submitted_by', '')
-                                                if '@' in str(submitter_email):
+                                            hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                                            for hr_email in hr_emails:
+                                                try:
                                                     email_svc.send_email(
-                                                        submitter_email,
+                                                        hr_email,
                                                         f"❌ Job Requisition Rejected: {req['title']}",
-                                                        f"The job requisition for '{req['title']}' has been rejected by the COO.\n\nReason: {coo_comment}\n\nPlease review and resubmit if needed."
+                                                        f"COO ({user_name}) rejected '{req['title']}'.\n\nReason: {coo_comment}"
                                                     )
-                                            except:
-                                                pass
-                                        st.error(f"❌ Requisition rejected. Reason: {coo_comment}")
+                                                except:
+                                                    pass
+                                        
+                                        st.error(f"❌ Rejected: {coo_comment}")
                                         st.rerun()
-                                    else:
-                                        st.error("❌ Comment required for rejection!")
-                                
-                                if revise_btn:
-                                    if coo_comment:
+                                    
+                                    if revise_btn and coo_comment:
                                         st.session_state.job_requisitions[i]['status'] = 'Revision Requested by COO'
                                         st.session_state.job_requisitions[i]['coo_comment'] = coo_comment
+                                        st.session_state.job_requisitions[i]['coo_name'] = user_name
+                                        
                                         try:
                                             r = st.session_state.job_requisitions[i]
                                             db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
@@ -14177,32 +14217,152 @@ APPLY NOW: {public_url}
                                                 r['lm_comment'], r['admin_comment'], r['coo_comment'])
                                         except:
                                             pass
+                                        
                                         if email_svc:
-                                            try:
-                                                submitter_email = req.get('submitted_by', '')
-                                                if '@' in str(submitter_email):
+                                            hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com", "ichukwunonye@churchgate.com"]
+                                            for hr_email in hr_emails:
+                                                try:
                                                     email_svc.send_email(
-                                                        submitter_email,
+                                                        hr_email,
                                                         f"🔄 Revision Requested: {req['title']}",
-                                                        f"The COO has requested revisions for '{req['title']}'.\n\nRevision Notes: {coo_comment}\n\nPlease update and resubmit for approval."
+                                                        f"COO ({user_name}) requested revisions.\n\nNotes: {coo_comment}"
                                                     )
+                                                except:
+                                                    pass
+                                        
+                                        st.warning(f"🔄 Revision requested: {coo_comment}")
+                                        st.rerun()
+            
+            # ============ SUB-TAB 2: REVISIONS ============
+            with approval_subtab2:
+                st.subheader("🔄 Revisions Requested")
+                
+                revision_reqs = [r for r in st.session_state.job_requisitions if r['status'] == 'Revision Requested by COO']
+                
+                if not revision_reqs:
+                    st.success("✅ No revisions pending!")
+                else:
+                    for i, req in enumerate(st.session_state.job_requisitions):
+                        if req['status'] != 'Revision Requested by COO':
+                            continue
+                        
+                        with st.expander(f"{req['id']} - {req['title']} | {req['department']}", expanded=True):
+                            st.warning(f"**COO Revision Notes:** {req.get('coo_comment', '')}")
+                            st.markdown(f"**COO:** {req.get('coo_name', '')}")
+                            
+                            st.markdown("---")
+                            st.markdown("**📋 Current JD:**")
+                            jd_content = req.get('jd', '')
+                            if '<' in jd_content:
+                                st.markdown(jd_content, unsafe_allow_html=True)
+                            else:
+                                st.markdown(jd_content)
+                            
+                            if is_admin or is_manager:
+                                st.markdown("---")
+                                st.markdown("#### 🔄 Edit & Resubmit")
+                                with st.form(key=f"revise_form_{i}"):
+                                    edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"revise_jd_{i}")
+                                    edit_salary = st.text_input("Salary Range", value=req.get('salary', ''), key=f"revise_salary_{i}")
+                                    
+                                    st.markdown("**📎 Attach Evidence (Optional):**")
+                                    evidence_file = st.file_uploader("Upload evidence", key=f"revise_evidence_{i}", type=['pdf', 'docx', 'xlsx', 'png', 'jpg'])
+                                    
+                                    revise_comment = st.text_area("Update Comment *", key=f"revise_comment_{i}")
+                                    
+                                    if st.form_submit_button("✅ Resubmit for Approval", use_container_width=True):
+                                        if revise_comment:
+                                            st.session_state.job_requisitions[i]['status'] = 'Pending COO Approval'
+                                            st.session_state.job_requisitions[i]['jd'] = edit_jd
+                                            st.session_state.job_requisitions[i]['salary'] = edit_salary
+                                            st.session_state.job_requisitions[i]['lm_comment'] = revise_comment
+                                            st.session_state.job_requisitions[i]['lm_name'] = user_name
+                                            
+                                            if evidence_file:
+                                                try:
+                                                    from supabase import create_client
+                                                    supabase_url = os.environ.get('SUPABASE_URL', '')
+                                                    supabase_key = os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
+                                                    supabase_client = create_client(supabase_url, supabase_key)
+                                                    
+                                                    file_name = f"req_evidence_{req['id']}_{evidence_file.name}"
+                                                    supabase_client.storage.from_('dlp-evidence').upload(file_name, evidence_file.getvalue())
+                                                    evidence_url = supabase_client.storage.from_('dlp-evidence').get_public_url(file_name)
+                                                    
+                                                    if 'evidence_files' not in st.session_state.job_requisitions[i]:
+                                                        st.session_state.job_requisitions[i]['evidence_files'] = []
+                                                    st.session_state.job_requisitions[i]['evidence_files'].append(evidence_url)
+                                                except Exception as e:
+                                                    st.warning(f"Evidence upload failed: {str(e)}")
+                                            
+                                            try:
+                                                r = st.session_state.job_requisitions[i]
+                                                db.save_job_requisition(r['id'], r['title'], r['department'], r['location'],
+                                                    r['type'], r['salary'], r['level'], r['positions'], r['closing'],
+                                                    r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
+                                                    r['lm_comment'], r['admin_comment'], r['coo_comment'])
                                             except:
                                                 pass
-                                        st.warning(f"🔄 Revision requested. Reason: {coo_comment}")
-                                        st.rerun()
-                                    else:
-                                        st.error("❌ Comment required for revision request!")
+                                            
+                                            if email_svc:
+                                                try:
+                                                    email_svc.send_email(
+                                                        "jeromedas@churchgate.com",
+                                                        f"🔔 Revised Requisition Resubmitted: {req['title']}",
+                                                        f"Updated by {user_name}.\n\nComment: {revise_comment}"
+                                                    )
+                                                except:
+                                                    pass
+                                            
+                                            st.success("✅ Resubmitted!")
+                                            st.rerun()
+                                        else:
+                                            st.error("❌ Comment required!")
+            
+            # ============ SUB-TAB 3: APPROVED ============
+            with approval_subtab3:
+                st.subheader("✅ Approved Requisitions")
+                
+                approved_reqs = [r for r in st.session_state.job_requisitions if r['status'] == 'Approved - Live']
+                
+                if not approved_reqs:
+                    st.info("No approved requisitions yet.")
+                else:
+                    for req in approved_reqs:
+                        st.markdown(f"""
+                        <div style="background: rgba(56, 161, 105, 0.1); border: 1px solid #38a169; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                            <strong style="color: #38a169;">✅ {req['id']} - {req['title']}</strong><br>
+                            <small style="color: #E0E0E0;">{req['department']} | Submitted by {req['submitted_by']}</small><br>
+                            <small style="color: #A0A0A0;">LM: {req.get('lm_name', '')} → Admin: {req.get('admin_name', '')} → COO: {req.get('coo_name', '')}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+            
+            # ============ SUB-TAB 4: REJECTED ============
+            with approval_subtab4:
+                st.subheader("❌ Rejected Requisitions")
+                
+                rejected_reqs = [r for r in st.session_state.job_requisitions if r['status'] == 'Rejected by COO']
+                
+                if not rejected_reqs:
+                    st.info("No rejected requisitions.")
+                else:
+                    for i, req in enumerate(st.session_state.job_requisitions):
+                        if req['status'] != 'Rejected by COO':
+                            continue
                         
-                        # Show LIVE status
-                        if req['status'] == 'Approved - Live':
-                            st.success("🟢 LIVE — Accepting applications on Careers Page")
-                            for job in st.session_state.active_jobs:
-                                if job['title'] == req['title'] and job['department'] == req['department']:
-                                    st.code(job['public_url'], language=None)
-                                    break
+                        with st.expander(f"❌ {req['id']} - {req['title']} | {req['department']}", expanded=False):
+                            st.error(f"**Rejection Reason:** {req.get('coo_comment', '')}")
+                            st.markdown(f"**Rejected by:** {req.get('coo_name', '')}")
+                            
+                            if is_admin:
+                                if st.button("🗑️ Delete Rejected Requisition", key=f"delete_req_{i}"):
+                                    st.session_state.job_requisitions.pop(i)
+                                    st.success("✅ Deleted!")
+                                    st.rerun()
+                                        
     
-    # ============ TAB 2: ACTIVE JOBS ============
-    with tab2:
+    # ============ TAB 3: ACTIVE JOBS ============
+    with tab3:
         st.subheader("📢 Active Job Postings")
         
         # Get expired jobs
@@ -14378,8 +14538,8 @@ APPLY NOW: {public_url}
         if not st.session_state.active_jobs and not expired_jobs:
             st.info("No active or expired jobs. Submit a requisition in Tab 1.")
     
-    # ============ TAB 3: CANDIDATE PORTAL ============
-    with tab3:
+    # ============ TAB 4: CANDIDATE PORTAL ============
+    with tab4:
         st.subheader("🌐 Candidate Management Portal")
         
         # Stats row
@@ -14699,8 +14859,8 @@ APPLY NOW: {public_url}
                 st.file_uploader("Upload Other Documents (Optional)", type=['pdf', 'docx', 'jpg', 'png'], disabled=True, accept_multiple_files=True)
                 st.text_area("Screening Questions", disabled=True, placeholder="Auto-generated per job role")
     
-     # ============ TAB 4: AI SCREENING ============
-    with tab4:
+     # ============ TAB 5: AI SCREENING ============
+    with tab5:
         st.subheader("🤖 AI-Powered Candidate Screening & Talent Intelligence")
         st.caption(f"🧠 AI Engine: {'OpenAI (95%+ confidence)' if ai_agent.use_openai else 'Enhanced Keyword (85%+ confidence)'}")
         
@@ -15119,8 +15279,8 @@ APPLY NOW: {public_url}
             </div>
             """, unsafe_allow_html=True)
     
-    # ============ TAB 5: INTERVIEWS ============
-    with tab5:
+    # ============ TAB 6: INTERVIEWS ============
+    with tab6:
         st.subheader("📅 Interview Scheduler")
         with st.form("schedule_interview"):
             c1, c2 = st.columns(2)
@@ -15153,8 +15313,8 @@ APPLY NOW: {public_url}
                 </div>
                 """, unsafe_allow_html=True)
     
-    # ============ TAB 6: OFFER LETTERS ============
-    with tab6:
+    # ============ TAB 7: OFFER LETTERS ============
+    with tab7:
         st.subheader("📝 Enterprise Offer Letter Management")
         
         tab_offer1, tab_offer2 = st.tabs(["📝 Generate Offer", "📊 Offer Status Board"])
@@ -15365,8 +15525,8 @@ APPLY NOW: {public_url}
             else:
                 st.info("No offers generated yet.")
     
-    # ============ TAB 7: ONBOARDING ============
-    with tab7:
+    # ============ TAB 8: ONBOARDING ============
+    with tab8:
         st.subheader("🎯 Enterprise Onboarding Management")
         
         tab_onb1, tab_onb2, tab_onb3 = st.tabs(["➕ New Hire Setup", "📋 Onboarding Tracker", "📊 Dashboard"])
@@ -15621,8 +15781,8 @@ APPLY NOW: {public_url}
             else:
                 st.info("No onboarding data yet.")
     
-     # ============ TAB 8: BACKGROUND CHECKS ============
-    with tab8:
+     # ============ TAB 9: BACKGROUND CHECKS ============
+    with tab9:
         st.subheader("🔍 Enterprise Background Check Management")
         
         tab_bg1, tab_bg2, tab_bg3, tab_bg4 = st.tabs(["📋 Internal BG Check", "📤 External Verification", "📊 Status Dashboard", "📈 Analytics"])
@@ -15949,8 +16109,8 @@ APPLY NOW: {public_url}
             else:
                 st.info("Analytics will appear once background checks are submitted.")
     
-    # ============ TAB 9: ANALYTICS ============
-    with tab9:
+    # ============ TAB 10: ANALYTICS ============
+    with tab10:
         st.subheader("📊 Recruitment Analytics")
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Active Jobs", len(st.session_state.active_jobs))
