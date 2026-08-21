@@ -4,6 +4,7 @@ Enterprise-Grade AI-Powered Human Resource Information System
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 from streamlit_option_menu import option_menu
 import pandas as pd
 import numpy as np
@@ -203,6 +204,56 @@ def clear_all_cache():
     """Clear all cached data"""
     st.cache_data.clear()
 
+
+
+def render_clipboard_monitor():
+    """Render clipboard DLP monitor"""
+    components.html("""
+    <script>
+    (function() {
+        const SENSITIVE_PATTERNS = [
+            {name: 'Churchgate', regex: /Churchgate/gi},
+            {name: 'Salary', regex: /salary/gi},
+            {name: 'Naira Amount', regex: /₦\d{1,3}(,\d{3})*(\.\d+)?/g},
+            {name: 'Confidential', regex: /confidential/gi},
+            {name: 'Invoice', regex: /invoice/gi},
+            {name: 'Password', regex: /password/gi},
+            {name: 'API Key', regex: /api[_-]?key/gi},
+            {name: 'BVN', regex: /\b\d{11}\b/g},
+            {name: 'World Trade Center', regex: /World Trade Center/gi},
+            {name: 'First Continental', regex: /First Continental/gi}
+        ];
+        let lastAlertTime = 0;
+        function detectSensitiveContent(text) {
+            let detected = [];
+            SENSITIVE_PATTERNS.forEach(function(pattern) {
+                if (pattern.regex.test(text)) { detected.push(pattern.name); }
+            });
+            return detected;
+        }
+        function showWarning(detectedPatterns, action) {
+            const now = Date.now();
+            if (now - lastAlertTime < 3000) return;
+            lastAlertTime = now;
+            alert('⚠️ CHURCHGATE DLP WARNING\n\nSensitive content detected during ' + action + '.\n\nPatterns: ' + detectedPatterns.join(', '));
+        }
+        document.addEventListener('copy', function(e) {
+            const text = window.getSelection() ? window.getSelection().toString() : '';
+            if (text.length > 5) {
+                const detected = detectSensitiveContent(text);
+                if (detected.length > 0) { showWarning(detected, 'copying'); }
+            }
+        });
+        document.addEventListener('paste', function(e) {
+            const text = e.clipboardData ? e.clipboardData.getData('text') : '';
+            if (text.length > 5) {
+                const detected = detectSensitiveContent(text);
+                if (detected.length > 0) { showWarning(detected, 'pasting'); }
+            }
+        });
+    })();
+    </script>
+    """, height=0)
 
 
 
@@ -574,6 +625,11 @@ def show_help_dialog():
                 for faq in selected_data["faqs"]:
                     with st.expander(f"❓ {faq['q']}", expanded=False):
                         st.markdown(faq["a"])
+    
+    
+    
+    
+
     
     st.markdown("---")
     st.info("📧 Still need help? Contact **HR Support**: hris@churchgate.com | 📞 0702-662 6248CHURCHGATE")
@@ -2123,204 +2179,150 @@ setInterval(fixFileUploaders, 500);
 st.markdown("""
 <script>
 // ===== CHURCHGATE INTERNAL DLP - CLIPBOARD MONITORING =====
+(function() {
+    const SENSITIVE_PATTERNS = [
+        {name: 'OpenAI API Key', regex: /sk-[a-zA-Z0-9]{20,}/g},
+        {name: 'Groq API Key', regex: /gsk_[a-zA-Z0-9]{20,}/g},
+        {name: 'Google API Key', regex: /AIza[0-9A-Za-z_-]{35}/g},
+        {name: 'SendGrid API Key', regex: /SG\\.[a-zA-Z0-9_-]{20,}\\.[a-zA-Z0-9_-]{20,}/g},
+        {name: 'NUBAN Account', regex: /\\b\\d{10}\\b/g},
+        {name: 'Sort Code', regex: /\\b\\d{3}-\\d{3}-\\d{4}\\b/g},
+        {name: 'BVN', regex: /\\b\\d{11}\\b/g},
+        {name: 'NIN', regex: /\\b\\d{11}\\b/g},
+        {name: 'Naira Amount', regex: /₦\\d{1,3}(,\\d{3})*(\\.\\d+)?/g},
+        {name: 'Churchgate', regex: /Churchgate/gi},
+        {name: 'World Trade Center', regex: /World Trade Center/gi},
+        {name: 'First Continental', regex: /First Continental/gi},
+        {name: 'Aba Textile', regex: /Aba Textile/gi},
+        {name: 'Confidential', regex: /confidential/gi},
+        {name: 'Internal Memo', regex: /internal memo/gi},
+        {name: 'Payslip', regex: /payslip/gi},
+        {name: 'Salary', regex: /salary/gi},
+        {name: 'Procurement', regex: /procurement/gi},
+        {name: 'Invoice', regex: /invoice/gi},
+        {name: 'Password', regex: /password/gi},
+        {name: 'API Key', regex: /api[_-]?key/gi}
+    ];
 
-const SENSITIVE_PATTERNS = [
-    {name: 'OpenAI API Key', regex: /sk-[a-zA-Z0-9]{20,}/g},
-    {name: 'Groq API Key', regex: /gsk_[a-zA-Z0-9]{20,}/g},
-    {name: 'Google API Key', regex: /AIza[0-9A-Za-z_-]{35}/g},
-    {name: 'SendGrid API Key', regex: /SG\.[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}/g},
-    {name: 'NUBAN Account', regex: /\b\d{10}\b/g},
-    {name: 'Sort Code', regex: /\b\d{3}-\d{3}-\d{4}\b/g},
-    {name: 'BVN', regex: /\b\d{11}\b/g},
-    {name: 'NIN', regex: /\b\d{11}\b/g},
-    {name: 'Naira Amount', regex: /₦\d{1,3}(,\d{3})*(\.\d+)?/g},
-    {name: 'Churchgate', regex: /Churchgate/gi},
-    {name: 'World Trade Center', regex: /World Trade Center/gi},
-    {name: 'First Continental', regex: /First Continental/gi},
-    {name: 'Aba Textile', regex: /Aba Textile/gi},
-    {name: 'Confidential', regex: /confidential/gi},
-    {name: 'Internal Memo', regex: /internal memo/gi},
-    {name: 'Payslip', regex: /payslip/gi},
-    {name: 'Salary', regex: /salary/gi},
-    {name: 'Procurement', regex: /procurement/gi},
-    {name: 'Invoice', regex: /invoice/gi},
-    {name: 'Password', regex: /password/gi},
-    {name: 'API Key', regex: /api[_-]?key/gi}
-];
+    let lastAlertTime = 0;
+    const ALERT_COOLDOWN = 3000;
 
-let lastAlertTime = 0;
-const ALERT_COOLDOWN = 5000; // 5 seconds between alerts
-
-function detectSensitiveContent(text) {
-    let detected = [];
-    
-    SENSITIVE_PATTERNS.forEach(pattern => {
-        if (pattern.regex.test(text)) {
-            detected.push(pattern.name);
-        }
-    });
-    
-    return detected;
-}
-
-function showDLPWarning(detectedPatterns, action) {
-    const now = Date.now();
-    if (now - lastAlertTime < ALERT_COOLDOWN) return;
-    lastAlertTime = now;
-    
-    console.warn('🚨 DLP ALERT:', {
-        action: action,
-        patterns: detectedPatterns,
-        timestamp: new Date().toISOString()
-    });
-    
-    // Show warning overlay
-    const warningDiv = document.createElement('div');
-    warningDiv.style.cssText = `
-        position: fixed; top: 20px; right: 20px; z-index: 99999;
-        background: linear-gradient(135deg, #CC0000, #8B0000);
-        color: white; padding: 15px 20px; border-radius: 8px;
-        font-family: Arial, sans-serif; font-size: 14px;
-        box-shadow: 0 4px 20px rgba(204,0,0,0.5);
-        max-width: 400px;
-    `;
-    warningDiv.innerHTML = `
-        <strong>⚠️ CHURCHGATE DLP WARNING</strong><br>
-        <small>Sensitive content detected during ${action}.</small><br>
-        <small>Patterns: ${detectedPatterns.join(', ')}</small><br>
-        <small style="font-size: 10px;">This action has been logged and reported to Security.</small>
-    `;
-    document.body.appendChild(warningDiv);
-    
-    setTimeout(() => warningDiv.remove(), 5000);
-    
-    // Send to Streamlit backend
-    if (window.parent) {
-        window.parent.postMessage({
-            type: 'CHURCHGATE_DLP_ALERT',
-            action: action,
-            patterns: detectedPatterns.join(', '),
-            textSnippet: text.substring(0, 200),
-            timestamp: new Date().toISOString()
-        }, '*');
+    function detectSensitiveContent(text) {
+        let detected = [];
+        SENSITIVE_PATTERNS.forEach(pattern => {
+            if (pattern.regex.test(text)) {
+                detected.push(pattern.name);
+            }
+        });
+        return detected;
     }
-}
 
-// Monitor copy events
-document.addEventListener('copy', function(e) {
-    const text = window.getSelection()?.toString() || '';
-    if (text.length > 5) {
-        const detected = detectSensitiveContent(text);
-        if (detected.length > 0) {
-            showDLPWarning(detected, 'copying');
-        }
+    function showDLPWarning(detectedPatterns, action) {
+        const now = Date.now();
+        if (now - lastAlertTime < ALERT_COOLDOWN) return;
+        lastAlertTime = now;
+        
+        const warningDiv = document.createElement('div');
+        warningDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 99999; background: linear-gradient(135deg, #CC0000, #8B0000); color: white; padding: 15px 20px; border-radius: 8px; font-family: Arial, sans-serif; font-size: 14px; box-shadow: 0 4px 20px rgba(204,0,0,0.5); max-width: 400px;';
+        warningDiv.innerHTML = '<strong>⚠️ CHURCHGATE DLP WARNING</strong><br><small>Sensitive content detected during ' + action + '.</small><br><small>Patterns: ' + detectedPatterns.join(', ') + '</small><br><small style="font-size: 10px;">This action has been logged and reported to Security.</small>';
+        document.body.appendChild(warningDiv);
+        setTimeout(function() { warningDiv.remove(); }, 5000);
     }
-});
 
-// Monitor paste events
-document.addEventListener('paste', function(e) {
-    const text = e.clipboardData?.getData('text') || '';
-    if (text.length > 5) {
-        const detected = detectSensitiveContent(text);
-        if (detected.length > 0) {
-            showDLPWarning(detected, 'pasting');
-        }
-    }
-});
-
-// Monitor text inputs
-document.addEventListener('input', function(e) {
-    if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) {
-        const text = e.target.value || '';
-        if (text.length > 20) {
+    document.addEventListener('copy', function(e) {
+        const text = window.getSelection() ? window.getSelection().toString() : '';
+        if (text.length > 5) {
             const detected = detectSensitiveContent(text);
             if (detected.length > 0) {
-                console.warn('🚨 DLP PATTERN DETECTED in input:', detected);
+                showDLPWarning(detected, 'copying');
             }
         }
-    }
-});
+    });
 
-console.log('✅ Churchgate Internal DLP Clipboard Monitor ACTIVE');
+    document.addEventListener('paste', function(e) {
+        const text = e.clipboardData ? e.clipboardData.getData('text') : '';
+        if (text.length > 5) {
+            const detected = detectSensitiveContent(text);
+            if (detected.length > 0) {
+                showDLPWarning(detected, 'pasting');
+            }
+        }
+    });
+
+    console.log('✅ Churchgate Internal DLP Clipboard Monitor ACTIVE');
+})();
 </script>
 """, unsafe_allow_html=True)
+
 
 
 st.markdown("""
 <script>
-// ===== CHURCHGATE INTERNAL DLP - CLIPBOARD MONITORING =====
-
-const SENSITIVE_PATTERNS = [
-    {name: 'Churchgate', regex: /Churchgate/gi},
-    {name: 'World Trade Center', regex: /World Trade Center/gi},
-    {name: 'First Continental', regex: /First Continental/gi},
-    {name: 'Salary', regex: /salary/gi},
-    {name: 'Naira Amount', regex: /₦\d{1,3}(,\d{3})*(\.\d+)?/g},
-    {name: 'Confidential', regex: /confidential/gi},
-    {name: 'Invoice', regex: /invoice/gi},
-    {name: 'Password', regex: /password/gi},
-    {name: 'API Key', regex: /api[_-]?key/gi},
-    {name: 'BVN', regex: /\b\d{11}\b/g},
-    {name: 'NIN', regex: /\b\d{11}\b/g}
-];
-
-function detectSensitiveContent(text) {
-    let detected = [];
-    SENSITIVE_PATTERNS.forEach(pattern => {
-        if (pattern.regex.test(text)) {
-            detected.push(pattern.name);
+// DLP Clipboard Monitor - Enhanced with keyboard detection
+(function() {
+    console.log('✅ DLP Clipboard Monitor ACTIVE');
+    
+    var lastText = '';
+    
+    function checkText(text, action) {
+        if (!text || text.length < 3) return;
+        
+        var patterns = ['Churchgate', 'salary', '₦', 'confidential', 'invoice', 'password', 'World Trade'];
+        var found = [];
+        
+        for (var i = 0; i < patterns.length; i++) {
+            if (text.toLowerCase().indexOf(patterns[i].toLowerCase()) !== -1) {
+                found.push(patterns[i]);
+            }
+        }
+        
+        if (found.length > 0) {
+            alert('⚠️ CHURCHGATE DLP WARNING\n\nSensitive content detected during ' + action + '.\n\nPatterns: ' + found.join(', '));
+        }
+    }
+    
+    // Monitor copy event
+    document.addEventListener('copy', function(e) {
+        var text = '';
+        if (window.getSelection) {
+            text = window.getSelection().toString();
+        }
+        if (!text && e.clipboardData) {
+            text = e.clipboardData.getData('text');
+        }
+        checkText(text, 'copying');
+    });
+    
+    // Monitor cut event
+    document.addEventListener('cut', function(e) {
+        var text = '';
+        if (window.getSelection) {
+            text = window.getSelection().toString();
+        }
+        checkText(text, 'cutting');
+    });
+    
+    // Monitor keyboard Ctrl+C
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+            setTimeout(function() {
+                var text = window.getSelection ? window.getSelection().toString() : '';
+                checkText(text, 'copying');
+            }, 100);
         }
     });
-    return detected;
-}
-
-function showDLPWarning(detectedPatterns, action) {
-    const warningDiv = document.createElement('div');
-    warningDiv.style.cssText = `
-        position: fixed; top: 20px; right: 20px; z-index: 99999;
-        background: linear-gradient(135deg, #CC0000, #8B0000);
-        color: white; padding: 15px 20px; border-radius: 8px;
-        font-family: Arial, sans-serif; font-size: 14px;
-        box-shadow: 0 4px 20px rgba(204,0,0,0.5);
-        max-width: 400px;
-    `;
-    warningDiv.innerHTML = `
-        <strong>⚠️ CHURCHGATE DLP WARNING</strong><br>
-        <small>Sensitive content detected during ${action}.</small><br>
-        <small>Patterns: ${detectedPatterns.join(', ')}</small><br>
-        <small style="font-size: 10px;">This action has been logged and reported to Security.</small>
-    `;
-    document.body.appendChild(warningDiv);
-    setTimeout(() => warningDiv.remove(), 5000);
-}
-
-document.addEventListener('copy', function(e) {
-    const text = window.getSelection()?.toString() || '';
-    if (text.length > 5) {
-        const detected = detectSensitiveContent(text);
-        if (detected.length > 0) {
-            showDLPWarning(detected, 'copying');
-            console.log('🚨 DLP ALERT - COPY:', detected);
+    
+    // Monitor paste
+    document.addEventListener('paste', function(e) {
+        var text = '';
+        if (e.clipboardData) {
+            text = e.clipboardData.getData('text');
         }
-    }
-});
-
-document.addEventListener('paste', function(e) {
-    const text = e.clipboardData?.getData('text') || '';
-    if (text.length > 5) {
-        const detected = detectSensitiveContent(text);
-        if (detected.length > 0) {
-            showDLPWarning(detected, 'pasting');
-            console.log('🚨 DLP ALERT - PASTE:', detected);
-        }
-    }
-});
-
-console.log('✅ Churchgate Internal DLP Clipboard Monitor ACTIVE');
+        checkText(text, 'pasting');
+    });
+})();
 </script>
 """, unsafe_allow_html=True)
-
-
 
 
 
@@ -4988,30 +4990,30 @@ def employee_management():
         except:
             pass
         
-        # Today's Birthday Celebrations
+        # Today's Birthday Celebrations - DARK THEME
         if todays_birthdays:
             st.markdown(f"""
-            <div style="background:linear-gradient(135deg, #fff5f5, #ffe6e6);padding:1rem;border-radius:12px;border-left:4px solid #CC0000;margin-bottom:0.5rem;">
+            <div style="background:linear-gradient(135deg, #1E1E1E, #2D2D2D);padding:1rem;border-radius:12px;border:1px solid rgba(184, 150, 12, 0.4);border-left:4px solid #CC0000;margin-bottom:0.5rem;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <span style="font-size:2rem;">🎂</span>
                     <div>
-                        <strong style="color:#CC0000;">Happy Birthday Today!</strong><br>
-                        <span>{', '.join(todays_birthdays)}</span>
+                        <strong style="color:#C9A84C;">Happy Birthday Today!</strong><br>
+                        <span style="color:#E0E0E0;">{', '.join(todays_birthdays)}</span>
                     </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
         
-        # Today's Work Anniversaries
+        # Today's Work Anniversaries - DARK THEME
         if todays_anniversaries:
             anniv_text = ', '.join([f"{a['name']} ({a['years']} yrs)" for a in todays_anniversaries])
             st.markdown(f"""
-            <div style="background:linear-gradient(135deg, #fffef5, #f5f0e0);padding:1rem;border-radius:12px;border-left:4px solid #D4AF37;margin-bottom:0.5rem;">
+            <div style="background:linear-gradient(135deg, #1E1E1E, #2D2D2D);padding:1rem;border-radius:12px;border:1px solid rgba(184, 150, 12, 0.4);border-left:4px solid #D4AF37;margin-bottom:0.5rem;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <span style="font-size:2rem;">⭐</span>
                     <div>
-                        <strong style="color:#D4AF37;">Work Anniversary Today!</strong><br>
-                        <span>{anniv_text}</span>
+                        <strong style="color:#C9A84C;">Work Anniversary Today!</strong><br>
+                        <span style="color:#E0E0E0;">{anniv_text}</span>
                     </div>
                 </div>
             </div>
@@ -23030,6 +23032,9 @@ def ai_dlp_monitor_dashboard():
     
     from utils.dlp_monitor import SENSITIVE_ENTITIES, SENSITIVE_KEYWORDS, SENSITIVE_KEYWORD_CATEGORIES, IncidentResponder, AI_DLP_Monitor, SEVERITY_LEVELS
     from utils.background_monitor import background_monitor
+    
+    # Render clipboard monitoring (iframe-based - NOT sanitized)
+    render_clipboard_monitor()
     
     from datetime import timezone, timedelta
     
