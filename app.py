@@ -6768,11 +6768,100 @@ def employee_management():
                                 'Total Reports': count_total_reports(h)
                             } for h in lagos_hods]).sort_values('Total Reports', ascending=False)
                             st.markdown(lagos_data.to_html(classes='dark-csv-table', index=False, border=0, escape=False), unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    st.markdown("### 🏗️ Block Org Structure")
+                    st.markdown("*Visual hierarchy mirroring the Sankey diagram*")
+                    
+                    # GMD
+                    st.markdown(f"""
+                    <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #CC0000;max-width:300px;margin:0 auto 1rem auto;">
+                        <strong>{gmd_name}</strong><br>
+                        <small style="color:#CC0000;">GMD/CEO</small><br>
+                        <small style="color:#888;">Group-wide</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Down arrow
+                    st.markdown("""
+                    <div style="text-align:center;color:#F0E6D3;font-size:1.5rem;margin:-0.5rem 0;">▼</div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Executives row
+                    exec_cols = st.columns(len(executives))
+                    for i, exec_name in enumerate(executives):
+                        with exec_cols[i]:
+                            st.markdown(f"""
+                            <div style="background:white;padding:0.7rem;border-radius:8px;text-align:center;border-top:3px solid #D4AF37;margin-bottom:0.5rem;">
+                                <strong style="font-size:0.85rem;">{exec_name}</strong><br>
+                                <small style="color:#888;font-size:0.75rem;">{emp_details.get(exec_name, {}).get('position', '')}</small>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    
+                    # Down arrow
+                    st.markdown("""
+                    <div style="text-align:center;color:#F0E6D3;font-size:1.5rem;margin:-0.5rem 0;">▼</div>
+                    """, unsafe_allow_html=True)
+                    
+                    # HODs - split into columns
+                    if hods:
+                        hod_cols = st.columns(min(len(hods), 4))
+                        for i, hod_name in enumerate(hods):
+                            with hod_cols[i % 4]:
+                                st.markdown(f"""
+                                <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;border:1px solid #e0e0e0;margin-bottom:0.5rem;">
+                                    <strong style="font-size:0.8rem;">{hod_name}</strong><br>
+                                    <small style="color:#888;font-size:0.7rem;">{emp_details.get(hod_name, {}).get('department', '')}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
+                    
+                    # Down arrow
+                    st.markdown("""
+                    <div style="text-align:center;color:#F0E6D3;font-size:1.5rem;margin:-0.5rem 0;">▼</div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Mid Managers
+                    if mid_managers:
+                        mgr_cols = st.columns(min(len(mid_managers), 4))
+                        for i, mgr_name in enumerate(mid_managers):
+                            with mgr_cols[i % 4]:
+                                st.markdown(f"""
+                                <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;border:1px solid #e0e0e0;margin-bottom:0.5rem;">
+                                    <strong style="font-size:0.8rem;">{mgr_name}</strong><br>
+                                    <small style="color:#888;font-size:0.7rem;">{emp_details.get(mgr_name, {}).get('department', '')}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
+                    
+                    # Down arrow
+                    st.markdown("""
+                    <div style="text-align:center;color:#F0E6D3;font-size:1.5rem;margin:-0.5rem 0;">▼</div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Team Members
+                    if team_members:
+                        tm_cols = st.columns(min(len(team_members), 5))
+                        for i, tm_name in enumerate(team_members):
+                            with tm_cols[i % 5]:
+                                st.markdown(f"""
+                                <div style="background:white;padding:0.5rem;border-radius:6px;text-align:center;border:1px solid #e0e0e0;margin-bottom:0.5rem;">
+                                    <strong style="font-size:0.75rem;">{tm_name}</strong><br>
+                                    <small style="color:#888;font-size:0.65rem;">{emp_details.get(tm_name, {}).get('department', '')}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
                 
                 # ============ DEPARTMENT SANKEY ============
                 with org_tab2:
                     st.markdown("### 🏢 Department Sankey — Drill-Down")
                     st.markdown("*Select a department to see its full reporting structure.*")
+                    
+                    # Define group-wide departments that function as one entity
+                    GROUP_WIDE_DEPARTMENTS = [
+                        'Sales, Marketing & Trade Services',
+                        'Legal',
+                        'Human Resources',
+                        'Accounts & Finance',
+                        'Procurement'
+                    ]
                     
                     dept_options = []
                     for name, details in emp_details.items():
@@ -6792,9 +6881,18 @@ def employee_management():
                         selected_department = selected_dept.split(" — ")[1].strip() if " — " in selected_dept else ""
                         
                         dept_employees = []
-                        for name, details in emp_details.items():
-                            if details.get('department') == selected_department and details.get('region') == selected_region:
-                                dept_employees.append(name)
+                        
+                        # Check if this is a group-wide department
+                        if selected_department in GROUP_WIDE_DEPARTMENTS:
+                            # Pull ALL employees from this department regardless of region
+                            for name, details in emp_details.items():
+                                if details.get('department') == selected_department:
+                                    dept_employees.append(name)
+                        else:
+                            # Regular department - filter by both department and region
+                            for name, details in emp_details.items():
+                                if details.get('department') == selected_department and details.get('region') == selected_region:
+                                    dept_employees.append(name)
                         
                         if dept_employees:
                             dept_labels = []
@@ -6861,6 +6959,52 @@ def employee_management():
                                 )
                                 
                                 st.plotly_chart(fig_dept, use_container_width=True)
+                                
+                                # ============ DEPARTMENT BLOCK STRUCTURE ============
+                                st.markdown("---")
+                                if selected_department in GROUP_WIDE_DEPARTMENTS:
+                                    st.markdown(f"### 🏗️ Block Structure — {selected_department} (Group-Wide)")
+                                    st.markdown("*Combined Abuja & Lagos structure*")
+                                else:
+                                    st.markdown(f"### 🏗️ Block Structure — {selected_department}")
+                                    st.markdown(f"*{selected_region} Region*")
+                                
+                                # Find department roots (highest level in this dept)
+                                for root_name in dept_roots:
+                                    st.markdown(f"""
+                                    <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #CC0000;max-width:350px;margin:0 auto 1rem auto;">
+                                        <strong>{root_name}</strong><br>
+                                        <small style="color:#CC0000;">{emp_details.get(root_name, {}).get('position', '')}</small><br>
+                                        <small style="color:#888;">{emp_details.get(root_name, {}).get('department', '')}</small>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    
+                                    # Build tree levels
+                                    def render_block_tree(manager_name, level=0):
+                                        direct_reports = [r for r in reports_map.get(manager_name, []) if r in dept_employees]
+                                        if direct_reports:
+                                            # Arrow
+                                            st.markdown("""
+                                            <div style="text-align:center;color:#F0E6D3;font-size:1.2rem;margin:-0.3rem 0;">▼</div>
+                                            """, unsafe_allow_html=True)
+                                            
+                                            # Column for this level
+                                            report_cols = st.columns(min(len(direct_reports), 4))
+                                            for i, report_name in enumerate(direct_reports):
+                                                with report_cols[i % 4]:
+                                                    st.markdown(f"""
+                                                    <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;border:1px solid #e0e0e0;margin-bottom:0.5rem;">
+                                                        <strong style="font-size:0.8rem;">{report_name}</strong><br>
+                                                        <small style="color:#888;font-size:0.7rem;">{emp_details.get(report_name, {}).get('position', '')}</small><br>
+                                                        <small style="color:#aaa;font-size:0.65rem;">{emp_details.get(report_name, {}).get('region', '')}</small>
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
+                                            
+                                            # Recurse for next level
+                                            for report_name in direct_reports:
+                                                render_block_tree(report_name, level + 1)
+                                    
+                                    render_block_tree(root_name)
                             else:
                                 st.info("No reporting structure found.")
                         else:
