@@ -4610,7 +4610,7 @@ def employee_dashboard():
                         st.plotly_chart(fig_span, use_container_width=True)
                     
                     st.markdown("#### 🏢 Department Heads (HODs)")
-                    st.markdown("*Only people reporting DIRECTLY to COO*")
+                    st.markdown("*STRUCTURE*")
                     
                     col1, col2 = st.columns(2)
                     with col1:
@@ -6432,7 +6432,7 @@ def employee_management():
     # ============ TAB 6: ORG CHART - FINAL MASSIVE ============
     with tab6:
         st.subheader("📊 Organizational Structure — Churchgate Group")
-        st.markdown("*Group-Wide Sankey + Departmental Drill-Down | Bright Links | Correct Levels*")
+        st.markdown("*Group-Wide Organogram*")
         
         try:
             org_emp_df = db.get_all_employees()
@@ -6586,7 +6586,7 @@ def employee_management():
                 name_to_color = {name: bright_colors[i] for i, name in enumerate(all_names)}
                 
                 # ============ TABS ============
-                org_tab1, org_tab2 = st.tabs(["🌍 Group-Wide Sankey", "🏢 Department Sankey"])
+                org_tab1, org_tab2 = st.tabs(["🌍 Group-Wide Org", "🏢 Departmental Org"])
                 
                 # ============ GROUP SANKEY ============
                 with org_tab1:
@@ -6745,7 +6745,7 @@ def employee_management():
                     
                     # HOD Tables
                     st.markdown("### 🏢 Department Heads (HODs)")
-                    st.markdown("*Only people reporting DIRECTLY to COO*")
+                    st.markdown("*STRUCTURE*")
                     
                     col1, col2 = st.columns(2)
                     with col1:
@@ -6771,7 +6771,7 @@ def employee_management():
                     
                     st.markdown("---")
                     st.markdown("### 🏗️ Block Org Structure")
-                    st.markdown("*Visual hierarchy mirroring the Sankey diagram*")
+                    st.markdown("*Visual hierarchy mirroring the Group-wide Org*")
                     
                     org_html = """<!DOCTYPE html>
                     <html>
