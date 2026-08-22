@@ -6518,12 +6518,14 @@ def employee_management():
                     # GMD
                     gmd_idx = add_label(gmd_name)
                     
-                    # Executives - INCLUDING PARTAB
+                    # Executives - INCLUDING PARTAB - All at same level
                     for exec_name in executives:
                         exec_idx = add_label(exec_name)
                         sources.append(gmd_idx)
                         targets.append(exec_idx)
-                        values.append(len(reports_map.get(exec_name, [])) + 1)
+                        # Use actual count, minimum 1 for visibility
+                        actual_reports = len(reports_map.get(exec_name, []))
+                        values.append(max(actual_reports, 1))
                         link_colors.append('rgba(255, 200, 0, 0.7)')
                     
                     # HODs
@@ -6558,13 +6560,28 @@ def employee_management():
                     
                     # Build Sankey
                     if labels and sources and targets and values:
+                        # Force levels
+                        node_x = []
+                        for name in labels:
+                            if name == gmd_name:
+                                node_x.append(0.0)
+                            elif name in executives:
+                                node_x.append(0.25)
+                            elif name in hods:
+                                node_x.append(0.5)
+                            elif name in mid_managers:
+                                node_x.append(0.75)
+                            else:
+                                node_x.append(0.9)
+                        
                         fig = go.Figure(data=[go.Sankey(
                             node=dict(
                                 pad=35,
                                 thickness=25,
                                 line=dict(color="rgba(0,0,0,0.3)", width=1),
                                 label=labels,
-                                color=colors
+                                color=colors,
+                                x=node_x
                             ),
                             link=dict(
                                 source=sources,
