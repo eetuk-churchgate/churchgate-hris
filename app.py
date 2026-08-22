@@ -6778,17 +6778,23 @@ def employee_management():
                     <head>
                     <style>
                     * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { 
-                        background: #1E1E1E; 
+                    html, body { 
+                        background: #1E1E1E !important;
+                        background-color: #1E1E1E !important;
+                        margin: 0 !important;
+                        padding: 20px !important;
                         font-family: 'Inter', sans-serif;
                         overflow-x: auto;
-                        padding: 20px;
+                        min-height: 100vh;
+                        width: 100%;
                     }
                     .tree-container {
                         display: flex;
                         align-items: flex-start;
                         min-width: max-content;
-                        background: #1E1E1E;
+                        background: #1E1E1E !important;
+                        background-color: #1E1E1E !important;
+                        padding: 20px;
                     }
                     .tree-node {
                         display: flex;
@@ -6797,41 +6803,42 @@ def employee_management():
                         margin: 0 10px;
                     }
                     .card {
-                        background: #2D2D2D;
+                        background: #2D2D2D !important;
+                        background-color: #2D2D2D !important;
                         padding: 10px;
                         border-radius: 8px;
                         text-align: center;
                         min-width: 130px;
                         max-width: 160px;
-                        color: #F0E6D3;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+                        color: #F0E6D3 !important;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.8);
                         position: relative;
                     }
                     .card strong {
-                        color: #FFFFFF;
+                        color: #FFFFFF !important;
                     }
                     .card small {
-                        color: #CCCCCC;
+                        color: #CCCCCC !important;
                     }
                     .card-gmd { 
-                        border: 2px solid #CC0000; 
-                        background: #1a1a1a;
+                        border: 3px solid #CC0000 !important; 
+                        background: #1a1a1a !important;
                     }
                     .card-exec { 
-                        border: 2px solid #D4AF37; 
-                        background: #1a1a1a;
+                        border: 2px solid #D4AF37 !important; 
+                        background: #1a1a1a !important;
                     }
                     .card-hod { 
-                        border: 2px solid #38a169; 
-                        background: #1a1a1a;
+                        border: 2px solid #38a169 !important; 
+                        background: #1a1a1a !important;
                     }
                     .card-mgr { 
-                        border: 2px solid #dd6b20; 
-                        background: #1a1a1a;
+                        border: 2px solid #dd6b20 !important; 
+                        background: #1a1a1a !important;
                     }
                     .card-team { 
-                        border: 1px solid #718096; 
-                        background: #1a1a1a;
+                        border: 1px solid #718096 !important; 
+                        background: #1a1a1a !important;
                         min-width: 100px; 
                     }
                     .children {
@@ -6848,7 +6855,7 @@ def employee_management():
                         left: 50%;
                         width: 3px;
                         height: 30px;
-                        background: #D4AF37;
+                        background: #D4AF37 !important;
                     }
                     .child {
                         display: flex;
@@ -6864,7 +6871,7 @@ def employee_management():
                         left: 50%;
                         width: 3px;
                         height: 30px;
-                        background: #F0E6D3;
+                        background: #F0E6D3 !important;
                     }
                     .child::after {
                         content: '';
@@ -6873,7 +6880,7 @@ def employee_management():
                         left: 0;
                         width: 100%;
                         height: 3px;
-                        background: #F0E6D3;
+                        background: #F0E6D3 !important;
                     }
                     .child:first-child::after {
                         left: 50%;
@@ -6938,6 +6945,11 @@ def employee_management():
                     
                     org_html += """
                     </div>
+                    <script>
+                    document.body.style.backgroundColor = '#1E1E1E';
+                    document.documentElement.style.backgroundColor = '#1E1E1E';
+                    window.parent.document.querySelector('iframe').style.backgroundColor = '#1E1E1E';
+                    </script>
                     </body>
                     </html>
                     """
@@ -7070,17 +7082,23 @@ def employee_management():
                                 <head>
                                 <style>
                                 * { margin: 0; padding: 0; box-sizing: border-box; }
-                                body { 
-                                    background: #1E1E1E; 
+                                html, body { 
+                                    background: #1E1E1E !important;
+                                    background-color: #1E1E1E !important;
+                                    margin: 0 !important;
+                                    padding: 20px !important;
                                     font-family: 'Inter', sans-serif;
                                     overflow-x: auto;
-                                    padding: 20px;
+                                    min-height: 100vh;
+                                    width: 100%;
                                 }
                                 .tree-container {
                                     display: flex;
                                     align-items: flex-start;
                                     min-width: max-content;
-                                    background: #1E1E1E;
+                                    background: #1E1E1E !important;
+                                    background-color: #1E1E1E !important;
+                                    padding: 20px;
                                 }
                                 .tree-node {
                                     display: flex;
@@ -7089,29 +7107,30 @@ def employee_management():
                                     margin: 0 10px;
                                 }
                                 .card {
-                                    background: #2D2D2D;
+                                    background: #2D2D2D !important;
+                                    background-color: #2D2D2D !important;
                                     padding: 10px;
                                     border-radius: 8px;
                                     text-align: center;
                                     min-width: 130px;
                                     max-width: 160px;
-                                    color: #F0E6D3;
-                                    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+                                    color: #F0E6D3 !important;
+                                    box-shadow: 0 2px 8px rgba(0,0,0,0.8);
                                     position: relative;
                                 }
                                 .card strong {
-                                    color: #FFFFFF;
+                                    color: #FFFFFF !important;
                                 }
                                 .card small {
-                                    color: #CCCCCC;
+                                    color: #CCCCCC !important;
                                 }
                                 .card-root { 
-                                    border: 2px solid #CC0000; 
-                                    background: #1a1a1a;
+                                    border: 3px solid #CC0000 !important; 
+                                    background: #1a1a1a !important;
                                 }
                                 .card-sub { 
-                                    border: 1px solid #718096; 
-                                    background: #1a1a1a;
+                                    border: 1px solid #718096 !important; 
+                                    background: #1a1a1a !important;
                                 }
                                 .children {
                                     display: flex;
@@ -7127,7 +7146,7 @@ def employee_management():
                                     left: 50%;
                                     width: 3px;
                                     height: 30px;
-                                    background: #D4AF37;
+                                    background: #D4AF37 !important;
                                 }
                                 .child {
                                     display: flex;
@@ -7143,7 +7162,7 @@ def employee_management():
                                     left: 50%;
                                     width: 3px;
                                     height: 30px;
-                                    background: #F0E6D3;
+                                    background: #F0E6D3 !important;
                                 }
                                 .child::after {
                                     content: '';
@@ -7152,7 +7171,7 @@ def employee_management():
                                     left: 0;
                                     width: 100%;
                                     height: 3px;
-                                    background: #F0E6D3;
+                                    background: #F0E6D3 !important;
                                 }
                                 .child:first-child::after {
                                     left: 50%;
@@ -7201,6 +7220,11 @@ def employee_management():
                                 
                                 dept_org_html += """
                                 </div>
+                                <script>
+                                document.body.style.backgroundColor = '#1E1E1E';
+                                document.documentElement.style.backgroundColor = '#1E1E1E';
+                                window.parent.document.querySelector('iframe').style.backgroundColor = '#1E1E1E';
+                                </script>
                                 </body>
                                 </html>
                                 """
