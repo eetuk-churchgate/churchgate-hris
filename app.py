@@ -4264,16 +4264,34 @@ def employee_dashboard():
     # ============ ORGANIZATIONAL STRUCTURE ============
     st.markdown("---")
     st.subheader("📊 Organizational Structure")
-    st.info("GMD → COO (All Depts) / VP Sales (Sales & Mkt) / GEA | Regions: Abuja & Lagos")
+    st.info("Chairman → GMD → COO / VP Sales / GEA | Regions: Abuja & Lagos")
     
-    # Simple org view for dashboard
-    col1, col2, col3, col4 = st.columns(4)
+    # B. Mahtani - Chairman
+    st.markdown("""
+    <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #1a365d;max-width:300px;margin:0 auto 1rem auto;">
+        <strong>B. Mahtani</strong><br>
+        <small style="color:#1a365d;">Chairman</small><br>
+        <small style="color:#888;">Group-wide</small>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Vinay Mahtani - GMD
+    st.markdown("""
+    <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #CC0000;max-width:300px;margin:0 auto 1rem auto;">
+        <strong>Vinay Mahtani</strong><br>
+        <small style="color:#CC0000;">GMD/CEO</small><br>
+        <small style="color:#888;">Group-wide</small>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Partab, Jerome, Karim - All report to Vinay
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("""
-        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #CC0000;">
-            <strong>Vinay Mahtani</strong><br>
-            <small style="color:#CC0000;">GMD/CEO</small><br>
-            <small style="color:#888;">Group-wide</small>
+        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #805ad5;">
+            <strong>Partab Lalchandani</strong><br>
+            <small style="color:#805ad5;">GEA</small><br>
+            <small style="color:#888;">Group Advisor</small>
         </div>
         """, unsafe_allow_html=True)
     with col2:
@@ -4292,37 +4310,37 @@ def employee_dashboard():
             <small style="color:#888;">Sales & Marketing</small>
         </div>
         """, unsafe_allow_html=True)
-    with col4:
-        st.markdown("""
-        <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #805ad5;">
-            <strong>Partab Lalchandani</strong><br>
-            <small style="color:#805ad5;">GEA</small><br>
-            <small style="color:#888;">Group Advisor</small>
-        </div>
-        """, unsafe_allow_html=True)
     
-    # Department heads from real data
+    # Department heads - HARDCODED
     st.markdown("---")
     st.markdown("**Department Heads**")
-    try:
-        emp_df = db.get_all_employees()
-        if not emp_df.empty:
-            hod_df = emp_df[emp_df['grade'].isin(['Manager', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level'])]
-            dept_list = hod_df['department'].unique()
-            cols = st.columns(min(len(dept_list), 5))
-            for i, dept in enumerate(dept_list[:10]):
-                dept_hod = hod_df[hod_df['department'] == dept].head(1)
-                if len(dept_hod) > 0:
-                    hod = dept_hod.iloc[0]
-                    with cols[i % 5]:
-                        st.markdown(f"""
-                        <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;margin-bottom:0.5rem;border:1px solid #e0e0e0;">
-                            <strong style="font-size:0.85rem;">{hod['first_name']} {hod['last_name']}</strong><br>
-                            <small style="color:#888;font-size:0.75rem;">{dept}</small>
-                        </div>
-                        """, unsafe_allow_html=True)
-    except:
-        pass
+    
+    hod_list = [
+        ('Abiola Tella', 'Legal'),
+        ('Adebayo Sakote', 'Human Resources'),
+        ('Adeogun Ibukun', 'Admin'),
+        ('Anand Bora', 'Procurement'),
+        ('David Effiong', 'Facility Management'),
+        ('Denis Ugoh', 'Accounts & Finance'),
+        ('Emmanuel Etuk', 'Technology Group'),
+        ('Lawal Mohammed', 'Technology Group'),
+        ('Magesh Gopal', 'Facility Management'),
+        ('Nchor Agba', 'Security'),
+        ('Olatubosun Otaiku', 'Central Stores'),
+        ('Peravali Kotaiah', 'Facility Management'),
+        ('Sanjeev Purwar', 'Engineering'),
+        ('Sani Usman', 'Security'),
+    ]
+    
+    cols = st.columns(5)
+    for i, (name, dept) in enumerate(hod_list):
+        with cols[i % 5]:
+            st.markdown(f"""
+            <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;margin-bottom:0.5rem;border:1px solid #e0e0e0;">
+                <strong style="font-size:0.85rem;">{name}</strong><br>
+                <small style="color:#888;font-size:0.75rem;">{dept}</small>
+            </div>
+            """, unsafe_allow_html=True)
     
     with st.expander("📊 View Full Org Chart", expanded=False):
             st.markdown("### 🌊 Organizational Flow — Real-Time")
@@ -4597,7 +4615,7 @@ def employee_dashboard():
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("**Abuja**")
-                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS]
+                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS and h not in ['Omitola Olajide', 'Kiodes Osa-Alilie', 'Goodness Alabi', 'Khodor Bannout', 'Clinton Osuji']]
                         if abuja_hods:
                             abuja_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
@@ -4607,7 +4625,7 @@ def employee_dashboard():
                             st.markdown(abuja_data.to_html(classes='dark-csv-table', index=False, border=0, escape=False), unsafe_allow_html=True)
                     with col2:
                         st.markdown("**Lagos**")
-                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS]
+                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS and h not in ['Yemisi Kolawole', 'Chisom Nwachinemere', 'Paul Fade', 'Andrew Akpan']]
                         if lagos_hods:
                             lagos_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
@@ -6732,7 +6750,7 @@ def employee_management():
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("#### Abuja Region")
-                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS]
+                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS and h not in ['Omitola Olajide', 'Kiodes Osa-Alilie', 'Goodness Alabi', 'Khodor Bannout', 'Clinton Osuji']]
                         if abuja_hods:
                             abuja_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
@@ -6742,7 +6760,7 @@ def employee_management():
                             st.markdown(abuja_data.to_html(classes='dark-csv-table', index=False, border=0, escape=False), unsafe_allow_html=True)
                     with col2:
                         st.markdown("#### Lagos Region")
-                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS]
+                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS and h not in ['Yemisi Kolawole', 'Chisom Nwachinemere', 'Paul Fade', 'Andrew Akpan']]
                         if lagos_hods:
                             lagos_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
