@@ -4344,10 +4344,8 @@ def employee_dashboard():
                     reports_to = str(e.get('reports_to', '')).strip() if e.get('reports_to') else ''
                     
                     emp_details[emp_name] = {
-                        'position': e.get('position', ''),
-                        'department': e.get('department', ''),
-                        'region': e.get('region', ''),
-                        'subsidiary': e.get('subsidiary', ''),
+                        'position': e.get('position', ''), 'department': e.get('department', ''),
+                        'region': e.get('region', ''), 'subsidiary': e.get('subsidiary', ''),
                         'reports_to': reports_to
                     }
                     
@@ -4356,7 +4354,6 @@ def employee_dashboard():
                             reports_map[reports_to] = []
                         reports_map[reports_to].append(emp_name)
                 
-                # Find GMD - look for Vinay specifically
                 gmd_name = None
                 for name, details in emp_details.items():
                     if 'Vinay' in name or 'Mahtani' in name:
@@ -4376,30 +4373,42 @@ def employee_dashboard():
                             break
                 
                 if gmd_name:
-                    # Executives = report to GMD
-                    executives = reports_map.get(gmd_name, [])
+                    NEVER_HOD_NAMES = ['Partab Lalchandani', 'Maikudi Kadoh', 'Adekunle Sonuga']
                     
-                    # HODs = report to COO only (skip VP, GEA, ED, GED)
+                    executives = []
+                    for name, details in emp_details.items():
+                        if details.get('reports_to') == gmd_name:
+                            if name not in executives:
+                                executives.append(name)
+                    
+                    partab_name = 'Partab Lalchandani'
+                    if partab_name in emp_details and partab_name not in executives:
+                        executives.append(partab_name)
+                    
                     hods = []
                     for exec_name in executives:
                         exec_position = emp_details.get(exec_name, {}).get('position', '').upper()
                         if any(kw in exec_position for kw in ['VP', 'SALES', 'GEA', 'GED', 'ED', 'ADVISOR', 'DIRECTOR']):
                             continue
                         for report in reports_map.get(exec_name, []):
+                            if report in NEVER_HOD_NAMES:
+                                continue
                             if report not in hods:
                                 hods.append(report)
                     
-                    # Mid managers
                     mid_managers = []
                     for hod_name in hods:
                         for report in reports_map.get(hod_name, []):
+                            if report in NEVER_HOD_NAMES:
+                                continue
                             if report not in mid_managers:
                                 mid_managers.append(report)
                     
-                    # Team members
                     team_members = []
                     for mgr_name in mid_managers:
                         for report in reports_map.get(mgr_name, []):
+                            if report in NEVER_HOD_NAMES:
+                                continue
                             if report not in team_members:
                                 team_members.append(report)
                     
@@ -4424,7 +4433,6 @@ def employee_dashboard():
                     bright_colors = generate_bright_colors(len(all_names))
                     name_to_color = {name: bright_colors[i] for i, name in enumerate(all_names)}
                     
-                    # Build Sankey
                     labels = []
                     colors = []
                     sources = []
@@ -4440,38 +4448,33 @@ def employee_dashboard():
                             colors.append(name_to_color.get(name, '#718096'))
                         return label_index[name]
                     
-                    # GMD
                     gmd_idx = add_label(gmd_name)
                     
-                    # Executives
                     for exec_name in executives:
                         exec_idx = add_label(exec_name)
                         sources.append(gmd_idx)
                         targets.append(exec_idx)
-                        values.append(len(reports_map.get(exec_name, [])))
+                        values.append(len(reports_map.get(exec_name, [])) + 1)
                         link_colors.append('rgba(255, 200, 0, 0.7)')
                     
-                    # HODs
                     for hod_name in hods:
                         hod_idx = add_label(hod_name)
                         hod_reports_to = emp_details.get(hod_name, {}).get('reports_to', '')
                         if hod_reports_to in label_index:
                             sources.append(label_index[hod_reports_to])
                             targets.append(hod_idx)
-                            values.append(len(reports_map.get(hod_name, [])))
+                            values.append(len(reports_map.get(hod_name, [])) + 1)
                             link_colors.append('rgba(255, 255, 255, 0.6)')
                     
-                    # Mid Managers
                     for mgr_name in mid_managers:
                         mgr_idx = add_label(mgr_name)
                         mgr_reports_to = emp_details.get(mgr_name, {}).get('reports_to', '')
                         if mgr_reports_to in label_index:
                             sources.append(label_index[mgr_reports_to])
                             targets.append(mgr_idx)
-                            values.append(len(reports_map.get(mgr_name, [])))
+                            values.append(len(reports_map.get(mgr_name, [])) + 1)
                             link_colors.append('rgba(56, 161, 105, 0.5)')
                     
-                    # Team Members
                     for tm_name in team_members:
                         tm_idx = add_label(tm_name)
                         tm_reports_to = emp_details.get(tm_name, {}).get('reports_to', '')
@@ -4481,21 +4484,15 @@ def employee_dashboard():
                             values.append(1)
                             link_colors.append('rgba(160, 160, 160, 0.3)')
                     
-                    # Build Sankey - CHECK IF DATA EXISTS
                     if labels and sources and targets and values:
                         fig = go.Figure(data=[go.Sankey(
                             node=dict(
-                                pad=25,
-                                thickness=18,
+                                pad=25, thickness=18,
                                 line=dict(color="rgba(0,0,0,0.3)", width=1),
-                                label=labels,
-                                color=colors
+                                label=labels, color=colors
                             ),
                             link=dict(
-                                source=sources,
-                                target=targets,
-                                value=values,
-                                color=link_colors
+                                source=sources, target=targets, value=values, color=link_colors
                             )
                         )])
                         
@@ -4509,18 +4506,15 @@ def employee_dashboard():
                         
                         st.plotly_chart(fig, use_container_width=True)
                     else:
-                        st.warning("No reporting data available to build the chart.")
+                        st.warning("No reporting data available.")
                     
                     st.markdown("---")
-                    
-                    # Span of Control
                     st.markdown("#### 👥 Span of Control (Total Reports)")
                     
                     span_data = []
                     for exec_name in executives:
                         span_data.append({
-                            'Leader': exec_name,
-                            'Level': 'Executive',
+                            'Leader': exec_name, 'Level': 'Executive',
                             'Department': emp_details.get(exec_name, {}).get('department', ''),
                             'Region': emp_details.get(exec_name, {}).get('region', ''),
                             'Total Reports': count_total_reports(exec_name)
@@ -4528,8 +4522,7 @@ def employee_dashboard():
                     
                     for hod_name in hods:
                         span_data.append({
-                            'Leader': hod_name,
-                            'Level': 'HOD',
+                            'Leader': hod_name, 'Level': 'HOD',
                             'Department': emp_details.get(hod_name, {}).get('department', ''),
                             'Region': emp_details.get(hod_name, {}).get('region', ''),
                             'Total Reports': count_total_reports(hod_name)
@@ -4537,8 +4530,7 @@ def employee_dashboard():
                     
                     for mgr_name in mid_managers:
                         span_data.append({
-                            'Leader': mgr_name,
-                            'Level': 'Manager/Lead',
+                            'Leader': mgr_name, 'Level': 'Manager/Lead',
                             'Department': emp_details.get(mgr_name, {}).get('department', ''),
                             'Region': emp_details.get(mgr_name, {}).get('region', ''),
                             'Total Reports': count_total_reports(mgr_name)
@@ -4562,14 +4554,13 @@ def employee_dashboard():
                         fig_span.update_traces(textposition='outside')
                         st.plotly_chart(fig_span, use_container_width=True)
                     
-                    # HOD Tables
                     st.markdown("#### 🏢 Department Heads (HODs)")
                     st.markdown("*Only people reporting DIRECTLY to COO*")
                     
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("**Abuja**")
-                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja']
+                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja' and h not in NEVER_HOD_NAMES]
                         if abuja_hods:
                             abuja_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
@@ -4579,7 +4570,7 @@ def employee_dashboard():
                             st.markdown(abuja_data.to_html(classes='dark-csv-table', index=False, border=0, escape=False), unsafe_allow_html=True)
                     with col2:
                         st.markdown("**Lagos**")
-                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos']
+                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos' and h not in NEVER_HOD_NAMES]
                         if lagos_hods:
                             lagos_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
@@ -6418,12 +6409,18 @@ def employee_management():
                         reports_map[reports_to] = []
                     reports_map[reports_to].append(emp_name)
             
-            # Find GMD
+            # Find GMD - look for Vinay specifically
             gmd_name = None
             for name, details in emp_details.items():
-                if 'GMD' in details['position'].upper() or 'CEO' in details['position'].upper():
+                if 'Vinay' in name or 'Mahtani' in name:
                     gmd_name = name
                     break
+            
+            if not gmd_name:
+                for name, details in emp_details.items():
+                    if 'GMD' in details['position'].upper() or 'CEO' in details['position'].upper():
+                        gmd_name = name
+                        break
             
             if not gmd_name:
                 for name, details in emp_details.items():
@@ -6432,17 +6429,30 @@ def employee_management():
                         break
             
             if gmd_name:
-                # Executives = report to GMD
-                executives = reports_map.get(gmd_name, [])
+                # HARDCODED EXCLUSIONS - Never HODs
+                NEVER_HOD_NAMES = ['Partab Lalchandani', 'Maikudi Kadoh', 'Adekunle Sonuga']
                 
-                # HODs = report to COO or GEA (NOT VP Sales, NOT ED, NOT GEA)
+                # Executives = ALL people who report to GMD
+                executives = []
+                for name, details in emp_details.items():
+                    if details.get('reports_to') == gmd_name:
+                        if name not in executives:
+                            executives.append(name)
+                
+                # Hardcode Partab if still not found
+                partab_name = 'Partab Lalchandani'
+                if partab_name in emp_details and partab_name not in executives:
+                    executives.append(partab_name)
+                
+                # HODs = report to COO only (skip VP, GEA, ED, GED)
                 hods = []
                 for exec_name in executives:
                     exec_position = emp_details.get(exec_name, {}).get('position', '').upper()
-                    # Skip VP Sales, GEA, ED, GED - they are executives, not HODs
                     if any(kw in exec_position for kw in ['VP', 'SALES', 'GEA', 'GED', 'ED', 'ADVISOR', 'DIRECTOR']):
                         continue
                     for report in reports_map.get(exec_name, []):
+                        if report in NEVER_HOD_NAMES:
+                            continue
                         if report not in hods:
                             hods.append(report)
                 
@@ -6450,6 +6460,8 @@ def employee_management():
                 mid_managers = []
                 for hod_name in hods:
                     for report in reports_map.get(hod_name, []):
+                        if report in NEVER_HOD_NAMES:
+                            continue
                         if report not in mid_managers:
                             mid_managers.append(report)
                 
@@ -6457,6 +6469,8 @@ def employee_management():
                 team_members = []
                 for mgr_name in mid_managers:
                     for report in reports_map.get(mgr_name, []):
+                        if report in NEVER_HOD_NAMES:
+                            continue
                         if report not in team_members:
                             team_members.append(report)
                 
@@ -6509,8 +6523,8 @@ def employee_management():
                         exec_idx = add_label(exec_name)
                         sources.append(gmd_idx)
                         targets.append(exec_idx)
-                        values.append(len(reports_map.get(exec_name, [])))
-                        link_colors.append('rgba(255, 200, 0, 0.7)')  # Bright gold
+                        values.append(len(reports_map.get(exec_name, [])) + 1)
+                        link_colors.append('rgba(255, 200, 0, 0.7)')
                     
                     # HODs
                     for hod_name in hods:
@@ -6519,8 +6533,8 @@ def employee_management():
                         if hod_reports_to in label_index:
                             sources.append(label_index[hod_reports_to])
                             targets.append(hod_idx)
-                            values.append(len(reports_map.get(hod_name, [])))
-                            link_colors.append('rgba(255, 255, 255, 0.6)')  # Bright white
+                            values.append(len(reports_map.get(hod_name, [])) + 1)
+                            link_colors.append('rgba(255, 255, 255, 0.6)')
                     
                     # Mid Managers
                     for mgr_name in mid_managers:
@@ -6529,8 +6543,8 @@ def employee_management():
                         if mgr_reports_to in label_index:
                             sources.append(label_index[mgr_reports_to])
                             targets.append(mgr_idx)
-                            values.append(len(reports_map.get(mgr_name, [])))
-                            link_colors.append('rgba(56, 161, 105, 0.5)')  # Green
+                            values.append(len(reports_map.get(mgr_name, [])) + 1)
+                            link_colors.append('rgba(56, 161, 105, 0.5)')
                     
                     # Team Members
                     for tm_name in team_members:
@@ -6540,34 +6554,37 @@ def employee_management():
                             sources.append(label_index[tm_reports_to])
                             targets.append(tm_idx)
                             values.append(1)
-                            link_colors.append('rgba(160, 160, 160, 0.3)')  # Grey
+                            link_colors.append('rgba(160, 160, 160, 0.3)')
                     
                     # Build Sankey
-                    fig = go.Figure(data=[go.Sankey(
-                        node=dict(
-                            pad=35,
-                            thickness=25,
-                            line=dict(color="rgba(0,0,0,0.3)", width=1),
-                            label=labels,
-                            color=colors
-                        ),
-                        link=dict(
-                            source=sources,
-                            target=targets,
-                            value=values,
-                            color=link_colors
+                    if labels and sources and targets and values:
+                        fig = go.Figure(data=[go.Sankey(
+                            node=dict(
+                                pad=35,
+                                thickness=25,
+                                line=dict(color="rgba(0,0,0,0.3)", width=1),
+                                label=labels,
+                                color=colors
+                            ),
+                            link=dict(
+                                source=sources,
+                                target=targets,
+                                value=values,
+                                color=link_colors
+                            )
+                        )])
+                        
+                        fig.update_layout(
+                            height=max(800, len(labels) * 25),
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif', size=11),
+                            margin=dict(t=40, b=40, l=40, r=40)
                         )
-                    )])
-                    
-                    fig.update_layout(
-                        height=max(800, len(labels) * 25),
-                        paper_bgcolor='#1E1E1E',
-                        plot_bgcolor='#1E1E1E',
-                        font=dict(color='#F0E6D3', family='Inter, sans-serif', size=11),
-                        margin=dict(t=40, b=40, l=40, r=40)
-                    )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
+                        
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.warning("No reporting data available.")
                     
                     st.markdown("---")
                     
@@ -6577,8 +6594,7 @@ def employee_management():
                     span_data = []
                     for exec_name in executives:
                         span_data.append({
-                            'Leader': exec_name,
-                            'Level': 'Executive',
+                            'Leader': exec_name, 'Level': 'Executive',
                             'Department': emp_details.get(exec_name, {}).get('department', ''),
                             'Region': emp_details.get(exec_name, {}).get('region', ''),
                             'Total Reports': count_total_reports(exec_name)
@@ -6586,8 +6602,7 @@ def employee_management():
                     
                     for hod_name in hods:
                         span_data.append({
-                            'Leader': hod_name,
-                            'Level': 'HOD',
+                            'Leader': hod_name, 'Level': 'HOD',
                             'Department': emp_details.get(hod_name, {}).get('department', ''),
                             'Region': emp_details.get(hod_name, {}).get('region', ''),
                             'Total Reports': count_total_reports(hod_name)
@@ -6595,8 +6610,7 @@ def employee_management():
                     
                     for mgr_name in mid_managers:
                         span_data.append({
-                            'Leader': mgr_name,
-                            'Level': 'Manager/Lead',
+                            'Leader': mgr_name, 'Level': 'Manager/Lead',
                             'Department': emp_details.get(mgr_name, {}).get('department', ''),
                             'Region': emp_details.get(mgr_name, {}).get('region', ''),
                             'Total Reports': count_total_reports(mgr_name)
@@ -6624,12 +6638,12 @@ def employee_management():
                     
                     # HOD Tables
                     st.markdown("### 🏢 Department Heads (HODs)")
-                    st.markdown("*Only people reporting DIRECTLY to COO or GEA*")
+                    st.markdown("*Only people reporting DIRECTLY to COO*")
                     
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("#### Abuja Region")
-                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja']
+                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja' and h not in NEVER_HOD_NAMES]
                         if abuja_hods:
                             abuja_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
@@ -6639,7 +6653,7 @@ def employee_management():
                             st.markdown(abuja_data.to_html(classes='dark-csv-table', index=False, border=0, escape=False), unsafe_allow_html=True)
                     with col2:
                         st.markdown("#### Lagos Region")
-                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos']
+                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos' and h not in NEVER_HOD_NAMES]
                         if lagos_hods:
                             lagos_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
@@ -6721,16 +6735,12 @@ def employee_management():
                             if dept_labels:
                                 fig_dept = go.Figure(data=[go.Sankey(
                                     node=dict(
-                                        pad=20,
-                                        thickness=18,
+                                        pad=20, thickness=18,
                                         line=dict(color="rgba(0,0,0,0.3)", width=1),
-                                        label=dept_labels,
-                                        color=dept_colors
+                                        label=dept_labels, color=dept_colors
                                     ),
                                     link=dict(
-                                        source=dept_sources,
-                                        target=dept_targets,
-                                        value=dept_values,
+                                        source=dept_sources, target=dept_targets, value=dept_values,
                                         color=['rgba(204,0,0,0.2)'] * len(dept_sources)
                                     )
                                 )])
