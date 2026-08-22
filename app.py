@@ -4374,6 +4374,7 @@ def employee_dashboard():
                 
                 if gmd_name:
                     NEVER_HOD_NAMES = ['Partab Lalchandani', 'Maikudi Kadoh', 'Adekunle Sonuga']
+                    MANAGER_EXCEPTIONS = ['Maikudi Kadoh', 'Adekunle Sonuga']
                     
                     executives = []
                     for name, details in emp_details.items():
@@ -4381,35 +4382,71 @@ def employee_dashboard():
                             if name not in executives:
                                 executives.append(name)
                     
+                    # Force Partab to Executive level
                     partab_name = 'Partab Lalchandani'
                     if partab_name in emp_details and partab_name not in executives:
                         executives.append(partab_name)
                     
+                    # Force Karim to Executive level if reports to GMD
+                    karim_name = None
+                    for name, details in emp_details.items():
+                        if 'Karim' in name and details.get('reports_to') == gmd_name:
+                            karim_name = name
+                            if karim_name not in executives:
+                                executives.append(karim_name)
+                            break
+                    
                     hods = []
                     for exec_name in executives:
                         exec_position = emp_details.get(exec_name, {}).get('position', '').upper()
-                        if any(kw in exec_position for kw in ['VP', 'SALES', 'GEA', 'GED', 'ED', 'ADVISOR', 'DIRECTOR']):
+                        # Don't skip Karim or Partab
+                        if exec_name == karim_name or exec_name == partab_name:
+                            pass
+                        elif any(kw in exec_position for kw in ['VP', 'SALES', 'GEA', 'GED', 'ED', 'ADVISOR', 'DIRECTOR']):
                             continue
                         for report in reports_map.get(exec_name, []):
                             if report in NEVER_HOD_NAMES:
+                                if report in MANAGER_EXCEPTIONS:
+                                    if report not in hods:
+                                        hods.append(report)
                                 continue
                             if report not in hods:
+                                hods.append(report)
+                    
+                    # Ensure Karim's reports are included
+                    if karim_name:
+                        for report in reports_map.get(karim_name, []):
+                            if report not in NEVER_HOD_NAMES and report not in hods:
+                                hods.append(report)
+                    
+                    # Ensure Partab's reports are included
+                    if partab_name:
+                        for report in reports_map.get(partab_name, []):
+                            if report not in NEVER_HOD_NAMES and report not in hods and report not in executives:
                                 hods.append(report)
                     
                     mid_managers = []
                     for hod_name in hods:
                         for report in reports_map.get(hod_name, []):
-                            if report in NEVER_HOD_NAMES:
+                            if report in NEVER_HOD_NAMES and report not in MANAGER_EXCEPTIONS:
                                 continue
-                            if report not in mid_managers:
+                            if report not in mid_managers and report not in executives:
                                 mid_managers.append(report)
+                    
+                    # Add Maikudi and Sonuga as managers
+                    for exception_name in MANAGER_EXCEPTIONS:
+                        if exception_name in emp_details:
+                            reports_to = emp_details[exception_name].get('reports_to', '')
+                            if reports_to in hods or reports_to in executives:
+                                if exception_name not in mid_managers:
+                                    mid_managers.append(exception_name)
                     
                     team_members = []
                     for mgr_name in mid_managers:
                         for report in reports_map.get(mgr_name, []):
-                            if report in NEVER_HOD_NAMES:
+                            if report in NEVER_HOD_NAMES and report not in MANAGER_EXCEPTIONS:
                                 continue
-                            if report not in team_members:
+                            if report not in team_members and report not in executives and report not in hods:
                                 team_members.append(report)
                     
                     def count_total_reports(manager_name):
@@ -4560,7 +4597,7 @@ def employee_dashboard():
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("**Abuja**")
-                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja' and h not in NEVER_HOD_NAMES]
+                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS]
                         if abuja_hods:
                             abuja_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
@@ -4570,7 +4607,7 @@ def employee_dashboard():
                             st.markdown(abuja_data.to_html(classes='dark-csv-table', index=False, border=0, escape=False), unsafe_allow_html=True)
                     with col2:
                         st.markdown("**Lagos**")
-                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos' and h not in NEVER_HOD_NAMES]
+                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS]
                         if lagos_hods:
                             lagos_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
@@ -6431,6 +6468,7 @@ def employee_management():
             if gmd_name:
                 # HARDCODED EXCLUSIONS - Never HODs
                 NEVER_HOD_NAMES = ['Partab Lalchandani', 'Maikudi Kadoh', 'Adekunle Sonuga']
+                MANAGER_EXCEPTIONS = ['Maikudi Kadoh', 'Adekunle Sonuga']
                 
                 # Executives = ALL people who report to GMD
                 executives = []
@@ -6439,39 +6477,73 @@ def employee_management():
                         if name not in executives:
                             executives.append(name)
                 
-                # Hardcode Partab if still not found
+                # Force Partab to Executive level
                 partab_name = 'Partab Lalchandani'
                 if partab_name in emp_details and partab_name not in executives:
                     executives.append(partab_name)
+                
+                # Force Karim to Executive level if reports to GMD
+                karim_name = None
+                for name, details in emp_details.items():
+                    if 'Karim' in name and details.get('reports_to') == gmd_name:
+                        karim_name = name
+                        if karim_name not in executives:
+                            executives.append(karim_name)
+                        break
                 
                 # HODs = report to COO only (skip VP, GEA, ED, GED)
                 hods = []
                 for exec_name in executives:
                     exec_position = emp_details.get(exec_name, {}).get('position', '').upper()
-                    if any(kw in exec_position for kw in ['VP', 'SALES', 'GEA', 'GED', 'ED', 'ADVISOR', 'DIRECTOR']):
+                    if exec_name == karim_name or exec_name == partab_name:
+                        pass
+                    elif any(kw in exec_position for kw in ['VP', 'SALES', 'GEA', 'GED', 'ED', 'ADVISOR', 'DIRECTOR']):
                         continue
                     for report in reports_map.get(exec_name, []):
                         if report in NEVER_HOD_NAMES:
+                            if report in MANAGER_EXCEPTIONS:
+                                if report not in hods:
+                                    hods.append(report)
                             continue
                         if report not in hods:
+                            hods.append(report)
+                
+                # Ensure Karim's reports are included
+                if karim_name:
+                    for report in reports_map.get(karim_name, []):
+                        if report not in NEVER_HOD_NAMES and report not in hods:
+                            hods.append(report)
+                
+                # Ensure Partab's reports are included
+                if partab_name:
+                    for report in reports_map.get(partab_name, []):
+                        if report not in NEVER_HOD_NAMES and report not in hods and report not in executives:
                             hods.append(report)
                 
                 # Mid managers
                 mid_managers = []
                 for hod_name in hods:
                     for report in reports_map.get(hod_name, []):
-                        if report in NEVER_HOD_NAMES:
+                        if report in NEVER_HOD_NAMES and report not in MANAGER_EXCEPTIONS:
                             continue
-                        if report not in mid_managers:
+                        if report not in mid_managers and report not in executives:
                             mid_managers.append(report)
+                
+                # Add Maikudi and Sonuga as managers
+                for exception_name in MANAGER_EXCEPTIONS:
+                    if exception_name in emp_details:
+                        reports_to = emp_details[exception_name].get('reports_to', '')
+                        if reports_to in hods or reports_to in executives:
+                            if exception_name not in mid_managers:
+                                mid_managers.append(exception_name)
                 
                 # Team members
                 team_members = []
                 for mgr_name in mid_managers:
                     for report in reports_map.get(mgr_name, []):
-                        if report in NEVER_HOD_NAMES:
+                        if report in NEVER_HOD_NAMES and report not in MANAGER_EXCEPTIONS:
                             continue
-                        if report not in team_members:
+                        if report not in team_members and report not in executives and report not in hods:
                             team_members.append(report)
                 
                 def count_total_reports(manager_name):
@@ -6518,7 +6590,7 @@ def employee_management():
                     # GMD
                     gmd_idx = add_label(gmd_name)
                     
-                    # Executives - INCLUDING PARTAB - All at same level
+                    # Executives - INCLUDING PARTAB AND KARIM - All at same level
                     for exec_name in executives:
                         exec_idx = add_label(exec_name)
                         sources.append(gmd_idx)
@@ -6660,7 +6732,7 @@ def employee_management():
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown("#### Abuja Region")
-                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja' and h not in NEVER_HOD_NAMES]
+                        abuja_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Abuja' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS]
                         if abuja_hods:
                             abuja_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
@@ -6670,7 +6742,7 @@ def employee_management():
                             st.markdown(abuja_data.to_html(classes='dark-csv-table', index=False, border=0, escape=False), unsafe_allow_html=True)
                     with col2:
                         st.markdown("#### Lagos Region")
-                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos' and h not in NEVER_HOD_NAMES]
+                        lagos_hods = [h for h in hods if emp_details.get(h, {}).get('region') == 'Lagos' and h not in NEVER_HOD_NAMES and h not in MANAGER_EXCEPTIONS]
                         if lagos_hods:
                             lagos_data = pd.DataFrame([{
                                 'Department': emp_details.get(h, {}).get('department', ''),
