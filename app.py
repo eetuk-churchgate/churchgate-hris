@@ -6773,81 +6773,177 @@ def employee_management():
                     st.markdown("### 🏗️ Block Org Structure")
                     st.markdown("*Visual hierarchy mirroring the Sankey diagram*")
                     
-                    # GMD
-                    st.markdown(f"""
-                    <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #CC0000;max-width:300px;margin:0 auto 1rem auto;">
-                        <strong>{gmd_name}</strong><br>
-                        <small style="color:#CC0000;">GMD/CEO</small><br>
-                        <small style="color:#888;">Group-wide</small>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    org_html = """<!DOCTYPE html>
+                    <html>
+                    <head>
+                    <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { 
+                        background: #1E1E1E; 
+                        font-family: 'Inter', sans-serif;
+                        overflow-x: auto;
+                        padding: 20px;
+                    }
+                    .tree-container {
+                        display: flex;
+                        align-items: flex-start;
+                        min-width: max-content;
+                        background: #1E1E1E;
+                    }
+                    .tree-node {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        margin: 0 10px;
+                    }
+                    .card {
+                        background: #2D2D2D;
+                        padding: 10px;
+                        border-radius: 8px;
+                        text-align: center;
+                        min-width: 130px;
+                        max-width: 160px;
+                        color: #F0E6D3;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+                        position: relative;
+                    }
+                    .card strong {
+                        color: #FFFFFF;
+                    }
+                    .card small {
+                        color: #CCCCCC;
+                    }
+                    .card-gmd { 
+                        border: 2px solid #CC0000; 
+                        background: #1a1a1a;
+                    }
+                    .card-exec { 
+                        border: 2px solid #D4AF37; 
+                        background: #1a1a1a;
+                    }
+                    .card-hod { 
+                        border: 2px solid #38a169; 
+                        background: #1a1a1a;
+                    }
+                    .card-mgr { 
+                        border: 2px solid #dd6b20; 
+                        background: #1a1a1a;
+                    }
+                    .card-team { 
+                        border: 1px solid #718096; 
+                        background: #1a1a1a;
+                        min-width: 100px; 
+                    }
+                    .children {
+                        display: flex;
+                        align-items: flex-start;
+                        justify-content: center;
+                        position: relative;
+                        padding-top: 30px;
+                    }
+                    .children::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 50%;
+                        width: 3px;
+                        height: 30px;
+                        background: #D4AF37;
+                    }
+                    .child {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        position: relative;
+                        padding: 0 5px;
+                    }
+                    .child::before {
+                        content: '';
+                        position: absolute;
+                        top: -30px;
+                        left: 50%;
+                        width: 3px;
+                        height: 30px;
+                        background: #F0E6D3;
+                    }
+                    .child::after {
+                        content: '';
+                        position: absolute;
+                        top: -30px;
+                        left: 0;
+                        width: 100%;
+                        height: 3px;
+                        background: #F0E6D3;
+                    }
+                    .child:first-child::after {
+                        left: 50%;
+                        width: 50%;
+                    }
+                    .child:last-child::after {
+                        width: 50%;
+                    }
+                    </style>
+                    </head>
+                    <body>
+                    <div class="tree-container">
+                    """
                     
-                    # Down arrow
-                    st.markdown("""
-                    <div style="text-align:center;color:#F0E6D3;font-size:1.5rem;margin:-0.5rem 0;">▼</div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Executives row
-                    exec_cols = st.columns(len(executives))
-                    for i, exec_name in enumerate(executives):
-                        with exec_cols[i]:
-                            st.markdown(f"""
-                            <div style="background:white;padding:0.7rem;border-radius:8px;text-align:center;border-top:3px solid #D4AF37;margin-bottom:0.5rem;">
-                                <strong style="font-size:0.85rem;">{exec_name}</strong><br>
-                                <small style="color:#888;font-size:0.75rem;">{emp_details.get(exec_name, {}).get('position', '')}</small>
+                    def render_node(name, card_class, level=0):
+                        html = """
+                        <div class="tree-node">
+                            <div class="card """ + card_class + """">
+                                <strong style="font-size:0.8rem;">""" + name + """</strong><br>
+                                <small style="color:#888;font-size:0.7rem;">""" + emp_details.get(name, {}).get('position', '') + """</small>
                             </div>
-                            """, unsafe_allow_html=True)
+                        """
+                        direct_reports = [r for r in reports_map.get(name, []) if r in all_names]
+                        if direct_reports:
+                            html += """
+                            <div class="children">
+                            """
+                            for report in direct_reports:
+                                if report in executives:
+                                    html += """
+                                    <div class="child">
+                                    """ + render_node(report, "card-exec", level+1) + """
+                                    </div>
+                                    """
+                                elif report in hods:
+                                    html += """
+                                    <div class="child">
+                                    """ + render_node(report, "card-hod", level+1) + """
+                                    </div>
+                                    """
+                                elif report in mid_managers:
+                                    html += """
+                                    <div class="child">
+                                    """ + render_node(report, "card-mgr", level+1) + """
+                                    </div>
+                                    """
+                                else:
+                                    html += """
+                                    <div class="child">
+                                    """ + render_node(report, "card-team", level+1) + """
+                                    </div>
+                                    """
+                            html += """
+                            </div>
+                            """
+                        html += """
+                        </div>
+                        """
+                        return html
                     
-                    # Down arrow
-                    st.markdown("""
-                    <div style="text-align:center;color:#F0E6D3;font-size:1.5rem;margin:-0.5rem 0;">▼</div>
-                    """, unsafe_allow_html=True)
+                    org_html += render_node(gmd_name, "card-gmd")
                     
-                    # HODs - split into columns
-                    if hods:
-                        hod_cols = st.columns(min(len(hods), 4))
-                        for i, hod_name in enumerate(hods):
-                            with hod_cols[i % 4]:
-                                st.markdown(f"""
-                                <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;border:1px solid #e0e0e0;margin-bottom:0.5rem;">
-                                    <strong style="font-size:0.8rem;">{hod_name}</strong><br>
-                                    <small style="color:#888;font-size:0.7rem;">{emp_details.get(hod_name, {}).get('department', '')}</small>
-                                </div>
-                                """, unsafe_allow_html=True)
+                    org_html += """
+                    </div>
+                    </body>
+                    </html>
+                    """
                     
-                    # Down arrow
-                    st.markdown("""
-                    <div style="text-align:center;color:#F0E6D3;font-size:1.5rem;margin:-0.5rem 0;">▼</div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Mid Managers
-                    if mid_managers:
-                        mgr_cols = st.columns(min(len(mid_managers), 4))
-                        for i, mgr_name in enumerate(mid_managers):
-                            with mgr_cols[i % 4]:
-                                st.markdown(f"""
-                                <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;border:1px solid #e0e0e0;margin-bottom:0.5rem;">
-                                    <strong style="font-size:0.8rem;">{mgr_name}</strong><br>
-                                    <small style="color:#888;font-size:0.7rem;">{emp_details.get(mgr_name, {}).get('department', '')}</small>
-                                </div>
-                                """, unsafe_allow_html=True)
-                    
-                    # Down arrow
-                    st.markdown("""
-                    <div style="text-align:center;color:#F0E6D3;font-size:1.5rem;margin:-0.5rem 0;">▼</div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Team Members
-                    if team_members:
-                        tm_cols = st.columns(min(len(team_members), 5))
-                        for i, tm_name in enumerate(team_members):
-                            with tm_cols[i % 5]:
-                                st.markdown(f"""
-                                <div style="background:white;padding:0.5rem;border-radius:6px;text-align:center;border:1px solid #e0e0e0;margin-bottom:0.5rem;">
-                                    <strong style="font-size:0.75rem;">{tm_name}</strong><br>
-                                    <small style="color:#888;font-size:0.65rem;">{emp_details.get(tm_name, {}).get('department', '')}</small>
-                                </div>
-                                """, unsafe_allow_html=True)
+                    st.components.v1.html(org_html, height=600, scrolling=True)
+
                 
                 # ============ DEPARTMENT SANKEY ============
                 with org_tab2:
@@ -6969,46 +7065,147 @@ def employee_management():
                                     st.markdown(f"### 🏗️ Block Structure — {selected_department}")
                                     st.markdown(f"*{selected_region} Region*")
                                 
-                                # Find department roots (highest level in this dept)
-                                for root_name in dept_roots:
-                                    st.markdown(f"""
-                                    <div style="background:white;padding:0.8rem;border-radius:8px;text-align:center;border-top:3px solid #CC0000;max-width:350px;margin:0 auto 1rem auto;">
-                                        <strong>{root_name}</strong><br>
-                                        <small style="color:#CC0000;">{emp_details.get(root_name, {}).get('position', '')}</small><br>
-                                        <small style="color:#888;">{emp_details.get(root_name, {}).get('department', '')}</small>
+                                dept_org_html = """<!DOCTYPE html>
+                                <html>
+                                <head>
+                                <style>
+                                * { margin: 0; padding: 0; box-sizing: border-box; }
+                                body { 
+                                    background: #1E1E1E; 
+                                    font-family: 'Inter', sans-serif;
+                                    overflow-x: auto;
+                                    padding: 20px;
+                                }
+                                .tree-container {
+                                    display: flex;
+                                    align-items: flex-start;
+                                    min-width: max-content;
+                                    background: #1E1E1E;
+                                }
+                                .tree-node {
+                                    display: flex;
+                                    flex-direction: column;
+                                    align-items: center;
+                                    margin: 0 10px;
+                                }
+                                .card {
+                                    background: #2D2D2D;
+                                    padding: 10px;
+                                    border-radius: 8px;
+                                    text-align: center;
+                                    min-width: 130px;
+                                    max-width: 160px;
+                                    color: #F0E6D3;
+                                    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+                                    position: relative;
+                                }
+                                .card strong {
+                                    color: #FFFFFF;
+                                }
+                                .card small {
+                                    color: #CCCCCC;
+                                }
+                                .card-root { 
+                                    border: 2px solid #CC0000; 
+                                    background: #1a1a1a;
+                                }
+                                .card-sub { 
+                                    border: 1px solid #718096; 
+                                    background: #1a1a1a;
+                                }
+                                .children {
+                                    display: flex;
+                                    align-items: flex-start;
+                                    justify-content: center;
+                                    position: relative;
+                                    padding-top: 30px;
+                                }
+                                .children::before {
+                                    content: '';
+                                    position: absolute;
+                                    top: 0;
+                                    left: 50%;
+                                    width: 3px;
+                                    height: 30px;
+                                    background: #D4AF37;
+                                }
+                                .child {
+                                    display: flex;
+                                    flex-direction: column;
+                                    align-items: center;
+                                    position: relative;
+                                    padding: 0 5px;
+                                }
+                                .child::before {
+                                    content: '';
+                                    position: absolute;
+                                    top: -30px;
+                                    left: 50%;
+                                    width: 3px;
+                                    height: 30px;
+                                    background: #F0E6D3;
+                                }
+                                .child::after {
+                                    content: '';
+                                    position: absolute;
+                                    top: -30px;
+                                    left: 0;
+                                    width: 100%;
+                                    height: 3px;
+                                    background: #F0E6D3;
+                                }
+                                .child:first-child::after {
+                                    left: 50%;
+                                    width: 50%;
+                                }
+                                .child:last-child::after {
+                                    width: 50%;
+                                }
+                                </style>
+                                </head>
+                                <body>
+                                <div class="tree-container">
+                                """
+                                
+                                # Build department tree recursively
+                                def render_dept_node(name, is_root=False):
+                                    html = """
+                                    <div class="tree-node">
+                                        <div class="card """ + ("card-root" if is_root else "card-sub") + """">
+                                            <strong style="font-size:0.8rem;">""" + name + """</strong><br>
+                                            <small style="color:#888;font-size:0.7rem;">""" + emp_details.get(name, {}).get('position', '') + """</small><br>
+                                            <small style="color:#aaa;font-size:0.65rem;">""" + emp_details.get(name, {}).get('region', '') + """</small>
+                                        </div>
+                                    """
+                                    direct_reports = [r for r in reports_map.get(name, []) if r in dept_employees]
+                                    if direct_reports:
+                                        html += """
+                                        <div class="children">
+                                        """
+                                        for report in direct_reports:
+                                            html += """
+                                            <div class="child">
+                                            """ + render_dept_node(report) + """
+                                            </div>
+                                            """
+                                        html += """
+                                        </div>
+                                        """
+                                    html += """
                                     </div>
-                                    """, unsafe_allow_html=True)
-                                    
-                                    # Build tree levels
-                                    def render_block_tree(manager_name, level=0):
-                                        direct_reports = [r for r in reports_map.get(manager_name, []) if r in dept_employees]
-                                        if direct_reports:
-                                            # Arrow
-                                            st.markdown("""
-                                            <div style="text-align:center;color:#F0E6D3;font-size:1.2rem;margin:-0.3rem 0;">▼</div>
-                                            """, unsafe_allow_html=True)
-                                            
-                                            # Column for this level
-                                            report_cols = st.columns(min(len(direct_reports), 4))
-                                            for i, report_name in enumerate(direct_reports):
-                                                with report_cols[i % 4]:
-                                                    st.markdown(f"""
-                                                    <div style="background:white;padding:0.6rem;border-radius:6px;text-align:center;border:1px solid #e0e0e0;margin-bottom:0.5rem;">
-                                                        <strong style="font-size:0.8rem;">{report_name}</strong><br>
-                                                        <small style="color:#888;font-size:0.7rem;">{emp_details.get(report_name, {}).get('position', '')}</small><br>
-                                                        <small style="color:#aaa;font-size:0.65rem;">{emp_details.get(report_name, {}).get('region', '')}</small>
-                                                    </div>
-                                                    """, unsafe_allow_html=True)
-                                            
-                                            # Recurse for next level
-                                            for report_name in direct_reports:
-                                                render_block_tree(report_name, level + 1)
-                                    
-                                    render_block_tree(root_name)
-                            else:
-                                st.info("No reporting structure found.")
-                        else:
-                            st.info(f"No employees found in {selected_department} ({selected_region}).")
+                                    """
+                                    return html
+                                
+                                for root_name in dept_roots:
+                                    dept_org_html += render_dept_node(root_name, is_root=True)
+                                
+                                dept_org_html += """
+                                </div>
+                                </body>
+                                </html>
+                                """
+                                
+                                st.components.v1.html(dept_org_html, height=600, scrolling=True)
     
     # ============ TAB 7: DEMOGRAPHICS ============
     with tab7:
