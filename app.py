@@ -19263,7 +19263,7 @@ def reports_analytics():
         if not emp_df.empty:
             total_emp = len(emp_df)
             departments = len(emp_df['department'].unique())
-            active_emp = len(emp_df[emp_df['status'] == 'Active'])
+            active_emp = len(emp_df[emp_df['status'] == 'Confirmed'])
             if 'gender' in emp_df.columns:
                 male_count = len(emp_df[emp_df['gender'].str.lower() == 'male'])
                 female_count = len(emp_df[emp_df['gender'].str.lower() == 'female'])
@@ -25384,7 +25384,7 @@ def advanced_analytics():
         emp_df = db.get_all_employees()
         total_emp = len(emp_df) if not emp_df.empty else 0
         dept_count = len(emp_df['department'].unique()) if not emp_df.empty else 0
-        confirmed_emp = len(emp_df[emp_df['status'] == 'Confirmed']) if not emp_df.empty else 0
+        active_emp = len(emp_df[emp_df['status'] == 'Confirmed']) if not emp_df.empty else 0
     except:
         emp_df = pd.DataFrame()
         total_emp = 0
@@ -25474,7 +25474,7 @@ def advanced_analytics():
     st.markdown("### 📊 Organizational Health Scorecard")
     
     c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
-    c1.metric("👥 Headcount", total_emp, f"{active_emp} active")
+    c1.metric("👥 Headcount", total_emp, f"{active_emp} confirmed")
     c2.metric("🏢 Depts", dept_count)
     c3.metric("🎓 Learning", total_enrollments, f"{completed_enrollments} done")
     c4.metric("📋 Requests", total_requests, f"{approved_requests} OK")
