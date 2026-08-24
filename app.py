@@ -5364,6 +5364,296 @@ def admin_password_reset_tab():
 
 
 
+
+def hr_announcement_tab(employees_df):
+    """HR Announcement Center - Send rich announcements to all users"""
+    
+    st.markdown("### 📢 HR Announcement Center")
+    st.markdown("*Send company-wide announcements, holiday notices, training invites, and more*")
+    
+    # Initialize session state
+    if 'announcement_draft' not in st.session_state:
+        st.session_state.announcement_draft = ""
+    if 'announcement_history' not in st.session_state:
+        st.session_state.announcement_history = []
+    
+    # Load announcement history from database
+    try:
+        history = db._get("announcements")
+        if history:
+            st.session_state.announcement_history = sorted(history, key=lambda x: x.get('created_at', ''), reverse=True)
+    except:
+        pass
+    
+    # Top metrics
+    total_sent = len(st.session_state.announcement_history)
+    total_users = 0
+    try:
+        users = db._get("users")
+        total_users = len(users) if users else 0
+    except:
+        pass
+    
+    m1, m2, m3 = st.columns(3)
+    m1.metric("📢 Announcements Sent", total_sent)
+    m2.metric("👥 Recipients", total_users)
+    m3.metric("📬 Open Rate", "N/A")
+    
+    st.markdown("---")
+    
+    # Announcement type selector
+    announcement_types = {
+        "📢 General Announcement": "General company-wide announcement",
+        "🎉 Public Holiday": "Public holiday declaration",
+        "🤝 Team Building": "Team building event announcement",
+        "🎓 Training & Development": "Training session invite",
+        "🏆 Recognition & Awards": "Employee recognition announcement",
+        "📋 Policy Update": "Company policy changes",
+        "🎂 Birthdays & Celebrations": "Monthly celebrations",
+        "🚨 Urgent Notice": "Urgent/emergency announcements",
+        "📅 Event Invitation": "Company event invitations",
+        "💡 Innovation Challenge": "Ideas and innovation campaigns"
+    }
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        selected_type = st.selectbox("📋 Announcement Type", list(announcement_types.keys()))
+        st.caption(announcement_types[selected_type])
+    
+    with col2:
+        audience = st.selectbox("👥 Target Audience", 
+                               ["All Employees", "By Department", "By Region", "By Grade"])
+        
+        if audience == "By Department":
+            target_dept = st.selectbox("🏢 Department", 
+                                       ['All'] + sorted(list(employees_df['department'].dropna().unique())) 
+                                       if not employees_df.empty else ['All'])
+        elif audience == "By Region":
+            target_region = st.selectbox("🌍 Region", 
+                                        ['All'] + sorted(list(employees_df['region'].dropna().unique())) 
+                                        if not employees_df.empty and 'region' in employees_df.columns else ['All'])
+        elif audience == "By Grade":
+            target_grade = st.selectbox("📊 Grade", 
+                                       ['All'] + sorted(list(employees_df['grade'].dropna().unique())) 
+                                       if not employees_df.empty else ['All'])
+    
+    st.markdown("---")
+    
+    # AI Draft Generator
+    st.markdown("### 🤖 AI Draft Generator")
+    st.markdown("*Let AI create a professional draft for your announcement*")
+    
+    ai_col1, ai_col2 = st.columns(2)
+    
+    with ai_col1:
+        ai_topic = st.text_input("📝 Topic/Subject", placeholder="e.g., End of Year Party, New Policy, Training")
+    
+    with ai_col2:
+        ai_tone = st.selectbox("🎭 Tone", ["Professional", "Friendly", "Formal", "Celebratory", "Urgent"])
+    
+    ai_details = st.text_area("📋 Key Details (Optional)", 
+                              placeholder="Enter key points, dates, locations, or any specific information...",
+                              height=80)
+    
+    if st.button("🤖 Generate AI Draft", use_container_width=True, type="primary"):
+        if not ai_topic:
+            st.error("❌ Please enter a topic.")
+        else:
+            with st.spinner("🤖 AI is drafting your announcement..."):
+                try:
+                    from groq import Groq
+                    groq_key = os.environ.get("GROQ_API_KEY", st.secrets.get("GROQ_API_KEY", ""))
+                    
+                    if groq_key:
+                        client = Groq(api_key=groq_key)
+                        
+                        prompt = f"""
+                        Create a professional HR announcement email for Churchgate Group.
+                        
+                        Announcement Type: {selected_type}
+                        Topic: {ai_topic}
+                        Tone: {ai_tone}
+                        Additional Details: {ai_details if ai_details else 'None provided'}
+                        
+                        Requirements:
+                        - Subject line that grabs attention
+                        - Professional greeting
+                        - Clear and concise body (3-4 paragraphs max)
+                        - Call to action if applicable
+                        - Professional closing
+                        - Keep it warm but professional
+                        - Use Nigerian English (Churchgate is Nigerian company)
+                        """
+                        
+                        response = client.chat.completions.create(
+                            model="openai/gpt-oss-20b",
+                            messages=[
+                                {"role": "system", "content": "You are the HR Director at Churchgate Group, a prestigious Nigerian property development company. Write professional, warm, and engaging announcements."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            temperature=0.7,
+                            max_tokens=500
+                        )
+                        
+                        ai_draft = response.choices[0].message.content
+                        st.session_state.announcement_draft = ai_draft
+                        st.success("✅ AI draft generated!")
+                        
+                    else:
+                        st.error("❌ Groq API key not configured.")
+                except Exception as e:
+                    st.error(f"❌ AI generation failed: {str(e)}")
+    
+    st.markdown("---")
+    
+    # Announcement Composer
+    st.markdown("### ✍️ Compose Announcement")
+    
+    if st.session_state.announcement_draft:
+        st.info("🤖 AI draft available - edit below if needed")
+    
+    subject = st.text_input("📌 Subject Line *", 
+                            value=st.session_state.get('announcement_subject', ''),
+                            placeholder="e.g., 🎉 End of Year Party - Save the Date!")
+    
+    body = st.text_area("📝 Announcement Body *", 
+                        value=st.session_state.announcement_draft,
+                        height=200,
+                        placeholder="Write your announcement here or generate with AI above...")
+    
+    # Rich preview
+    st.markdown("---")
+    st.markdown("### 👁️ Preview")
+    
+    if subject or body:
+        preview_html = f"""
+        <div style="background: #1E1E1E; border: 1px solid #B8960C; border-radius: 12px; padding: 2rem; margin: 1rem 0;">
+            <div style="border-bottom: 2px solid #B8960C; padding-bottom: 1rem; margin-bottom: 1rem;">
+                <h2 style="color: #C9A84C; font-family: Georgia, serif; margin: 0;">{subject}</h2>
+                <small style="color: #9a8a78;">Churchgate Group HR</small>
+            </div>
+            <div style="color: #F0E6D3; font-size: 0.9rem; line-height: 1.6;">
+                {body.replace(chr(10), '<br>')}
+            </div>
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #2A2A2A; color: #9a8a78; font-size: 0.8rem;">
+                Churchgate Group HRIS • hris.churchgate.com
+            </div>
+        </div>
+        """
+        st.markdown(preview_html, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Send button
+    if st.button("📤 Send Announcement", type="primary", use_container_width=True):
+        if not subject:
+            st.error("❌ Subject is required.")
+        elif not body:
+            st.error("❌ Body is required.")
+        else:
+            with st.spinner("📤 Sending announcement to all recipients..."):
+                try:
+                    # Get recipient emails based on audience
+                    recipient_emails = []
+                    recipient_names = []
+                    
+                    if not employees_df.empty:
+                        for _, emp in employees_df.iterrows():
+                            email = emp.get('email', '')
+                            name = f"{emp.get('first_name', '')} {emp.get('last_name', '')}"
+                            
+                            include = False
+                            if audience == "All Employees":
+                                include = True
+                            elif audience == "By Department" and target_dept != 'All':
+                                include = emp.get('department') == target_dept
+                            elif audience == "By Region" and target_region != 'All':
+                                include = emp.get('region') == target_region
+                            elif audience == "By Grade" and target_grade != 'All':
+                                include = emp.get('grade') == target_grade
+                            
+                            if include and email and '@' in str(email):
+                                recipient_emails.append(str(email))
+                                recipient_names.append(name)
+                    
+                    # Send emails
+                    sent_count = 0
+                    if recipient_emails:
+                        try:
+                            from utils.email_service import EmailService
+                            es = EmailService()
+                            
+                            for email, name in zip(recipient_emails, recipient_names):
+                                try:
+                                    es.send_email(
+                                        email,
+                                        subject,
+                                        body
+                                    )
+                                    sent_count += 1
+                                except:
+                                    pass
+                        except:
+                            pass
+                    
+                    # Save to database
+                    try:
+                        db._post("announcements", {
+                            "subject": subject,
+                            "body": body,
+                            "type": selected_type,
+                            "audience": audience,
+                            "sent_by": st.session_state.user['name'],
+                            "sent_to": len(recipient_emails),
+                            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        })
+                    except:
+                        pass
+                    
+                    # Log engagement
+                    try:
+                        db._post("user_engagement", {
+                            "user_name": st.session_state.user['name'],
+                            "user_email": st.session_state.user['email'],
+                            "department": st.session_state.user.get('department', ''),
+                            "module": "Announcement Center",
+                            "action": f"Sent announcement: {subject}",
+                            "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            "session_id": str(st.session_state.get('session_start', '')),
+                            "device": "web"
+                        })
+                    except:
+                        pass
+                    
+                    st.success(f"✅ Announcement sent to {sent_count} recipient(s)!")
+                    st.balloons()
+                    
+                    # Clear draft
+                    st.session_state.announcement_draft = ""
+                    st.session_state.announcement_subject = ""
+                    
+                except Exception as e:
+                    st.error(f"❌ Send failed: {str(e)}")
+    
+    st.markdown("---")
+    
+    # Announcement History
+    st.markdown("### 📜 Announcement History")
+    
+    if st.session_state.announcement_history:
+        for ann in st.session_state.announcement_history[:10]:
+            with st.expander(f"📢 {ann.get('subject', 'Untitled')} | {ann.get('created_at', '')[:10]}", expanded=False):
+                st.markdown(f"**Type:** {ann.get('type', 'N/A')}")
+                st.markdown(f"**Audience:** {ann.get('audience', 'All')}")
+                st.markdown(f"**Sent to:** {ann.get('sent_to', 0)} recipient(s)")
+                st.markdown(f"**Sent by:** {ann.get('sent_by', 'HR')}")
+                st.markdown("---")
+                st.markdown(ann.get('body', ''))
+    else:
+        st.info("No announcements sent yet.")
+
+
 def employee_management():
     # Cache employees for 5 minutes
     @st.cache_data(ttl=300)
@@ -5447,16 +5737,26 @@ def employee_management():
     is_etuk = st.session_state.user.get('email') == 'eetuk@churchgate.com' if st.session_state.user else False
     
     if is_etuk:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
             "📋 Directory", "➕ Add Employee", "📤 Bulk Upload", 
             "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📈 Demographics", "📥 Export",
-            "🔐 Password Reset"
+            "🔐 Password Reset", "📢 Announcements"
         ])
     else:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-            "📋 Directory", "➕ Add Employee", "📤 Bulk Upload", 
-            "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📈 Demographics", "📥 Export"
-        ])
+        # Check if user is HR
+        is_hr = st.session_state.user.get('role') in ['Admin', 'HR Director'] or st.session_state.user.get('department') == 'Human Resources' if st.session_state.user else False
+        
+        if is_hr:
+            tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+                "📋 Directory", "➕ Add Employee", "📤 Bulk Upload", 
+                "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📈 Demographics", "📥 Export",
+                "📢 Announcements"
+            ])
+        else:
+            tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+                "📋 Directory", "➕ Add Employee", "📤 Bulk Upload", 
+                "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📈 Demographics", "📥 Export"
+            ])
     
     # ============ TAB 1: DIRECTORY ============
     with tab1:
@@ -7608,6 +7908,14 @@ def employee_management():
     if is_etuk:
         with tab9:
             admin_password_reset_tab()
+    
+    # ============ TAB 10 / TAB 9: HR ANNOUNCEMENTS ============
+    if is_etuk:
+        with tab10:
+            hr_announcement_tab(employees_df)
+    elif 'is_hr' in dir() and is_hr:
+        with tab9:
+            hr_announcement_tab(employees_df)
 
 
 def performance_okrs():
