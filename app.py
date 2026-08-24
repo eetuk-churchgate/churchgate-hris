@@ -5255,6 +5255,115 @@ def executive_dashboard():
         </div>
         """, unsafe_allow_html=True)
 
+
+def admin_password_reset_tab():
+    """Admin-only password reset tab - visible only to Emmanuel Etuk"""
+    
+    if st.session_state.user.get('email') != 'eetuk@churchgate.com':
+        st.error("⛔ Access restricted to Emmanuel Etuk only.")
+        return
+    
+    st.markdown("### 🔐 Admin Password Reset")
+    st.info("Reset any user's password instantly. Use with caution.")
+    
+    try:
+        users = db._get("users")
+        if not users:
+            st.info("No users found.")
+            return
+        
+        # Build user list
+        user_list = []
+        for u in users:
+            email = u.get('email', '')
+            name = u.get('name', 'Unknown')
+            emp_id = u.get('employee_id', 'N/A')
+            if email:
+                user_list.append({
+                    'email': email,
+                    'name': name,
+                    'employee_id': emp_id,
+                    'display': f"{name} | {email} | ID: {emp_id}"
+                })
+        
+        # Sort alphabetically by name
+        user_list.sort(key=lambda x: x['name'])
+        
+        display_names = [u['display'] for u in user_list]
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            selected_display = st.selectbox("👤 Select User", ["Select..."] + display_names)
+            
+            if selected_display != "Select...":
+                selected_idx = display_names.index(selected_display) - 1
+                selected_user = user_list[selected_idx]
+                selected_email = selected_user['email']
+                selected_name = selected_user['name']
+            else:
+                selected_email = ""
+                selected_name = ""
+        
+        with col2:
+            new_password = st.text_input("🔑 New Password", type="password", 
+                                         placeholder="Enter new password",
+                                         key="admin_reset_pw")
+            confirm_password = st.text_input("🔑 Confirm Password", type="password",
+                                             placeholder="Confirm new password",
+                                             key="admin_reset_confirm")
+        
+        if selected_email:
+            st.markdown(f"**Resetting password for:** {selected_name} ({selected_email})")
+        
+        st.markdown("---")
+        
+        if st.button("🔐 Reset Password", type="primary", use_container_width=True,
+                    key="admin_reset_btn"):
+            if not selected_email:
+                st.error("❌ Select a user first.")
+            elif not new_password:
+                st.error("❌ Enter a new password.")
+            elif len(new_password) < 6:
+                st.error("❌ Password must be at least 6 characters.")
+            elif new_password != confirm_password:
+                st.error("❌ Passwords do not match.")
+            else:
+                try:
+                    import bcrypt
+                    hashed = bcrypt.hashpw(new_password.encode('utf-8'), 
+                                           bcrypt.gensalt(prefix=b"2b")).decode('utf-8')
+                    
+                    db._patch("users", {"password_hash": hashed}, {"email": selected_email})
+                    
+                    st.success(f"✅ Password reset for {selected_name} ({selected_email})")
+                    st.info(f"New password: **{new_password}**")
+                    
+                    # Log the action
+                    try:
+                        db._post("user_engagement", {
+                            "user_name": st.session_state.user['name'],
+                            "user_email": st.session_state.user['email'],
+                            "department": st.session_state.user.get('department', ''),
+                            "module": "Admin Password Reset",
+                            "action": f"Reset password for {selected_email}",
+                            "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            "session_id": "admin",
+                            "device": "web"
+                        })
+                    except:
+                        pass
+                    
+                    st.balloons()
+                    
+                except Exception as e:
+                    st.error(f"❌ Reset failed: {str(e)}")
+    
+    except Exception as e:
+        st.error(f"❌ Error loading users: {str(e)}")
+
+
+
 def employee_management():
     # Cache employees for 5 minutes
     @st.cache_data(ttl=300)
@@ -5334,10 +5443,20 @@ def employee_management():
         'Engineering': '#d53f8c'
     }
     
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-        "📋 Directory", "➕ Add Employee", "📤 Bulk Upload", 
-        "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📈 Demographics", "📥 Export"
-    ])
+    # Check if admin reset tab should be shown (eetuk only)
+    is_etuk = st.session_state.user.get('email') == 'eetuk@churchgate.com' if st.session_state.user else False
+    
+    if is_etuk:
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+            "📋 Directory", "➕ Add Employee", "📤 Bulk Upload", 
+            "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📈 Demographics", "📥 Export",
+            "🔐 Password Reset"
+        ])
+    else:
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+            "📋 Directory", "➕ Add Employee", "📤 Bulk Upload", 
+            "🔑 Generate Logins", "🏢 Departments", "📊 Org Chart", "📈 Demographics", "📥 Export"
+        ])
     
     # ============ TAB 1: DIRECTORY ============
     with tab1:
@@ -7299,19 +7418,196 @@ def employee_management():
             )
             st.plotly_chart(fig4, use_container_width=True)
     
-    # ============ TAB 8: EXPORT ============
+    # ============ TAB 8: EXPORT & ANALYTICS CENTER ============
     with tab8:
-        st.subheader("📥 Export Employee Data")
+        st.subheader("📥 Export & Analytics Center")
+        st.markdown("*Enterprise-grade data export, compliance reporting, and workforce insights*")
+        
         if not employees_df.empty:
-            st.download_button("📥 Download Full Directory (CSV)", employees_df.to_csv(index=False), "churchgate_employees.csv", "text/csv")
-            st.markdown("---"); st.markdown("### 📊 Export by Department")
-            selected_export_dept = st.selectbox("Select Department", ['All'] + list(employees_df['department'].unique()) if not employees_df.empty else ['All'])
-            if selected_export_dept != 'All':
-                dept_df = employees_df[employees_df['department'] == selected_export_dept]
-                st.download_button(f"📥 Download {selected_export_dept} (CSV)", dept_df.to_csv(index=False), f"{selected_export_dept}_employees.csv", "text/csv")
-            st.markdown("---"); st.markdown("### 📊 Quick Stats")
-            html_table = employees_df.describe().to_html(classes='dark-csv-table', index=True, border=0, escape=False)
-            st.markdown(html_table, unsafe_allow_html=True)
+            # Top metrics
+            total_emp = len(employees_df)
+            active_emp = len(employees_df[employees_df['status'] == 'Active']) if 'status' in employees_df.columns else total_emp
+            dept_count = len(employees_df['department'].unique()) if 'department' in employees_df.columns else 0
+            region_count = len(employees_df['region'].unique()) if 'region' in employees_df.columns else 0
+            
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("👥 Total Records", total_emp)
+            m2.metric("✅ Active", active_emp)
+            m3.metric("🏢 Departments", dept_count)
+            m4.metric("🌍 Regions", region_count)
+            
+            st.markdown("---")
+            
+            # Export type selector
+            st.markdown("### 📦 Export Configuration")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                export_format = st.selectbox("📄 Format", ["CSV", "Excel (XLSX)", "JSON"])
+            with col2:
+                export_scope = st.selectbox("🎯 Scope", ["Full Directory", "Active Only", "Probation Only", "By Department", "By Region", "By Grade"])
+            with col3:
+                if export_scope == "By Department":
+                    export_dept = st.selectbox("🏢 Department", ['All'] + sorted(list(employees_df['department'].dropna().unique())))
+                elif export_scope == "By Region":
+                    export_region = st.selectbox("🌍 Region", ['All'] + sorted(list(employees_df['region'].dropna().unique())) if 'region' in employees_df.columns else ['All'])
+                elif export_scope == "By Grade":
+                    export_grade = st.selectbox("📊 Grade", ['All'] + sorted(list(employees_df['grade'].dropna().unique())))
+                else:
+                    st.markdown("")
+            
+            # Filter data based on scope
+            export_df = employees_df.copy()
+            if export_scope == "Active Only":
+                export_df = export_df[export_df['status'] == 'Active'] if 'status' in export_df.columns else export_df
+            elif export_scope == "Probation Only":
+                export_df = export_df[export_df['status'] == 'Probation'] if 'status' in export_df.columns else export_df
+            elif export_scope == "By Department" and export_dept != 'All':
+                export_df = export_df[export_df['department'] == export_dept]
+            elif export_scope == "By Region" and export_region != 'All':
+                export_df = export_df[export_df['region'] == export_region]
+            elif export_scope == "By Grade" and export_grade != 'All':
+                export_df = export_df[export_df['grade'] == export_grade]
+            
+            st.markdown(f"**{len(export_df)} record(s) ready for export**")
+            
+            # Generate export button
+            if st.button(f"📥 Generate {export_format} Export", type="primary", use_container_width=True):
+                try:
+                    if export_format == "CSV":
+                        csv_data = export_df.to_csv(index=False)
+                        st.download_button("📥 Download CSV", csv_data, f"employees_{export_scope.replace(' ', '_').lower()}.csv", "text/csv", key="dl_csv")
+                    elif export_format == "Excel (XLSX)":
+                        import io as _io
+                        buffer = _io.BytesIO()
+                        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                            export_df.to_excel(writer, index=False, sheet_name='Employees')
+                        st.download_button("📥 Download Excel", buffer.getvalue(), f"employees_{export_scope.replace(' ', '_').lower()}.xlsx", 
+                                          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="dl_xlsx")
+                    elif export_format == "JSON":
+                        json_data = export_df.to_json(orient='records')
+                        st.download_button("📥 Download JSON", json_data, f"employees_{export_scope.replace(' ', '_').lower()}.json", "application/json", key="dl_json")
+                    
+                    st.success(f"✅ {len(export_df)} records exported!")
+                except Exception as e:
+                    st.error(f"❌ Export failed: {str(e)}")
+            
+            st.markdown("---")
+            
+            # Specialized reports
+            st.markdown("### 📋 Specialized Reports")
+            
+            report_col1, report_col2 = st.columns(2)
+            
+            with report_col1:
+                st.markdown("#### 💼 Payroll-Ready Report")
+                st.markdown("*Includes employee ID, name, department, grade, and employment type*")
+                
+                if 'employee_id' in employees_df.columns:
+                    payroll_cols = ['employee_id', 'first_name', 'last_name', 'department', 'grade', 'employment_type', 'status']
+                    payroll_cols = [c for c in payroll_cols if c in employees_df.columns]
+                    payroll_df = employees_df[payroll_cols]
+                    
+                    if st.button("📥 Generate Payroll Report", use_container_width=True):
+                        st.download_button("📥 Download Payroll CSV", payroll_df.to_csv(index=False), 
+                                          "payroll_report.csv", "text/csv", key="dl_payroll")
+                else:
+                    st.info("Employee ID column not found.")
+            
+            with report_col2:
+                st.markdown("#### 📋 Compliance Report")
+                st.markdown("*Includes status, join date, and department for audit*")
+                
+                if 'join_date' in employees_df.columns:
+                    compliance_cols = ['employee_id', 'first_name', 'last_name', 'department', 'status', 'join_date']
+                    compliance_cols = [c for c in compliance_cols if c in employees_df.columns]
+                    compliance_df = employees_df[compliance_cols]
+                    
+                    if st.button("📥 Generate Compliance Report", use_container_width=True):
+                        st.download_button("📥 Download Compliance CSV", compliance_df.to_csv(index=False),
+                                          "compliance_report.csv", "text/csv", key="dl_compliance")
+                else:
+                    st.info("Join date column not found.")
+            
+            st.markdown("---")
+            
+            # Workforce analytics snapshot
+            st.markdown("### 📊 Workforce Analytics Snapshot")
+            
+            ana_col1, ana_col2, ana_col3 = st.columns(3)
+            
+            with ana_col1:
+                st.markdown("#### 🏢 Department Distribution")
+                dept_counts = employees_df['department'].value_counts().head(10)
+                fig_dept = px.bar(x=dept_counts.index, y=dept_counts.values, 
+                                 color=dept_counts.values, color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+                fig_dept.update_layout(
+                    height=250, showlegend=False,
+                    paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                )
+                st.plotly_chart(fig_dept, use_container_width=True)
+            
+            with ana_col2:
+                st.markdown("#### 📊 Grade Breakdown")
+                if 'grade' in employees_df.columns:
+                    grade_counts = employees_df['grade'].value_counts()
+                    fig_grade = px.pie(values=grade_counts.values, names=grade_counts.index, hole=0.5)
+                    fig_grade.update_layout(
+                        height=250,
+                        paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
+                    st.plotly_chart(fig_grade, use_container_width=True)
+                else:
+                    st.info("Grade data not found.")
+            
+            with ana_col3:
+                st.markdown("#### 🌍 Region Distribution")
+                if 'region' in employees_df.columns:
+                    region_counts = employees_df['region'].value_counts()
+                    fig_region = px.pie(values=region_counts.values, names=region_counts.index, hole=0.5)
+                    fig_region.update_layout(
+                        height=250,
+                        paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E',
+                        font=dict(color='#F0E6D3', family='Inter, sans-serif')
+                    )
+                    st.plotly_chart(fig_region, use_container_width=True)
+                else:
+                    st.info("Region data not found.")
+            
+            st.markdown("---")
+            
+            # Quick stats table
+            st.markdown("### 📊 Quick Stats")
+            
+            stats_col1, stats_col2 = st.columns(2)
+            
+            with stats_col1:
+                if not employees_df.empty:
+                    st.markdown("#### Numeric Summary")
+                    numeric_cols = employees_df.select_dtypes(include=['int64', 'float64']).columns
+                    if len(numeric_cols) > 0:
+                        st.dataframe(employees_df[numeric_cols].describe(), use_container_width=True)
+                    else:
+                        st.info("No numeric columns found.")
+            
+            with stats_col2:
+                st.markdown("#### 👥 Status Breakdown")
+                if 'status' in employees_df.columns:
+                    status_counts = employees_df['status'].value_counts()
+                    status_df = pd.DataFrame({'Status': status_counts.index, 'Count': status_counts.values})
+                    st.dataframe(status_df, use_container_width=True, hide_index=True)
+                else:
+                    st.info("Status column not found.")
+            
+        else:
+            st.info("No employee data available to export.")
+    
+    # ============ TAB 9: ADMIN PASSWORD RESET (eetuk only) ============
+    if is_etuk:
+        with tab9:
+            admin_password_reset_tab()
 
 
 def performance_okrs():
