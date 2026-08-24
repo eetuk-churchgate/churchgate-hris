@@ -4328,7 +4328,7 @@ def employee_dashboard():
         ('Nchor Agba', 'Security'),
         ('Olatubosun Otaiku', 'Central Stores'),
         ('Peravali Kotaiah', 'Facility Management'),
-        ('Sanjeev Purwar', 'Engineering'),
+        ('Sanjeev Purwar', 'Engineering & Project Development & Project Development'),
         ('Sani Usman', 'Security'),
     ]
     
@@ -5440,7 +5440,7 @@ def employee_management():
         'Senior Management': '#CC0000', 'Technology Group': '#3182ce', 'Facility Management': '#38a169',
         'Human Resources': '#d69e2e', 'Accounts & Finance': '#805ad5', 'Sales & Marketing': '#dd6b20',
         'Procurement': '#2b6cb0', 'Security': '#718096', 'Legal': '#e53e3e', 'Operations': '#319795',
-        'Engineering': '#d53f8c'
+        'Engineering & Project Development & Project Development': '#d53f8c'
     }
     
     # Check if admin reset tab should be shown (eetuk only)
@@ -5764,7 +5764,7 @@ def employee_management():
                             ec1, ec2, ec3 = st.columns(3)
                             with ec1:
                                 current_dept = str(emp.get('department', 'Technology Group'))
-                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin', 'Central Stores']
+                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin', 'Central Stores']
                                 dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 1
                                 new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -5901,7 +5901,7 @@ def employee_management():
                 phone = st.text_input("Phone")
             with c2:
                 employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
-                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin', 'Central Stores'])
+                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin', 'Central Stores'])
                 position = st.text_input("Position *")
                 grade = st.selectbox("Grade", ['Junior', 'Intermediate', 'Mid-Senior', 'Senior', 'Manager', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level'])
             with c3:
@@ -5979,7 +5979,7 @@ def employee_management():
         APPROVED_DEPARTMENTS = [
             'Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
             'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security',
-            'Legal', 'Operations', 'Engineering', 'Admin'
+            'Legal', 'Operations', 'Engineering & Project Development', 'Admin'
         ]
         
         # SMART DEPARTMENT MAPPING - auto-corrects known alternatives
@@ -6011,7 +6011,7 @@ def employee_management():
             'procurement': 'Procurement',
             'legal': 'Legal',
             'operations': 'Operations',
-            'engineering': 'Engineering',
+            'Engineering & Project Development': 'Engineering & Project Development',
             'senior mgt': 'Senior Management',
             'senior management': 'Senior Management',
             'sm': 'Senior Management',
@@ -6282,7 +6282,7 @@ def employee_management():
                 value=st.session_state.get('single_name', ''))
             single_pw = st.text_input("Password", value="churchgate2026")
         with c2:
-            dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin']
+            dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin']
             current_dept = st.session_state.get('single_dept', 'Senior Management')
             dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 0
             single_dept = st.selectbox("Department", dept_options, index=dept_idx)
@@ -7366,7 +7366,7 @@ def employee_management():
         st.plotly_chart(fig, use_container_width=True)
         
         st.markdown("---"); st.markdown("### 🏢 Department Gender Split")
-        dept_gender = pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Human Resources', 'Sales & Marketing', 'Accounts & Finance', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering'], 'Male': [10, 10, 3, 6, 4, 3, 10, 1, 4, 3], 'Female': [4, 3, 5, 4, 2, 2, 2, 1, 1, 1]})
+        dept_gender = pd.DataFrame({'Department': ['Technology Group', 'Facility Management', 'Human Resources', 'Sales & Marketing', 'Accounts & Finance', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development'], 'Male': [10, 10, 3, 6, 4, 3, 10, 1, 4, 3], 'Female': [4, 3, 5, 4, 2, 2, 2, 1, 1, 1]})
         fig2 = px.bar(dept_gender, x='Department', y=['Male', 'Female'], barmode='group', color_discrete_sequence=['#3182ce', '#CC0000'])
         fig2.update_layout(
             height=400,
@@ -7901,7 +7901,7 @@ def performance_okrs():
     
     all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
                  'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal',
-                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services', 'Admin']
+                 'Operations', 'Engineering & Project Development', 'Central Stores', 'Project Development', 'Trade Services', 'Admin']
     
     SUBSIDIARY_REGIONS = {
         'World Trade Center(WTC)': 'Abuja', 'World Trade Center': 'Abuja', 'WTC': 'Abuja',
@@ -12661,7 +12661,7 @@ def staff_confirmation():
                                         "Postgraduate Diploma (PGD)",
                                         "Bachelor of Science (B.Sc)",
                                         "Bachelor of Art (BA)",
-                                        "Bachelor of Engineering (B.Eng)",
+                                        "Bachelor of Engineering & Project Development (B.Eng)",
                                         "Bachelor of Technology (B.Tech)",
                                         "Bachelor of Law (LLB)",
                                         "Master of Science (M.Sc)",
@@ -13436,7 +13436,7 @@ def promotions():
     
     all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
                  'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal',
-                 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services', 'Admin']
+                 'Operations', 'Engineering & Project Development', 'Central Stores', 'Project Development', 'Trade Services', 'Admin']
     for dept in all_depts:
         if dept not in aplayers_data:
             aplayers_data[dept] = []
@@ -15035,7 +15035,7 @@ APPLY NOW: {public_url}
             c1, c2 = st.columns(2)
             with c1:
                 job_title = st.text_input("Job Title *", placeholder="e.g., Senior Network Engineer")
-                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Central Stores', 'Project Development', 'Trade Services', 'Admin'])
+                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Central Stores', 'Project Development', 'Trade Services', 'Admin'])
                 location = st.selectbox("Location", ["World Trade Center Abuja", "Churchgate Tower 1 Lagos", "Churchgate Tower 2 Lagos", "Churchgate Plaza Abuja", "Remote/Hybrid"])
                 employment_type = st.selectbox("Employment Type", ["Full-time", "Contract", "Part-time", "Intern"])
             with c2:
@@ -15169,7 +15169,7 @@ APPLY NOW: {public_url}
                         'Sales & Marketing': 'akarim@churchgate.com',
                         'Security': 'usabdullahi@churchgate.com',
                         'Technology Group': 'eetuk@churchgate.com',
-                        'Engineering': 'purwar@churchgate.com',
+                        'Engineering & Project Development': 'purwar@churchgate.com',
                         'Central Stores': 'abora@churchgate.com',
                         'Project Development': 'deffiong@churchgate.com',
                         'Trade Services': 'akarim@churchgate.com'
@@ -16790,7 +16790,7 @@ APPLY NOW: {public_url}
                     offer_name = st.text_input("Candidate Full Name *")
                     offer_email = st.text_input("Candidate Email *")
                     offer_position = st.text_input("Position *")
-                    offer_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
+                    offer_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin'])
                 with c2:
                     offer_salary = st.text_input("Salary Package *", placeholder="e.g., ₦1,200,000 Gross per Annum")
                     offer_start = st.date_input("Start Date *")
@@ -16931,7 +16931,7 @@ APPLY NOW: {public_url}
                 with col1:
                     offer_status_filter = st.selectbox("Status", ["All", "Pending Acceptance", "Accepted", "Rejected", "Expired"])
                 with col2:
-                    offer_dept_filter = st.selectbox("Department", ["All", 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
+                    offer_dept_filter = st.selectbox("Department", ["All", 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin'])
                 
                 filtered = offers
                 if offer_status_filter != "All":
@@ -17018,7 +17018,7 @@ APPLY NOW: {public_url}
                 with c1:
                     nh_name = st.text_input("Employee Full Name *")
                     nh_email = st.text_input("Employee Email *")
-                    nh_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
+                    nh_dept = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin'])
                     nh_position = st.text_input("Position *")
                 with c2:
                     nh_start = st.date_input("Start Date *")
@@ -17257,7 +17257,7 @@ APPLY NOW: {public_url}
                 with c1:
                     bg_name = st.text_input("Candidate Name *")
                     bg_position = st.text_input("Position Applied For *")
-                    bg_department = st.selectbox("Department", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin'])
+                    bg_department = st.selectbox("Department", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin'])
                 with c2:
                     bg_type = st.multiselect("Check Type *", [
                         "Employment Verification",
@@ -19328,7 +19328,7 @@ def training_development():
         with c1:
             course_filter = st.selectbox("Category", ["All", "Technical", "Leadership", "Compliance", "Soft Skills", "Professional"])
         with c2:
-            dept_filter_course = st.selectbox("Department", ["All", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations", "Engineering", "Admin"])
+            dept_filter_course = st.selectbox("Department", ["All", "Technology Group", "Facility Management", "Human Resources", "Accounts & Finance", "Sales & Marketing", "Procurement", "Security", "Legal", "Operations", "Engineering & Project Development", "Admin"])
         with c3:
             level_filter = st.selectbox("Level", ["All", "Beginner", "Intermediate", "Advanced", "Expert"])
         
@@ -19441,7 +19441,7 @@ def training_development():
         col1, col2 = st.columns(2)
         with col1:
             st.markdown("### 👤 Find a Mentor")
-            mentors = [{"name": "Jerome Das", "role": "COO", "expertise": "Leadership, Strategy"}, {"name": "Emmanuel Etuk", "role": "HOD Technology", "expertise": "AI, BMS, Digital"}, {"name": "Sanjeev Purwar", "role": "HOD Engineering", "expertise": "MEP, Project Mgmt"}, {"name": "Adebayo Sakote", "role": "HR Manager", "expertise": "HR Strategy, Talent"}]
+            mentors = [{"name": "Jerome Das", "role": "COO", "expertise": "Leadership, Strategy"}, {"name": "Emmanuel Etuk", "role": "HOD Technology", "expertise": "AI, BMS, Digital"}, {"name": "Sanjeev Purwar", "role": "HOD Engineering & Project Development", "expertise": "MEP, Project Mgmt"}, {"name": "Adebayo Sakote", "role": "HR Manager", "expertise": "HR Strategy, Talent"}]
             for m in mentors:
                 st.markdown(f"**{m['name']}** — {m['role']}<br><small>{m['expertise']}</small>")
                 if st.button(f"🤝 Request", key=f"mentor_{m['name'][:5]}"):
@@ -23477,7 +23477,7 @@ def my_profile():
                     new_gender = st.selectbox("Gender", ['Male', 'Female'], index=0 if emp_gender == 'Male' else 1)
                 with c2:
                     new_last = st.text_input("Last Name", value=last_name)
-                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering', 'Admin', 'Central Stores']
+                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin', 'Central Stores']
                     dept_idx = dept_list.index(emp_dept) if emp_dept in dept_list else 0
                     new_dept = st.selectbox("Department", dept_list, index=dept_idx)
                     new_region = st.selectbox("Region", ['Abuja', 'Lagos'], index=0 if emp_region == 'Abuja' else 1)
