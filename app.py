@@ -15407,12 +15407,134 @@ def jd_progress_tracker():
                                         {"role": "user", "content": prompt}
                                     ],
                                     temperature=0.3,
-                                    max_tokens=1000
+                                    max_tokens=1500
                                 )
                                 
                                 ai_tasks_text = response.choices[0].message.content
                                 st.success("✅ AI extracted tasks from JD!")
                                 st.markdown(ai_tasks_text)
+                                
+                                # ===== AUTO-CREATE TASKS FROM AI RESPONSE =====
+                                try:
+                                    # Parse AI response into structured JSON
+                                    parse_prompt = f"""
+                                    Convert this task extraction into a valid JSON array.
+
+                                    TASK EXTRACTION:
+                                    ---
+                                    {ai_tasks_text}
+                                    ---
+
+                                    Return ONLY a JSON array. Each object must have EXACTLY these keys:
+                                    "task_title", "description", "category", "priority", "duration_days"
+
+                                    Rules:
+                                    - "category" MUST be one of: ["Technical Skills", "Soft Skills", "Compliance", "Project Work", "Documentation", "Customer Service", "Safety", "Other"]
+                                    - "priority" MUST be one of: ["Low", "Medium", "High", "Critical"]
+                                    - "duration_days" MUST be a number (integer)
+
+                                    Return ONLY the JSON array. No markdown, no code blocks, no extra text.
+                                    """
+                                    
+                                    parse_response = client.chat.completions.create(
+                                        model="openai/gpt-oss-20b",
+                                        messages=[
+                                            {"role": "system", "content": "You convert task lists to JSON. Return ONLY valid JSON arrays. No markdown."},
+                                            {"role": "user", "content": parse_prompt}
+                                        ],
+                                        temperature=0.1,
+                                        max_tokens=1500
+                                    )
+                                    
+                                    tasks_json = parse_response.choices[0].message.content
+                                    
+                                    # Clean JSON - remove any markdown code blocks
+                                    import re as _re
+                                    tasks_json = _re.sub(r'```json\s*', '', tasks_json)
+                                    tasks_json = _re.sub(r'```\s*', '', tasks_json)
+                                    tasks_json = tasks_json.strip()
+                                    
+                                    # Find JSON array
+                                    json_start = tasks_json.find('[')
+                                    json_end = tasks_json.rfind(']') + 1
+                                    if json_start >= 0 and json_end > json_start:
+                                        tasks_json = tasks_json[json_start:json_end]
+                                    
+                                    tasks_list = json.loads(tasks_json)
+                                    
+                                    # Create each task in database
+                                    created_count = 0
+                                    from datetime import timedelta as _td
+                                    
+                                    for task in tasks_list:
+                                        title = task.get('task_title', 'Untitled Task')
+                                        description = task.get('description', '')
+                                        category = task.get('category', 'Other')
+                                        priority = task.get('priority', 'Medium')
+                                        duration_days = int(task.get('duration_days', 30))
+                                        
+                                        # Validate category
+                                        valid_categories = ["Technical Skills", "Soft Skills", "Compliance", "Project Work", "Documentation", "Customer Service", "Safety", "Other"]
+                                        if category not in valid_categories:
+                                            category = "Other"
+                                        
+                                        # Validate priority
+                                        valid_priorities = ["Low", "Medium", "High", "Critical"]
+                                        if priority not in valid_priorities:
+                                            priority = "Medium"
+                                        
+                                        # Calculate dates
+                                        start = datetime.now()
+                                        deadline = start + _td(days=duration_days)
+                                        
+                                        db._post("jd_tasks", {
+                                            "task_title": title,
+                                            "description": description,
+                                            "employee_name": employee_name,
+                                            "employee_email": emp_email,
+                                            "mentor_name": user_name,
+                                            "mentor_email": user_email,
+                                            "start_date": start.strftime('%Y-%m-%d'),
+                                            "deadline": deadline.strftime('%Y-%m-%d'),
+                                            "priority": priority,
+                                            "category": category,
+                                            "check_in_day": 30,
+                                            "collaborators": "",
+                                            "status": "Not Started",
+                                            "progress": 0,
+                                            "ai_generated": True,
+                                            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                        })
+                                        created_count += 1
+                                    
+                                    # Timeline
+                                    db._post("jd_timeline", {
+                                        "employee_email": emp_email,
+                                        "event_type": "ai_tasks_created",
+                                        "event_description": f"AI created {created_count} tasks from JD: {jd_title}",
+                                        "created_by": user_name,
+                                        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                    })
+                                    
+                                    st.success(f"🎯 {created_count} tasks AUTO-CREATED from JD!")
+                                    
+                                    # Send email to employee
+                                    if emp_email:
+                                        try:
+                                            from utils.email_service import EmailService
+                                            EmailService().send_email(
+                                                emp_email,
+                                                f"📋 {created_count} Tasks Assigned from JD",
+                                                f"Dear {employee_name},\n\n{created_count} tasks have been auto-created from your JD: '{jd_title}'.\n\nLog into HRIS to view your task board and start working.\n\nChurchgate Group HR"
+                                            )
+                                        except:
+                                            pass
+                                    
+                                    st.balloons()
+                                    
+                                except Exception as parse_error:
+                                    st.warning(f"⚠️ AI extracted tasks but auto-creation failed: {str(parse_error)}")
+                                    st.info("Please create tasks manually in the Task Board tab.")
                                 
                                 # Timeline
                                 db._post("jd_timeline", {
@@ -15423,7 +15545,6 @@ def jd_progress_tracker():
                                     "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                 })
                                 
-                                st.info("📋 Use 'Assign Task' tab to add the AI-extracted tasks manually.")
                             else:
                                 st.error("❌ Groq API key not configured.")
                         except Exception as e:
@@ -15440,7 +15561,8 @@ def jd_progress_tracker():
                     st.markdown(f"**Uploaded by:** {jd.get('uploaded_by', 'N/A')}")
                     st.markdown(f"**Date:** {jd.get('created_at', 'N/A')[:16]}")
                     if jd.get('jd_content'):
-                        st.markdown(f"**Content Preview:** {jd.get('jd_content', '')[:200]}...")
+                        with st.expander(f"📄 Full JD Content - {jd.get('jd_title', '')}", expanded=False):
+                            st.markdown(jd.get('jd_content', ''))
     
     # ===== TAB 2: TASK BOARD =====
     with jd_tab2:
