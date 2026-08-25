@@ -15578,12 +15578,21 @@ def jd_progress_tracker():
                         selected_emp_task = st.selectbox("👤 Employee *", emp_options_task, key="jd_task_emp")
                         task_title = st.text_input("📝 Task Title *")
                         task_category = st.selectbox("📂 Category", ["Technical Skills", "Soft Skills", "Compliance", "Project Work", "Documentation", "Customer Service", "Safety", "Other"])
+                        task_priority = st.selectbox("⚡ Priority", ["Low", "Medium", "High", "Critical"])
                     with col2:
                         start_date = st.date_input("📅 Start Date *")
                         deadline = st.date_input("⏰ Deadline *")
-                        task_priority = st.selectbox("⚡ Priority", ["Low", "Medium", "High", "Critical"])
-                        collaborators = st.text_input("👥 Collaborators", placeholder="Comma separated names")
-                        check_in_day = st.selectbox("📅 Check-in Point", ["Day 15", "Day 30", "Day 60", "Day 90", "Day 120", "Custom"])
+                        
+                        # Multi-select collaborators from employee dropdown
+                        collaborator_options = [f"{row['first_name']} {row['last_name']} ({row.get('employee_id', 'N/A')})" for _, row in employees_df.iterrows()] if not employees_df.empty else []
+                        selected_collaborators = st.multiselect("👥 Collaborators (Multi-select)", collaborator_options)
+                        
+                        # Check-in point with proper integer conversion
+                        check_in_day_choice = st.selectbox("📅 Check-in Point", ["Day 15", "Day 30", "Day 60", "Day 90", "Day 120", "Custom"])
+                        if check_in_day_choice == "Custom":
+                            check_in_day = int(st.number_input("Custom days", min_value=1, max_value=365, value=45))
+                        else:
+                            check_in_day = int(check_in_day_choice.split()[1])
                     
                     task_description = st.text_area("📝 Description *")
                     
@@ -15599,6 +15608,9 @@ def jd_progress_tracker():
                                 if not emp_row.empty:
                                     emp_email = emp_row.iloc[0].get('email', '')
                             
+                            # Convert collaborators to comma-separated string
+                            collaborators_str = ", ".join(selected_collaborators) if selected_collaborators else ""
+                            
                             db._post("jd_tasks", {
                                 "task_title": task_title,
                                 "description": task_description,
@@ -15610,8 +15622,8 @@ def jd_progress_tracker():
                                 "deadline": deadline.strftime('%Y-%m-%d'),
                                 "priority": task_priority,
                                 "category": task_category,
-                                "check_in_day": check_in_day,
-                                "collaborators": collaborators,
+                                "check_in_day": int(check_in_day),
+                                "collaborators": collaborators_str,
                                 "status": "Not Started",
                                 "progress": 0,
                                 "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -15626,18 +15638,42 @@ def jd_progress_tracker():
                                 "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                             })
                             
+                            # Send email to employee
                             if emp_email:
                                 try:
                                     from utils.email_service import EmailService
                                     EmailService().send_email(
                                         emp_email,
                                         f"📋 New Task: {task_title}",
-                                        f"Dear {employee_name},\n\nNew task: {task_title}\n\n{task_description}\n\nStart: {start_date}\nDeadline: {deadline}\n\nChurchgate Group HR"
+                                        f"Dear {employee_name},\n\nNew task assigned:\n\n{task_title}\n\n{task_description}\n\nStart: {start_date}\nDeadline: {deadline}\nMentor: {user_name}\n\nLog into HRIS: https://hris.churchgate.com\n\nChurchgate Group HR"
                                     )
                                 except:
                                     pass
                             
-                            st.success(f"✅ Task assigned!")
+                            # Send email to collaborators
+                            if selected_collaborators:
+                                for collab in selected_collaborators:
+                                    collab_name = collab.split(" (")[0]
+                                    collab_id = collab.split("(")[1].rstrip(")")
+                                    
+                                    collab_email = ""
+                                    if not employees_df.empty:
+                                        collab_row = employees_df[employees_df['employee_id'] == collab_id]
+                                        if not collab_row.empty:
+                                            collab_email = collab_row.iloc[0].get('email', '')
+                                    
+                                    if collab_email:
+                                        try:
+                                            from utils.email_service import EmailService
+                                            EmailService().send_email(
+                                                collab_email,
+                                                f"👥 Collaborator Assignment: {task_title}",
+                                                f"Dear {collab_name},\n\nYou have been added as a collaborator on:\n\nTask: {task_title}\nDescription: {task_description}\nEmployee: {employee_name}\nStart: {start_date}\nDeadline: {deadline}\nMentor: {user_name}\n\nLog into HRIS: https://hris.churchgate.com\n\nChurchgate Group HR"
+                                            )
+                                        except:
+                                            pass
+                            
+                            st.success(f"✅ Task assigned to {employee_name}!")
                             st.balloons()
                             st.rerun()
         
@@ -15658,6 +15694,8 @@ def jd_progress_tracker():
                         <strong style="color:#C9A84C;">👔:</strong> {task.get('mentor_name')}<br>
                         <strong style="color:#C9A84C;">⏰:</strong> {task.get('start_date')} → {task.get('deadline')} |
                         <strong style="color:#C9A84C;">👥:</strong> {task.get('collaborators', 'None')}<br>
+                        <strong style="color:#C9A84C;">📂:</strong> {task.get('category', 'N/A')} |
+                        <strong style="color:#C9A84C;">⚡:</strong> {task.get('priority', 'N/A')}<br>
                         <strong style="color:#C9A84C;">📝:</strong> {task.get('description', '')}
                     </div>
                     """, unsafe_allow_html=True)
@@ -15669,7 +15707,11 @@ def jd_progress_tracker():
                     if task_evidence:
                         st.markdown("#### 📎 Evidence")
                         for ev in task_evidence:
-                            st.markdown(f"- 📄 {ev.get('file_name')}")
+                            st.markdown(f"""
+                            <div style="background:#1E1E1E;padding:0.4rem;border-radius:4px;margin:0.2rem 0;">
+                                📄 {ev.get('file_name')} | <small style="color:#9a8a78;">{ev.get('uploaded_by', '')} | {ev.get('uploaded_at', '')[:16]}</small>
+                            </div>
+                            """, unsafe_allow_html=True)
                     
                     # Upload evidence (employee or mentor)
                     uploaded_evidence = st.file_uploader("📎 Upload Evidence", type=['pdf', 'docx', 'xlsx'], key=f"ev_{task.get('id')}")
@@ -15721,33 +15763,73 @@ def jd_progress_tracker():
             with st.expander(f"📅 {check['label']}", expanded=False):
                 if is_mentor:
                     emp_options_check = ["Select Employee..."] + [f"{row['first_name']} {row['last_name']}" for _, row in employees_df.iterrows()] if not employees_df.empty else ["Select Employee..."]
-                    check_emp = st.selectbox("👤", emp_options_check, key=f"ce_{check['day']}")
+                    check_emp = st.selectbox("👤 Employee", emp_options_check, key=f"ce_{check['day']}")
                     
                     if check_emp != "Select Employee...":
+                        # Get employee email for this check-in
+                        check_emp_email = ""
+                        if not employees_df.empty:
+                            emp_row = employees_df[employees_df['first_name'] + ' ' + employees_df['last_name'] == check_emp]
+                            if not emp_row.empty:
+                                check_emp_email = emp_row.iloc[0].get('email', '')
+                        
                         rating = st.slider("Rating (1-5)", 1, 5, 3, key=f"cr_{check['day']}")
-                        comment = st.text_area("Comment", key=f"cc_{check['day']}")
+                        comment = st.text_area("Mentor Comment", key=f"cc_{check['day']}")
                         hr_rec = st.text_area("HR Recommendation", key=f"hr_{check['day']}") if is_admin else ""
                         
                         if st.button(f"Submit {check['label']}", key=f"cb_{check['day']}"):
-                            db._post("jd_checkins", {
-                                "employee_email": user_email,
-                                "employee_name": check_emp,
-                                "check_in_day": check['day'],
-                                "mentor_name": user_name,
-                                "mentor_comment": comment,
-                                "mentor_rating": rating,
-                                "hr_recommendation": hr_rec,
-                                "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                            })
-                            st.success("✅ Check-in recorded!")
-                            st.rerun()
+                            try:
+                                db._post("jd_checkins", {
+                                    "employee_email": check_emp_email,
+                                    "employee_name": check_emp,
+                                    "check_in_day": int(check['day']),
+                                    "mentor_name": user_name,
+                                    "mentor_comment": comment,
+                                    "mentor_rating": int(rating),
+                                    "hr_recommendation": hr_rec,
+                                    "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                })
+                                
+                                # Timeline
+                                db._post("jd_timeline", {
+                                    "employee_email": check_emp_email,
+                                    "event_type": "check_in",
+                                    "event_description": f"{check['label']} recorded for {check_emp} - Rating: {rating}/5",
+                                    "created_by": user_name,
+                                    "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                })
+                                
+                                # Send email to employee
+                                if check_emp_email:
+                                    try:
+                                        from utils.email_service import EmailService
+                                        EmailService().send_email(
+                                            check_emp_email,
+                                            f"📊 {check['label']} Recorded",
+                                            f"Dear {check_emp},\n\nYour {check['label']} has been recorded.\n\nRating: {rating}/5\nMentor: {user_name}\n\nLog into HRIS to view details: https://hris.churchgate.com\n\nChurchgate Group HR"
+                                        )
+                                    except:
+                                        pass
+                                
+                                st.success(f"✅ {check['label']} recorded for {check_emp}!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Failed to save: {str(e)}")
                 
                 # Display existing check-ins
-                day_checkins = [c for c in jd_checkins if c.get('check_in_day') == check['day']]
+                day_checkins = [c for c in jd_checkins if int(c.get('check_in_day', 0)) == check['day']]
                 if day_checkins:
                     st.markdown(f"**{len(day_checkins)} check-in(s) recorded**")
                     for c in day_checkins:
-                        st.markdown(f"- {c.get('employee_name')}: Rating {c.get('mentor_rating')}/5")
+                        rating = c.get('mentor_rating', 'N/A')
+                        comment = c.get('mentor_comment', '')
+                        emp = c.get('employee_name', 'Unknown')
+                        st.markdown(f"""
+                        <div style="background:#1E1E1E;padding:0.5rem;border-radius:6px;margin:0.3rem 0;border-left:4px solid #B8960C;">
+                            <strong style="color:#C9A84C;">👤 {emp}</strong> | Rating: <strong style="color:#C9A84C;">{rating}/5</strong>
+                            {f'<br><small style="color:#9a8a78;">💬 {comment}</small>' if comment else ''}
+                        </div>
+                        """, unsafe_allow_html=True)
     
     # ===== TAB 4: AI ASSESSMENT =====
     with jd_tab4:
@@ -18395,7 +18477,12 @@ APPLY NOW: {public_url}
                 with c1:
                     bg_name = st.text_input("Candidate Name *")
                     bg_position = st.text_input("Position Applied For *")
-                    bg_department = st.selectbox("Department", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin'])
+                    bg_department = st.selectbox("Department", [
+                        'Senior Management', 'Technology Group', 'Facility Management', 
+                        'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 
+                        'Procurement', 'Security', 'Legal', 'Operations', 
+                        'Engineering & Project Development', 'Admin', 'Central Stores'
+                    ])
                 with c2:
                     bg_type = st.multiselect("Check Type *", [
                         "Employment Verification",
@@ -18418,12 +18505,15 @@ APPLY NOW: {public_url}
                         db._post("background_checks", {
                             "candidate_name": bg_name,
                             "position": bg_position,
+                            "department": bg_department,
                             "check_type": ', '.join(bg_type),
                             "priority": bg_priority,
                             "requested_by": user_name,
                             "check_type_category": "internal",
                             "status": "Pending",
-                            "hr_notes": bg_notes
+                            "hr_notes": bg_notes,
+                            "consent_given": bg_consent,
+                            "request_date": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         })
                         
                         # Notify HR team
