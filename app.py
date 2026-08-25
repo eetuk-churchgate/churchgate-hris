@@ -15194,6 +15194,467 @@ def extract_text_from_cv_url(cv_url):
         return None
 
 
+
+
+def jd_progress_tracker():
+    """🎯 JD Progress Tracker - Fortune 500 Enterprise Grade"""
+    
+    st.markdown("### 🎯 JD Progress Tracker")
+    st.markdown("*Enterprise-grade task management, AI-powered JD extraction, evidence tracking, and automated assessments*")
+    
+    user_role = st.session_state.user['role'] if st.session_state.user else 'Team Member'
+    user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+    user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
+    user_email = st.session_state.user.get('email', '') if st.session_state.user else ''
+    
+    is_admin = user_role in ['Admin', 'HR Director']
+    is_mentor = is_admin or user_role in ['Manager', 'HOD', 'Team Lead']
+    is_employee = not is_mentor  # Regular employee view
+    
+    employees_df = load_employees_cached()
+    
+    # Load ALL data from database
+    jd_documents = db._get("jd_documents") or []
+    jd_tasks = db._get("jd_tasks") or []
+    jd_evidence = db._get("jd_evidence") or []
+    jd_checkins = db._get("jd_checkins") or []
+    jd_comments = db._get("jd_comments") or []
+    jd_final = db._get("jd_final_reviews") or []
+    jd_timeline = db._get("jd_timeline") or []
+    
+    # Top metrics
+    total_tasks = len(jd_tasks)
+    completed = len([t for t in jd_tasks if t.get('status') == 'Completed'])
+    in_progress = len([t for t in jd_tasks if t.get('status') == 'In Progress'])
+    overdue = len([t for t in jd_tasks if t.get('status') == 'Overdue'])
+    
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("📋 Tasks", total_tasks)
+    m2.metric("✅ Completed", completed)
+    m3.metric("🔄 In Progress", in_progress)
+    m4.metric("⚠️ Overdue", overdue)
+    m5.metric("📄 JDs Uploaded", len(jd_documents))
+    
+    st.markdown("---")
+    
+    # Main tabs
+    jd_tab1, jd_tab2, jd_tab3, jd_tab4, jd_tab5, jd_tab6 = st.tabs([
+        "📄 JD Upload & AI", "📋 Task Board", "📊 Check-ins", "🤖 AI Assessment", "📈 Dashboard", "⏱️ Timeline"
+    ])
+    
+    # ===== TAB 1: JD UPLOAD & AI EXTRACTION =====
+    with jd_tab1:
+        st.markdown("#### 📄 Upload JD & AI Task Extraction")
+        
+        if is_mentor:
+            st.markdown("##### Option 1: Upload JD Document")
+            
+            emp_options = ["Select Employee..."] + [f"{row['first_name']} {row['last_name']} ({row.get('employee_id', 'N/A')})" for _, row in employees_df.iterrows()] if not employees_df.empty else ["Select Employee..."]
+            selected_emp = st.selectbox("👤 Employee", emp_options, key="jd_upload_emp")
+            
+            jd_title = st.text_input("📝 JD Title *", placeholder="e.g., IT Support Intern JD")
+            
+            uploaded_jd = st.file_uploader("📄 Upload JD (PDF or Word)", type=['pdf', 'docx'], key="jd_file_upload")
+            
+            st.markdown("##### Option 2: Paste JD Content")
+            jd_pasted = st.text_area("📋 Paste JD Content", height=200, placeholder="Paste the JD text here...")
+            
+            if st.button("🤖 AI Extract Tasks from JD", type="primary", use_container_width=True):
+                if selected_emp == "Select Employee..." or not jd_title:
+                    st.error("❌ Select employee and enter JD title.")
+                elif not uploaded_jd and not jd_pasted:
+                    st.error("❌ Upload a JD file or paste JD content.")
+                else:
+                    with st.spinner("🤖 AI is analyzing the JD and extracting tasks..."):
+                        try:
+                            from groq import Groq
+                            groq_key = os.environ.get("GROQ_API_KEY", st.secrets.get("GROQ_API_KEY", ""))
+                            
+                            if groq_key:
+                                client = Groq(api_key=groq_key)
+                                
+                                jd_text = jd_pasted
+                                if uploaded_jd:
+                                    if uploaded_jd.type == 'application/pdf':
+                                        import pypdf
+                                        pdf_reader = pypdf.PdfReader(uploaded_jd)
+                                        jd_text = ""
+                                        for page in pdf_reader.pages:
+                                            jd_text += page.extract_text()
+                                    elif uploaded_jd.type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                                        import docx
+                                        doc = docx.Document(uploaded_jd)
+                                        jd_text = "\n".join([p.text for p in doc.paragraphs])
+                                
+                                prompt = f"""
+                                Extract actionable tasks from this Job Description:
+                                
+                                JD Title: {jd_title}
+                                
+                                JD Content:
+                                {jd_text[:3000]}
+                                
+                                Extract 5-10 specific, measurable tasks with:
+                                - Task title
+                                - Description
+                                - Suggested category (Technical Skills, Soft Skills, Compliance, Project Work, Documentation, Customer Service, Safety)
+                                - Priority (Low, Medium, High, Critical)
+                                - Suggested duration in days
+                                
+                                Format as JSON list.
+                                """
+                                
+                                response = client.chat.completions.create(
+                                    model="openai/gpt-oss-20b",
+                                    messages=[{"role": "system", "content": "You extract actionable tasks from Job Descriptions. Return JSON."}],
+                                    temperature=0.3,
+                                    max_tokens=1000
+                                )
+                                
+                                ai_tasks_text = response.choices[0].message.content
+                                st.success("✅ AI extracted tasks from JD!")
+                                st.markdown(ai_tasks_text)
+                                
+                                # Save JD document
+                                employee_name = selected_emp.split(" (")[0]
+                                employee_id = selected_emp.split("(")[1].rstrip(")")
+                                emp_email = ""
+                                if not employees_df.empty:
+                                    emp_row = employees_df[employees_df['employee_id'] == employee_id]
+                                    if not emp_row.empty:
+                                        emp_email = emp_row.iloc[0].get('email', '')
+                                
+                                db._post("jd_documents", {
+                                    "employee_name": employee_name,
+                                    "employee_email": emp_email,
+                                    "jd_title": jd_title,
+                                    "jd_content": jd_text[:5000],
+                                    "uploaded_by": user_name,
+                                    "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                })
+                                
+                                st.info("📄 JD saved. Use 'Assign Task' tab to manually add AI-extracted tasks.")
+                            else:
+                                st.error("❌ Groq API key not configured.")
+                        except Exception as e:
+                            st.error(f"❌ AI extraction failed: {str(e)}")
+        else:
+            st.info("Only mentors and admins can upload JDs.")
+        
+        # Display uploaded JDs
+        if jd_documents:
+            st.markdown("---")
+            st.markdown("#### 📚 Uploaded JDs")
+            for jd in jd_documents[-5:]:
+                with st.expander(f"📄 {jd.get('jd_title', 'JD')} | {jd.get('employee_name', 'N/A')}", expanded=False):
+                    st.markdown(f"**Uploaded by:** {jd.get('uploaded_by', 'N/A')}")
+                    st.markdown(f"**Date:** {jd.get('created_at', 'N/A')[:16]}")
+                    if jd.get('jd_content'):
+                        st.markdown(f"**Content Preview:** {jd.get('jd_content', '')[:200]}...")
+    
+    # ===== TAB 2: TASK BOARD =====
+    with jd_tab2:
+        st.markdown("#### 📋 Task Board")
+        
+        # Assign task (mentor)
+        if is_mentor:
+            with st.expander("➕ Assign New Task", expanded=False):
+                with st.form("jd_assign_form_enterprise"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        emp_options_task = ["Select Employee..."] + [f"{row['first_name']} {row['last_name']} ({row.get('employee_id', 'N/A')})" for _, row in employees_df.iterrows()] if not employees_df.empty else ["Select Employee..."]
+                        selected_emp_task = st.selectbox("👤 Employee *", emp_options_task, key="jd_task_emp")
+                        task_title = st.text_input("📝 Task Title *")
+                        task_category = st.selectbox("📂 Category", ["Technical Skills", "Soft Skills", "Compliance", "Project Work", "Documentation", "Customer Service", "Safety", "Other"])
+                    with col2:
+                        start_date = st.date_input("📅 Start Date *")
+                        deadline = st.date_input("⏰ Deadline *")
+                        task_priority = st.selectbox("⚡ Priority", ["Low", "Medium", "High", "Critical"])
+                        collaborators = st.text_input("👥 Collaborators", placeholder="Comma separated names")
+                        check_in_day = st.selectbox("📅 Check-in Point", ["Day 15", "Day 30", "Day 60", "Day 90", "Day 120", "Custom"])
+                    
+                    task_description = st.text_area("📝 Description *")
+                    
+                    if st.form_submit_button("✅ Assign Task", type="primary", use_container_width=True):
+                        if selected_emp_task == "Select Employee..." or not task_title:
+                            st.error("❌ Fill required fields.")
+                        else:
+                            employee_name = selected_emp_task.split(" (")[0]
+                            employee_id = selected_emp_task.split("(")[1].rstrip(")")
+                            emp_email = ""
+                            if not employees_df.empty:
+                                emp_row = employees_df[employees_df['employee_id'] == employee_id]
+                                if not emp_row.empty:
+                                    emp_email = emp_row.iloc[0].get('email', '')
+                            
+                            db._post("jd_tasks", {
+                                "task_title": task_title,
+                                "description": task_description,
+                                "employee_name": employee_name,
+                                "employee_email": emp_email,
+                                "mentor_name": user_name,
+                                "mentor_email": user_email,
+                                "start_date": start_date.strftime('%Y-%m-%d'),
+                                "deadline": deadline.strftime('%Y-%m-%d'),
+                                "priority": task_priority,
+                                "category": task_category,
+                                "check_in_day": check_in_day,
+                                "collaborators": collaborators,
+                                "status": "Not Started",
+                                "progress": 0,
+                                "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            })
+                            
+                            # Timeline
+                            db._post("jd_timeline", {
+                                "employee_email": emp_email,
+                                "event_type": "task_assigned",
+                                "event_description": f"Task assigned: {task_title}",
+                                "created_by": user_name,
+                                "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            })
+                            
+                            if emp_email:
+                                try:
+                                    from utils.email_service import EmailService
+                                    EmailService().send_email(
+                                        emp_email,
+                                        f"📋 New Task: {task_title}",
+                                        f"Dear {employee_name},\n\nNew task: {task_title}\n\n{task_description}\n\nStart: {start_date}\nDeadline: {deadline}\n\nChurchgate Group HR"
+                                    )
+                                except:
+                                    pass
+                            
+                            st.success(f"✅ Task assigned!")
+                            st.balloons()
+                            st.rerun()
+        
+        # Task display
+        st.markdown("---")
+        if jd_tasks:
+            visible_tasks = jd_tasks if is_admin else [t for t in jd_tasks if t.get('mentor_email') == user_email or t.get('employee_email') == user_email]
+            
+            for task in visible_tasks:
+                status = task.get('status', 'Not Started')
+                progress = int(task.get('progress', 0))
+                border_color = {'Not Started': '#718096', 'In Progress': '#3182ce', 'Completed': '#38a169', 'Overdue': '#CC0000', 'Under Review': '#d69e2e'}.get(status, '#718096')
+                
+                with st.expander(f"📋 {task.get('task_title')} | {status} | {progress}%", expanded=False):
+                    st.markdown(f"""
+                    <div style="background:#1E1E1E;padding:1rem;border-radius:8px;border-left:4px solid {border_color};">
+                        <strong style="color:#C9A84C;">👤:</strong> {task.get('employee_name')} | 
+                        <strong style="color:#C9A84C;">👔:</strong> {task.get('mentor_name')}<br>
+                        <strong style="color:#C9A84C;">⏰:</strong> {task.get('start_date')} → {task.get('deadline')} |
+                        <strong style="color:#C9A84C;">👥:</strong> {task.get('collaborators', 'None')}<br>
+                        <strong style="color:#C9A84C;">📝:</strong> {task.get('description', '')}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.progress(progress / 100)
+                    
+                    # Evidence
+                    task_evidence = [e for e in jd_evidence if str(e.get('task_id')) == str(task.get('id'))]
+                    if task_evidence:
+                        st.markdown("#### 📎 Evidence")
+                        for ev in task_evidence:
+                            st.markdown(f"- 📄 {ev.get('file_name')}")
+                    
+                    # Upload evidence (employee or mentor)
+                    uploaded_evidence = st.file_uploader("📎 Upload Evidence", type=['pdf', 'docx', 'xlsx'], key=f"ev_{task.get('id')}")
+                    if uploaded_evidence and st.button("Upload", key=f"ev_btn_{task.get('id')}"):
+                        try:
+                            db._post("jd_evidence", {
+                                "task_id": task.get('id'),
+                                "employee_email": task.get('employee_email'),
+                                "file_name": uploaded_evidence.name,
+                                "file_type": uploaded_evidence.type,
+                                "uploaded_by": user_name,
+                                "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            })
+                            st.success("✅ Evidence uploaded!")
+                            st.rerun()
+                        except:
+                            st.error("❌ Upload failed.")
+                    
+                    # Update status (mentor)
+                    if is_mentor:
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            new_status = st.selectbox("Status", ['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'],
+                                                     index=['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'].index(status) if status in ['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'] else 0,
+                                                     key=f"st_{task.get('id')}")
+                        with col2:
+                            new_progress = st.slider("Progress", 0, 100, progress, key=f"pr_{task.get('id')}")
+                        
+                        if st.button("💾 Update", key=f"up_{task.get('id')}"):
+                            db._patch("jd_tasks", {"status": new_status, "progress": new_progress}, {"id": task.get('id')})
+                            st.success("✅ Updated!")
+                            st.rerun()
+        else:
+            st.info("No tasks yet.")
+    
+    # ===== TAB 3: CHECK-INS =====
+    with jd_tab3:
+        st.markdown("#### 📊 Periodic Check-ins")
+        
+        checkin_schedule = [
+            {"day": 15, "label": "Day 15 - Initial Check"},
+            {"day": 30, "label": "Day 30 - First Month"},
+            {"day": 60, "label": "Day 60 - Mid-point"},
+            {"day": 90, "label": "Day 90 - Probation Review"},
+            {"day": 120, "label": "Day 120 - Extended Review"}
+        ]
+        
+        for check in checkin_schedule:
+            with st.expander(f"📅 {check['label']}", expanded=False):
+                if is_mentor:
+                    emp_options_check = ["Select Employee..."] + [f"{row['first_name']} {row['last_name']}" for _, row in employees_df.iterrows()] if not employees_df.empty else ["Select Employee..."]
+                    check_emp = st.selectbox("👤", emp_options_check, key=f"ce_{check['day']}")
+                    
+                    if check_emp != "Select Employee...":
+                        rating = st.slider("Rating (1-5)", 1, 5, 3, key=f"cr_{check['day']}")
+                        comment = st.text_area("Comment", key=f"cc_{check['day']}")
+                        hr_rec = st.text_area("HR Recommendation", key=f"hr_{check['day']}") if is_admin else ""
+                        
+                        if st.button(f"Submit {check['label']}", key=f"cb_{check['day']}"):
+                            db._post("jd_checkins", {
+                                "employee_email": user_email,
+                                "employee_name": check_emp,
+                                "check_in_day": check['day'],
+                                "mentor_name": user_name,
+                                "mentor_comment": comment,
+                                "mentor_rating": rating,
+                                "hr_recommendation": hr_rec,
+                                "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            })
+                            st.success("✅ Check-in recorded!")
+                            st.rerun()
+                
+                # Display existing check-ins
+                day_checkins = [c for c in jd_checkins if c.get('check_in_day') == check['day']]
+                if day_checkins:
+                    st.markdown(f"**{len(day_checkins)} check-in(s) recorded**")
+                    for c in day_checkins:
+                        st.markdown(f"- {c.get('employee_name')}: Rating {c.get('mentor_rating')}/5")
+    
+    # ===== TAB 4: AI ASSESSMENT =====
+    with jd_tab4:
+        st.markdown("#### 🤖 AI-Powered Final Assessment")
+        
+        if is_mentor:
+            emp_options_ai = ["Select Employee..."] + [f"{row['first_name']} {row['last_name']}" for _, row in employees_df.iterrows()] if not employees_df.empty else ["Select Employee..."]
+            ai_emp = st.selectbox("👤 Employee", emp_options_ai)
+            
+            if ai_emp != "Select Employee...":
+                emp_email_ai = ""
+                if not employees_df.empty:
+                    emp_row = employees_df[employees_df['first_name'] + ' ' + employees_df['last_name'] == ai_emp]
+                    if not emp_row.empty:
+                        emp_email_ai = emp_row.iloc[0].get('email', '')
+                
+                emp_tasks = [t for t in jd_tasks if t.get('employee_name') == ai_emp]
+                emp_checkins = [c for c in jd_checkins if c.get('employee_email') == emp_email_ai]
+                
+                if st.button(f"🧠 Run AI Assessment for {ai_emp}", type="primary", use_container_width=True):
+                    with st.spinner("🤖 AI analyzing..."):
+                        try:
+                            from groq import Groq
+                            groq_key = os.environ.get("GROQ_API_KEY", st.secrets.get("GROQ_API_KEY", ""))
+                            
+                            if groq_key:
+                                client = Groq(api_key=groq_key)
+                                
+                                tasks_summary = "\n".join([f"- {t.get('task_title')}: {t.get('status')} ({t.get('progress', 0)}%)" for t in emp_tasks])
+                                checkins_summary = "\n".join([f"- Day {c.get('check_in_day')}: {c.get('mentor_rating')}/5 - {c.get('mentor_comment', '')}" for c in emp_checkins])
+                                
+                                prompt = f"""
+                                Employee: {ai_emp}
+                                
+                                Tasks:
+                                {tasks_summary or 'No tasks'}
+                                
+                                Check-ins:
+                                {checkins_summary or 'No check-ins'}
+                                
+                                Provide:
+                                1. Rating (1-5)
+                                2. Strengths
+                                3. Areas for improvement
+                                4. Recommendation: Confirm / Extend / Terminate
+                                5. Justification
+                                """
+                                
+                                response = client.chat.completions.create(
+                                    model="openai/gpt-oss-20b",
+                                    messages=[{"role": "system", "content": "HR Analytics expert"}],
+                                    temperature=0.5,
+                                    max_tokens=500
+                                )
+                                
+                                assessment = response.choices[0].message.content
+                                st.success("✅ AI Assessment complete!")
+                                st.markdown(assessment)
+                                
+                                db._post("jd_final_reviews", {
+                                    "employee_email": emp_email_ai,
+                                    "employee_name": ai_emp,
+                                    "ai_recommendation": assessment,
+                                    "final_status": "Pending HR Decision",
+                                    "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                })
+                        except Exception as e:
+                            st.error(f"❌ Failed: {str(e)}")
+    
+    # ===== TAB 5: DASHBOARD =====
+    with jd_tab5:
+        st.markdown("#### 📈 Analytics Dashboard")
+        
+        if jd_tasks:
+            # Status chart
+            status_counts = {}
+            for t in jd_tasks:
+                status_counts[t.get('status', 'Not Started')] = status_counts.get(t.get('status', 'Not Started'), 0) + 1
+            
+            fig1 = px.pie(values=list(status_counts.values()), names=list(status_counts.keys()), hole=0.5, title="Status Distribution")
+            fig1.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
+            st.plotly_chart(fig1, use_container_width=True)
+            
+            # Employee progress
+            emp_prog = {}
+            for t in jd_tasks:
+                emp = t.get('employee_name', 'Unknown')
+                if emp not in emp_prog:
+                    emp_prog[emp] = {'total': 0, 'done': 0}
+                emp_prog[emp]['total'] += 1
+                if t.get('status') == 'Completed':
+                    emp_prog[emp]['done'] += 1
+            
+            data = [{'Employee': e, 'Progress': int(d['done']/d['total']*100), 'Tasks': d['total']} for e, d in emp_prog.items()]
+            df = pd.DataFrame(data).sort_values('Progress', ascending=False)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            
+            fig2 = px.bar(df, x='Employee', y='Progress', color='Progress', color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+            fig2.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
+            st.plotly_chart(fig2, use_container_width=True)
+    
+    # ===== TAB 6: TIMELINE =====
+    with jd_tab6:
+        st.markdown("#### ⏱️ Activity Timeline")
+        
+        if jd_timeline:
+            for event in sorted(jd_timeline, key=lambda x: x.get('created_at', ''), reverse=True)[:20]:
+                st.markdown(f"""
+                <div style="background:#1E1E1E;padding:0.5rem;border-radius:6px;margin:0.3rem 0;border-left:4px solid #B8960C;">
+                    <small style="color:#9a8a78;">{event.get('created_at', '')[:16]}</small><br>
+                    <strong style="color:#C9A84C;">{event.get('event_type', '')}</strong>: {event.get('event_description', '')}
+                    <small style="color:#9a8a78;"> by {event.get('created_by', '')}</small>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("No timeline events yet.")
+
+
+
 def recruitment_hub():
     track_engagement("Recruitment Hub")
     st.markdown("""<div class="churchgate-header"><h1>💼 Recruitment Hub</h1><p>Job Requisition | Auto-Posting | AI Screening | Interview Scheduler | Offer Letters | Background Checks | Onboarding</p></div>""", unsafe_allow_html=True)
@@ -17446,11 +17907,11 @@ APPLY NOW: {public_url}
             else:
                 st.info("No offers generated yet.")
     
-    # ============ TAB 8: ONBOARDING ============
+   # ============ TAB 8: ONBOARDING ============
     with tab8:
         st.subheader("🎯 Enterprise Onboarding Management")
         
-        tab_onb1, tab_onb2, tab_onb3 = st.tabs(["➕ New Hire Setup", "📋 Onboarding Tracker", "📊 Dashboard"])
+        tab_onb1, tab_onb2, tab_onb3, tab_onb4 = st.tabs(["➕ New Hire Setup", "📋 Onboarding Tracker", "📊 Dashboard", "🎯 JD Progress Tracker"])
         
         # Predefined onboarding tasks
         default_tasks = [
@@ -17701,8 +18162,12 @@ APPLY NOW: {public_url}
                                   "onboarding_report.csv", "text/csv")
             else:
                 st.info("No onboarding data yet.")
+        
+        # ===== SUB-TAB 4: JD PROGRESS TRACKER =====
+        with tab_onb4:
+            jd_progress_tracker()
     
-     # ============ TAB 9: BACKGROUND CHECKS ============
+    # ============ TAB 9: BACKGROUND CHECKS ============
     with tab9:
         st.subheader("🔍 Enterprise Background Check Management")
         
