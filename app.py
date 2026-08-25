@@ -3832,6 +3832,59 @@ def employee_dashboard():
     
     show_churchgate_mission()
     
+    # ============ LATEST ANNOUNCEMENTS BANNER ============
+    try:
+        announcements_data = db._get("announcements")
+        if announcements_data:
+            latest_ann = sorted(announcements_data, key=lambda x: x.get('created_at', ''), reverse=True)[:3]
+            
+            if latest_ann:
+                st.markdown("### 📢 Latest Announcements")
+                
+                user_email_current = st.session_state.user.get('email', '') if st.session_state.user else ''
+                
+                # Get read announcements
+                read_ids = []
+                try:
+                    reads = db._get("announcement_reads")
+                    if reads:
+                        read_ids = [r.get('announcement_id') for r in reads if r.get('user_email') == user_email_current]
+                except:
+                    pass
+                
+                for ann in latest_ann:
+                    ann_id = ann.get('id', '')
+                    is_read = ann_id in read_ids if ann_id else False
+                    
+                    border_color = "#2A2A2A" if is_read else "#B8960C"
+                    icon = "✅" if is_read else "📢"
+                    
+                    with st.expander(f"{icon} {ann.get('subject', 'Announcement')} | {ann.get('created_at', '')[:10]}", expanded=(not is_read and len(latest_ann) == 1)):
+                        st.markdown(f"""
+                        <div style="background:#1E1E1E;padding:1rem;border-radius:8px;border-left:4px solid {border_color};margin:0.3rem 0;">
+                            <strong style="color:#C9A84C;">{ann.get('subject', '')}</strong>
+                            <div style="color:#F0E6D3;font-size:0.85rem;margin:0.5rem 0;white-space:pre-wrap;">{ann.get('body', '')}</div>
+                            <small style="color:#9a8a78;">From: {ann.get('sent_by', 'HR')} | {ann.get('created_at', '')[:16]}</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        if not is_read:
+                            if st.button(f"✅ Mark as Read", key=f"mark_read_{ann_id}_{user_email_current}"):
+                                try:
+                                    db._post("announcement_reads", {
+                                        "announcement_id": ann_id,
+                                        "user_email": user_email_current,
+                                        "read_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                    })
+                                    st.success("✅ Marked as read!")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"❌ Could not mark as read: {str(e)}")
+                
+                st.markdown("---")
+    except:
+        pass
+    
     # ============ NEWS TICKER - DYNAMIC ============
     import random
     
@@ -5396,19 +5449,30 @@ def hr_announcement_tab(employees_df):
     except:
         pass
     
-    # Load tracking data
-    tracking_stats = {'sent': 0, 'delivered': 0, 'opened': 0}
-    try:
-        tracking = db._get("announcement_tracking")
-        if tracking:
-            tracking_stats['sent'] = len(tracking)
-            tracking_stats['delivered'] = len([t for t in tracking if t.get('delivered')])
-            tracking_stats['opened'] = len([t for t in tracking if t.get('opened')])
-    except:
-        pass
+    # Refresh tracking data EVERY time the page loads
+    def get_tracking_stats():
+        tracking_stats = {'sent': 0, 'delivered': 0, 'opened': 0}
+        try:
+            tracking = db._get("announcement_tracking")
+            if tracking:
+                tracking_stats['sent'] = len(tracking)
+                tracking_stats['delivered'] = len([t for t in tracking if t.get('delivered')])
+                tracking_stats['opened'] = len([t for t in tracking if t.get('opened')])
+        except:
+            pass
+        return tracking_stats
     
-    # Top metrics with REAL data
-    total_sent = len(st.session_state.announcement_history)
+    def get_announcement_count():
+        try:
+            history = db._get("announcements")
+            return len(history) if history else 0
+        except:
+            return 0
+    
+    # Get fresh data
+    tracking_stats = get_tracking_stats()
+    total_sent = get_announcement_count()
+    
     total_users = 0
     try:
         users = db._get("users")
@@ -5416,7 +5480,7 @@ def hr_announcement_tab(employees_df):
     except:
         pass
     
-    # Calculate real open rate
+    # Calculate rates
     open_rate = "N/A"
     delivery_rate = "N/A"
     if tracking_stats['sent'] > 0:
@@ -5622,9 +5686,17 @@ def hr_announcement_tab(employees_df):
                             from utils.email_service import EmailService
                             es = EmailService()
                             
+                            # Supabase URL for tracking pixel
+                            supabase_url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+                            
                             for email, name in zip(recipient_emails, recipient_names):
                                 try:
-                                    es.send_email(email, subject, body)
+                                    # Add invisible tracking pixel to email body
+                                    tracking_pixel = f'<img src="{supabase_url}/rest/v1/announcement_tracking?recipient_email=eq.{email}&select=id" width="1" height="1" style="display:none;opacity:0;visibility:hidden;" />'
+                                    
+                                    email_body_with_tracking = body + tracking_pixel
+                                    
+                                    es.send_email(email, subject, email_body_with_tracking)
                                     sent_count += 1
                                     
                                     # Save tracking record
@@ -5721,8 +5793,15 @@ def hr_announcement_tab(employees_df):
             st.markdown("#### Recent Deliveries")
             recent_tracking = tracking_df.head(10) if not tracking_df.empty else pd.DataFrame()
             if not recent_tracking.empty:
-                st.dataframe(recent_tracking[['recipient_name', 'recipient_email', 'status', 'created_at']], 
-                           use_container_width=True, hide_index=True)
+                st.markdown("#### Recent Deliveries")
+                for _, t in recent_tracking.iterrows():
+                    status_color = "#38a169" if t.get('delivered') else "#CC0000"
+                    st.markdown(f"""
+                    <div style="background:#1E1E1E;padding:0.5rem;border-radius:6px;margin:0.2rem 0;border-left:4px solid {status_color};">
+                        <strong style="color:#C9A84C;">👤 {t.get('recipient_name', 'Unknown')}</strong>
+                        <small style="color:#9a8a78;">📧 {t.get('recipient_email', '')} | {t.get('status', '')} | {t.get('created_at', '')[:16]}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
     except:
         st.info("Tracking data will appear after announcements are sent.")
 
@@ -20524,20 +20603,39 @@ def notifications_page():
                     'action_label': 'Vote Now'
                 })
     
-    # 10. New Announcements
-    if 'announcements_list' in st.session_state and st.session_state.announcements_list:
-        recent_anns = st.session_state.announcements_list[-3:]
-        for ann in recent_anns:
-            notifications.append({
-                'id': f"announcement_{ann.get('title', '')}_{ann.get('time', '')}",
-                'title': f"📢 New Announcement: {ann.get('title', '')}",
-                'message': ann.get('content', '')[:100],
-                'time': ann.get('time', 'Recently'),
-                'category': 'announcement',
-                'priority': ann.get('priority', 'Normal').lower() if ann.get('priority') == 'Urgent' else 'medium',
-                'action': 'view_announcements',
-                'action_label': 'Read More'
-            })
+    # 10. New Announcements (from database)
+    try:
+        announcements_db = db._get("announcements")
+        if announcements_db:
+            # Get read announcements
+            read_ann_ids = []
+            try:
+                reads = db._get("announcement_reads")
+                if reads:
+                    read_ann_ids = [r.get('announcement_id') for r in reads if r.get('user_email') == user_email]
+            except:
+                pass
+            
+            # Get latest 3 unread announcements
+            recent_anns = sorted(announcements_db, key=lambda x: x.get('created_at', ''), reverse=True)[:3]
+            
+            for ann in recent_anns:
+                ann_id = ann.get('id', '')
+                is_read = ann_id in read_ann_ids if ann_id else False
+                
+                if not is_read:
+                    notifications.append({
+                        'id': f"announcement_{ann_id}_{ann.get('created_at', '')}",
+                        'title': f"📢 New Announcement: {ann.get('subject', 'Announcement')}",
+                        'message': ann.get('body', '')[:100] + ('...' if len(ann.get('body', '')) > 100 else ''),
+                        'time': ann.get('created_at', 'Recently')[:16],
+                        'category': 'announcement',
+                        'priority': 'medium',
+                        'action': 'view_announcements',
+                        'action_label': 'Read More'
+                    })
+    except:
+        pass
     
     # 11. System Status (for Admins)
     if is_admin:
@@ -20706,7 +20804,7 @@ def notifications_page():
                             elif action == 'view_training':
                                 st.session_state['navigate_to'] = "🎓 Training & Development"
                             elif action == 'view_announcements':
-                                st.session_state['navigate_to'] = "💬 Chat & Communications"
+                                st.session_state['navigate_to'] = "🏠 Employee Dashboard"
                             elif action == 'view_kudos':
                                 st.session_state['navigate_to'] = "💬 Chat & Communications"
                             elif action == 'view_system':
