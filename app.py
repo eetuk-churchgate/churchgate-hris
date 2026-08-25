@@ -15259,7 +15259,75 @@ def jd_progress_tracker():
             st.markdown("##### Option 2: Paste JD Content")
             jd_pasted = st.text_area("📋 Paste JD Content", height=200, placeholder="Paste the JD text here...")
             
-            if st.button("🤖 AI Extract Tasks from JD", type="primary", use_container_width=True):
+            st.markdown("---")
+            
+            # TWO BUTTONS - Save Only OR Save + AI Extract
+            col_save, col_ai = st.columns(2)
+            
+            with col_save:
+                save_jd_btn = st.button("💾 Save JD Only", use_container_width=True, key="save_jd_only")
+            
+            with col_ai:
+                ai_extract_btn = st.button("🤖 AI Extract Tasks", use_container_width=True, type="primary", key="ai_extract_tasks")
+            
+            # ===== BUTTON 1: Save JD Only =====
+            if save_jd_btn:
+                if selected_emp == "Select Employee..." or not jd_title:
+                    st.error("❌ Select employee and enter JD title.")
+                elif not uploaded_jd and not jd_pasted:
+                    st.error("❌ Upload a JD file or paste JD content.")
+                else:
+                    employee_name = selected_emp.split(" (")[0]
+                    employee_id = selected_emp.split("(")[1].rstrip(")")
+                    emp_email = ""
+                    if not employees_df.empty:
+                        emp_row = employees_df[employees_df['employee_id'] == employee_id]
+                        if not emp_row.empty:
+                            emp_email = emp_row.iloc[0].get('email', '')
+                    
+                    # Get JD content from paste or file
+                    jd_text_save = jd_pasted if jd_pasted and len(jd_pasted.strip()) > 0 else ""
+                    file_name_save = ""
+                    
+                    if uploaded_jd:
+                        file_name_save = uploaded_jd.name
+                        if uploaded_jd.type == 'application/pdf':
+                            import pypdf
+                            pdf_reader = pypdf.PdfReader(uploaded_jd)
+                            jd_text_save = ""
+                            for page in pdf_reader.pages:
+                                jd_text_save += page.extract_text()
+                        elif uploaded_jd.type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                            import docx
+                            doc = docx.Document(uploaded_jd)
+                            jd_text_save = "\n".join([p.text for p in doc.paragraphs])
+                    
+                    try:
+                        db._post("jd_documents", {
+                            "employee_name": employee_name,
+                            "employee_email": emp_email,
+                            "jd_title": jd_title,
+                            "jd_content": jd_text_save[:5000],
+                            "jd_file_name": file_name_save,
+                            "uploaded_by": user_name,
+                            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        })
+                        
+                        # Timeline
+                        db._post("jd_timeline", {
+                            "employee_email": emp_email,
+                            "event_type": "jd_saved",
+                            "event_description": f"JD saved: {jd_title}",
+                            "created_by": user_name,
+                            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        })
+                        
+                        st.success(f"✅ JD '{jd_title}' saved for {employee_name}!")
+                    except Exception as e:
+                        st.error(f"❌ Save failed: {str(e)}")
+            
+            # ===== BUTTON 2: AI Extract Tasks =====
+            if ai_extract_btn:
                 if selected_emp == "Select Employee..." or not jd_title:
                     st.error("❌ Select employee and enter JD title.")
                 elif not uploaded_jd and not jd_pasted:
@@ -15273,8 +15341,11 @@ def jd_progress_tracker():
                             if groq_key:
                                 client = Groq(api_key=groq_key)
                                 
-                                jd_text = jd_pasted
+                                jd_text = jd_pasted if jd_pasted and len(jd_pasted.strip()) > 0 else ""
+                                file_name_ai = ""
+                                
                                 if uploaded_jd:
+                                    file_name_ai = uploaded_jd.name
                                     if uploaded_jd.type == 'application/pdf':
                                         import pypdf
                                         pdf_reader = pypdf.PdfReader(uploaded_jd)
@@ -15286,36 +15357,10 @@ def jd_progress_tracker():
                                         doc = docx.Document(uploaded_jd)
                                         jd_text = "\n".join([p.text for p in doc.paragraphs])
                                 
-                                prompt = f"""
-                                Extract actionable tasks from this Job Description:
+                                if not jd_text or len(jd_text.strip()) == 0:
+                                    st.error("❌ Please paste JD content or upload a file first.")
+                                    st.stop()
                                 
-                                JD Title: {jd_title}
-                                
-                                JD Content:
-                                {jd_text[:3000]}
-                                
-                                Extract 5-10 specific, measurable tasks with:
-                                - Task title
-                                - Description
-                                - Suggested category (Technical Skills, Soft Skills, Compliance, Project Work, Documentation, Customer Service, Safety)
-                                - Priority (Low, Medium, High, Critical)
-                                - Suggested duration in days
-                                
-                                Format as JSON list.
-                                """
-                                
-                                response = client.chat.completions.create(
-                                    model="openai/gpt-oss-20b",
-                                    messages=[{"role": "system", "content": "You extract actionable tasks from Job Descriptions. Return JSON."}],
-                                    temperature=0.3,
-                                    max_tokens=1000
-                                )
-                                
-                                ai_tasks_text = response.choices[0].message.content
-                                st.success("✅ AI extracted tasks from JD!")
-                                st.markdown(ai_tasks_text)
-                                
-                                # Save JD document
                                 employee_name = selected_emp.split(" (")[0]
                                 employee_id = selected_emp.split("(")[1].rstrip(")")
                                 emp_email = ""
@@ -15324,16 +15369,61 @@ def jd_progress_tracker():
                                     if not emp_row.empty:
                                         emp_email = emp_row.iloc[0].get('email', '')
                                 
+                                # Save JD first
                                 db._post("jd_documents", {
                                     "employee_name": employee_name,
                                     "employee_email": emp_email,
                                     "jd_title": jd_title,
                                     "jd_content": jd_text[:5000],
+                                    "jd_file_name": file_name_ai,
                                     "uploaded_by": user_name,
                                     "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                 })
                                 
-                                st.info("📄 JD saved. Use 'Assign Task' tab to manually add AI-extracted tasks.")
+                                prompt = f"""
+                                You are given a Job Description. Extract 5-10 specific, actionable, measurable tasks from it.
+
+                                JD Title: {jd_title}
+
+                                Job Description Text:
+                                ---
+                                {jd_text[:4000]}
+                                ---
+
+                                For each task, provide:
+                                - Task Title: Short, clear title
+                                - Description: What the employee needs to do
+                                - Category: One of [Technical Skills, Soft Skills, Compliance, Project Work, Documentation, Customer Service, Safety, Other]
+                                - Priority: One of [Low, Medium, High, Critical]
+                                - Duration Days: Estimated days to complete
+
+                                Return as a numbered list. Be specific and measurable.
+                                """
+                                
+                                response = client.chat.completions.create(
+                                    model="openai/gpt-oss-20b",
+                                    messages=[
+                                        {"role": "system", "content": "You are an HR expert who extracts actionable, measurable tasks from Job Descriptions."},
+                                        {"role": "user", "content": prompt}
+                                    ],
+                                    temperature=0.3,
+                                    max_tokens=1000
+                                )
+                                
+                                ai_tasks_text = response.choices[0].message.content
+                                st.success("✅ AI extracted tasks from JD!")
+                                st.markdown(ai_tasks_text)
+                                
+                                # Timeline
+                                db._post("jd_timeline", {
+                                    "employee_email": emp_email,
+                                    "event_type": "ai_extraction",
+                                    "event_description": f"AI extracted tasks from JD: {jd_title}",
+                                    "created_by": user_name,
+                                    "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                })
+                                
+                                st.info("📋 Use 'Assign Task' tab to add the AI-extracted tasks manually.")
                             else:
                                 st.error("❌ Groq API key not configured.")
                         except Exception as e:
