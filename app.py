@@ -2022,8 +2022,19 @@ st.markdown("""
         color: #C9A84C !important;
         font-weight: 800 !important;
     }
+    
+    /* ===== ANNOUNCEMENT PREVIEW BOX - FORCE DARK ===== */
+    .stMarkdown div[style*="background: #1E1E1E"],
+    .stMarkdown div[style*="background:#1E1E1E"] {
+        background: #1E1E1E !important;
+        border: 2px solid #B8960C !important;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+
+
+
 
 # ADD JAVASCRIPT HERE - RIGHT AFTER THE CSS
 st.markdown("""
@@ -5366,7 +5377,7 @@ def admin_password_reset_tab():
 
 
 def hr_announcement_tab(employees_df):
-    """HR Announcement Center - Send rich announcements to all users"""
+    """HR Announcement Center - Send rich announcements to all users with tracking"""
     
     st.markdown("### 📢 HR Announcement Center")
     st.markdown("*Send company-wide announcements, holiday notices, training invites, and more*")
@@ -5385,7 +5396,18 @@ def hr_announcement_tab(employees_df):
     except:
         pass
     
-    # Top metrics
+    # Load tracking data
+    tracking_stats = {'sent': 0, 'delivered': 0, 'opened': 0}
+    try:
+        tracking = db._get("announcement_tracking")
+        if tracking:
+            tracking_stats['sent'] = len(tracking)
+            tracking_stats['delivered'] = len([t for t in tracking if t.get('delivered')])
+            tracking_stats['opened'] = len([t for t in tracking if t.get('opened')])
+    except:
+        pass
+    
+    # Top metrics with REAL data
     total_sent = len(st.session_state.announcement_history)
     total_users = 0
     try:
@@ -5394,10 +5416,18 @@ def hr_announcement_tab(employees_df):
     except:
         pass
     
-    m1, m2, m3 = st.columns(3)
+    # Calculate real open rate
+    open_rate = "N/A"
+    delivery_rate = "N/A"
+    if tracking_stats['sent'] > 0:
+        delivery_rate = f"{int(tracking_stats['delivered'] / tracking_stats['sent'] * 100)}%"
+        open_rate = f"{int(tracking_stats['opened'] / tracking_stats['sent'] * 100)}%"
+    
+    m1, m2, m3, m4 = st.columns(4)
     m1.metric("📢 Announcements Sent", total_sent)
     m2.metric("👥 Recipients", total_users)
-    m3.metric("📬 Open Rate", "N/A")
+    m3.metric("📬 Delivery Rate", delivery_rate)
+    m4.metric("👁️ Open Rate", open_rate)
     
     st.markdown("---")
     
@@ -5527,21 +5557,15 @@ def hr_announcement_tab(employees_df):
     st.markdown("### 👁️ Preview")
     
     if subject or body:
-        preview_html = f"""
-        <div style="background: #1E1E1E; border: 1px solid #B8960C; border-radius: 12px; padding: 2rem; margin: 1rem 0;">
-            <div style="border-bottom: 2px solid #B8960C; padding-bottom: 1rem; margin-bottom: 1rem;">
-                <h2 style="color: #C9A84C; font-family: Georgia, serif; margin: 0;">{subject}</h2>
-                <small style="color: #9a8a78;">Churchgate Group HR</small>
-            </div>
-            <div style="color: #F0E6D3; font-size: 0.9rem; line-height: 1.6;">
-                {body.replace(chr(10), '<br>')}
-            </div>
-            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #2A2A2A; color: #9a8a78; font-size: 0.8rem;">
-                Churchgate Group HRIS • hris.churchgate.com
-            </div>
+        st.markdown(f"""
+        <div style="background:#1E1E1E;padding:1.5rem;border-radius:12px;border:2px solid #B8960C;margin:0.5rem 0;">
+            <h4 style="color:#C9A84C;font-family:Georgia,serif;margin:0 0 0.3rem 0;">{subject}</h4>
+            <p style="color:#9a8a78;font-size:0.7rem;margin:0 0 1rem 0;">Churchgate Group HR</p>
+            <div style="color:#F0E6D3;font-size:0.85rem;line-height:1.6;white-space:pre-wrap;">{body}</div>
+            <hr style="border-color:#2A2A2A;margin:1rem 0 0.5rem 0;">
+            <small style="color:#9a8a78;font-size:0.7rem;">Churchgate Group HRIS • hris.churchgate.com</small>
         </div>
-        """
-        st.markdown(preview_html, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -5577,27 +5601,7 @@ def hr_announcement_tab(employees_df):
                                 recipient_emails.append(str(email))
                                 recipient_names.append(name)
                     
-                    # Send emails
-                    sent_count = 0
-                    if recipient_emails:
-                        try:
-                            from utils.email_service import EmailService
-                            es = EmailService()
-                            
-                            for email, name in zip(recipient_emails, recipient_names):
-                                try:
-                                    es.send_email(
-                                        email,
-                                        subject,
-                                        body
-                                    )
-                                    sent_count += 1
-                                except:
-                                    pass
-                        except:
-                            pass
-                    
-                    # Save to database
+                    # Save announcement to database FIRST
                     try:
                         db._post("announcements", {
                             "subject": subject,
@@ -5610,6 +5614,48 @@ def hr_announcement_tab(employees_df):
                         })
                     except:
                         pass
+                    
+                    # Send emails and track
+                    sent_count = 0
+                    if recipient_emails:
+                        try:
+                            from utils.email_service import EmailService
+                            es = EmailService()
+                            
+                            for email, name in zip(recipient_emails, recipient_names):
+                                try:
+                                    es.send_email(email, subject, body)
+                                    sent_count += 1
+                                    
+                                    # Save tracking record
+                                    try:
+                                        db._post("announcement_tracking", {
+                                            "announcement_subject": subject,
+                                            "recipient_email": email,
+                                            "recipient_name": name,
+                                            "status": "Delivered",
+                                            "delivered": True,
+                                            "opened": False,
+                                            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                        })
+                                    except:
+                                        pass
+                                except:
+                                    # Track failed delivery
+                                    try:
+                                        db._post("announcement_tracking", {
+                                            "announcement_subject": subject,
+                                            "recipient_email": email,
+                                            "recipient_name": name,
+                                            "status": "Failed",
+                                            "delivered": False,
+                                            "opened": False,
+                                            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                        })
+                                    except:
+                                        pass
+                        except:
+                            pass
                     
                     # Log engagement
                     try:
@@ -5652,6 +5698,34 @@ def hr_announcement_tab(employees_df):
                 st.markdown(ann.get('body', ''))
     else:
         st.info("No announcements sent yet.")
+    
+    # Delivery Tracking
+    st.markdown("---")
+    st.markdown("### 📬 Delivery Tracking")
+    
+    try:
+        tracking = db._get("announcement_tracking")
+        if tracking:
+            tracking_df = pd.DataFrame(tracking)
+            
+            # Summary
+            delivered = len(tracking_df[tracking_df['delivered'] == True]) if 'delivered' in tracking_df.columns else 0
+            failed = len(tracking_df[tracking_df['delivered'] == False]) if 'delivered' in tracking_df.columns else 0
+            
+            d1, d2, d3 = st.columns(3)
+            d1.metric("✅ Delivered", delivered)
+            d2.metric("❌ Failed", failed)
+            d3.metric("📊 Total Tracked", len(tracking_df))
+            
+            # Recent deliveries
+            st.markdown("#### Recent Deliveries")
+            recent_tracking = tracking_df.head(10) if not tracking_df.empty else pd.DataFrame()
+            if not recent_tracking.empty:
+                st.dataframe(recent_tracking[['recipient_name', 'recipient_email', 'status', 'created_at']], 
+                           use_container_width=True, hide_index=True)
+    except:
+        st.info("Tracking data will appear after announcements are sent.")
+
 
 
 def employee_management():
