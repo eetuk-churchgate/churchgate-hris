@@ -16052,26 +16052,37 @@ def jd_progress_tracker(employees_df=None):
                                                                 "task_id": task.get('id'),
                                                                 "user_name": user_name,
                                                                 "user_email": user_email,
-                                                                "comment": mentor_reply_text,
+                                                                "comment": mentor_reply_text.strip(),
                                                                 "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                                             })
-                                                            st.success("✅ Reply sent!")
+                                                            st.success("✅ Reply sent successfully!")
                                                             st.rerun()
                                                         except Exception as e:
                                                             st.error(f"❌ Failed: {str(e)}")
                                                     else:
                                                         st.error("❌ Reply cannot be empty.")
                                             
-                                            # ===== EVIDENCE =====
+                                            # ===== EVIDENCE WITH DOWNLOAD =====
                                             task_evidence = [e for e in jd_evidence if str(e.get('task_id')) == str(task.get('id'))]
                                             if task_evidence:
-                                                st.markdown("#### 📎 Evidence")
+                                                st.markdown("#### 📎 Evidence Files")
                                                 for ev in task_evidence:
-                                                    st.markdown(f"""
-                                                    <div style="background:#1E1E1E;padding:0.4rem;border-radius:4px;margin:0.2rem 0;">
-                                                        📄 {ev.get('file_name')} | <small style="color:#9a8a78;">{ev.get('uploaded_by', '')} | {ev.get('uploaded_at', '')[:16]}</small>
-                                                    </div>
-                                                    """, unsafe_allow_html=True)
+                                                    col1, col2 = st.columns([3, 1])
+                                                    with col1:
+                                                        st.markdown(f"""
+                                                        <div style="background:#1E1E1E;padding:0.6rem;border-radius:6px;margin:0.3rem 0;border-left:3px solid #38a169;">
+                                                            <strong style="color:#c9a84c;">📄 {ev.get('file_name')}</strong><br>
+                                                            <small style="color:#9a8a78;">👤 {ev.get('uploaded_by', 'N/A')} | 🕐 {ev.get('uploaded_at', '')[:16]}</small><br>
+                                                            <small style="color:#9a8a78;">📁 {ev.get('file_type', 'N/A')}</small>
+                                                        </div>
+                                                        """, unsafe_allow_html=True)
+                                                    with col2:
+                                                        if ev.get('file_url'):
+                                                            st.markdown(f'<a href="{ev.get("file_url")}" target="_blank" style="display:inline-block;background:#c9a84c;color:#1a1a2e;padding:10px 15px;border-radius:6px;text-decoration:none;font-weight:bold;text-align:center;width:100%;">📥 View</a>', unsafe_allow_html=True)
+                                                        else:
+                                                            st.markdown("📎 No file")
+                                            else:
+                                                st.info("No evidence uploaded yet.")
                                             
                                             # ===== UPDATE STATUS =====
                                             if is_mentor:
@@ -17301,20 +17312,20 @@ APPLY NOW: {public_url}
                         st.markdown("#### 💬 Add Comment")
                         new_comment = st.text_area("Your comment", key=f"emp_comment_{task.get('id')}", height=60,
                                                   placeholder="Ask a question or provide update...")
-                        if st.button("💬 Post Comment", key=f"emp_comment_btn_{task.get('id')}"):
+                        if st.button("💬 Post Comment", key=f"emp_comment_btn_{task.get('id')}", use_container_width=True):
                             if new_comment.strip():
                                 try:
                                     db._post("jd_comments", {
                                         "task_id": task.get('id'),
                                         "user_name": user_name,
                                         "user_email": user_email,
-                                        "comment": new_comment,
+                                        "comment": new_comment.strip(),
                                         "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                     })
-                                    st.success("✅ Comment posted!")
+                                    st.success("✅ Comment sent!")
                                     st.rerun()
-                                except:
-                                    st.error("❌ Failed to post comment.")
+                                except Exception as e:
+                                    st.error(f"❌ Failed: {str(e)}")
                             else:
                                 st.error("❌ Comment cannot be empty.")
                         
@@ -17327,27 +17338,45 @@ APPLY NOW: {public_url}
                             for ev in task_evidence:
                                 st.markdown(f"""
                                 <div style="background:#1E1E1E;padding:0.4rem;border-radius:4px;margin:0.2rem 0;">
-                                    📄 {ev.get('file_name')} | <small style="color:#9a8a78;">{ev.get('uploaded_at', '')[:16]}</small>
+                                    📄 {ev.get('file_name')} | <small style="color:#9a8a78;">Uploaded by: {ev.get('uploaded_by', 'N/A')} | {ev.get('uploaded_at', '')[:16]}</small>
                                 </div>
                                 """, unsafe_allow_html=True)
                         
-                        # ===== UPLOAD EVIDENCE =====
+                        # ===== UPLOAD EVIDENCE WITH FILE STORAGE =====
                         st.markdown("#### 📎 Upload Evidence")
                         uploaded_evidence = st.file_uploader("Choose file", type=['pdf', 'docx', 'xlsx'], key=f"emp_ev_{task.get('id')}")
-                        if uploaded_evidence and st.button("Upload", key=f"emp_ev_btn_{task.get('id')}"):
+                        if uploaded_evidence and st.button("Upload", key=f"emp_ev_btn_{task.get('id')}", use_container_width=True):
                             try:
+                                # Upload file to Supabase Storage
+                                file_bytes = uploaded_evidence.getvalue()
+                                safe_filename = uploaded_evidence.name.replace(' ', '_')
+                                storage_path = f"jd_evidence/{task.get('id')}/{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_filename}"
+                                
+                                file_url = ""
+                                try:
+                                    db.admin_client.storage.from_('jd-evidence').upload(
+                                        storage_path,
+                                        file_bytes,
+                                        {"content-type": uploaded_evidence.type}
+                                    )
+                                    file_url = db.admin_client.storage.from_('jd-evidence').get_public_url(storage_path)
+                                except Exception as storage_err:
+                                    print(f"Storage upload failed: {storage_err}")
+                                
+                                # Save metadata to database
                                 db._post("jd_evidence", {
                                     "task_id": task.get('id'),
                                     "employee_email": user_email,
                                     "file_name": uploaded_evidence.name,
+                                    "file_url": file_url,
                                     "file_type": uploaded_evidence.type,
                                     "uploaded_by": user_name,
                                     "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                 })
-                                st.success("✅ Evidence uploaded!")
+                                st.success("✅ Evidence uploaded successfully!")
                                 st.rerun()
-                            except:
-                                st.error("❌ Upload failed.")
+                            except Exception as e:
+                                st.error(f"❌ Upload failed: {str(e)}")
             else:
                 st.info("No tasks assigned to you yet. Your mentor will assign tasks soon.")
         except Exception as e:
