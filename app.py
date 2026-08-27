@@ -16235,6 +16235,93 @@ APPLY NOW: {public_url}
     if 'referrals' not in st.session_state:
         st.session_state.referrals = []
     
+    # ===== ACCESS CONTROL: Employees see ONLY JD Progress Tracker =====
+    if not is_manager:
+        st.markdown("""
+        <div class="main-header">
+            <h1>🎯 My JD Progress Tracker</h1>
+            <p>View your assigned tasks and upload evidence</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        user_email = st.session_state.user.get('email', '')
+        user_name = st.session_state.user.get('name', 'Employee')
+        
+        try:
+            jd_tasks = db._get("jd_tasks") or []
+            my_tasks = [t for t in jd_tasks if t.get('employee_email') == user_email]
+            
+            if my_tasks:
+                completed = len([t for t in my_tasks if t.get('status') == 'Completed'])
+                in_progress = len([t for t in my_tasks if t.get('status') == 'In Progress'])
+                overdue = len([t for t in my_tasks if t.get('status') == 'Overdue'])
+                
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("📋 My Tasks", len(my_tasks))
+                m2.metric("✅ Completed", completed)
+                m3.metric("🔄 In Progress", in_progress)
+                m4.metric("⚠️ Overdue", overdue)
+                
+                st.markdown("---")
+                
+                for task in my_tasks:
+                    status = task.get('status', 'Not Started')
+                    progress = int(task.get('progress', 0))
+                    border_color = {
+                        'Not Started': '#718096', 
+                        'In Progress': '#3182ce', 
+                        'Completed': '#38a169', 
+                        'Overdue': '#CC0000', 
+                        'Under Review': '#d69e2e'
+                    }.get(status, '#718096')
+                    
+                    with st.expander(f"📋 {task.get('task_title')} | {status} | {progress}%", expanded=False):
+                        st.markdown(f"""
+                        <div style="background:#1E1E1E;padding:1rem;border-radius:8px;border-left:4px solid {border_color};margin-bottom:0.5rem;">
+                            <strong style="color:#C9A84C;">👔 Mentor:</strong> {task.get('mentor_name', 'N/A')}<br>
+                            <strong style="color:#C9A84C;">⏰ Start:</strong> {task.get('start_date', 'N/A')} → 
+                            <strong style="color:#C9A84C;">Deadline:</strong> {task.get('deadline', 'N/A')}<br>
+                            <strong style="color:#C9A84C;">📂 Category:</strong> {task.get('category', 'N/A')} |
+                            <strong style="color:#C9A84C;">⚡ Priority:</strong> {task.get('priority', 'N/A')}<br>
+                            <strong style="color:#C9A84C;">📝 Description:</strong> {task.get('description', '')}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.progress(progress / 100)
+                        
+                        task_evidence = [e for e in db._get("jd_evidence") or [] if str(e.get('task_id')) == str(task.get('id'))]
+                        if task_evidence:
+                            st.markdown("#### 📎 My Evidence")
+                            for ev in task_evidence:
+                                st.markdown(f"""
+                                <div style="background:#1E1E1E;padding:0.4rem;border-radius:4px;margin:0.2rem 0;">
+                                    📄 {ev.get('file_name')} | <small style="color:#9a8a78;">{ev.get('uploaded_at', '')[:16]}</small>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        
+                        uploaded_evidence = st.file_uploader("📎 Upload Evidence", type=['pdf', 'docx', 'xlsx'], key=f"emp_ev_{task.get('id')}")
+                        if uploaded_evidence and st.button("Upload", key=f"emp_ev_btn_{task.get('id')}"):
+                            try:
+                                db._post("jd_evidence", {
+                                    "task_id": task.get('id'),
+                                    "employee_email": user_email,
+                                    "file_name": uploaded_evidence.name,
+                                    "file_type": uploaded_evidence.type,
+                                    "uploaded_by": user_name,
+                                    "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                })
+                                st.success("✅ Evidence uploaded!")
+                                st.rerun()
+                            except:
+                                st.error("❌ Upload failed.")
+            else:
+                st.info("No tasks assigned to you yet. Your mentor will assign tasks soon.")
+        except Exception as e:
+            st.error(f"Error loading tasks: {e}")
+        
+        st.stop()
+    
+    # ===== FULL ACCESS (Admin/HR/HOD) CONTINUES BELOW =====
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
         "📋 Job Requisition", "✅ Approval Dashboard", "📢 Active Jobs", "🌐 Candidate Portal", 
         "🤖 AI Screening", "📅 Interviews", "📝 Offer Letters",
