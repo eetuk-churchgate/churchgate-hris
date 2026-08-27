@@ -3713,6 +3713,7 @@ def sidebar_navigation():
                 "📋 My Documents",
                 "👤 My Profile",
                 "📈 My Performance & OKRs",
+                "💼 Recruitment Hub",
                 "🔄 Requests Hub",
                 "🎓 Training & Development",
                 "🎉 Wellness & Perks",
@@ -3720,8 +3721,8 @@ def sidebar_navigation():
             all_icons = [
                 "calendar-fill", "chat-dots-fill", "globe", "house-fill",
                 "lightbulb-fill", "book-half", "mortarboard-fill", "bullseye",
-                "folder-fill", "person-circle", "graph-up-arrow", "inbox-fill",
-                "book-fill", "heart-fill"
+                "folder-fill", "person-circle", "graph-up-arrow", "briefcase-fill",
+                "inbox-fill", "book-fill", "heart-fill"
             ]
         
         selected = option_menu(
