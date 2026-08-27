@@ -11,14 +11,27 @@ class DatabaseManager:
     def __init__(self):
         self.use_supabase = False
         self.supabase = None
+        self.admin_client = None
         try:
             self.url = os.environ.get("SUPABASE_URL", "")
             self.key = os.environ.get("SUPABASE_KEY", "")
             if not self.url:
                 self.url = st.secrets["SUPABASE_URL"]
                 self.key = st.secrets["SUPABASE_KEY"]
+            
             from supabase import create_client
             self.supabase = create_client(self.url, self.key)
+            
+            # ADD THIS - Admin client with SERVICE KEY for storage uploads
+            try:
+                service_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+                if not service_key:
+                    service_key = st.secrets.get("SUPABASE_SERVICE_KEY", "")
+                if service_key:
+                    self.admin_client = create_client(self.url, service_key)
+            except:
+                self.admin_client = None
+            
             self.use_supabase = True
         except:
             import sqlite3
