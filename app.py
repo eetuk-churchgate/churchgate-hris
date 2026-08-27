@@ -15845,7 +15845,6 @@ def jd_progress_tracker(employees_df=None):
                                 "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                             })
                             
-                            # Timeline
                             db._post("jd_timeline", {
                                 "employee_email": emp_email,
                                 "event_type": "task_assigned",
@@ -15955,7 +15954,6 @@ def jd_progress_tracker(employees_df=None):
                 if region_key not in st.session_state:
                     st.session_state[region_key] = True
                 
-                # Region header with collapse button
                 reg_btn_col, reg_label_col = st.columns([1, 20])
                 with reg_btn_col:
                     if st.button("▼" if st.session_state[region_key] else "▶", key=f"reg_btn_{region_key}"):
@@ -16026,15 +16024,15 @@ def jd_progress_tracker(employees_df=None):
                                             
                                             st.progress(progress / 100)
                                             
-                                            # Conversation thread
+                                            # ===== CONVERSATION THREAD =====
                                             task_comments = [c for c in jd_comments if str(c.get('task_id')) == str(task.get('id'))]
                                             if task_comments:
                                                 st.markdown("#### 💬 Conversation")
                                                 for comment in sorted(task_comments, key=lambda x: x.get('created_at', '')):
-                                                    is_mentor = comment.get('user_email') == task.get('mentor_email')
+                                                    is_mentor_comment = comment.get('user_email') == task.get('mentor_email')
                                                     commenter = comment.get('user_name', 'Unknown')
-                                                    color = "#2196f3" if is_mentor else "#c9a84c"
-                                                    label = "👔 Mentor" if is_mentor else "👤 Employee"
+                                                    color = "#2196f3" if is_mentor_comment else "#c9a84c"
+                                                    label = "👔 Mentor" if is_mentor_comment else "👤 Employee"
                                                     st.markdown(f"""
                                                     <div style="background:#16213e;padding:0.6rem;border-radius:6px;margin:0.3rem 0;border-left:3px solid {color};">
                                                         <strong style="color:{color};">{label} - {commenter}</strong>
@@ -16043,18 +16041,18 @@ def jd_progress_tracker(employees_df=None):
                                                     </div>
                                                     """, unsafe_allow_html=True)
                                             
-                                            # Mentor reply
+                                            # ===== MENTOR REPLY INPUT =====
                                             if is_mentor:
-                                                st.markdown("#### 💬 Reply")
-                                                mentor_reply = st.text_area("Your reply", key=f"mentor_reply_{task.get('id')}", height=80, placeholder="Type your reply here...")
-                                                if st.button("💬 Send Reply", key=f"mentor_reply_btn_{task.get('id')}", use_container_width=True):
-                                                    if mentor_reply.strip():
+                                                st.markdown("#### 💬 Reply to Employee")
+                                                mentor_reply_text = st.text_area("Type your reply", key=f"mentor_reply_{task.get('id')}", height=80, placeholder="Write your reply here...")
+                                                if st.button("💬 Send Reply", key=f"mentor_reply_btn_{task.get('id')}", use_container_width=True, type="primary"):
+                                                    if mentor_reply_text.strip():
                                                         try:
                                                             db._post("jd_comments", {
                                                                 "task_id": task.get('id'),
                                                                 "user_name": user_name,
                                                                 "user_email": user_email,
-                                                                "comment": mentor_reply,
+                                                                "comment": mentor_reply_text,
                                                                 "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                                             })
                                                             st.success("✅ Reply sent!")
@@ -16064,7 +16062,7 @@ def jd_progress_tracker(employees_df=None):
                                                     else:
                                                         st.error("❌ Reply cannot be empty.")
                                             
-                                            # Evidence
+                                            # ===== EVIDENCE =====
                                             task_evidence = [e for e in jd_evidence if str(e.get('task_id')) == str(task.get('id'))]
                                             if task_evidence:
                                                 st.markdown("#### 📎 Evidence")
@@ -16075,7 +16073,7 @@ def jd_progress_tracker(employees_df=None):
                                                     </div>
                                                     """, unsafe_allow_html=True)
                                             
-                                            # Update status
+                                            # ===== UPDATE STATUS =====
                                             if is_mentor:
                                                 col1, col2 = st.columns(2)
                                                 with col1:
@@ -16095,6 +16093,17 @@ def jd_progress_tracker(employees_df=None):
     with jd_tab3:
         st.markdown("#### 📊 Enterprise Periodic Check-ins")
         st.markdown("*Asana/Monday-style review system - Collapsible hierarchy, full collaboration, email notifications*")
+        
+        # ===== LOAD TASKS FROM DATABASE =====
+        try:
+            jd_tasks = db._get("jd_tasks") or []
+        except:
+            jd_tasks = []
+        
+        try:
+            jd_checkins = db._get("jd_checkins") or []
+        except:
+            jd_checkins = []
         
         checkin_schedule = [
             {"day": 15, "label": "Day 15 - Initial Check", "focus": "Role understanding, initial tasks, questions", "emoji": "🌱"},
@@ -16133,7 +16142,6 @@ def jd_progress_tracker(employees_df=None):
         # ===== GROUP BY HIERARCHY =====
         grouped_checkins = {}
         for emp_email, info in emp_checkin_status.items():
-            emp_name = info['name']
             emp_region = 'Unknown'
             emp_subsidiary = 'Unknown'
             emp_department = 'Unknown'
@@ -16317,9 +16325,6 @@ def jd_progress_tracker(employees_df=None):
                                                     check_comment = st.text_area("Mentor Comment", key=f"mcc_{emp_email}_{check_day}", height=80, placeholder="Enter your feedback...")
                                                     check_hr = st.text_area("HR Recommendation", key=f"mhr_{emp_email}_{check_day}", height=60) if is_admin else ""
                                                     
-                                                    # Attachment option
-                                                    check_attachment = st.file_uploader("📎 Attachment (Optional)", type=['pdf', 'docx'], key=f"mca_{emp_email}_{check_day}")
-                                                    
                                                     if st.button(f"✅ Submit {check_label}", key=f"mcb_{emp_email}_{check_day}"):
                                                         try:
                                                             db._post("jd_checkins", {
@@ -16333,7 +16338,6 @@ def jd_progress_tracker(employees_df=None):
                                                                 "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                                             })
                                                             
-                                                            # Timeline
                                                             db._post("jd_timeline", {
                                                                 "employee_email": emp_email,
                                                                 "event_type": "check_in",
@@ -16342,56 +16346,9 @@ def jd_progress_tracker(employees_df=None):
                                                                 "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                                             })
                                                             
-                                                            # ===== SEND EMAIL TO MENTEE =====
                                                             try:
                                                                 from utils.email_service import EmailService
-                                                                EmailService().send_email(
-                                                                    emp_email,
-                                                                    f"📊 {check_label} Recorded - {emp_name}",
-                                                                    f"""
-                                                                    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #1a1a2e; border-radius: 15px; overflow: hidden;">
-                                                                        <div style="background: linear-gradient(135deg, #1a1a2e, #0f3460); padding: 30px; text-align: center; border-bottom: 3px solid #c9a84c;">
-                                                                            <h1 style="color: #c9a84c; margin: 0;">📊 Check-in Recorded</h1>
-                                                                        </div>
-                                                                        <div style="padding: 30px; color: #ffffff;">
-                                                                            <p>Dear <strong>{emp_name}</strong>,</p>
-                                                                            <p>Your <strong>{check_label}</strong> has been recorded.</p>
-                                                                            <p><strong>Rating:</strong> {check_rating}/5</p>
-                                                                            <p><strong>Mentor:</strong> {user_name}</p>
-                                                                            {f'<p><strong>Comment:</strong> {check_comment}</p>' if check_comment else ''}
-                                                                            <br>
-                                                                            <a href="https://hris.churchgate.com" style="display: inline-block; background: #c9a84c; color: #1a1a2e; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">🔍 View in HRIS</a>
-                                                                        </div>
-                                                                    </div>
-                                                                    """,
-                                                                    html_body=f"""
-                                                                    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #1a1a2e; border-radius: 15px; overflow: hidden;">
-                                                                        <div style="background: linear-gradient(135deg, #1a1a2e, #0f3460); padding: 30px; text-align: center; border-bottom: 3px solid #c9a84c;">
-                                                                            <h1 style="color: #c9a84c; margin: 0;">📊 Check-in Recorded</h1>
-                                                                        </div>
-                                                                        <div style="padding: 30px; color: #ffffff;">
-                                                                            <p>Dear <strong>{emp_name}</strong>,</p>
-                                                                            <p>Your <strong>{check_label}</strong> has been recorded.</p>
-                                                                            <p><strong>Rating:</strong> {check_rating}/5</p>
-                                                                            <p><strong>Mentor:</strong> {user_name}</p>
-                                                                            {f'<p><strong>Comment:</strong> {check_comment}</p>' if check_comment else ''}
-                                                                        </div>
-                                                                    </div>
-                                                                    """
-                                                                )
-                                                            except:
-                                                                pass
-                                                            
-                                                            # ===== SEND EMAIL TO HR =====
-                                                            try:
-                                                                from utils.email_service import EmailService
-                                                                hr_emails = ["bsakote@churchgate.com", "gbalogun@churchgate.com"]
-                                                                for hr_email in hr_emails:
-                                                                    EmailService().send_email(
-                                                                        hr_email,
-                                                                        f"📊 {check_label} Recorded - {emp_name}",
-                                                                        f"Check-in recorded for {emp_name} by {user_name}.\n\nRating: {check_rating}/5\nComment: {check_comment}\n\nLog into HRIS for details."
-                                                                    )
+                                                                EmailService().send_email(emp_email, f"📊 {check_label} Recorded", f"Dear {emp_name},\n\nYour {check_label} has been recorded.\n\nRating: {check_rating}/5\nMentor: {user_name}\n\nLog into HRIS to view details.\n\nChurchgate Group HR")
                                                             except:
                                                                 pass
                                                             
@@ -16407,6 +16364,44 @@ def jd_progress_tracker(employees_df=None):
     with jd_tab4:
         st.markdown("#### 🤖 AI-Powered Final Assessment")
         st.markdown("*Enterprise-grade AI analysis with comprehensive performance intelligence*")
+        
+        # ===== LOAD EMPLOYEES FROM DATABASE =====
+        try:
+            if employees_df is None or employees_df.empty:
+                employees_df = db.get_all_employees()
+        except:
+            employees_df = pd.DataFrame()
+        
+        # ===== LOAD JD DATA FROM DATABASE =====
+        try:
+            jd_tasks = db._get("jd_tasks") or []
+        except:
+            jd_tasks = []
+        
+        try:
+            jd_checkins = db._get("jd_checkins") or []
+        except:
+            jd_checkins = []
+        
+        try:
+            jd_evidence = db._get("jd_evidence") or []
+        except:
+            jd_evidence = []
+        
+        try:
+            jd_comments = db._get("jd_comments") or []
+        except:
+            jd_comments = []
+        
+        try:
+            jd_timeline = db._get("jd_timeline") or []
+        except:
+            jd_timeline = []
+        
+        try:
+            jd_final = db._get("jd_final_reviews") or []
+        except:
+            jd_final = []
         
         if is_mentor:
             emp_options_ai = ["Select Employee..."] + [f"{row['first_name']} {row['last_name']} ({row.get('employee_id', 'N/A')})" for _, row in employees_df.iterrows()] if not employees_df.empty else ["Select Employee..."]
@@ -16465,7 +16460,7 @@ def jd_progress_tracker(employees_df=None):
                 
                 st.markdown("---")
                 
-                # ===== DATA SUMMARY FOR AI =====
+                # ===== DATA SUMMARY =====
                 col1, col2 = st.columns(2)
                 
                 with col1:
@@ -16536,48 +16531,38 @@ def jd_progress_tracker(employees_df=None):
                                 COMMENTS ({comment_count} total):
                                 {comments_summary or 'No comments'}
                                 
-                                ACTIVITY TIMELINE:
-                                {chr(10).join([f"- {t.get('event_type')}: {t.get('event_description')}" for t in emp_timeline[:10]]) if emp_timeline else 'No timeline events'}
-                                
-                                Provide a COMPREHENSIVE assessment:
-                                
+                                Provide:
                                 1. OVERALL RATING (1-5 with justification)
-                                2. KEY STRENGTHS (3 specific examples from data)
+                                2. KEY STRENGTHS (3 specific examples)
                                 3. AREAS FOR IMPROVEMENT (3 specific examples)
-                                4. TASK COMPLETION ANALYSIS (pattern recognition)
-                                5. CHECK-IN TREND (improvement or decline)
-                                6. EVIDENCE QUALITY (based on uploads)
-                                7. COMMUNICATION EFFECTIVENESS (based on comments)
+                                4. TASK COMPLETION ANALYSIS
+                                5. CHECK-IN TREND
+                                6. EVIDENCE QUALITY
+                                7. COMMUNICATION EFFECTIVENESS
                                 8. FINAL RECOMMENDATION: Confirm / Extend / Terminate
-                                9. RISK ASSESSMENT (Low/Medium/High risk)
-                                10. ACTION PLAN (3 concrete next steps)
+                                9. RISK ASSESSMENT
+                                10. ACTION PLAN (3 steps)
                                 """
                                 
                                 response = client.chat.completions.create(
                                     model="openai/gpt-oss-20b",
-                                    messages=[
-                                        {"role": "system", "content": "You are a Fortune 500 HR Analytics Director. Provide comprehensive, data-driven employee assessments."},
-                                        {"role": "user", "content": prompt}
-                                    ],
+                                    messages=[{"role": "system", "content": "You are a Fortune 500 HR Analytics Director. Provide comprehensive, data-driven employee assessments."}],
                                     temperature=0.4,
                                     max_tokens=1500
                                 )
                                 
                                 assessment = response.choices[0].message.content
                                 
-                                # ===== DISPLAY ASSESSMENT =====
                                 st.markdown("---")
                                 st.markdown("## 🤖 AI Assessment Report")
                                 st.success("✅ Analysis complete!")
                                 
-                                # Display in premium container
                                 st.markdown(f"""
                                 <div style="background:#1a1a2e;padding:1.5rem;border-radius:12px;border:2px solid #c9a84c;">
                                     {assessment}
                                 </div>
                                 """, unsafe_allow_html=True)
                                 
-                                # ===== SAVE TO DATABASE =====
                                 db._post("jd_final_reviews", {
                                     "employee_email": emp_email_ai,
                                     "employee_name": emp_name_ai,
@@ -16586,7 +16571,6 @@ def jd_progress_tracker(employees_df=None):
                                     "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                 })
                                 
-                                # ===== DOWNLOAD REPORT =====
                                 report_text = f"""
                                 CHURCHGATE GROUP - AI PERFORMANCE ASSESSMENT
                                 =====================================
@@ -16599,14 +16583,9 @@ def jd_progress_tracker(employees_df=None):
                                 
                                 st.download_button("📥 Download Assessment Report", report_text, file_name=f"assessment_{emp_name_ai.replace(' ', '_')}.txt", mime="text/plain")
                                 
-                                # ===== SEND EMAIL =====
                                 try:
                                     from utils.email_service import EmailService
-                                    EmailService().send_email(
-                                        'eetuk@churchgate.com',
-                                        f"🤖 AI Assessment Complete: {emp_name_ai}",
-                                        f"AI assessment for {emp_name_ai} has been completed.\n\n{assessment[:500]}..."
-                                    )
+                                    EmailService().send_email('eetuk@churchgate.com', f"🤖 AI Assessment Complete: {emp_name_ai}", f"AI assessment for {emp_name_ai} has been completed.")
                                     st.info("📧 Assessment sent to HR")
                                 except:
                                     pass
@@ -16626,6 +16605,8 @@ def jd_progress_tracker(employees_df=None):
                             st.markdown(prev.get('ai_recommendation', 'No assessment'))
                 else:
                     st.info("No previous assessments for this employee.")
+        else:
+            st.info("Only mentors and admins can run AI assessments.")
     
     # ===== TAB 5: DASHBOARD (FORTUNE 500 ENTERPRISE) =====
     with jd_tab5:
