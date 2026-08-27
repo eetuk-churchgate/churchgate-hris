@@ -15553,305 +15553,661 @@ def jd_progress_tracker():
         else:
             st.info("Only mentors and admins can upload JDs.")
         
-        # Display uploaded JDs
+        # ===== DISPLAY UPLOADED JDs - GROUPED BY HIERARCHY =====
         if jd_documents:
             st.markdown("---")
-            st.markdown("#### 📚 Uploaded JDs")
-            for jd in jd_documents[-5:]:
-                with st.expander(f"📄 {jd.get('jd_title', 'JD')} | {jd.get('employee_name', 'N/A')}", expanded=False):
-                    st.markdown(f"**Uploaded by:** {jd.get('uploaded_by', 'N/A')}")
-                    st.markdown(f"**Date:** {jd.get('created_at', 'N/A')[:16]}")
-                    if jd.get('jd_content'):
-                        with st.expander(f"📄 Full JD Content - {jd.get('jd_title', '')}", expanded=False):
-                            st.markdown(jd.get('jd_content', ''))
-    
-    # ===== TAB 2: TASK BOARD =====
-    with jd_tab2:
-        st.markdown("#### 📋 Task Board")
-        
-        # Assign task (mentor)
-        if is_mentor:
-            with st.expander("➕ Assign New Task", expanded=False):
-                with st.form("jd_assign_form_enterprise"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        emp_options_task = ["Select Employee..."] + [f"{row['first_name']} {row['last_name']} ({row.get('employee_id', 'N/A')})" for _, row in employees_df.iterrows()] if not employees_df.empty else ["Select Employee..."]
-                        selected_emp_task = st.selectbox("👤 Employee *", emp_options_task, key="jd_task_emp")
-                        task_title = st.text_input("📝 Task Title *")
-                        task_category = st.selectbox("📂 Category", ["Technical Skills", "Soft Skills", "Compliance", "Project Work", "Documentation", "Customer Service", "Safety", "Other"])
-                        task_priority = st.selectbox("⚡ Priority", ["Low", "Medium", "High", "Critical"])
-                    with col2:
-                        start_date = st.date_input("📅 Start Date *")
-                        deadline = st.date_input("⏰ Deadline *")
-                        
-                        # Multi-select collaborators from employee dropdown
-                        collaborator_options = [f"{row['first_name']} {row['last_name']} ({row.get('employee_id', 'N/A')})" for _, row in employees_df.iterrows()] if not employees_df.empty else []
-                        selected_collaborators = st.multiselect("👥 Collaborators (Multi-select)", collaborator_options)
-                        
-                        # Check-in point with proper integer conversion
-                        check_in_day_choice = st.selectbox("📅 Check-in Point", ["Day 15", "Day 30", "Day 60", "Day 90", "Day 120", "Custom"])
-                        if check_in_day_choice == "Custom":
-                            check_in_day = int(st.number_input("Custom days", min_value=1, max_value=365, value=45))
-                        else:
-                            check_in_day = int(check_in_day_choice.split()[1])
-                    
-                    task_description = st.text_area("📝 Description *")
-                    
-                    if st.form_submit_button("✅ Assign Task", type="primary", use_container_width=True):
-                        if selected_emp_task == "Select Employee..." or not task_title:
-                            st.error("❌ Fill required fields.")
-                        else:
-                            employee_name = selected_emp_task.split(" (")[0]
-                            employee_id = selected_emp_task.split("(")[1].rstrip(")")
-                            emp_email = ""
-                            if not employees_df.empty:
-                                emp_row = employees_df[employees_df['employee_id'] == employee_id]
-                                if not emp_row.empty:
-                                    emp_email = emp_row.iloc[0].get('email', '')
-                            
-                            # Convert collaborators to comma-separated string
-                            collaborators_str = ", ".join(selected_collaborators) if selected_collaborators else ""
-                            
-                            db._post("jd_tasks", {
-                                "task_title": task_title,
-                                "description": task_description,
-                                "employee_name": employee_name,
-                                "employee_email": emp_email,
-                                "mentor_name": user_name,
-                                "mentor_email": user_email,
-                                "start_date": start_date.strftime('%Y-%m-%d'),
-                                "deadline": deadline.strftime('%Y-%m-%d'),
-                                "priority": task_priority,
-                                "category": task_category,
-                                "check_in_day": int(check_in_day),
-                                "collaborators": collaborators_str,
-                                "status": "Not Started",
-                                "progress": 0,
-                                "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                            })
-                            
-                            # Timeline
-                            db._post("jd_timeline", {
-                                "employee_email": emp_email,
-                                "event_type": "task_assigned",
-                                "event_description": f"Task assigned: {task_title}",
-                                "created_by": user_name,
-                                "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                            })
-                            
-                            # Send email to employee
-                            if emp_email:
-                                try:
-                                    from utils.email_service import EmailService
-                                    EmailService().send_email(
-                                        emp_email,
-                                        f"📋 New Task: {task_title}",
-                                        f"Dear {employee_name},\n\nNew task assigned:\n\n{task_title}\n\n{task_description}\n\nStart: {start_date}\nDeadline: {deadline}\nMentor: {user_name}\n\nLog into HRIS: https://hris.churchgate.com\n\nChurchgate Group HR"
-                                    )
-                                except:
-                                    pass
-                            
-                            # Send email to collaborators
-                            if selected_collaborators:
-                                for collab in selected_collaborators:
-                                    collab_name = collab.split(" (")[0]
-                                    collab_id = collab.split("(")[1].rstrip(")")
-                                    
-                                    collab_email = ""
-                                    if not employees_df.empty:
-                                        collab_row = employees_df[employees_df['employee_id'] == collab_id]
-                                        if not collab_row.empty:
-                                            collab_email = collab_row.iloc[0].get('email', '')
-                                    
-                                    if collab_email:
-                                        try:
-                                            from utils.email_service import EmailService
-                                            EmailService().send_email(
-                                                collab_email,
-                                                f"👥 Collaborator Assignment: {task_title}",
-                                                f"Dear {collab_name},\n\nYou have been added as a collaborator on:\n\nTask: {task_title}\nDescription: {task_description}\nEmployee: {employee_name}\nStart: {start_date}\nDeadline: {deadline}\nMentor: {user_name}\n\nLog into HRIS: https://hris.churchgate.com\n\nChurchgate Group HR"
-                                            )
-                                        except:
-                                            pass
-                            
-                            st.success(f"✅ Task assigned to {employee_name}!")
-                            st.balloons()
-                            st.rerun()
-        
-        # Task display
-        st.markdown("---")
-        if jd_tasks:
-            visible_tasks = jd_tasks if is_admin else [t for t in jd_tasks if t.get('mentor_email') == user_email or t.get('employee_email') == user_email]
+            st.markdown("#### 📚 Uploaded JDs Library")
             
-            for task in visible_tasks:
-                status = task.get('status', 'Not Started')
-                progress = int(task.get('progress', 0))
-                border_color = {'Not Started': '#718096', 'In Progress': '#3182ce', 'Completed': '#38a169', 'Overdue': '#CC0000', 'Under Review': '#d69e2e'}.get(status, '#718096')
+            # ===== FILTER BY ACCESS LEVEL =====
+            if is_admin:
+                visible_jds = jd_documents  # Admin sees ALL
+            else:
+                # HOD/Manager sees only their department
+                visible_jds = [jd for jd in jd_documents if jd.get('employee_email') in [
+                    emp.get('email', '') for _, emp in employees_df.iterrows() 
+                    if emp.get('department') == user_dept
+                ]] if not employees_df.empty else []
+            
+            # ===== GROUP BY HIERARCHY =====
+            grouped_jds = {}
+            for jd in visible_jds:
+                emp_email = jd.get('employee_email', '')
+                emp_name = jd.get('employee_name', 'Unknown')
                 
-                with st.expander(f"📋 {task.get('task_title')} | {status} | {progress}%", expanded=False):
+                # Get employee details
+                emp_region = 'Unknown'
+                emp_subsidiary = 'Unknown'
+                emp_department = 'Unknown'
+                
+                if not employees_df.empty:
+                    emp_row = employees_df[employees_df['email'] == emp_email]
+                    if not emp_row.empty:
+                        emp_region = emp_row.iloc[0].get('region', 'Unknown')
+                        emp_subsidiary = emp_row.iloc[0].get('subsidiary', 'Unknown')
+                        emp_department = emp_row.iloc[0].get('department', 'Unknown')
+                
+                if emp_region not in grouped_jds:
+                    grouped_jds[emp_region] = {}
+                if emp_subsidiary not in grouped_jds[emp_region]:
+                    grouped_jds[emp_region][emp_subsidiary] = {}
+                if emp_department not in grouped_jds[emp_region][emp_subsidiary]:
+                    grouped_jds[emp_region][emp_subsidiary][emp_department] = {}
+                if emp_name not in grouped_jds[emp_region][emp_subsidiary][emp_department]:
+                    grouped_jds[emp_region][emp_subsidiary][emp_department][emp_name] = []
+                
+                grouped_jds[emp_region][emp_subsidiary][emp_department][emp_name].append(jd)
+            
+            # ===== PAGINATION =====
+            items_per_page = 5
+            all_jd_items = []
+            for region in sorted(grouped_jds.keys()):
+                for subsidiary in sorted(grouped_jds[region].keys()):
+                    for department in sorted(grouped_jds[region][subsidiary].keys()):
+                        for emp_name in sorted(grouped_jds[region][subsidiary][department].keys()):
+                            for jd in grouped_jds[region][subsidiary][department][emp_name]:
+                                all_jd_items.append((region, subsidiary, department, emp_name, jd))
+            
+            if 'jd_library_page' not in st.session_state:
+                st.session_state.jd_library_page = 1
+            
+            total_pages = max(1, (len(all_jd_items) + items_per_page - 1) // items_per_page)
+            
+            # Pagination controls
+            pg_col1, pg_col2, pg_col3 = st.columns([1, 2, 1])
+            with pg_col1:
+                if st.button("⬅️ Previous", key="jdl_prev", disabled=st.session_state.jd_library_page <= 1, use_container_width=True):
+                    st.session_state.jd_library_page -= 1
+                    st.rerun()
+            with pg_col2:
+                st.markdown(f"**Page {st.session_state.jd_library_page} of {total_pages}**")
+            with pg_col3:
+                if st.button("Next ➡️", key="jdl_next", disabled=st.session_state.jd_library_page >= total_pages, use_container_width=True):
+                    st.session_state.jd_library_page += 1
+                    st.rerun()
+            
+            # Get current page items
+            start_idx = (st.session_state.jd_library_page - 1) * items_per_page
+            end_idx = min(start_idx + items_per_page, len(all_jd_items))
+            current_page_items = all_jd_items[start_idx:end_idx]
+            
+            # Group current page
+            current_grouped = {}
+            for region, subsidiary, department, emp_name, jd in current_page_items:
+                if region not in current_grouped:
+                    current_grouped[region] = {}
+                if subsidiary not in current_grouped[region]:
+                    current_grouped[region][subsidiary] = {}
+                if department not in current_grouped[region][subsidiary]:
+                    current_grouped[region][subsidiary][department] = {}
+                if emp_name not in current_grouped[region][subsidiary][department]:
+                    current_grouped[region][subsidiary][department][emp_name] = []
+                current_grouped[region][subsidiary][department][emp_name].append(jd)
+            
+            # Display grouped JDs
+            for region in sorted(current_grouped.keys()):
+                st.markdown(f"""
+                <div style="background:linear-gradient(135deg, #1a1a2e, #0f3460);padding:0.8rem;border-radius:8px;margin:0.5rem 0;border-left:5px solid #CC0000;">
+                    <strong style="color:#c9a84c;font-size:1.1rem;">🌍 {region} Region</strong>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                for subsidiary in sorted(current_grouped[region].keys()):
                     st.markdown(f"""
-                    <div style="background:#1E1E1E;padding:1rem;border-radius:8px;border-left:4px solid {border_color};">
-                        <strong style="color:#C9A84C;">👤:</strong> {task.get('employee_name')} | 
-                        <strong style="color:#C9A84C;">👔:</strong> {task.get('mentor_name')}<br>
-                        <strong style="color:#C9A84C;">⏰:</strong> {task.get('start_date')} → {task.get('deadline')} |
-                        <strong style="color:#C9A84C;">👥:</strong> {task.get('collaborators', 'None')}<br>
-                        <strong style="color:#C9A84C;">📂:</strong> {task.get('category', 'N/A')} |
-                        <strong style="color:#C9A84C;">⚡:</strong> {task.get('priority', 'N/A')}<br>
-                        <strong style="color:#C9A84C;">📝:</strong> {task.get('description', '')}
+                    <div style="background:#16213e;padding:0.5rem 1rem;border-radius:6px;margin:0.3rem 0 0.3rem 1.5rem;border-left:4px solid #c9a84c;">
+                        <strong style="color:#ffffff;">🏢 {subsidiary}</strong>
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    st.progress(progress / 100)
-                    
-                    # Evidence
-                    task_evidence = [e for e in jd_evidence if str(e.get('task_id')) == str(task.get('id'))]
-                    if task_evidence:
-                        st.markdown("#### 📎 Evidence")
-                        for ev in task_evidence:
-                            st.markdown(f"""
-                            <div style="background:#1E1E1E;padding:0.4rem;border-radius:4px;margin:0.2rem 0;">
-                                📄 {ev.get('file_name')} | <small style="color:#9a8a78;">{ev.get('uploaded_by', '')} | {ev.get('uploaded_at', '')[:16]}</small>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    
-                    # Upload evidence (employee or mentor)
-                    uploaded_evidence = st.file_uploader("📎 Upload Evidence", type=['pdf', 'docx', 'xlsx'], key=f"ev_{task.get('id')}")
-                    if uploaded_evidence and st.button("Upload", key=f"ev_btn_{task.get('id')}"):
-                        try:
-                            db._post("jd_evidence", {
-                                "task_id": task.get('id'),
-                                "employee_email": task.get('employee_email'),
-                                "file_name": uploaded_evidence.name,
-                                "file_type": uploaded_evidence.type,
-                                "uploaded_by": user_name,
-                                "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                            })
-                            st.success("✅ Evidence uploaded!")
-                            st.rerun()
-                        except:
-                            st.error("❌ Upload failed.")
-                    
-                    # Update status (mentor)
-                    if is_mentor:
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            new_status = st.selectbox("Status", ['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'],
-                                                     index=['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'].index(status) if status in ['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'] else 0,
-                                                     key=f"st_{task.get('id')}")
-                        with col2:
-                            new_progress = st.slider("Progress", 0, 100, progress, key=f"pr_{task.get('id')}")
-                        
-                        if st.button("💾 Update", key=f"up_{task.get('id')}"):
-                            db._patch("jd_tasks", {"status": new_status, "progress": new_progress}, {"id": task.get('id')})
-                            st.success("✅ Updated!")
-                            st.rerun()
-        else:
-            st.info("No tasks yet.")
-    
-    # ===== TAB 3: CHECK-INS =====
-    with jd_tab3:
-        st.markdown("#### 📊 Periodic Check-ins")
-        
-        checkin_schedule = [
-            {"day": 15, "label": "Day 15 - Initial Check"},
-            {"day": 30, "label": "Day 30 - First Month"},
-            {"day": 60, "label": "Day 60 - Mid-point"},
-            {"day": 90, "label": "Day 90 - Probation Review"},
-            {"day": 120, "label": "Day 120 - Extended Review"}
-        ]
-        
-        for check in checkin_schedule:
-            with st.expander(f"📅 {check['label']}", expanded=False):
-                if is_mentor:
-                    emp_options_check = ["Select Employee..."] + [f"{row['first_name']} {row['last_name']}" for _, row in employees_df.iterrows()] if not employees_df.empty else ["Select Employee..."]
-                    check_emp = st.selectbox("👤 Employee", emp_options_check, key=f"ce_{check['day']}")
-                    
-                    if check_emp != "Select Employee...":
-                        # Get employee email for this check-in
-                        check_emp_email = ""
-                        if not employees_df.empty:
-                            emp_row = employees_df[employees_df['first_name'] + ' ' + employees_df['last_name'] == check_emp]
-                            if not emp_row.empty:
-                                check_emp_email = emp_row.iloc[0].get('email', '')
-                        
-                        rating = st.slider("Rating (1-5)", 1, 5, 3, key=f"cr_{check['day']}")
-                        comment = st.text_area("Mentor Comment", key=f"cc_{check['day']}")
-                        hr_rec = st.text_area("HR Recommendation", key=f"hr_{check['day']}") if is_admin else ""
-                        
-                        if st.button(f"Submit {check['label']}", key=f"cb_{check['day']}"):
-                            try:
-                                db._post("jd_checkins", {
-                                    "employee_email": check_emp_email,
-                                    "employee_name": check_emp,
-                                    "check_in_day": int(check['day']),
-                                    "mentor_name": user_name,
-                                    "mentor_comment": comment,
-                                    "mentor_rating": int(rating),
-                                    "hr_recommendation": hr_rec,
-                                    "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                                })
-                                
-                                # Timeline
-                                db._post("jd_timeline", {
-                                    "employee_email": check_emp_email,
-                                    "event_type": "check_in",
-                                    "event_description": f"{check['label']} recorded for {check_emp} - Rating: {rating}/5",
-                                    "created_by": user_name,
-                                    "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                                })
-                                
-                                # Send email to employee
-                                if check_emp_email:
-                                    try:
-                                        from utils.email_service import EmailService
-                                        EmailService().send_email(
-                                            check_emp_email,
-                                            f"📊 {check['label']} Recorded",
-                                            f"Dear {check_emp},\n\nYour {check['label']} has been recorded.\n\nRating: {rating}/5\nMentor: {user_name}\n\nLog into HRIS to view details: https://hris.churchgate.com\n\nChurchgate Group HR"
-                                        )
-                                    except:
-                                        pass
-                                
-                                st.success(f"✅ {check['label']} recorded for {check_emp}!")
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"❌ Failed to save: {str(e)}")
-                
-                # Display existing check-ins
-                day_checkins = [c for c in jd_checkins if int(c.get('check_in_day', 0)) == check['day']]
-                if day_checkins:
-                    st.markdown(f"**{len(day_checkins)} check-in(s) recorded**")
-                    for c in day_checkins:
-                        rating = c.get('mentor_rating', 'N/A')
-                        comment = c.get('mentor_comment', '')
-                        emp = c.get('employee_name', 'Unknown')
+                    for department in sorted(current_grouped[region][subsidiary].keys()):
                         st.markdown(f"""
-                        <div style="background:#1E1E1E;padding:0.5rem;border-radius:6px;margin:0.3rem 0;border-left:4px solid #B8960C;">
-                            <strong style="color:#C9A84C;">👤 {emp}</strong> | Rating: <strong style="color:#C9A84C;">{rating}/5</strong>
-                            {f'<br><small style="color:#9a8a78;">💬 {comment}</small>' if comment else ''}
+                        <div style="background:#1a1a2e;padding:0.4rem 1rem;border-radius:4px;margin:0.2rem 0 0.2rem 3rem;border-left:3px solid #3182ce;">
+                            <strong style="color:#a0a0c0;">🏭 {department}</strong>
                         </div>
                         """, unsafe_allow_html=True)
+                        
+                        for emp_name in sorted(current_grouped[region][subsidiary][department].keys()):
+                            jds = current_grouped[region][subsidiary][department][emp_name]
+                            
+                            st.markdown(f"""
+                            <div style="background:#16213e;padding:0.3rem 1rem;border-radius:4px;margin:0.2rem 0 0.2rem 4.5rem;border-left:3px solid #38a169;">
+                                <strong style="color:#ffffff;">👤 {emp_name} ({len(jds)} JD{'s' if len(jds) > 1 else ''})</strong>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            for jd in jds:
+                                with st.expander(f"📄 {jd.get('jd_title', 'JD')} | Uploaded: {jd.get('created_at', '')[:16]}", expanded=False):
+                                    st.markdown(f"**Uploaded by:** {jd.get('uploaded_by', 'N/A')}")
+                                    st.markdown(f"**Date:** {jd.get('created_at', 'N/A')[:16]}")
+                                    
+                                    if jd.get('jd_content'):
+                                        with st.expander(f"📄 Full JD Content - {jd.get('jd_title', '')}", expanded=False):
+                                            st.markdown(jd.get('jd_content', ''))
+        else:
+            st.info("No JDs uploaded yet.")
     
-    # ===== TAB 4: AI ASSESSMENT =====
+    # ===== TAB 2: TASK BOARD (FORTUNE 500 ENTERPRISE) =====
+    with jd_tab2:
+        st.markdown("#### 📋 Enterprise Task Board")
+        st.markdown("*Grouped by Region → Subsidiary → Department | Asana/Monday-style collaboration*")
+        
+        # ===== GROUP TASKS BY HIERARCHY =====
+        if jd_tasks:
+            # Build employee lookup
+            emp_details = {}
+            if not employees_df.empty:
+                for _, emp in employees_df.iterrows():
+                    name = f"{emp['first_name']} {emp['last_name']}"
+                    emp_details[name] = {
+                        'region': emp.get('region', 'Unknown'),
+                        'subsidiary': emp.get('subsidiary', 'Unknown'),
+                        'department': emp.get('department', 'Unknown')
+                    }
+            
+            # Group tasks
+            grouped_tasks = {}
+            for task in jd_tasks:
+                emp_name = task.get('employee_name', 'Unknown')
+                emp_info = emp_details.get(emp_name, {})
+                region = emp_info.get('region', 'Unknown')
+                subsidiary = emp_info.get('subsidiary', 'Unknown')
+                department = emp_info.get('department', 'Unknown')
+                
+                if region not in grouped_tasks:
+                    grouped_tasks[region] = {}
+                if subsidiary not in grouped_tasks[region]:
+                    grouped_tasks[region][subsidiary] = {}
+                if department not in grouped_tasks[region][subsidiary]:
+                    grouped_tasks[region][subsidiary][department] = []
+                
+                grouped_tasks[region][subsidiary][department].append(task)
+            
+            # ===== PAGINATION =====
+            items_per_page = 10
+            all_task_items = []
+            for region in sorted(grouped_tasks.keys()):
+                for subsidiary in sorted(grouped_tasks[region].keys()):
+                    for department in sorted(grouped_tasks[region][subsidiary].keys()):
+                        for task in grouped_tasks[region][subsidiary][department]:
+                            all_task_items.append((region, subsidiary, department, task))
+            
+            if 'jd_task_page' not in st.session_state:
+                st.session_state.jd_task_page = 1
+            
+            total_pages = max(1, (len(all_task_items) + items_per_page - 1) // items_per_page)
+            
+            # Pagination controls
+            pg_col1, pg_col2, pg_col3 = st.columns([1, 2, 1])
+            with pg_col1:
+                if st.button("⬅️ Previous", key="jd_prev_page", disabled=st.session_state.jd_task_page <= 1, use_container_width=True):
+                    st.session_state.jd_task_page -= 1
+                    st.rerun()
+            with pg_col2:
+                st.markdown(f"**Page {st.session_state.jd_task_page} of {total_pages}**")
+            with pg_col3:
+                if st.button("Next ➡️", key="jd_next_page", disabled=st.session_state.jd_task_page >= total_pages, use_container_width=True):
+                    st.session_state.jd_task_page += 1
+                    st.rerun()
+            
+            # Get current page items
+            start_idx = (st.session_state.jd_task_page - 1) * items_per_page
+            end_idx = min(start_idx + items_per_page, len(all_task_items))
+            current_page_items = all_task_items[start_idx:end_idx]
+            
+            # Group current page by hierarchy
+            current_grouped = {}
+            for region, subsidiary, department, task in current_page_items:
+                if region not in current_grouped:
+                    current_grouped[region] = {}
+                if subsidiary not in current_grouped[region]:
+                    current_grouped[region][subsidiary] = {}
+                if department not in current_grouped[region][subsidiary]:
+                    current_grouped[region][subsidiary][department] = []
+                current_grouped[region][subsidiary][department].append(task)
+            
+            # Display grouped tasks
+            for region in sorted(current_grouped.keys()):
+                st.markdown(f"""
+                <div style="background:linear-gradient(135deg, #1a1a2e, #0f3460);padding:0.8rem;border-radius:8px;margin:0.5rem 0;border-left:5px solid #CC0000;">
+                    <strong style="color:#c9a84c;font-size:1.1rem;">🌍 {region} Region</strong>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                for subsidiary in sorted(current_grouped[region].keys()):
+                    st.markdown(f"""
+                    <div style="background:#16213e;padding:0.5rem 1rem;border-radius:6px;margin:0.3rem 0 0.3rem 1.5rem;border-left:4px solid #c9a84c;">
+                        <strong style="color:#ffffff;">🏢 {subsidiary}</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    for department in sorted(current_grouped[region][subsidiary].keys()):
+                        st.markdown(f"""
+                        <div style="background:#1a1a2e;padding:0.4rem 1rem;border-radius:4px;margin:0.2rem 0 0.2rem 3rem;border-left:3px solid #3182ce;">
+                            <strong style="color:#a0a0c0;">🏭 {department}</strong>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        for task in current_grouped[region][subsidiary][department]:
+                            status = task.get('status', 'Not Started')
+                            progress = int(task.get('progress', 0))
+                            border_color = {
+                                'Not Started': '#718096', 'In Progress': '#3182ce',
+                                'Completed': '#38a169', 'Overdue': '#CC0000', 'Under Review': '#d69e2e'
+                            }.get(status, '#718096')
+                            
+                            priority_emoji = {
+                                'Low': '🟢', 'Medium': '🟡', 'High': '🟠', 'Critical': '🔴'
+                            }.get(task.get('priority', 'Medium'), '🟡')
+                            
+                            with st.expander(f"{priority_emoji} 📋 {task.get('task_title')} | {status} | {progress}%", expanded=False):
+                                st.markdown(f"""
+                                <div style="background:#1E1E1E;padding:1rem;border-radius:8px;border-left:4px solid {border_color};">
+                                    <strong style="color:#C9A84C;">👤:</strong> {task.get('employee_name')} | 
+                                    <strong style="color:#C9A84C;">👔:</strong> {task.get('mentor_name')}<br>
+                                    <strong style="color:#C9A84C;">⏰:</strong> {task.get('start_date')} → {task.get('deadline')} |
+                                    <strong style="color:#C9A84C;">👥:</strong> {task.get('collaborators', 'None')}<br>
+                                    <strong style="color:#C9A84C;">📂:</strong> {task.get('category', 'N/A')} |
+                                    <strong style="color:#C9A84C;">⚡:</strong> {priority_emoji} {task.get('priority', 'N/A')}<br>
+                                    <strong style="color:#C9A84C;">📝:</strong> {task.get('description', '')}
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                st.progress(progress / 100)
+                                
+                                # ===== CONVERSATION THREAD =====
+                                task_comments = [c for c in jd_comments if str(c.get('task_id')) == str(task.get('id'))]
+                                if task_comments:
+                                    st.markdown("#### 💬 Conversation")
+                                    for comment in sorted(task_comments, key=lambda x: x.get('created_at', '')):
+                                        is_mentor = comment.get('user_email') == task.get('mentor_email')
+                                        commenter = comment.get('user_name', 'Unknown')
+                                        color = "#2196f3" if is_mentor else "#c9a84c"
+                                        label = "👔 Mentor" if is_mentor else "👤 Employee"
+                                        
+                                        st.markdown(f"""
+                                        <div style="background:#16213e;padding:0.6rem;border-radius:6px;margin:0.3rem 0;border-left:3px solid {color};">
+                                            <strong style="color:{color};">{label} - {commenter}</strong>
+                                            <small style="color:#9a8a78;">({comment.get('created_at', '')[:16]})</small><br>
+                                            <span style="color:#ffffff;">{comment.get('comment', '')}</span>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                
+                                # ===== MENTOR COMMENT INPUT =====
+                                if is_mentor:
+                                    st.markdown("#### 💬 Add Reply")
+                                    mentor_comment = st.text_area("Your reply", key=f"mentor_reply_{task.get('id')}", height=60)
+                                    if st.button("💬 Post Reply", key=f"mentor_reply_btn_{task.get('id')}"):
+                                        if mentor_comment.strip():
+                                            try:
+                                                db._post("jd_comments", {
+                                                    "task_id": task.get('id'),
+                                                    "user_name": user_name,
+                                                    "user_email": user_email,
+                                                    "comment": mentor_comment,
+                                                    "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                                })
+                                                st.success("✅ Reply posted!")
+                                                st.rerun()
+                                            except:
+                                                st.error("❌ Failed to post.")
+                                        else:
+                                            st.error("❌ Reply cannot be empty.")
+                                
+                                # ===== EVIDENCE =====
+                                task_evidence = [e for e in jd_evidence if str(e.get('task_id')) == str(task.get('id'))]
+                                if task_evidence:
+                                    st.markdown("#### 📎 Evidence")
+                                    for ev in task_evidence:
+                                        st.markdown(f"""
+                                        <div style="background:#1E1E1E;padding:0.4rem;border-radius:4px;margin:0.2rem 0;">
+                                            📄 {ev.get('file_name')} | <small style="color:#9a8a78;">{ev.get('uploaded_by', '')} | {ev.get('uploaded_at', '')[:16]}</small>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                
+                                # ===== UPDATE STATUS =====
+                                if is_mentor:
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        new_status = st.selectbox("Status", ['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'],
+                                                                 index=['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'].index(status) if status in ['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'] else 0,
+                                                                 key=f"status_{task.get('id')}")
+                                    with col2:
+                                        new_progress = st.slider("Progress", 0, 100, progress, key=f"progress_{task.get('id')}")
+                                    
+                                    if st.button("💾 Update", key=f"update_{task.get('id')}"):
+                                        db._patch("jd_tasks", {"status": new_status, "progress": new_progress}, {"id": task.get('id')})
+                                        st.success("✅ Updated!")
+                                        st.rerun()
+        else:
+            st.info("No tasks yet. Assign tasks from the JD Upload & AI tab.")
+    
+    # ===== TAB 3: CHECK-INS (FORTUNE 500 ENTERPRISE) =====
+    with jd_tab3:
+        st.markdown("#### 📊 Enterprise Periodic Check-ins")
+        st.markdown("*Asana/Monday-style review system - Grouped by hierarchy, fully interactive*")
+        
+        checkin_schedule = [
+            {"day": 15, "label": "Day 15 - Initial Check", "focus": "Role understanding, initial tasks, questions", "emoji": "🌱"},
+            {"day": 30, "label": "Day 30 - First Month", "focus": "Task completion, skill development, feedback", "emoji": "📈"},
+            {"day": 60, "label": "Day 60 - Mid-point", "focus": "Performance trends, areas for improvement", "emoji": "🎯"},
+            {"day": 90, "label": "Day 90 - Probation Review", "focus": "Confirmation recommendation", "emoji": "🏆"},
+            {"day": 120, "label": "Day 120 - Extended Review", "focus": "Final assessment, long-term potential", "emoji": "🚀"}
+        ]
+        
+        # ===== BUILD EMPLOYEE CHECK-IN STATUS =====
+        emp_checkin_status = {}
+        for task in jd_tasks:
+            emp_email = task.get('employee_email', '')
+            emp_name = task.get('employee_name', 'Unknown')
+            
+            if emp_email not in emp_checkin_status:
+                emp_checkin_status[emp_email] = {
+                    'name': emp_name,
+                    'mentor': task.get('mentor_name', ''),
+                    'start_date': task.get('start_date', ''),
+                    'checkins_done': [],
+                    'total_tasks': 0,
+                    'completed_tasks': 0
+                }
+            
+            emp_checkin_status[emp_email]['total_tasks'] += 1
+            if task.get('status') == 'Completed':
+                emp_checkin_status[emp_email]['completed_tasks'] += 1
+        
+        # Add existing check-ins
+        for checkin in jd_checkins:
+            emp_email = checkin.get('employee_email', '')
+            if emp_email in emp_checkin_status:
+                emp_checkin_status[emp_email]['checkins_done'].append(checkin)
+        
+        # ===== GROUP BY HIERARCHY =====
+        grouped_checkins = {}
+        for emp_email, info in emp_checkin_status.items():
+            emp_name = info['name']
+            emp_details = {}
+            if not employees_df.empty:
+                emp_row = employees_df[employees_df['email'] == emp_email]
+                if not emp_row.empty:
+                    emp_details = {
+                        'region': emp_row.iloc[0].get('region', 'Unknown'),
+                        'subsidiary': emp_row.iloc[0].get('subsidiary', 'Unknown'),
+                        'department': emp_row.iloc[0].get('department', 'Unknown')
+                    }
+            
+            region = emp_details.get('region', 'Unknown')
+            subsidiary = emp_details.get('subsidiary', 'Unknown')
+            department = emp_details.get('department', 'Unknown')
+            
+            if region not in grouped_checkins:
+                grouped_checkins[region] = {}
+            if subsidiary not in grouped_checkins[region]:
+                grouped_checkins[region][subsidiary] = {}
+            if department not in grouped_checkins[region][subsidiary]:
+                grouped_checkins[region][subsidiary][department] = []
+            
+            grouped_checkins[region][subsidiary][department].append({
+                'email': emp_email,
+                'info': info
+            })
+        
+        # ===== PAGINATION =====
+        items_per_page = 5
+        all_checkin_items = []
+        for region in sorted(grouped_checkins.keys()):
+            for subsidiary in sorted(grouped_checkins[region].keys()):
+                for department in sorted(grouped_checkins[region][subsidiary].keys()):
+                    for item in grouped_checkins[region][subsidiary][department]:
+                        all_checkin_items.append((region, subsidiary, department, item))
+        
+        if 'jd_checkin_page' not in st.session_state:
+            st.session_state.jd_checkin_page = 1
+        
+        total_pages = max(1, (len(all_checkin_items) + items_per_page - 1) // items_per_page)
+        
+        # Pagination controls
+        pg_col1, pg_col2, pg_col3 = st.columns([1, 2, 1])
+        with pg_col1:
+            if st.button("⬅️ Previous", key="chk_prev", disabled=st.session_state.jd_checkin_page <= 1, use_container_width=True):
+                st.session_state.jd_checkin_page -= 1
+                st.rerun()
+        with pg_col2:
+            st.markdown(f"**Page {st.session_state.jd_checkin_page} of {total_pages}**")
+        with pg_col3:
+            if st.button("Next ➡️", key="chk_next", disabled=st.session_state.jd_checkin_page >= total_pages, use_container_width=True):
+                st.session_state.jd_checkin_page += 1
+                st.rerun()
+        
+        # Get current page items
+        start_idx = (st.session_state.jd_checkin_page - 1) * items_per_page
+        end_idx = min(start_idx + items_per_page, len(all_checkin_items))
+        current_page_items = all_checkin_items[start_idx:end_idx]
+        
+        # Group current page
+        current_grouped = {}
+        for region, subsidiary, department, item in current_page_items:
+            if region not in current_grouped:
+                current_grouped[region] = {}
+            if subsidiary not in current_grouped[region]:
+                current_grouped[region][subsidiary] = {}
+            if department not in current_grouped[region][subsidiary]:
+                current_grouped[region][subsidiary][department] = []
+            current_grouped[region][subsidiary][department].append(item)
+        
+        # Display grouped check-ins
+        for region in sorted(current_grouped.keys()):
+            st.markdown(f"""
+            <div style="background:linear-gradient(135deg, #1a1a2e, #0f3460);padding:0.8rem;border-radius:8px;margin:0.5rem 0;border-left:5px solid #CC0000;">
+                <strong style="color:#c9a84c;font-size:1.1rem;">🌍 {region} Region</strong>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            for subsidiary in sorted(current_grouped[region].keys()):
+                st.markdown(f"""
+                <div style="background:#16213e;padding:0.5rem 1rem;border-radius:6px;margin:0.3rem 0 0.3rem 1.5rem;border-left:4px solid #c9a84c;">
+                    <strong style="color:#ffffff;">🏢 {subsidiary}</strong>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                for department in sorted(current_grouped[region][subsidiary].keys()):
+                    st.markdown(f"""
+                    <div style="background:#1a1a2e;padding:0.4rem 1rem;border-radius:4px;margin:0.2rem 0 0.2rem 3rem;border-left:3px solid #3182ce;">
+                        <strong style="color:#a0a0c0;">🏭 {department}</strong>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    for item in current_grouped[region][subsidiary][department]:
+                        emp_email = item['email']
+                        info = item['info']
+                        emp_name = info['name']
+                        
+                        # Calculate progress
+                        total_tasks = info['total_tasks']
+                        completed_tasks = info['completed_tasks']
+                        completion_pct = int(completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+                        checkins_done = info['checkins_done']
+                        checkins_count = len(checkins_done)
+                        
+                        with st.expander(f"👤 {emp_name} | {checkins_count}/{len(checkin_schedule)} Check-ins | Tasks: {completion_pct}%", expanded=False):
+                            st.markdown(f"""
+                            <div style="background:#1E1E1E;padding:1rem;border-radius:8px;border-left:4px solid #c9a84c;margin-bottom:0.5rem;">
+                                <strong style="color:#C9A84C;">👔 Mentor:</strong> {info['mentor']} |
+                                <strong style="color:#C9A84C;">📅 Start:</strong> {info['start_date']}<br>
+                                <strong style="color:#C9A84C;">📋 Tasks:</strong> {completed_tasks}/{total_tasks} completed
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            st.progress(completion_pct / 100)
+                            
+                            st.markdown("---")
+                            
+                            # ===== CHECK-IN TIMELINE =====
+                            st.markdown("#### 📊 Check-in Timeline")
+                            
+                            for check in checkin_schedule:
+                                check_day = check['day']
+                                check_emoji = check['emoji']
+                                check_label = check['label']
+                                check_focus = check['focus']
+                                
+                                # Find if this check-in has been done
+                                done_checkin = next((c for c in checkins_done if int(c.get('check_in_day', 0)) == check_day), None)
+                                
+                                if done_checkin:
+                                    status_icon = "✅"
+                                    status_color = "#38a169"
+                                    rating = done_checkin.get('mentor_rating', 'N/A')
+                                    comment = done_checkin.get('mentor_comment', '')
+                                    hr_rec = done_checkin.get('hr_recommendation', '')
+                                else:
+                                    status_icon = "⏳"
+                                    status_color = "#718096"
+                                    rating = "N/A"
+                                    comment = ""
+                                    hr_rec = ""
+                                
+                                st.markdown(f"""
+                                <div style="background:#16213e;padding:0.8rem;border-radius:8px;margin:0.3rem 0;border-left:4px solid {status_color};">
+                                    <strong style="color:#ffffff;">{status_icon} {check_emoji} {check_label}</strong>
+                                    <small style="color:#a0a0c0;"> | {check_focus}</small><br>
+                                    {f'<strong style="color:#c9a84c;">⭐ Rating:</strong> {rating}/5' if done_checkin else '<small style="color:#718096;">Pending</small>'}
+                                    {f'<br><strong style="color:#2196f3;">💬 Mentor:</strong> {comment}' if comment else ''}
+                                    {f'<br><strong style="color:#c9a84c;">📋 HR:</strong> {hr_rec}' if hr_rec else ''}
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # ===== MENTOR SUBMIT CHECK-IN =====
+                                if is_mentor and not done_checkin:
+                                    with st.expander(f"✍️ Submit {check_label}", expanded=False):
+                                        check_rating = st.slider("Rating (1-5)", 1, 5, 3, key=f"mcr_{emp_email}_{check_day}")
+                                        check_comment = st.text_area("Mentor Comment", key=f"mcc_{emp_email}_{check_day}")
+                                        check_hr = st.text_area("HR Recommendation", key=f"mhr_{emp_email}_{check_day}") if is_admin else ""
+                                        
+                                        if st.button(f"✅ Submit {check_label}", key=f"mcb_{emp_email}_{check_day}"):
+                                            try:
+                                                db._post("jd_checkins", {
+                                                    "employee_email": emp_email,
+                                                    "employee_name": emp_name,
+                                                    "check_in_day": int(check_day),
+                                                    "mentor_name": user_name,
+                                                    "mentor_comment": check_comment,
+                                                    "mentor_rating": int(check_rating),
+                                                    "hr_recommendation": check_hr,
+                                                    "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                                })
+                                                
+                                                # Timeline
+                                                db._post("jd_timeline", {
+                                                    "employee_email": emp_email,
+                                                    "event_type": "check_in",
+                                                    "event_description": f"{check_label} recorded for {emp_name} - Rating: {check_rating}/5",
+                                                    "created_by": user_name,
+                                                    "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                                })
+                                                
+                                                # Send email to employee
+                                                try:
+                                                    from utils.email_service import EmailService
+                                                    EmailService().send_email(
+                                                        emp_email,
+                                                        f"📊 {check_label} Recorded",
+                                                        f"Dear {emp_name},\n\nYour {check_label} has been recorded.\n\nRating: {check_rating}/5\nMentor: {user_name}\n\nLog into HRIS to view details.\n\nChurchgate Group HR"
+                                                    )
+                                                except:
+                                                    pass
+                                                
+                                                st.success(f"✅ {check_label} submitted for {emp_name}!")
+                                                st.rerun()
+                                            except Exception as e:
+                                                st.error(f"❌ Failed: {str(e)}")
+        else:
+            st.info("No employees with tasks yet. Assign tasks to enable check-ins.")
+    
+   # ===== TAB 4: AI ASSESSMENT (FORTUNE 500 ENTERPRISE) =====
     with jd_tab4:
         st.markdown("#### 🤖 AI-Powered Final Assessment")
+        st.markdown("*Enterprise-grade AI analysis with comprehensive performance intelligence*")
         
         if is_mentor:
-            emp_options_ai = ["Select Employee..."] + [f"{row['first_name']} {row['last_name']}" for _, row in employees_df.iterrows()] if not employees_df.empty else ["Select Employee..."]
-            ai_emp = st.selectbox("👤 Employee", emp_options_ai)
+            emp_options_ai = ["Select Employee..."] + [f"{row['first_name']} {row['last_name']} ({row.get('employee_id', 'N/A')})" for _, row in employees_df.iterrows()] if not employees_df.empty else ["Select Employee..."]
+            ai_emp = st.selectbox("👤 Select Employee", emp_options_ai)
             
             if ai_emp != "Select Employee...":
+                emp_name_ai = ai_emp.split(" (")[0]
                 emp_email_ai = ""
+                emp_dept = ""
+                emp_region = ""
+                
                 if not employees_df.empty:
-                    emp_row = employees_df[employees_df['first_name'] + ' ' + employees_df['last_name'] == ai_emp]
+                    emp_row = employees_df[employees_df['first_name'] + ' ' + employees_df['last_name'] == emp_name_ai]
                     if not emp_row.empty:
                         emp_email_ai = emp_row.iloc[0].get('email', '')
+                        emp_dept = emp_row.iloc[0].get('department', 'N/A')
+                        emp_region = emp_row.iloc[0].get('region', 'N/A')
                 
-                emp_tasks = [t for t in jd_tasks if t.get('employee_name') == ai_emp]
+                emp_tasks = [t for t in jd_tasks if t.get('employee_name') == emp_name_ai]
                 emp_checkins = [c for c in jd_checkins if c.get('employee_email') == emp_email_ai]
+                emp_evidence = [e for e in jd_evidence if e.get('employee_email') == emp_email_ai]
+                emp_comments = [c for c in jd_comments if c.get('user_email') == emp_email_ai]
+                emp_timeline = [t for t in jd_timeline if t.get('employee_email') == emp_email_ai]
                 
-                if st.button(f"🧠 Run AI Assessment for {ai_emp}", type="primary", use_container_width=True):
-                    with st.spinner("🤖 AI analyzing..."):
+                # ===== EMPLOYEE PROFILE CARD =====
+                st.markdown(f"""
+                <div style="background:linear-gradient(135deg, #1a1a2e, #0f3460);padding:1.5rem;border-radius:12px;border:1px solid #c9a84c;margin-bottom:1rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <h3 style="color:#c9a84c;margin:0;">👤 {emp_name_ai}</h3>
+                            <p style="color:#ffffff;margin:5px 0;">🏢 {emp_dept} | 🌍 {emp_region}</p>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="background:#c9a84c;color:#1a1a2e;padding:5px 15px;border-radius:20px;font-weight:bold;">📧 {emp_email_ai}</span>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # ===== PERFORMANCE METRICS =====
+                total_tasks = len(emp_tasks)
+                completed_tasks = len([t for t in emp_tasks if t.get('status') == 'Completed'])
+                avg_progress = int(sum(t.get('progress', 0) for t in emp_tasks) / total_tasks) if total_tasks > 0 else 0
+                checkins_done = len(emp_checkins)
+                avg_rating = sum(c.get('mentor_rating', 0) for c in emp_checkins) / checkins_done if checkins_done > 0 else 0
+                evidence_count = len(emp_evidence)
+                comment_count = len(emp_comments)
+                
+                m1, m2, m3, m4, m5, m6 = st.columns(6)
+                m1.metric("📋 Tasks", total_tasks)
+                m2.metric("✅ Completed", completed_tasks)
+                m3.metric("📊 Avg Progress", f"{avg_progress}%")
+                m4.metric("📅 Check-ins", checkins_done)
+                m5.metric("⭐ Avg Rating", f"{avg_rating:.1f}/5")
+                m6.metric("📎 Evidence", evidence_count)
+                
+                st.markdown("---")
+                
+                # ===== DATA SUMMARY FOR AI =====
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("#### 📋 Task Summary")
+                    if emp_tasks:
+                        for t in emp_tasks[:5]:
+                            status_emoji = {'Completed': '✅', 'In Progress': '🔄', 'Overdue': '⚠️', 'Not Started': '⏳'}.get(t.get('status'), '⏳')
+                            st.markdown(f"{status_emoji} **{t.get('task_title')}** - {t.get('status')} ({t.get('progress', 0)}%)")
+                    else:
+                        st.info("No tasks")
+                
+                with col2:
+                    st.markdown("#### 📅 Check-in Summary")
+                    if emp_checkins:
+                        for c in emp_checkins:
+                            st.markdown(f"⭐ **Day {c.get('check_in_day')}**: {c.get('mentor_rating')}/5 - {c.get('mentor_comment', '')[:80]}")
+                    else:
+                        st.info("No check-ins")
+                
+                st.markdown("---")
+                
+                # ===== AI ASSESSMENT BUTTON =====
+                if st.button(f"🧠 Run Comprehensive AI Assessment for {emp_name_ai}", type="primary", use_container_width=True):
+                    with st.spinner("🤖 AI analyzing all performance data..."):
                         try:
                             from groq import Groq
                             groq_key = os.environ.get("GROQ_API_KEY", st.secrets.get("GROQ_API_KEY", ""))
@@ -15859,92 +16215,452 @@ def jd_progress_tracker():
                             if groq_key:
                                 client = Groq(api_key=groq_key)
                                 
-                                tasks_summary = "\n".join([f"- {t.get('task_title')}: {t.get('status')} ({t.get('progress', 0)}%)" for t in emp_tasks])
-                                checkins_summary = "\n".join([f"- Day {c.get('check_in_day')}: {c.get('mentor_rating')}/5 - {c.get('mentor_comment', '')}" for c in emp_checkins])
+                                tasks_summary = "\n".join([
+                                    f"- {t.get('task_title')}: {t.get('status')} ({t.get('progress', 0)}%) | Priority: {t.get('priority')} | Deadline: {t.get('deadline')}"
+                                    for t in emp_tasks
+                                ])
+                                
+                                checkins_summary = "\n".join([
+                                    f"- Day {c.get('check_in_day')}: Rating {c.get('mentor_rating')}/5 | Comment: {c.get('mentor_comment', 'No comment')}"
+                                    for c in emp_checkins
+                                ])
+                                
+                                evidence_summary = "\n".join([
+                                    f"- {e.get('file_name')} (uploaded {e.get('uploaded_at', '')[:10]})"
+                                    for e in emp_evidence
+                                ])
+                                
+                                comments_summary = "\n".join([
+                                    f"- {c.get('user_name')}: {c.get('comment', '')[:100]}"
+                                    for c in emp_comments
+                                ])
                                 
                                 prompt = f"""
-                                Employee: {ai_emp}
+                                COMPREHENSIVE EMPLOYEE PERFORMANCE ASSESSMENT
                                 
-                                Tasks:
+                                Employee: {emp_name_ai}
+                                Department: {emp_dept}
+                                Region: {emp_region}
+                                
+                                TASKS ({total_tasks} total, {completed_tasks} completed):
                                 {tasks_summary or 'No tasks'}
                                 
-                                Check-ins:
+                                CHECK-INS ({checkins_done} completed):
                                 {checkins_summary or 'No check-ins'}
                                 
-                                Provide:
-                                1. Rating (1-5)
-                                2. Strengths
-                                3. Areas for improvement
-                                4. Recommendation: Confirm / Extend / Terminate
-                                5. Justification
+                                EVIDENCE ({evidence_count} files):
+                                {evidence_summary or 'No evidence uploaded'}
+                                
+                                COMMENTS ({comment_count} total):
+                                {comments_summary or 'No comments'}
+                                
+                                ACTIVITY TIMELINE:
+                                {chr(10).join([f"- {t.get('event_type')}: {t.get('event_description')}" for t in emp_timeline[:10]]) if emp_timeline else 'No timeline events'}
+                                
+                                Provide a COMPREHENSIVE assessment:
+                                
+                                1. OVERALL RATING (1-5 with justification)
+                                2. KEY STRENGTHS (3 specific examples from data)
+                                3. AREAS FOR IMPROVEMENT (3 specific examples)
+                                4. TASK COMPLETION ANALYSIS (pattern recognition)
+                                5. CHECK-IN TREND (improvement or decline)
+                                6. EVIDENCE QUALITY (based on uploads)
+                                7. COMMUNICATION EFFECTIVENESS (based on comments)
+                                8. FINAL RECOMMENDATION: Confirm / Extend / Terminate
+                                9. RISK ASSESSMENT (Low/Medium/High risk)
+                                10. ACTION PLAN (3 concrete next steps)
                                 """
                                 
                                 response = client.chat.completions.create(
                                     model="openai/gpt-oss-20b",
-                                    messages=[{"role": "system", "content": "HR Analytics expert"}],
-                                    temperature=0.5,
-                                    max_tokens=500
+                                    messages=[
+                                        {"role": "system", "content": "You are a Fortune 500 HR Analytics Director. Provide comprehensive, data-driven employee assessments."},
+                                        {"role": "user", "content": prompt}
+                                    ],
+                                    temperature=0.4,
+                                    max_tokens=1500
                                 )
                                 
                                 assessment = response.choices[0].message.content
-                                st.success("✅ AI Assessment complete!")
-                                st.markdown(assessment)
                                 
+                                # ===== DISPLAY ASSESSMENT =====
+                                st.markdown("---")
+                                st.markdown("## 🤖 AI Assessment Report")
+                                st.success("✅ Analysis complete!")
+                                
+                                # Display in premium container
+                                st.markdown(f"""
+                                <div style="background:#1a1a2e;padding:1.5rem;border-radius:12px;border:2px solid #c9a84c;">
+                                    {assessment}
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # ===== SAVE TO DATABASE =====
                                 db._post("jd_final_reviews", {
                                     "employee_email": emp_email_ai,
-                                    "employee_name": ai_emp,
+                                    "employee_name": emp_name_ai,
                                     "ai_recommendation": assessment,
                                     "final_status": "Pending HR Decision",
                                     "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                 })
+                                
+                                # ===== DOWNLOAD REPORT =====
+                                report_text = f"""
+                                CHURCHGATE GROUP - AI PERFORMANCE ASSESSMENT
+                                =====================================
+                                Employee: {emp_name_ai}
+                                Department: {emp_dept}
+                                Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+                                
+                                {assessment}
+                                """
+                                
+                                st.download_button("📥 Download Assessment Report", report_text, file_name=f"assessment_{emp_name_ai.replace(' ', '_')}.txt", mime="text/plain")
+                                
+                                # ===== SEND EMAIL =====
+                                try:
+                                    from utils.email_service import EmailService
+                                    EmailService().send_email(
+                                        'eetuk@churchgate.com',
+                                        f"🤖 AI Assessment Complete: {emp_name_ai}",
+                                        f"AI assessment for {emp_name_ai} has been completed.\n\n{assessment[:500]}..."
+                                    )
+                                    st.info("📧 Assessment sent to HR")
+                                except:
+                                    pass
+                            else:
+                                st.error("❌ Groq API key not configured.")
                         except Exception as e:
                             st.error(f"❌ Failed: {str(e)}")
+                
+                # ===== HISTORICAL ASSESSMENTS =====
+                st.markdown("---")
+                st.markdown("#### 📜 Previous Assessments")
+                
+                prev_assessments = [r for r in jd_final if r.get('employee_email') == emp_email_ai]
+                if prev_assessments:
+                    for prev in prev_assessments:
+                        with st.expander(f"📋 Assessment - {prev.get('created_at', '')[:16]}", expanded=False):
+                            st.markdown(prev.get('ai_recommendation', 'No assessment'))
+                else:
+                    st.info("No previous assessments for this employee.")
     
-    # ===== TAB 5: DASHBOARD =====
+    # ===== TAB 5: DASHBOARD (FORTUNE 500 ENTERPRISE) =====
     with jd_tab5:
-        st.markdown("#### 📈 Analytics Dashboard")
+        st.markdown("#### 📈 Enterprise Analytics Dashboard")
+        st.markdown("*Real-time performance intelligence across all regions, subsidiaries, and departments*")
         
         if jd_tasks:
-            # Status chart
-            status_counts = {}
-            for t in jd_tasks:
-                status_counts[t.get('status', 'Not Started')] = status_counts.get(t.get('status', 'Not Started'), 0) + 1
+            # ===== TOP METRICS =====
+            total_tasks = len(jd_tasks)
+            completed = len([t for t in jd_tasks if t.get('status') == 'Completed'])
+            in_progress = len([t for t in jd_tasks if t.get('status') == 'In Progress'])
+            overdue = len([t for t in jd_tasks if t.get('status') == 'Overdue'])
+            total_employees = len(set(t.get('employee_email', '') for t in jd_tasks))
+            total_mentors = len(set(t.get('mentor_email', '') for t in jd_tasks))
+            total_evidence = len(jd_evidence)
+            total_comments = len(jd_comments)
+            total_checkins = len(jd_checkins)
             
-            fig1 = px.pie(values=list(status_counts.values()), names=list(status_counts.keys()), hole=0.5, title="Status Distribution")
-            fig1.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
-            st.plotly_chart(fig1, use_container_width=True)
+            m1, m2, m3, m4, m5 = st.columns(5)
+            m1.metric("📋 Total Tasks", total_tasks)
+            m2.metric("👥 Employees", total_employees)
+            m3.metric("👔 Mentors", total_mentors)
+            m4.metric("📎 Evidence", total_evidence)
+            m5.metric("💬 Comments", total_comments)
             
-            # Employee progress
+            m1b, m2b, m3b, m4b = st.columns(4)
+            m1b.metric("✅ Completed", completed)
+            m2b.metric("🔄 In Progress", in_progress)
+            m3b.metric("⚠️ Overdue", overdue)
+            m4b.metric("📅 Check-ins", total_checkins)
+            
+            st.markdown("---")
+            
+            # ===== CHARTS ROW 1 =====
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### 📊 Task Status Distribution")
+                status_counts = {}
+                for t in jd_tasks:
+                    status = t.get('status', 'Not Started')
+                    status_counts[status] = status_counts.get(status, 0) + 1
+                
+                fig1 = px.pie(values=list(status_counts.values()), names=list(status_counts.keys()), hole=0.5, title="Status Distribution")
+                fig1.update_layout(
+                    paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif'),
+                    legend=dict(font=dict(color='#F0E6D3')),
+                    height=350
+                )
+                st.plotly_chart(fig1, use_container_width=True)
+            
+            with col2:
+                st.markdown("#### ⚡ Priority Distribution")
+                priority_counts = {}
+                for t in jd_tasks:
+                    priority = t.get('priority', 'Medium')
+                    priority_counts[priority] = priority_counts.get(priority, 0) + 1
+                
+                fig2 = px.bar(x=list(priority_counts.keys()), y=list(priority_counts.values()),
+                            color=list(priority_counts.keys()),
+                            color_discrete_map={'Low': '#38a169', 'Medium': '#d69e2e', 'High': '#dd6b20', 'Critical': '#CC0000'},
+                            title="Tasks by Priority")
+                fig2.update_layout(
+                    paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif'),
+                    legend=dict(font=dict(color='#F0E6D3')),
+                    xaxis=dict(tickfont=dict(color='#F0E6D3'), gridcolor='#2A2A2A'),
+                    yaxis=dict(tickfont=dict(color='#F0E6D3'), gridcolor='#2A2A2A'),
+                    height=350
+                )
+                st.plotly_chart(fig2, use_container_width=True)
+            
+            st.markdown("---")
+            
+            # ===== CHARTS ROW 2 =====
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### 📂 Category Breakdown")
+                category_counts = {}
+                for t in jd_tasks:
+                    cat = t.get('category', 'Other')
+                    category_counts[cat] = category_counts.get(cat, 0) + 1
+                
+                fig3 = px.pie(values=list(category_counts.values()), names=list(category_counts.keys()), hole=0.4, title="Tasks by Category")
+                fig3.update_layout(
+                    paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif'),
+                    legend=dict(font=dict(color='#F0E6D3')),
+                    height=350
+                )
+                st.plotly_chart(fig3, use_container_width=True)
+            
+            with col2:
+                st.markdown("#### 🌍 Regional Distribution")
+                region_counts = {}
+                for t in jd_tasks:
+                    emp_email = t.get('employee_email', '')
+                    region = 'Unknown'
+                    if not employees_df.empty:
+                        emp_row = employees_df[employees_df['email'] == emp_email]
+                        if not emp_row.empty:
+                            region = emp_row.iloc[0].get('region', 'Unknown')
+                    region_counts[region] = region_counts.get(region, 0) + 1
+                
+                fig4 = px.bar(x=list(region_counts.keys()), y=list(region_counts.values()),
+                            color=list(region_counts.keys()),
+                            title="Tasks by Region")
+                fig4.update_layout(
+                    paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif'),
+                    legend=dict(font=dict(color='#F0E6D3')),
+                    xaxis=dict(tickfont=dict(color='#F0E6D3'), gridcolor='#2A2A2A'),
+                    yaxis=dict(tickfont=dict(color='#F0E6D3'), gridcolor='#2A2A2A'),
+                    height=350
+                )
+                st.plotly_chart(fig4, use_container_width=True)
+            
+            st.markdown("---")
+            
+            # ===== EMPLOYEE PROGRESS TABLE =====
+            st.markdown("#### 👥 Employee Progress")
             emp_prog = {}
             for t in jd_tasks:
                 emp = t.get('employee_name', 'Unknown')
+                emp_email = t.get('employee_email', '')
+                
                 if emp not in emp_prog:
-                    emp_prog[emp] = {'total': 0, 'done': 0}
+                    emp_prog[emp] = {'email': emp_email, 'total': 0, 'done': 0, 'in_progress': 0, 'overdue': 0}
                 emp_prog[emp]['total'] += 1
                 if t.get('status') == 'Completed':
                     emp_prog[emp]['done'] += 1
+                elif t.get('status') == 'In Progress':
+                    emp_prog[emp]['in_progress'] += 1
+                elif t.get('status') == 'Overdue':
+                    emp_prog[emp]['overdue'] += 1
             
-            data = [{'Employee': e, 'Progress': int(d['done']/d['total']*100), 'Tasks': d['total']} for e, d in emp_prog.items()]
-            df = pd.DataFrame(data).sort_values('Progress', ascending=False)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            data = [{
+                'Employee': e,
+                'Total Tasks': d['total'],
+                'Completed': d['done'],
+                'In Progress': d['in_progress'],
+                'Overdue': d['overdue'],
+                'Progress %': int(d['done']/d['total']*100) if d['total'] > 0 else 0
+            } for e, d in emp_prog.items()]
             
-            fig2 = px.bar(df, x='Employee', y='Progress', color='Progress', color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-            fig2.update_layout(paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E', font=dict(color='#F0E6D3'))
-            st.plotly_chart(fig2, use_container_width=True)
+            progress_df = pd.DataFrame(data).sort_values('Progress %', ascending=False)
+            st.dataframe(progress_df, use_container_width=True, hide_index=True)
+            
+            # ===== PROGRESS CHART =====
+            fig5 = px.bar(progress_df, x='Employee', y='Progress %', color='Progress %',
+                         color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+            fig5.update_layout(
+                paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E',
+                font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                title_font=dict(color='#C9A84C', family='Georgia, serif'),
+                xaxis=dict(tickfont=dict(color='#F0E6D3'), gridcolor='#2A2A2A'),
+                yaxis=dict(tickfont=dict(color='#F0E6D3'), gridcolor='#2A2A2A'),
+                height=400
+            )
+            st.plotly_chart(fig5, use_container_width=True)
+            
+            st.markdown("---")
+            
+            # ===== AI INSIGHTS =====
+            st.markdown("#### 🤖 AI-Powered Insights")
+            if st.button("🧠 Generate Dashboard Insights", type="primary", use_container_width=True):
+                with st.spinner("🤖 AI analyzing dashboard data..."):
+                    try:
+                        from groq import Groq
+                        groq_key = os.environ.get("GROQ_API_KEY", st.secrets.get("GROQ_API_KEY", ""))
+                        
+                        if groq_key:
+                            client = Groq(api_key=groq_key)
+                            
+                            insights_prompt = f"""
+                            JD Progress Tracker Dashboard Analysis:
+                            
+                            Total Tasks: {total_tasks}
+                            Completed: {completed}
+                            In Progress: {in_progress}
+                            Overdue: {overdue}
+                            Total Employees: {total_employees}
+                            Total Mentors: {total_mentors}
+                            Evidence Uploads: {total_evidence}
+                            Comments: {total_comments}
+                            Check-ins: {total_checkins}
+                            
+                            Priority: {priority_counts}
+                            Categories: {category_counts}
+                            Regions: {region_counts}
+                            
+                            Provide:
+                            1. Key findings (3)
+                            2. Areas of concern (2)
+                            3. Recommendations (3)
+                            4. Predicted completion rate
+                            """
+                            
+                            response = client.chat.completions.create(
+                                model="openai/gpt-oss-20b",
+                                messages=[{"role": "system", "content": "HR Analytics expert. Provide concise, actionable insights."}],
+                                temperature=0.4,
+                                max_tokens=500
+                            )
+                            
+                            st.success("✅ Insights generated!")
+                            st.markdown(response.choices[0].message.content)
+                    except:
+                        st.error("AI insights unavailable.")
+        else:
+            st.info("No task data yet. Assign tasks to see analytics.")
     
-    # ===== TAB 6: TIMELINE =====
+    # ===== TAB 6: TIMELINE (FORTUNE 500 ENTERPRISE) =====
     with jd_tab6:
-        st.markdown("#### ⏱️ Activity Timeline")
+        st.markdown("#### ⏱️ Enterprise Activity Timeline")
+        st.markdown("*Complete audit trail grouped by hierarchy, fully filterable*")
         
         if jd_timeline:
-            for event in sorted(jd_timeline, key=lambda x: x.get('created_at', ''), reverse=True)[:20]:
+            # ===== FILTERS =====
+            filter_col1, filter_col2, filter_col3 = st.columns(3)
+            with filter_col1:
+                event_types = ['All Events'] + sorted(list(set(t.get('event_type', '') for t in jd_timeline)))
+                event_filter = st.selectbox("🔍 Event Type", event_types)
+            with filter_col2:
+                regions = ['All Regions'] + sorted(list(set(
+                    emp.get('region', 'Unknown') for _, emp in employees_df.iterrows()
+                ))) if not employees_df.empty else ['All Regions']
+                region_filter = st.selectbox("🌍 Region", regions)
+            with filter_col3:
+                depts = ['All Departments'] + sorted(list(set(
+                    emp.get('department', 'Unknown') for _, emp in employees_df.iterrows()
+                ))) if not employees_df.empty else ['All Departments']
+                dept_filter = st.selectbox("🏭 Department", depts)
+            
+            # Filter timeline
+            filtered_timeline = jd_timeline
+            if event_filter != 'All Events':
+                filtered_timeline = [t for t in filtered_timeline if t.get('event_type') == event_filter]
+            
+            if region_filter != 'All Regions' or dept_filter != 'All Departments':
+                filtered_timeline = [
+                    t for t in filtered_timeline 
+                    if any(
+                        emp.get('email') == t.get('employee_email') and
+                        (region_filter == 'All Regions' or emp.get('region') == region_filter) and
+                        (dept_filter == 'All Departments' or emp.get('department') == dept_filter)
+                        for _, emp in employees_df.iterrows()
+                    )
+                ] if not employees_df.empty else filtered_timeline
+            
+            # ===== PAGINATION =====
+            items_per_page = 10
+            if 'timeline_page' not in st.session_state:
+                st.session_state.timeline_page = 1
+            
+            sorted_timeline = sorted(filtered_timeline, key=lambda x: x.get('created_at', ''), reverse=True)
+            total_pages = max(1, (len(sorted_timeline) + items_per_page - 1) // items_per_page)
+            
+            pg_col1, pg_col2, pg_col3 = st.columns([1, 2, 1])
+            with pg_col1:
+                if st.button("⬅️ Previous", key="tl_prev", disabled=st.session_state.timeline_page <= 1, use_container_width=True):
+                    st.session_state.timeline_page -= 1
+                    st.rerun()
+            with pg_col2:
+                st.markdown(f"**Page {st.session_state.timeline_page} of {total_pages}**")
+            with pg_col3:
+                if st.button("Next ➡️", key="tl_next", disabled=st.session_state.timeline_page >= total_pages, use_container_width=True):
+                    st.session_state.timeline_page += 1
+                    st.rerun()
+            
+            start_idx = (st.session_state.timeline_page - 1) * items_per_page
+            end_idx = min(start_idx + items_per_page, len(sorted_timeline))
+            page_events = sorted_timeline[start_idx:end_idx]
+            
+            # ===== DISPLAY TIMELINE =====
+            event_colors = {
+                'task_assigned': '#3182ce',
+                'task_completed': '#38a169',
+                'task_updated': '#d69e2e',
+                'check_in': '#c9a84c',
+                'ai_extraction': '#805ad5',
+                'ai_tasks_created': '#805ad5',
+                'jd_saved': '#3182ce',
+                'evidence_uploaded': '#38a169',
+                'comment_added': '#c9a84c'
+            }
+            
+            for event in page_events:
+                event_type = event.get('event_type', 'Unknown')
+                border_color = event_colors.get(event_type, '#718096')
+                
                 st.markdown(f"""
-                <div style="background:#1E1E1E;padding:0.5rem;border-radius:6px;margin:0.3rem 0;border-left:4px solid #B8960C;">
-                    <small style="color:#9a8a78;">{event.get('created_at', '')[:16]}</small><br>
-                    <strong style="color:#C9A84C;">{event.get('event_type', '')}</strong>: {event.get('event_description', '')}
-                    <small style="color:#9a8a78;"> by {event.get('created_by', '')}</small>
+                <div style="background:#1E1E1E;padding:0.8rem;border-radius:8px;margin:0.3rem 0;border-left:4px solid {border_color};">
+                    <small style="color:#9a8a78;">🕐 {event.get('created_at', '')[:16]}</small>
+                    <strong style="color:#C9A84C;"> {event_type.replace('_', ' ').upper()}</strong><br>
+                    <span style="color:#F0E6D3;">{event.get('event_description', '')}</span>
+                    <small style="color:#9a8a78;"> | 👤 {event.get('created_by', 'Unknown')}</small>
                 </div>
                 """, unsafe_allow_html=True)
+            
+            # ===== EXPORT =====
+            st.markdown("---")
+            timeline_df = pd.DataFrame([{
+                'Timestamp': t.get('created_at', ''),
+                'Event Type': t.get('event_type', ''),
+                'Description': t.get('event_description', ''),
+                'Created By': t.get('created_by', ''),
+                'Employee': t.get('employee_email', '')
+            } for t in filtered_timeline])
+            
+            st.download_button("📥 Download Timeline Report", timeline_df.to_csv(index=False), file_name="timeline_report.csv", mime="text/csv")
         else:
             st.info("No timeline events yet.")
 
