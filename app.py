@@ -16241,7 +16241,7 @@ APPLY NOW: {public_url}
         st.markdown("""
         <div class="main-header">
             <h1>🎯 My JD Progress Tracker</h1>
-            <p>View your assigned tasks and upload evidence</p>
+            <p>View your assigned tasks, upload evidence, and communicate with your mentor</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -16251,6 +16251,7 @@ APPLY NOW: {public_url}
         try:
             jd_tasks = db._get("jd_tasks") or []
             my_tasks = [t for t in jd_tasks if t.get('employee_email') == user_email]
+            jd_comments = db._get("jd_comments") or []
             
             if my_tasks:
                 completed = len([t for t in my_tasks if t.get('status') == 'Completed'])
@@ -16290,6 +16291,57 @@ APPLY NOW: {public_url}
                         
                         st.progress(progress / 100)
                         
+                        # ===== MENTOR COMMENT DISPLAY =====
+                        if task.get('mentor_comment'):
+                            st.markdown(f"""
+                            <div style="background:#1a2a3a;padding:0.8rem;border-radius:6px;border-left:3px solid #2196f3;margin:0.5rem 0;">
+                                <strong style="color:#2196f3;">👔 Mentor Comment:</strong><br>
+                                <span style="color:#ffffff;">{task.get('mentor_comment')}</span>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        
+                        # ===== CONVERSATION HISTORY =====
+                        task_comments = [c for c in jd_comments if str(c.get('task_id')) == str(task.get('id'))]
+                        if task_comments:
+                            st.markdown("#### 💬 Conversation History")
+                            for comment in sorted(task_comments, key=lambda x: x.get('created_at', '')):
+                                is_mentor = comment.get('user_email') == task.get('mentor_email')
+                                commenter = comment.get('user_name', 'Unknown')
+                                color = "#2196f3" if is_mentor else "#c9a84c"
+                                label = "👔 Mentor" if is_mentor else "👤 You"
+                                
+                                st.markdown(f"""
+                                <div style="background:#16213e;padding:0.6rem;border-radius:6px;margin:0.3rem 0;border-left:3px solid {color};">
+                                    <strong style="color:{color};">{label} - {commenter}</strong>
+                                    <small style="color:#9a8a78;">({comment.get('created_at', '')[:16]})</small><br>
+                                    <span style="color:#ffffff;">{comment.get('comment', '')}</span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        
+                        # ===== ADD COMMENT =====
+                        st.markdown("#### 💬 Add Comment")
+                        new_comment = st.text_area("Your comment", key=f"emp_comment_{task.get('id')}", height=60,
+                                                  placeholder="Ask a question or provide update...")
+                        if st.button("💬 Post Comment", key=f"emp_comment_btn_{task.get('id')}"):
+                            if new_comment.strip():
+                                try:
+                                    db._post("jd_comments", {
+                                        "task_id": task.get('id'),
+                                        "user_name": user_name,
+                                        "user_email": user_email,
+                                        "comment": new_comment,
+                                        "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                    })
+                                    st.success("✅ Comment posted!")
+                                    st.rerun()
+                                except:
+                                    st.error("❌ Failed to post comment.")
+                            else:
+                                st.error("❌ Comment cannot be empty.")
+                        
+                        st.markdown("---")
+                        
+                        # ===== EVIDENCE =====
                         task_evidence = [e for e in db._get("jd_evidence") or [] if str(e.get('task_id')) == str(task.get('id'))]
                         if task_evidence:
                             st.markdown("#### 📎 My Evidence")
@@ -16300,7 +16352,9 @@ APPLY NOW: {public_url}
                                 </div>
                                 """, unsafe_allow_html=True)
                         
-                        uploaded_evidence = st.file_uploader("📎 Upload Evidence", type=['pdf', 'docx', 'xlsx'], key=f"emp_ev_{task.get('id')}")
+                        # ===== UPLOAD EVIDENCE =====
+                        st.markdown("#### 📎 Upload Evidence")
+                        uploaded_evidence = st.file_uploader("Choose file", type=['pdf', 'docx', 'xlsx'], key=f"emp_ev_{task.get('id')}")
                         if uploaded_evidence and st.button("Upload", key=f"emp_ev_btn_{task.get('id')}"):
                             try:
                                 db._post("jd_evidence", {
