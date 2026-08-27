@@ -16067,20 +16067,23 @@ def jd_progress_tracker(employees_df=None):
                                             if task_evidence:
                                                 st.markdown("#### 📎 Evidence Files")
                                                 for ev in task_evidence:
-                                                    col1, col2 = st.columns([3, 1])
-                                                    with col1:
+                                                    file_url = ev.get('file_url', '')
+                                                    st.markdown(f"""
+                                                    <div style="background:#1E1E1E;padding:0.8rem;border-radius:6px;margin:0.3rem 0;border-left:3px solid #38a169;">
+                                                        <strong style="color:#c9a84c;">📄 {ev.get('file_name')}</strong><br>
+                                                        <small style="color:#9a8a78;">👤 {ev.get('uploaded_by', 'N/A')} | 🕐 {ev.get('uploaded_at', '')[:16]}</small><br>
+                                                        <small style="color:#9a8a78;">📁 {ev.get('file_type', 'N/A')}</small>
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
+                                                    
+                                                    if file_url and file_url.strip() != '':
+                                                        st.markdown(f'<a href="{file_url}" target="_blank" style="display:inline-block;background:#2196f3;color:#ffffff;padding:8px 15px;border-radius:6px;text-decoration:none;font-weight:bold;text-align:center;">📥 View / Download</a>', unsafe_allow_html=True)
+                                                    else:
                                                         st.markdown(f"""
-                                                        <div style="background:#1E1E1E;padding:0.6rem;border-radius:6px;margin:0.3rem 0;border-left:3px solid #38a169;">
-                                                            <strong style="color:#c9a84c;">📄 {ev.get('file_name')}</strong><br>
-                                                            <small style="color:#9a8a78;">👤 {ev.get('uploaded_by', 'N/A')} | 🕐 {ev.get('uploaded_at', '')[:16]}</small><br>
-                                                            <small style="color:#9a8a78;">📁 {ev.get('file_type', 'N/A')}</small>
+                                                        <div style="background:#3a3a1a;padding:0.4rem;border-radius:4px;margin:0.2rem 0;">
+                                                            <small style="color:#fff3e0;">⚠️ Old upload - no URL. Ask employee to re-upload.</small>
                                                         </div>
                                                         """, unsafe_allow_html=True)
-                                                    with col2:
-                                                        if ev.get('file_url'):
-                                                            st.markdown(f'<a href="{ev.get("file_url")}" target="_blank" style="display:inline-block;background:#c9a84c;color:#1a1a2e;padding:10px 15px;border-radius:6px;text-decoration:none;font-weight:bold;text-align:center;width:100%;">📥 View</a>', unsafe_allow_html=True)
-                                                        else:
-                                                            st.markdown("📎 No file")
                                             else:
                                                 st.info("No evidence uploaded yet.")
                                             
@@ -16092,11 +16095,19 @@ def jd_progress_tracker(employees_df=None):
                                                                              index=['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'].index(status) if status in ['Not Started', 'In Progress', 'Under Review', 'Completed', 'Overdue'] else 0,
                                                                              key=f"status_{task.get('id')}")
                                                 with col2:
-                                                    new_progress = st.slider("Progress", 0, 100, progress, key=f"progress_{task.get('id')}")
-                                                if st.button("💾 Update", key=f"update_{task.get('id')}"):
-                                                    db._patch("jd_tasks", {"status": new_status, "progress": new_progress}, {"id": task.get('id')})
-                                                    st.success("✅ Updated!")
-                                                    st.rerun()
+                                                    new_progress = st.number_input("Progress %", min_value=0, max_value=100, value=progress, step=5, key=f"progress_num_{task.get('id')}")
+                                                
+                                                if st.button("💾 Update", key=f"update_{task.get('id')}", use_container_width=True):
+                                                    try:
+                                                        db.supabase.table('jd_tasks').update({
+                                                            'status': new_status,
+                                                            'progress': int(new_progress)
+                                                        }).eq('id', task.get('id')).execute()
+                                                        
+                                                        st.success("✅ Status updated! Chats are safe!")
+                                                        st.rerun()
+                                                    except Exception as e:
+                                                        st.error(f"❌ Update failed: {str(e)}")
         else:
             st.info("No tasks yet. Assign tasks from the JD Upload & AI tab.")
     
@@ -17349,31 +17360,40 @@ APPLY NOW: {public_url}
                             try:
                                 # Upload file to Supabase Storage
                                 file_bytes = uploaded_evidence.getvalue()
-                                safe_filename = uploaded_evidence.name.replace(' ', '_')
-                                storage_path = f"jd_evidence/{task.get('id')}/{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_filename}"
+                                safe_filename = uploaded_evidence.name.replace(' ', '_').replace('..', '.')
+                                storage_path = f"{task.get('id')}/{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_filename}"
                                 
                                 file_url = ""
                                 try:
-                                    db.admin_client.storage.from_('jd-evidence').upload(
-                                        storage_path,
-                                        file_bytes,
-                                        {"content-type": uploaded_evidence.type}
-                                    )
-                                    file_url = db.admin_client.storage.from_('jd-evidence').get_public_url(storage_path)
+                                    # Try admin_client first
+                                    if hasattr(db, 'admin_client') and db.admin_client:
+                                        db.admin_client.storage.from_('jd-evidence').upload(
+                                            storage_path,
+                                            file_bytes,
+                                            {"content-type": uploaded_evidence.type}
+                                        )
+                                        file_url = db.admin_client.storage.from_('jd-evidence').get_public_url(storage_path)
+                                    else:
+                                        raise Exception("No admin_client available")
                                 except Exception as storage_err:
-                                    print(f"Storage upload failed: {storage_err}")
+                                    st.warning(f"Storage warning: {str(storage_err)}")
                                 
                                 # Save metadata to database
                                 db._post("jd_evidence", {
                                     "task_id": task.get('id'),
                                     "employee_email": user_email,
                                     "file_name": uploaded_evidence.name,
-                                    "file_url": file_url,
+                                    "file_url": file_url if file_url else "",
                                     "file_type": uploaded_evidence.type,
                                     "uploaded_by": user_name,
                                     "uploaded_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                 })
-                                st.success("✅ Evidence uploaded successfully!")
+                                
+                                if file_url:
+                                    st.success("✅ Evidence uploaded successfully with file!")
+                                else:
+                                    st.warning("⚠️ File metadata saved but storage upload failed. Please contact admin.")
+                                
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"❌ Upload failed: {str(e)}")
