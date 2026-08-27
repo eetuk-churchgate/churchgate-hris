@@ -17358,27 +17358,37 @@ APPLY NOW: {public_url}
                         uploaded_evidence = st.file_uploader("Choose file", type=['pdf', 'docx', 'xlsx'], key=f"emp_ev_{task.get('id')}")
                         if uploaded_evidence and st.button("Upload", key=f"emp_ev_btn_{task.get('id')}", use_container_width=True):
                             try:
-                                # Upload file to Supabase Storage
                                 file_bytes = uploaded_evidence.getvalue()
                                 safe_filename = uploaded_evidence.name.replace(' ', '_').replace('..', '.')
                                 storage_path = f"{task.get('id')}/{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_filename}"
                                 
                                 file_url = ""
-                                try:
-                                    # Try admin_client first
-                                    if hasattr(db, 'admin_client') and db.admin_client:
+                                
+                                # Use admin_client (has service key for storage)
+                                if hasattr(db, 'admin_client') and db.admin_client:
+                                    try:
                                         db.admin_client.storage.from_('jd-evidence').upload(
                                             storage_path,
                                             file_bytes,
                                             {"content-type": uploaded_evidence.type}
                                         )
                                         file_url = db.admin_client.storage.from_('jd-evidence').get_public_url(storage_path)
-                                    else:
-                                        raise Exception("No admin_client available")
-                                except Exception as storage_err:
-                                    st.warning(f"Storage warning: {str(storage_err)}")
+                                    except Exception as e1:
+                                        st.warning(f"Admin upload: {str(e1)}")
                                 
-                                # Save metadata to database
+                                # Fallback to regular client
+                                if not file_url and db.supabase:
+                                    try:
+                                        db.supabase.storage.from_('jd-evidence').upload(
+                                            storage_path,
+                                            file_bytes,
+                                            {"content-type": uploaded_evidence.type}
+                                        )
+                                        file_url = db.supabase.storage.from_('jd-evidence').get_public_url(storage_path)
+                                    except Exception as e2:
+                                        st.warning(f"Regular upload: {str(e2)}")
+                                
+                                # Save metadata
                                 db._post("jd_evidence", {
                                     "task_id": task.get('id'),
                                     "employee_email": user_email,
@@ -17390,9 +17400,9 @@ APPLY NOW: {public_url}
                                 })
                                 
                                 if file_url:
-                                    st.success("✅ Evidence uploaded successfully with file!")
+                                    st.success("✅ Evidence uploaded successfully!")
                                 else:
-                                    st.warning("⚠️ File metadata saved but storage upload failed. Please contact admin.")
+                                    st.error("❌ Storage upload failed. Add SUPABASE_SERVICE_KEY to Railway.")
                                 
                                 st.rerun()
                             except Exception as e:
