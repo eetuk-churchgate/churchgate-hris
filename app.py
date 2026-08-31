@@ -3837,7 +3837,40 @@ def employee_dashboard():
     try:
         announcements_data = db._get("announcements")
         if announcements_data:
-            latest_ann = sorted(announcements_data, key=lambda x: x.get('created_at', ''), reverse=True)[:3]
+            # Filter out expired announcements
+            now_time = datetime.now()
+            active_announcements = []
+            for ann in announcements_data:
+                expires_at = ann.get('expires_at', '')
+                created_at = ann.get('created_at', '')
+                
+                if expires_at:
+                    try:
+                        expiry = datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S')
+                        if expiry > now_time:
+                            active_announcements.append(ann)
+                    except:
+                        # Invalid expiry - check created date
+                        if created_at:
+                            try:
+                                created = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+                                if (now_time - created).days <= 3:
+                                    active_announcements.append(ann)
+                            except:
+                                pass
+                else:
+                    # NO EXPIRY SET - Auto-expire after 3 days
+                    if created_at:
+                        try:
+                            created = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+                            if (now_time - created).days <= 3:
+                                active_announcements.append(ann)
+                        except:
+                            active_announcements.append(ann)
+                    else:
+                        active_announcements.append(ann)
+            
+            latest_ann = sorted(active_announcements, key=lambda x: x.get('created_at', ''), reverse=True)[:3]
             
             if latest_ann:
                 st.markdown("### 📢 Latest Announcements")
@@ -5666,6 +5699,25 @@ def hr_announcement_tab(employees_df):
                                 recipient_emails.append(str(email))
                                 recipient_names.append(name)
                     
+                    # Calculate expiry based on announcement type
+                    expiry_days = 1  # Default 1 day
+                    if "Holiday" in selected_type:
+                        expiry_days = 1  # Public holidays expire after 1 day
+                    elif "Urgent" in selected_type:
+                        expiry_days = 2  # Urgent notices expire after 2 days
+                    elif "Training" in selected_type:
+                        expiry_days = 7  # Training announcements last 1 week
+                    elif "Team Building" in selected_type or "Event" in selected_type:
+                        expiry_days = 7  # Events last 1 week
+                    elif "Policy" in selected_type:
+                        expiry_days = 14  # Policy updates last 2 weeks
+                    elif "Recognition" in selected_type or "Birthdays" in selected_type:
+                        expiry_days = 3  # Celebrations last 3 days
+                    else:
+                        expiry_days = 3  # General announcements last 3 days
+                    
+                    expiry_date = (datetime.now() + timedelta(days=expiry_days)).strftime('%Y-%m-%d %H:%M:%S')
+                    
                     # Save announcement to database FIRST
                     try:
                         db._post("announcements", {
@@ -5675,7 +5727,8 @@ def hr_announcement_tab(employees_df):
                             "audience": audience,
                             "sent_by": st.session_state.user['name'],
                             "sent_to": len(recipient_emails),
-                            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                            "created_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            "expires_at": expiry_date
                         })
                     except:
                         pass
@@ -22556,6 +22609,21 @@ def notifications_page():
     try:
         announcements_db = db._get("announcements")
         if announcements_db:
+            # Filter out expired announcements
+            now_time = datetime.now()
+            active_anns = []
+            for a in announcements_db:
+                expires_at = a.get('expires_at', '')
+                if expires_at:
+                    try:
+                        expiry = datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S')
+                        if expiry > now_time:
+                            active_anns.append(a)
+                    except:
+                        active_anns.append(a)
+                else:
+                    active_anns.append(a)
+            
             # Get read announcements
             read_ann_ids = []
             try:
@@ -22565,8 +22633,8 @@ def notifications_page():
             except:
                 pass
             
-            # Get latest 3 unread announcements
-            recent_anns = sorted(announcements_db, key=lambda x: x.get('created_at', ''), reverse=True)[:3]
+            # Get latest 3 unread active announcements
+            recent_anns = sorted(active_anns, key=lambda x: x.get('created_at', ''), reverse=True)[:3]
             
             for ann in recent_anns:
                 ann_id = ann.get('id', '')
