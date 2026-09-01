@@ -13103,8 +13103,23 @@ def staff_confirmation():
     total_probation = len(probation_employees)
     ending_soon = 0; overdue = 0; now = datetime.now()
     
+    # Get confirmed employee IDs from database
+    try:
+        reviews_data = db._get("confirmation_reviews")
+        confirmed_count = len([r for r in reviews_data if r.get('status') == 'Approved by COO']) if reviews_data else 0
+        confirmed_ids = set([r.get('employee_id', '') for r in reviews_data if r.get('status') == 'Approved by COO']) if reviews_data else set()
+    except:
+        confirmed_count = 0
+        confirmed_ids = set()
+    
     if not probation_employees.empty:
         for _, emp in probation_employees.iterrows():
+            emp_id = emp.get('employee_id', '')
+            
+            # SKIP employees who are already confirmed
+            if emp_id in confirmed_ids:
+                continue
+            
             end_date = calculate_probation_end(emp.get('join_date'))
             if end_date:
                 days_left = (end_date - now).days
@@ -13115,7 +13130,7 @@ def staff_confirmation():
     c1.metric("👥 On Probation", total_probation)
     c2.metric("⏰ Ending Soon (14d)", ending_soon)
     c3.metric("🚨 Overdue", overdue)
-    c4.metric("✅ Confirmed", 0)
+    c4.metric("✅ Confirmed", confirmed_count)
     
     st.markdown("---")
     
@@ -13784,11 +13799,29 @@ def staff_confirmation():
                                             f"Dear {emp_name},\n\nCongratulations! Your employment has been confirmed.\n\nChurchgate Group HR")
                                         st.success("✅ Confirmed!"); st.balloons(); st.rerun()
                                 with col2:
-                                    if st.button(f"🔄 Return to HOD", key=f"coo_ret_{emp_id}", use_container_width=True):
+                                    if st.button(f"🔄 Return for Review", key=f"coo_ret_{emp_id}", use_container_width=True):
                                         db._patch("confirmation_reviews", {
-                                            "status":"Returned to HOD","coo_decision":"Returned"
+                                            "status":"Returned for Review",
+                                            "coo_decision":"Returned",
+                                            "coo_comments":"Returned by COO for re-review"
                                         }, {"id":r.get('id')})
-                                        st.warning("🔄 Returned to HOD"); st.rerun()
+                                        # Notify Team Lead
+                                        try:
+                                            reports_to = emp.get('reports_to', '')
+                                            if reports_to:
+                                                tl_data = db._get("employees", {"employee_id": emp_id})
+                                                if tl_data and len(tl_data) > 0:
+                                                    tl_name_parts = reports_to.split()
+                                                    tl_search = db._get("employees", {"first_name": tl_name_parts[0]})
+                                                    if tl_search and len(tl_search) > 0:
+                                                        tl_email = tl_search[0].get('email', '')
+                                                        if tl_email:
+                                                            send_confirmation_email(tl_email, 
+                                                                f"🔄 Confirmation Returned for Review: {emp_name}", 
+                                                                f"Dear {reports_to},\n\nCOO has returned {emp_name}'s confirmation for re-review.\n\nPlease review and resubmit through the workflow.\n\nChurchgate Group HR")
+                                        except:
+                                            pass
+                                        st.warning("🔄 Returned for Review - Team Lead notified"); st.rerun()
                                 with col3:
                                     if st.button(f"❌ Reject", key=f"coo_rej_{emp_id}", use_container_width=True):
                                         db._patch("confirmation_reviews", {
