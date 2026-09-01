@@ -7582,10 +7582,64 @@ def employee_management():
                             📥 Download / Print Org Chart
                         </button>
                     </div>
+                    <style>
+                    /* Print CSS - Show FULL org chart on A3 Landscape */
+                    @media print {
+                        @page {
+                            size: A3 landscape;
+                            margin: 10mm;
+                        }
+                        body, html {
+                            background: #1E1E1E !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            overflow: visible !important;
+                            width: 100% !important;
+                            min-height: auto !important;
+                        }
+                        .tree-container {
+                            display: flex !important;
+                            flex-wrap: nowrap !important;
+                            align-items: flex-start !important;
+                            min-width: 100% !important;
+                            width: 100% !important;
+                            overflow: visible !important;
+                            padding: 10px !important;
+                            transform: scale(0.9) !important;
+                            transform-origin: top left !important;
+                        }
+                        .tree-node {
+                            margin: 0 8px !important;
+                        }
+                        .card {
+                            min-width: 120px !important;
+                            max-width: 160px !important;
+                            padding: 10px !important;
+                            font-size: 0.85rem !important;
+                            break-inside: avoid !important;
+                            page-break-inside: avoid !important;
+                        }
+                        .card strong {
+                            font-size: 0.85rem !important;
+                        }
+                        .card small {
+                            font-size: 0.75rem !important;
+                        }
+                        button {
+                            display: none !important;
+                        }
+                    }
+                    </style>
                     <script>
                     window.onbeforeprint = function() {
                         document.body.style.backgroundColor = '#1E1E1E';
                         document.documentElement.style.backgroundColor = '#1E1E1E';
+                        var tree = document.querySelector('.tree-container');
+                        if (tree) {
+                            tree.style.overflow = 'visible';
+                            tree.style.minWidth = '100%';
+                            tree.style.width = '100%';
+                        }
                     };
                     </script>
                     </body>
@@ -7869,10 +7923,64 @@ def employee_management():
                                         📥 Download / Print Org Chart
                                     </button>
                                 </div>
+                                <style>
+                                /* Print CSS - Show FULL org chart on A3 Landscape */
+                                @media print {
+                                    @page {
+                                        size: A3 landscape;
+                                        margin: 10mm;
+                                    }
+                                    body, html {
+                                        background: #1E1E1E !important;
+                                        margin: 0 !important;
+                                        padding: 0 !important;
+                                        overflow: visible !important;
+                                        width: 100% !important;
+                                        min-height: auto !important;
+                                    }
+                                    .tree-container {
+                                        display: flex !important;
+                                        flex-wrap: nowrap !important;
+                                        align-items: flex-start !important;
+                                        min-width: 100% !important;
+                                        width: 100% !important;
+                                        overflow: visible !important;
+                                        padding: 10px !important;
+                                        transform: scale(0.9) !important;
+                                        transform-origin: top left !important;
+                                    }
+                                    .tree-node {
+                                        margin: 0 8px !important;
+                                    }
+                                    .card {
+                                        min-width: 120px !important;
+                                        max-width: 160px !important;
+                                        padding: 10px !important;
+                                        font-size: 0.85rem !important;
+                                        break-inside: avoid !important;
+                                        page-break-inside: avoid !important;
+                                    }
+                                    .card strong {
+                                        font-size: 0.85rem !important;
+                                    }
+                                    .card small {
+                                        font-size: 0.75rem !important;
+                                    }
+                                    button {
+                                        display: none !important;
+                                    }
+                                }
+                                </style>
                                 <script>
                                 window.onbeforeprint = function() {
                                     document.body.style.backgroundColor = '#1E1E1E';
                                     document.documentElement.style.backgroundColor = '#1E1E1E';
+                                    var tree = document.querySelector('.tree-container');
+                                    if (tree) {
+                                        tree.style.overflow = 'visible';
+                                        tree.style.minWidth = '100%';
+                                        tree.style.width = '100%';
+                                    }
                                 };
                                 </script>
                                 </body>
