@@ -4425,7 +4425,7 @@ def employee_dashboard():
         ('Magesh Gopal', 'Facility Management'),
         ('Nchor Agba', 'Security'),
         ('Olatubosun Otaiku', 'Central Stores'),
-        ('Peravali Kotaiah', 'Facility Management'),
+        ('Peravali Kotaiah', 'Warehouse Management'),
         ('Sanjeev Purwar', 'Engineering & Project Development & Project Development'),
         ('Sani Usman', 'Security'),
     ]
@@ -6271,7 +6271,7 @@ def employee_management():
                             ec1, ec2, ec3 = st.columns(3)
                             with ec1:
                                 current_dept = str(emp.get('department', 'Technology Group'))
-                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin', 'Central Stores', 'Chairman/GMD\'s Office & Residence']
+                                dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin', 'Central Stores', 'Warehouse Management', 'Chairman/GMD\'s Office & Residence']
                                 dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 1
                                 new_dept = st.selectbox("Department", dept_options, index=dept_idx, key=f"dept_{emp['employee_id']}_{st.session_state.dir_page}")
                                 
@@ -6408,7 +6408,7 @@ def employee_management():
                 phone = st.text_input("Phone")
             with c2:
                 employee_id = st.text_input("Employee ID *", placeholder="e.g., AN00001")
-                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin', 'Central Stores', 'Chairman/GMD''s Office & Residence'])
+                department = st.selectbox("Department *", ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin', 'Central Stores', 'Warehouse Management', 'Chairman/GMD\'s Office & Residence'])
                 position = st.text_input("Position *")
                 grade = st.selectbox("Grade", ['Junior', 'Intermediate', 'Mid-Senior', 'Senior', 'Manager', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level'])
             with c3:
@@ -8548,7 +8548,7 @@ def performance_okrs():
     
     all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
                  'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal',
-                 'Operations', 'Engineering & Project Development', 'Central Stores', 'Chairman/GMD''s Office & Residence', 'Project Development', 'Trade Services', 'Admin']
+                 'Operations', 'Engineering & Project Development', 'Central Stores', 'Warehouse Management', 'Chairman/GMD\'s Office & Residence', 'Project Development', 'Trade Services', 'Admin']
     
     SUBSIDIARY_REGIONS = {
         'World Trade Center(WTC)': 'Abuja', 'World Trade Center': 'Abuja', 'WTC': 'Abuja',
@@ -13098,28 +13098,29 @@ def staff_confirmation():
         except:
             return None
     
-    # Top Stats
+    # Top Stats - FIXED
     probation_employees = get_probation_employees()
-    total_probation = len(probation_employees)
-    ending_soon = 0; overdue = 0; now = datetime.now()
     
     # Get confirmed employee IDs from database
     try:
         reviews_data = db._get("confirmation_reviews")
-        confirmed_count = len([r for r in reviews_data if r.get('status') == 'Approved by COO']) if reviews_data else 0
-        confirmed_ids = set([r.get('employee_id', '') for r in reviews_data if r.get('status') == 'Approved by COO']) if reviews_data else set()
+        confirmed_count = len([r for r in reviews_data if r.get('status') in ['Approved by COO', 'Letter Sent', 'Completed']]) if reviews_data else 0
+        confirmed_ids = set([r.get('employee_id', '') for r in reviews_data if r.get('status') in ['Approved by COO', 'Letter Sent', 'Completed']]) if reviews_data else set()
     except:
         confirmed_count = 0
         confirmed_ids = set()
     
-    if not probation_employees.empty:
-        for _, emp in probation_employees.iterrows():
-            emp_id = emp.get('employee_id', '')
-            
-            # SKIP employees who are already confirmed
-            if emp_id in confirmed_ids:
-                continue
-            
+    # EXCLUDE confirmed employees from probation count
+    if not probation_employees.empty and confirmed_ids:
+        active_probation = probation_employees[~probation_employees['employee_id'].isin(confirmed_ids)]
+    else:
+        active_probation = probation_employees
+    
+    total_probation = len(active_probation)
+    ending_soon = 0; overdue = 0; now = datetime.now()
+    
+    if not active_probation.empty:
+        for _, emp in active_probation.iterrows():
             end_date = calculate_probation_end(emp.get('join_date'))
             if end_date:
                 days_left = (end_date - now).days
@@ -13164,10 +13165,17 @@ def staff_confirmation():
         ])
     
     # ============================================================
-    # TAB 1: PROBATION BOARD (UNCHANGED)
+    # TAB 1: PROBATION BOARD - EXCLUDES CONFIRMED + PAGINATION (10/page)
     # ============================================================
     with tab1:
         st.subheader("📋 Employees on Probation")
+        
+        # Get confirmed employee IDs to EXCLUDE them
+        try:
+            reviews_data_tab1 = db._get("confirmation_reviews")
+            confirmed_ids_tab1 = set([r.get('employee_id', '') for r in reviews_data_tab1 if r.get('status') in ['Approved by COO', 'Letter Sent', 'Completed']]) if reviews_data_tab1 else set()
+        except:
+            confirmed_ids_tab1 = set()
         
         if is_admin:
             col1, col2, col3 = st.columns(3)
@@ -13187,6 +13195,11 @@ def staff_confirmation():
         
         if not probation_employees.empty:
             filtered_probation = probation_employees.copy()
+            
+            # EXCLUDE confirmed employees
+            if confirmed_ids_tab1:
+                filtered_probation = filtered_probation[~filtered_probation['employee_id'].isin(confirmed_ids_tab1)]
+            
             if is_admin:
                 if filter_region != 'All':
                     filtered_probation = filtered_probation[filtered_probation['region'] == filter_region]
@@ -13197,35 +13210,68 @@ def staff_confirmation():
             
             st.markdown(f"**{len(filtered_probation)} employees on probation**")
             
-            for _, emp in filtered_probation.iterrows():
-                emp_name = f"{emp['first_name']} {emp['last_name']}"
-                emp_id = emp.get('employee_id', '')
-                dept = emp.get('department', '')
-                position = emp.get('position', '')
-                join_date = emp.get('join_date', '')
-                end_date = calculate_probation_end(join_date)
+            if len(filtered_probation) > 0:
+                # Pagination - 10 per page
+                items_per_page = 10
+                total_pages = max(1, (len(filtered_probation) + items_per_page - 1) // items_per_page)
                 
-                if end_date:
-                    days_left = (end_date - now).days
-                    if days_left < 0: status_text = f"🚨 OVERDUE by {abs(days_left)} days"; status_color = '#CC0000'
-                    elif days_left <= 7: status_text = f"⏰ {days_left} days left"; status_color = '#d69e2e'
-                    elif days_left <= 14: status_text = f"📅 {days_left} days left"; status_color = '#3182ce'
-                    else: status_text = f"📅 {days_left} days left"; status_color = '#38a169'
-                else: status_text = "N/A"; status_color = '#a0aec0'
+                if 'probation_page' not in st.session_state:
+                    st.session_state.probation_page = 1
                 
-                with st.expander(f"{'🚨' if days_left < 0 else '⏰' if days_left <= 7 else '📅'} {emp_name} — {position} ({dept}) | {status_text}"):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"**Employee:** {emp_name}")
-                        st.markdown(f"**ID:** {emp_id}")
-                        st.markdown(f"**Position:** {position}")
-                        st.markdown(f"**Department:** {dept}")
-                        st.markdown(f"**Region:** {emp.get('region', 'N/A')}")
-                        st.markdown(f"**Subsidiary:** {emp.get('subsidiary', 'N/A')}")
-                    with col2:
-                        st.markdown(f"**Join Date:** {join_date}")
-                        st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
-                        st.markdown(f"**Days Left:** <span style='color:{status_color};font-weight:700;'>{days_left if end_date else 'N/A'}</span>", unsafe_allow_html=True)
+                if st.session_state.probation_page > total_pages:
+                    st.session_state.probation_page = total_pages
+                
+                # Pagination controls - on_click callbacks (NO st.rerun)
+                pg_col1, pg_col2, pg_col3 = st.columns([1, 2, 1])
+                with pg_col1:
+                    def go_prob_prev():
+                        if st.session_state.probation_page > 1:
+                            st.session_state.probation_page -= 1
+                    st.button("⬅️ Previous", disabled=st.session_state.probation_page <= 1, use_container_width=True, key="prob_prev_btn", on_click=go_prob_prev)
+                with pg_col2:
+                    st.markdown(f"<p style='text-align:center;color:#666;'>Page <strong>{st.session_state.probation_page}</strong> of <strong>{total_pages}</strong></p>", unsafe_allow_html=True)
+                with pg_col3:
+                    def go_prob_next():
+                        if st.session_state.probation_page < total_pages:
+                            st.session_state.probation_page += 1
+                    st.button("Next ➡️", disabled=st.session_state.probation_page >= total_pages, use_container_width=True, key="prob_next_btn", on_click=go_prob_next)
+                
+                # Get current page items
+                start_idx = (st.session_state.probation_page - 1) * items_per_page
+                end_idx = min(start_idx + items_per_page, len(filtered_probation))
+                current_page_emps = filtered_probation.iloc[start_idx:end_idx]
+                
+                for _, emp in current_page_emps.iterrows():
+                    emp_name = f"{emp['first_name']} {emp['last_name']}"
+                    emp_id = emp.get('employee_id', '')
+                    dept = emp.get('department', '')
+                    position = emp.get('position', '')
+                    join_date = emp.get('join_date', '')
+                    end_date = calculate_probation_end(join_date)
+                    
+                    if end_date:
+                        days_left = (end_date - now).days
+                        if days_left < 0: status_text = f"🚨 OVERDUE by {abs(days_left)} days"; status_color = '#CC0000'
+                        elif days_left <= 7: status_text = f"⏰ {days_left} days left"; status_color = '#d69e2e'
+                        elif days_left <= 14: status_text = f"📅 {days_left} days left"; status_color = '#3182ce'
+                        else: status_text = f"📅 {days_left} days left"; status_color = '#38a169'
+                    else: status_text = "N/A"; status_color = '#a0aec0'
+                    
+                    with st.expander(f"{'🚨' if days_left < 0 else '⏰' if days_left <= 7 else '📅'} {emp_name} — {position} ({dept}) | {status_text}"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.markdown(f"**Employee:** {emp_name}")
+                            st.markdown(f"**ID:** {emp_id}")
+                            st.markdown(f"**Position:** {position}")
+                            st.markdown(f"**Department:** {dept}")
+                            st.markdown(f"**Region:** {emp.get('region', 'N/A')}")
+                            st.markdown(f"**Subsidiary:** {emp.get('subsidiary', 'N/A')}")
+                        with col2:
+                            st.markdown(f"**Join Date:** {join_date}")
+                            st.markdown(f"**Probation End:** {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
+                            st.markdown(f"**Days Left:** <span style='color:{status_color};font-weight:700;'>{days_left if end_date else 'N/A'}</span>", unsafe_allow_html=True)
+            else:
+                st.success("🎉 No employees currently on probation (all confirmed)!")
         else:
             st.success("🎉 No employees currently on probation!")
     
@@ -14165,7 +14211,7 @@ def promotions():
     
     all_depts = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources',
                  'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal',
-                 'Operations', 'Engineering & Project Development', 'Central Stores', 'Chairman/GMD''s Office & Residence', 'Project Development', 'Trade Services', 'Admin']
+                 'Operations', 'Engineering & Project Development', 'Central Stores', 'Warehouse Management', 'Chairman/GMD\'s Office & Residence', 'Project Development', 'Trade Services', 'Admin']
     for dept in all_depts:
         if dept not in aplayers_data:
             aplayers_data[dept] = []
@@ -17698,7 +17744,7 @@ APPLY NOW: {public_url}
             c1, c2 = st.columns(2)
             with c1:
                 job_title = st.text_input("Job Title *", placeholder="e.g., Senior Network Engineer")
-                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Central Stores', 'Chairman/GMD''s Office & Residence', 'Project Development', 'Trade Services', 'Admin'])
+                department = st.selectbox("Department *", ['Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Central Stores', 'Warehouse Management', 'Chairman/GMD\'s Office & Residence', 'Project Development', 'Trade Services', 'Admin'])
                 location = st.selectbox("Location", ["World Trade Center Abuja", "Churchgate Tower 1 Lagos", "Churchgate Tower 2 Lagos", "Churchgate Plaza Abuja", "Remote/Hybrid"])
                 employment_type = st.selectbox("Employment Type", ["Full-time", "Contract", "Part-time", "Intern"])
             with c2:
@@ -17834,6 +17880,7 @@ APPLY NOW: {public_url}
                         'Technology Group': 'eetuk@churchgate.com',
                         'Engineering & Project Development': 'purwar@churchgate.com',
                         'Central Stores': 'abora@churchgate.com',
+                        'Warehouse Management': 'kperavali@churchgate.com',
                         'Project Development': 'deffiong@churchgate.com',
                         'Trade Services': 'akarim@churchgate.com',
                         'Chairman/GMD\'s Office & Residence': 'vbmahtani@churchgate.com'
@@ -19930,7 +19977,7 @@ APPLY NOW: {public_url}
                         'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 
                         'Procurement', 'Security', 'Legal', 'Operations', 
                         'Engineering & Project Development', 'Admin', 'Central Stores',
-                        'Chairman/GMD\'s Office & Residence'
+                        'Warehouse Management', 'Chairman/GMD\'s Office & Residence'
                     ])
                 with c2:
                     bg_type = st.multiselect("Check Type *", [
@@ -26188,7 +26235,7 @@ def my_profile():
                     new_gender = st.selectbox("Gender", ['Male', 'Female'], index=0 if emp_gender == 'Male' else 1)
                 with c2:
                     new_last = st.text_input("Last Name", value=last_name)
-                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin', 'Central Stores', 'Chairman/GMD\'s Office & Residence']
+                    dept_list = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales, Marketing & Trade Services', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin', 'Central Stores', 'Warehouse Management', 'Chairman/GMD\'s Office & Residence']
                     dept_idx = dept_list.index(emp_dept) if emp_dept in dept_list else 0
                     new_dept = st.selectbox("Department", dept_list, index=dept_idx)
                     new_region = st.selectbox("Region", ['Abuja', 'Lagos'], index=0 if emp_region == 'Abuja' else 1)
