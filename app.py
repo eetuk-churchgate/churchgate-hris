@@ -13140,7 +13140,7 @@ def staff_confirmation():
                             st.markdown(f"**Probation Period:** {join_date} to {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
                             st.markdown(f"**Region:** {emp.get('region', 'N/A')} | **Subsidiary:** {emp.get('subsidiary', 'N/A')}")
                             
-                            # Check existing review status WITH ACTUAL NAMES
+                            # Check existing review status
                             try:
                                 existing_review = db._get("confirmation_reviews")
                                 emp_review = [r for r in existing_review if r.get('employee_id') == emp_id]
@@ -13150,32 +13150,40 @@ def staff_confirmation():
                                     tl_name = latest.get('supervisor_name', 'Team Lead')
                                     hod_name = latest.get('hod_name', 'HOD')
                                     
-                                    if review_status == 'Pending HOD Validation':
-                                        if is_hod:
-                                            st.info(f"✅ {tl_name} has assessed and submitted for validation")
-                                        else:
-                                            st.success(f"✅ Already assessed and submitted for validation")
+                                    # For TEAM LEAD: Show status and skip form if already submitted
+                                    if review_status == 'Pending HOD Validation' and not is_hod:
+                                        st.success(f"✅ Already assessed and submitted for validation")
                                         st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100 ({latest.get('performance_rating','')})")
                                         st.markdown(f"**{tl_name} Comments:** {latest.get('supervisor_comments','')}")
+                                        continue
                                     
+                                    # For HOD: Show TL summary AND allow validation
+                                    if review_status == 'Pending HOD Validation' and is_hod:
+                                        st.info(f"✅ {tl_name} has assessed - proceed with validation below")
+                                        st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100 ({latest.get('performance_rating','')})")
+                                        st.markdown(f"**{tl_name} Comments:** {latest.get('supervisor_comments','')}")
+                                        # DO NOT continue - let HOD see the validation form
+                                    
+                                    # Already sent to COO - both TL and HOD see status only
                                     elif review_status == 'Pending COO Approval':
                                         st.success(f"✅ Already assessed and submitted for confirmation")
                                         st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100")
                                         st.markdown(f"**{hod_name} Score:** {latest.get('hod_total_score','')}/100 ({latest.get('hod_rating','')})")
                                         st.markdown(f"**{hod_name} Decision:** {latest.get('hod_decision','')}")
+                                        continue
                                     
                                     elif review_status in ['Approved by COO', 'Letter Sent']:
                                         st.success(f"🎉 Confirmation complete!")
+                                        continue
                                     
                                     elif 'Extension' in review_status:
                                         st.warning(f"🔄 Extension recommended: {review_status}")
-                                    
-                                    continue
+                                        continue
                             except:
                                 pass
                             
-                            # TEAM LEAD FORM
-                            if is_team_lead:
+                            # TEAM LEAD FORM - Only for Team Leads, NOT for HODs
+                            if is_team_lead and not is_hod:
                                 st.markdown("---")
                                 st.markdown("#### 👥 TEAM LEAD / SUPERVISOR ASSESSMENT")
                                 
@@ -13306,17 +13314,50 @@ def staff_confirmation():
                                             })
                                             
                                             hod_email = ''
+                                            hod_emails = []
                                             try:
                                                 emp_data = db.get_all_employees()
                                                 if not emp_data.empty:
-                                                    hod_match = emp_data[emp_data['department'] == dept]
-                                                    if not hod_match.empty:
-                                                        hod_email = hod_match.iloc[0].get('email', '')
+                                                    # Find HOD of this department by role
+                                                    if 'role' in emp_data.columns:
+                                                        hod_candidates = emp_data[
+                                                            (emp_data['department'].str.lower() == dept.lower()) & 
+                                                            (emp_data['role'].str.upper().isin(['HOD', 'MANAGER', 'ADMIN', 'HR DIRECTOR']))
+                                                        ]
+                                                        if not hod_candidates.empty:
+                                                            hod_email = hod_candidates.iloc[0].get('email', '')
+                                                    
+                                                    # Fallback: first person in department
+                                                    if not hod_email:
+                                                        dept_match = emp_data[emp_data['department'].str.lower() == dept.lower()]
+                                                        if not dept_match.empty:
+                                                            hod_email = dept_match.iloc[0].get('email', '')
                                             except:
                                                 pass
                                             
+                                            # Build list of HOD emails
                                             if hod_email:
-                                                send_confirmation_email(hod_email, 
+                                                hod_emails.append(hod_email)
+                                            
+                                            # Add known HODs by department
+                                            known_hods = {
+                                                'Technology Group': ['eetuk@churchgate.com'],
+                                                'Human Resources': ['bsakote@churchgate.com'],
+                                                'Accounts & Finance': ['denisugoh@churchgate.com'] if False else [],
+                                                'Operations': ['ibukunadeogun@churchgate.com'] if False else []
+                                            }
+                                            
+                                            if dept in known_hods:
+                                                for extra_email in known_hods[dept]:
+                                                    if extra_email not in hod_emails:
+                                                        hod_emails.append(extra_email)
+                                            
+                                            # Remove duplicates and empty
+                                            hod_emails = list(set([e for e in hod_emails if e]))
+                                            
+                                            # Send email to ALL HODs
+                                            for h_email in hod_emails:
+                                                send_confirmation_email(h_email, 
                                                     f"📝 Team Lead Review Complete: {emp_name}", 
                                                     f"Dear HOD,\n\n{user_name} has completed the probation review for {emp_name}.\n\nScore: {total_perf}/100 ({perf_rating})\n\nRecommendation: {tl_recommendation}\n\nPlease validate and provide your recommendation.\n\nhttps://hris.churchgate.com")
                                             
@@ -13324,7 +13365,11 @@ def staff_confirmation():
                                                 f"📤 Submitted to HOD: {emp_name}", 
                                                 f"Dear {user_name},\n\nYour review for {emp_name} has been submitted to the HOD for validation.\n\nChurchgate Group HR")
                                             
-                                            st.success("✅ Submitted to HOD for validation!")
+                                            if hod_emails:
+                                                st.success(f"✅ Submitted to HOD for validation! Email sent to: {', '.join(hod_emails)}")
+                                            else:
+                                                st.warning("✅ Submitted but no HOD email found. Please notify HOD manually.")
+                                            
                                             st.rerun()
                                         except Exception as e:
                                             st.error(f"Save error: {str(e)}")
