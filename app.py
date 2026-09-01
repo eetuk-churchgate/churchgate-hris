@@ -7576,11 +7576,23 @@ def employee_management():
                     document.documentElement.style.backgroundColor = '#1E1E1E';
                     window.parent.document.querySelector('iframe').style.backgroundColor = '#1E1E1E';
                     </script>
+                    
+                    <div style="text-align:center;margin-top:20px;padding-bottom:20px;">
+                        <button onclick="window.print()" style="background:linear-gradient(135deg, #C9A84C 0%, #8B6914 100%);color:white;border:none;padding:12px 24px;border-radius:6px;cursor:pointer;font-weight:700;font-size:14px;letter-spacing:0.05em;font-family:'Inter',sans-serif;">
+                            📥 Download / Print Org Chart
+                        </button>
+                    </div>
+                    <script>
+                    window.onbeforeprint = function() {
+                        document.body.style.backgroundColor = '#1E1E1E';
+                        document.documentElement.style.backgroundColor = '#1E1E1E';
+                    };
+                    </script>
                     </body>
                     </html>
                     """
                     
-                    st.components.v1.html(org_html, height=600, scrolling=True)
+                    st.components.v1.html(org_html, height=650, scrolling=True)
 
                 
                 # ============ DEPARTMENT SANKEY ============
@@ -7851,11 +7863,23 @@ def employee_management():
                                 document.documentElement.style.backgroundColor = '#1E1E1E';
                                 window.parent.document.querySelector('iframe').style.backgroundColor = '#1E1E1E';
                                 </script>
+                                
+                                <div style="text-align:center;margin-top:20px;padding-bottom:20px;">
+                                    <button onclick="window.print()" style="background:linear-gradient(135deg, #C9A84C 0%, #8B6914 100%);color:white;border:none;padding:12px 24px;border-radius:6px;cursor:pointer;font-weight:700;font-size:14px;letter-spacing:0.05em;font-family:'Inter',sans-serif;">
+                                        📥 Download / Print Org Chart
+                                    </button>
+                                </div>
+                                <script>
+                                window.onbeforeprint = function() {
+                                    document.body.style.backgroundColor = '#1E1E1E';
+                                    document.documentElement.style.backgroundColor = '#1E1E1E';
+                                };
+                                </script>
                                 </body>
                                 </html>
                                 """
                                 
-                                st.components.v1.html(dept_org_html, height=600, scrolling=True)
+                                st.components.v1.html(dept_org_html, height=650, scrolling=True)
     
     # ============ TAB 7: DEMOGRAPHICS ============
     with tab7:
