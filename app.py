@@ -4080,12 +4080,12 @@ def employee_dashboard():
             st.session_state['navigate_to'] = "👤 My Profile"
             st.rerun()
     with qc4:
-        if st.button("🏖️ Request Leave", use_container_width=True):
-            st.session_state['navigate_to'] = "🔄 Requests Hub"
+        if st.button("✅ Staff Confirmation", use_container_width=True):
+            st.session_state['navigate_to'] = "✅ Staff Confirmation"
             st.rerun()
     with qc5:
-        if st.button("📚 Training", use_container_width=True):
-            st.session_state['navigate_to'] = "🎓 Training & Development"
+        if st.button("💼 Recruitment", use_container_width=True):
+            st.session_state['navigate_to'] = "💼 Recruitment Hub"
             st.rerun()
     
     # ============ MAIN CONTENT ============
