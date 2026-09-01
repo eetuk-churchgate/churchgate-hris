@@ -13659,20 +13659,18 @@ def staff_confirmation():
             st.subheader("🔍 COO Review & Confirm")
             
             if is_coo:
+                # Get ONLY employees with "Pending COO Approval" status
+                try:
+                    reviews_data = db._get("confirmation_reviews")
+                    pending_coo_ids = set([r.get('employee_id', '') for r in reviews_data if r.get('status') == 'Pending COO Approval']) if reviews_data else set()
+                except:
+                    pending_coo_ids = set()
+                
                 if not probation_employees.empty:
-                    filtered_review = probation_employees.copy()
+                    filtered_review = probation_employees[probation_employees['employee_id'].isin(pending_coo_ids)].copy()
                     
                     if not is_admin:
                         filtered_review = filtered_review[filtered_review['department'].str.lower().str.strip() == user_dept.lower().strip()]
-                    
-                    if not filtered_review.empty:
-                        now_date = datetime.now()
-                        due_review = []
-                        for _, emp_row in filtered_review.iterrows():
-                            emp_end = calculate_probation_end(emp_row.get('join_date'))
-                            if emp_end and emp_end <= now_date:
-                                due_review.append(emp_row)
-                        filtered_review = pd.DataFrame(due_review) if due_review else pd.DataFrame()
                 
                 if is_admin:
                     col1, col2, col3 = st.columns(3)
@@ -13782,35 +13780,46 @@ def staff_confirmation():
                                 st.markdown(f"**Reviewed by {hod_name}:** on {r.get('review_date','')[:10]}")
                                 
                                 st.markdown("---")
+                                st.markdown("##### 6. COO EXECUTIVE COMMENTS (Required)")
+                                coo_comment = st.text_area("Executive Comments *", 
+                                    placeholder="COO must enter executive comments for any action...",
+                                    key=f"coo_comment_{emp_id}")
+                                
+                                st.markdown("---")
                                 col1, col2, col3 = st.columns(3)
                                 with col1:
                                     if st.button(f"✅ Approve", key=f"coo_app_{emp_id}", use_container_width=True, type="primary"):
-                                        db._patch("confirmation_reviews", {
-                                            "status":"Approved by COO","coo_decision":"Approved",
-                                            "coo_name":user_name,"approved_date":now.strftime('%Y-%m-%d %H:%M')
-                                        }, {"id":r.get('id')})
-                                        db._patch("employees", {"status":"HR Processing", "confirmation_status":"Pending HR Processing"}, {"employee_id":emp_id})
-                                        
-                                        send_confirmation_email("bsakote@churchgate.com", 
-                                            f"✅ Confirmation Approved: {emp_name}", 
-                                            f"HR Team,\n\nCOO approved {emp_name}.\n\nPlease process confirmation letter.")
-                                        send_confirmation_email(emp.get('email',''), 
-                                            f"🎉 Confirmation Approved!", 
-                                            f"Dear {emp_name},\n\nCongratulations! Your employment has been confirmed.\n\nChurchgate Group HR")
-                                        st.success("✅ Confirmed!"); st.balloons(); st.rerun()
+                                        if not coo_comment or not coo_comment.strip():
+                                            st.error("❌ Executive Comments are REQUIRED before Approving!")
+                                        else:
+                                            db._patch("confirmation_reviews", {
+                                                "status":"Approved by COO","coo_decision":"Approved",
+                                                "coo_name":user_name,"coo_comments":coo_comment,
+                                                "approved_date":now.strftime('%Y-%m-%d %H:%M')
+                                            }, {"id":r.get('id')})
+                                            db._patch("employees", {"status":"HR Processing", "confirmation_status":"Pending HR Processing"}, {"employee_id":emp_id})
+                                            
+                                            send_confirmation_email("bsakote@churchgate.com", 
+                                                f"✅ Confirmation Approved: {emp_name}", 
+                                                f"HR Team,\n\nCOO approved {emp_name}.\n\nCOO Comments: {coo_comment}\n\nPlease process confirmation letter.")
+                                            send_confirmation_email(emp.get('email',''), 
+                                                f"🎉 Confirmation Approved!", 
+                                                f"Dear {emp_name},\n\nCongratulations! Your employment has been confirmed.\n\nCOO Comments: {coo_comment}\n\nChurchgate Group HR")
+                                            st.success("✅ Confirmed!"); st.balloons(); st.rerun()
                                 with col2:
                                     if st.button(f"🔄 Return for Review", key=f"coo_ret_{emp_id}", use_container_width=True):
-                                        db._patch("confirmation_reviews", {
-                                            "status":"Returned for Review",
-                                            "coo_decision":"Returned",
-                                            "coo_comments":"Returned by COO for re-review"
-                                        }, {"id":r.get('id')})
-                                        # Notify Team Lead
-                                        try:
-                                            reports_to = emp.get('reports_to', '')
-                                            if reports_to:
-                                                tl_data = db._get("employees", {"employee_id": emp_id})
-                                                if tl_data and len(tl_data) > 0:
+                                        if not coo_comment or not coo_comment.strip():
+                                            st.error("❌ Executive Comments are REQUIRED before Returning for Review!")
+                                        else:
+                                            db._patch("confirmation_reviews", {
+                                                "status":"Returned for Review",
+                                                "coo_decision":"Returned",
+                                                "coo_comments":coo_comment
+                                            }, {"id":r.get('id')})
+                                            # Notify Team Lead
+                                            try:
+                                                reports_to = emp.get('reports_to', '')
+                                                if reports_to:
                                                     tl_name_parts = reports_to.split()
                                                     tl_search = db._get("employees", {"first_name": tl_name_parts[0]})
                                                     if tl_search and len(tl_search) > 0:
@@ -13818,16 +13827,21 @@ def staff_confirmation():
                                                         if tl_email:
                                                             send_confirmation_email(tl_email, 
                                                                 f"🔄 Confirmation Returned for Review: {emp_name}", 
-                                                                f"Dear {reports_to},\n\nCOO has returned {emp_name}'s confirmation for re-review.\n\nPlease review and resubmit through the workflow.\n\nChurchgate Group HR")
-                                        except:
-                                            pass
-                                        st.warning("🔄 Returned for Review - Team Lead notified"); st.rerun()
+                                                                f"Dear {reports_to},\n\nCOO has returned {emp_name}'s confirmation for re-review.\n\nCOO Comments: {coo_comment}\n\nPlease review and resubmit through the workflow.\n\nChurchgate Group HR")
+                                            except:
+                                                pass
+                                            st.warning("🔄 Returned for Review - Team Lead notified"); st.rerun()
                                 with col3:
                                     if st.button(f"❌ Reject", key=f"coo_rej_{emp_id}", use_container_width=True):
-                                        db._patch("confirmation_reviews", {
-                                            "status":"Rejected by COO","coo_decision":"Rejected"
-                                        }, {"id":r.get('id')})
-                                        st.error("❌ Rejected"); st.rerun()
+                                        if not coo_comment or not coo_comment.strip():
+                                            st.error("❌ Executive Comments are REQUIRED before Rejecting!")
+                                        else:
+                                            db._patch("confirmation_reviews", {
+                                                "status":"Rejected by COO",
+                                                "coo_decision":"Rejected",
+                                                "coo_comments":coo_comment
+                                            }, {"id":r.get('id')})
+                                            st.error("❌ Rejected"); st.rerun()
                     except:
                         pass
                 else:
@@ -13976,11 +13990,10 @@ def staff_confirmation():
                 st.info("Data loading...")
     
     # ============================================================
-    # TAB 5: DASHBOARD (was Tab 4) - UNCHANGED CONTENT
+    # TAB 5: DASHBOARD - CLEAN (NO DIAGNOSTICS)
     # ============================================================
     with tab5:
         st.subheader("📊 Confirmation & Probation Analytics")
-        # ... (SAME AS PREVIOUS TAB 4 CONTENT)
         try:
             reviews = db._get("confirmation_reviews")
             all_employees = db.get_all_employees()
@@ -13989,7 +14002,7 @@ def staff_confirmation():
                 total_employees = len(all_employees) if not all_employees.empty else 0
                 total_probation = len(all_employees[all_employees['status'] == 'Probation']) if not all_employees.empty else 0
                 total_confirmed = len([r for r in reviews if r.get('status') in ['Approved by COO', 'Letter Sent']]) if reviews else 0
-                total_pending = len([r for r in reviews if r.get('status') in ['Pending COO Approval', 'Pending', 'Pending HOD Validation']]) if reviews else 0
+                total_pending = len([r for r in reviews if r.get('status') == 'Pending COO Approval']) if reviews else 0
                 total_extended = len([r for r in reviews if 'Extension' in str(r.get('status', ''))]) if reviews else 0
                 confirmation_rate = (total_confirmed / max(total_probation + total_confirmed, 1)) * 100
                 
@@ -14034,11 +14047,80 @@ def staff_confirmation():
                     fig1.update_traces(textposition='inside', textinfo='percent+label', textfont_size=10, textfont_color='#FFFFFF')
                     st.plotly_chart(fig1, use_container_width=True)
                 
+                st.markdown("---")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    dept_confirm_data = {}
+                    if reviews:
+                        for r in reviews:
+                            dept = r.get('department', 'Unknown')
+                            status = r.get('status', 'Pending')
+                            if dept not in dept_confirm_data:
+                                dept_confirm_data[dept] = {'Confirmed': 0, 'Pending': 0, 'Extended': 0}
+                            if status in ['Approved by COO', 'Letter Sent']: dept_confirm_data[dept]['Confirmed'] += 1
+                            elif 'Extension' in str(status): dept_confirm_data[dept]['Extended'] += 1
+                            elif status == 'Pending COO Approval': dept_confirm_data[dept]['Pending'] += 1
+                    
+                    if dept_confirm_data:
+                        dept_df = pd.DataFrame([{'Department': d, **s} for d, s in dept_confirm_data.items()])
+                        fig2 = px.bar(dept_df, x='Department', y=['Confirmed', 'Pending', 'Extended'],
+                                    barmode='stack', color_discrete_sequence=['#38a169', '#d69e2e', '#3182ce'])
+                        fig2.update_layout(
+                            height=350, margin=dict(t=40, b=80, l=20, r=20), title="By Department",
+                            title_font=dict(color='#C9A84C', family='Georgia, serif'),
+                            paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            legend=dict(font=dict(color='#F0E6D3', size=9), orientation="h", yanchor="bottom", y=1.02),
+                            xaxis_tickangle=-45, xaxis_tickfont=dict(size=9, color='#F0E6D3')
+                        )
+                        st.plotly_chart(fig2, use_container_width=True)
+                
+                with col2:
+                    region_data = {}
+                    if reviews:
+                        for r in reviews:
+                            region = r.get('region', 'Unknown')
+                            if region not in region_data: region_data[region] = {'Confirmed': 0, 'Pending': 0}
+                            if r.get('status') in ['Approved by COO', 'Letter Sent']: region_data[region]['Confirmed'] += 1
+                            elif r.get('status') == 'Pending COO Approval': region_data[region]['Pending'] += 1
+                    
+                    if region_data:
+                        region_df = pd.DataFrame([{'Region': r, **s} for r, s in region_data.items()])
+                        fig3 = px.bar(region_df, x='Region', y=['Confirmed', 'Pending'], barmode='group',
+                                    color_discrete_sequence=['#38a169', '#d69e2e'])
+                        fig3.update_layout(
+                            height=350, margin=dict(t=40, b=40, l=20, r=20), title="By Region",
+                            title_font=dict(color='#C9A84C', family='Georgia, serif'),
+                            paper_bgcolor='#1E1E1E', plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            legend=dict(font=dict(color='#F0E6D3', size=9), orientation="h", yanchor="bottom", y=1.02)
+                        )
+                        st.plotly_chart(fig3, use_container_width=True)
+                
+                st.markdown("---")
+                
+                # Recent Activity
+                st.markdown("#### 📅 Recent Activity")
+                if reviews:
+                    recent = sorted(reviews, key=lambda x: x.get('review_date', ''), reverse=True)[:5]
+                    for r in recent:
+                        status = r.get('status', 'Pending')
+                        icon = '✅' if 'Approved' in str(status) else '⏳' if 'Pending' in str(status) else '🔄' if 'Extension' in str(status) else '❌'
+                        color = '#38a169' if 'Approved' in str(status) else '#d69e2e' if 'Pending' in str(status) else '#3182ce'
+                        st.markdown(f"""<div style="padding:0.3rem 0.6rem;margin:0.15rem 0;border-left:3px solid {color};background:#1E1E1E;border-radius:3px;font-size:0.8rem;color:#f0e6d3;"><strong style="color:#C9A84C;">{icon} {r.get('employee_name','')}</strong> — {r.get('position','')} | {status} | {r.get('review_date','')[:10]}</div>""", unsafe_allow_html=True)
+                
                 # Export
                 st.markdown("---")
-                if reviews:
-                    full_data = pd.DataFrame([{'Employee': r.get('employee_name'), 'Position': r.get('position'), 'Department': r.get('department'), 'Status': r.get('status'), 'Score': r.get('total_performance_score'), 'Rating': r.get('performance_rating'), 'TL': r.get('supervisor_name'), 'HOD': r.get('hod_name')} for r in reviews])
-                    st.download_button("📥 Export Full Data (CSV)", full_data.to_csv(index=False), "confirmation_data.csv", "text/csv", use_container_width=True)
+                col1, col2 = st.columns(2)
+                with col1:
+                    if reviews:
+                        full_data = pd.DataFrame([{'Employee': r.get('employee_name'), 'Position': r.get('position'), 'Department': r.get('department'), 'Status': r.get('status'), 'Score': r.get('total_performance_score'), 'Rating': r.get('performance_rating'), 'Date': r.get('review_date','')[:10]} for r in reviews])
+                        st.download_button("📥 Export CSV", full_data.to_csv(index=False), "confirmation_data.csv", "text/csv", use_container_width=True)
+                with col2:
+                    summary = pd.DataFrame([{'Metric': 'Total', 'Value': total_employees}, {'Metric': 'Probation', 'Value': total_probation}, {'Metric': 'Confirmed', 'Value': total_confirmed}, {'Metric': 'Rate', 'Value': f"{confirmation_rate:.0f}%"}])
+                    st.download_button("📥 Summary CSV", summary.to_csv(index=False), "summary.csv", "text/csv", use_container_width=True)
             else:
                 st.info("No confirmation data yet.")
         except:
