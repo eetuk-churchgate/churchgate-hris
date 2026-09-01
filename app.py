@@ -13079,7 +13079,6 @@ def staff_confirmation():
                     reports_to = str(emp.get('reports_to', '')).strip()
                     emp_name = f"{emp['first_name']} {emp['last_name']}"
                     
-                    # Show if: Admin sees all, Team Lead sees their reports, HOD sees dept
                     if is_admin:
                         team_employees.append(emp)
                     elif is_hod and emp.get('department', '').lower().strip() == user_dept.lower().strip():
@@ -13090,7 +13089,6 @@ def staff_confirmation():
                 if team_employees:
                     filtered_tl = pd.DataFrame(team_employees)
                     
-                    # Region/Subsidiary/Department filters
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         tl_region = st.selectbox("🌍 Region", ["All", "Abuja", "Lagos", "Aba"], key="tl_region")
@@ -13106,7 +13104,6 @@ def staff_confirmation():
                         tl_depts = ['All'] + sorted(list(filtered_tl['department'].dropna().unique())) if not filtered_tl.empty else ['All']
                         tl_dept = st.selectbox("🏭 Department", tl_depts, key="tl_dept")
                     
-                    # Apply filters
                     if tl_region != 'All':
                         filtered_tl = filtered_tl[filtered_tl['region'] == tl_region]
                     if tl_sub != 'All':
@@ -13114,7 +13111,6 @@ def staff_confirmation():
                     if tl_dept != 'All':
                         filtered_tl = filtered_tl[filtered_tl['department'] == tl_dept]
                     
-                    # Only show due/overdue
                     now_date = datetime.now()
                     due_review = []
                     for _, emp_row in filtered_tl.iterrows():
@@ -13144,28 +13140,29 @@ def staff_confirmation():
                             st.markdown(f"**Probation Period:** {join_date} to {end_date.strftime('%B %d, %Y') if end_date else 'N/A'}")
                             st.markdown(f"**Region:** {emp.get('region', 'N/A')} | **Subsidiary:** {emp.get('subsidiary', 'N/A')}")
                             
-                            # Check existing review status
+                            # Check existing review status WITH ACTUAL NAMES
                             try:
                                 existing_review = db._get("confirmation_reviews")
                                 emp_review = [r for r in existing_review if r.get('employee_id') == emp_id]
                                 if emp_review:
                                     latest = emp_review[0]
                                     review_status = latest.get('status', '')
+                                    tl_name = latest.get('supervisor_name', 'Team Lead')
+                                    hod_name = latest.get('hod_name', 'HOD')
                                     
                                     if review_status == 'Pending HOD Validation':
                                         if is_hod:
-                                            st.info(f"✅ Team Lead has assessed and submitted for validation")
+                                            st.info(f"✅ {tl_name} has assessed and submitted for validation")
                                         else:
                                             st.success(f"✅ Already assessed and submitted for validation")
-                                        # Show summary only
-                                        st.markdown(f"**TL:** {latest.get('supervisor_name','')} | **Score:** {latest.get('total_performance_score','')}/100 ({latest.get('performance_rating','')})")
-                                        st.markdown(f"**TL Comments:** {latest.get('supervisor_comments','')}")
+                                        st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100 ({latest.get('performance_rating','')})")
+                                        st.markdown(f"**{tl_name} Comments:** {latest.get('supervisor_comments','')}")
                                     
                                     elif review_status == 'Pending COO Approval':
                                         st.success(f"✅ Already assessed and submitted for confirmation")
-                                        st.markdown(f"**TL:** {latest.get('supervisor_name','')} | **HOD:** {latest.get('hod_name','')}")
-                                        st.markdown(f"**HOD Score:** {latest.get('hod_total_score','')}/100 ({latest.get('hod_rating','')})")
-                                        st.markdown(f"**HOD Decision:** {latest.get('hod_decision','')}")
+                                        st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100")
+                                        st.markdown(f"**{hod_name} Score:** {latest.get('hod_total_score','')}/100 ({latest.get('hod_rating','')})")
+                                        st.markdown(f"**{hod_name} Decision:** {latest.get('hod_decision','')}")
                                     
                                     elif review_status in ['Approved by COO', 'Letter Sent']:
                                         st.success(f"🎉 Confirmation complete!")
@@ -13173,12 +13170,11 @@ def staff_confirmation():
                                     elif 'Extension' in review_status:
                                         st.warning(f"🔄 Extension recommended: {review_status}")
                                     
-                                    # Skip form for already reviewed
                                     continue
                             except:
                                 pass
                             
-                            # TEAM LEAD FORM (Supervisor)
+                            # TEAM LEAD FORM
                             if is_team_lead:
                                 st.markdown("---")
                                 st.markdown("#### 👥 TEAM LEAD / SUPERVISOR ASSESSMENT")
@@ -13249,108 +13245,114 @@ def staff_confirmation():
                                 
                                 st.markdown("---")
                                 
-                                with st.form(key=f"tl_review_{emp_id}"):
-                                    st.markdown("##### 2. EMPLOYEE STRENGTHS / WEAKNESSES")
-                                    col1, col2 = st.columns(2)
-                                    with col1:
-                                        strengths = st.text_area("AREA OF STRENGTHS *", key=f"tl_strengths_{emp_id}", height=100, placeholder="Key strengths and achievements...")
-                                    with col2:
-                                        weaknesses = st.text_area("AREA OF WEAKNESSES *", key=f"tl_weaknesses_{emp_id}", height=100, placeholder="Areas needing improvement...")
-                                    
-                                    st.markdown("---")
-                                    st.markdown("##### 4. DISCIPLINARY STATUS")
-                                    col1, col2, col3 = st.columns(3)
-                                    with col1: disc_action = st.selectbox("Action", ["None","Caution","Warning","Final Warning","Suspension"], key=f"tl_disc_{emp_id}")
-                                    with col2: disc_reason = st.text_input("Reason", key=f"tl_discr_{emp_id}")
-                                    with col3: disc_remark = st.text_input("Remark", key=f"tl_disck_{emp_id}")
-                                    
-                                    st.markdown("---")
-                                    st.markdown("##### 5. SUPERVISOR COMMENTS & RECOMMENDATION")
-                                    supervisor_comments = st.text_area("Supervisor Comments *", key=f"tl_com_{emp_id}", height=80, placeholder="Your assessment and recommendation...")
-                                    
-                                    tl_recommendation = st.radio("Recommendation *", [
-                                        "✅ Recommend Confirmation",
-                                        "🔄 Recommend Extension (1 Month)",
-                                        "🔄 Recommend Extension (2 Months)",
-                                        "🔄 Recommend Extension (3 Months)",
-                                        "❌ Not Recommended"
-                                    ], key=f"tl_rec_{emp_id}")
-                                    
-                                    if st.form_submit_button("📤 Submit to HOD", use_container_width=True, type="primary"):
-                                        if not strengths:
-                                            st.error("❌ Strengths are required!")
-                                        elif not weaknesses:
-                                            st.error("❌ Weaknesses are required!")
-                                        elif not supervisor_comments:
-                                            st.error("❌ Supervisor comments are required!")
-                                        else:
+                                st.markdown("##### 2. EMPLOYEE STRENGTHS / WEAKNESSES")
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    strengths = st.text_area("AREA OF STRENGTHS *", key=f"tl_strengths_{emp_id}", height=100, placeholder="Key strengths and achievements...")
+                                with col2:
+                                    weaknesses = st.text_area("AREA OF WEAKNESSES *", key=f"tl_weaknesses_{emp_id}", height=100, placeholder="Areas needing improvement...")
+                                
+                                st.markdown("---")
+                                st.markdown("##### 4. DISCIPLINARY STATUS")
+                                col1, col2, col3 = st.columns(3)
+                                with col1: disc_action = st.selectbox("Action", ["None","Caution","Warning","Final Warning","Suspension"], key=f"tl_disc_{emp_id}")
+                                with col2: disc_reason = st.text_input("Reason", key=f"tl_discr_{emp_id}")
+                                with col3: disc_remark = st.text_input("Remark", key=f"tl_disck_{emp_id}")
+                                
+                                st.markdown("---")
+                                st.markdown("##### 5. SUPERVISOR COMMENTS & RECOMMENDATION")
+                                supervisor_comments = st.text_area("Supervisor Comments *", key=f"tl_com_{emp_id}", height=80, placeholder="Your assessment and recommendation...")
+                                
+                                tl_recommendation = st.selectbox("Recommendation *", [
+                                    "✅ Recommend Confirmation",
+                                    "🔄 Recommend Extension (1 Month)",
+                                    "🔄 Recommend Extension (2 Months)",
+                                    "🔄 Recommend Extension (3 Months)",
+                                    "❌ Not Recommended"
+                                ], key=f"tl_rec_{emp_id}")
+                                
+                                if st.button("📤 Submit to HOD", key=f"tl_submit_{emp_id}", use_container_width=True, type="primary"):
+                                    if not strengths:
+                                        st.error("❌ Strengths are required!")
+                                    elif not weaknesses:
+                                        st.error("❌ Weaknesses are required!")
+                                    elif not supervisor_comments:
+                                        st.error("❌ Supervisor comments are required!")
+                                    else:
+                                        try:
+                                            db._post("confirmation_reviews", {
+                                                "employee_id": emp_id,
+                                                "employee_name": emp_name,
+                                                "department": dept,
+                                                "position": position,
+                                                "region": new_region,
+                                                "subsidiary": new_subsidiary,
+                                                "join_date": str(join_date),
+                                                "probation_end": end_date.strftime('%Y-%m-%d') if end_date else '',
+                                                "supervisor_name": user_name,
+                                                "line_manager_name": reports_to,
+                                                "strengths": strengths,
+                                                "weaknesses": weaknesses,
+                                                "performance_scores": json.dumps(perf_scores),
+                                                "total_performance_score": total_perf,
+                                                "performance_rating": perf_rating,
+                                                "disciplinary_action": disc_action,
+                                                "disciplinary_reason": disc_reason,
+                                                "disciplinary_remark": disc_remark,
+                                                "supervisor_comments": supervisor_comments,
+                                                "tl_recommendation": tl_recommendation,
+                                                "status": "Pending HOD Validation",
+                                                "review_date": now.strftime('%Y-%m-%d %H:%M')
+                                            })
+                                            
+                                            hod_email = ''
                                             try:
-                                                db._post("confirmation_reviews", {
-                                                    "employee_id": emp_id,
-                                                    "employee_name": emp_name,
-                                                    "department": dept,
-                                                    "position": position,
-                                                    "region": new_region,
-                                                    "subsidiary": new_subsidiary,
-                                                    "join_date": str(join_date),
-                                                    "probation_end": end_date.strftime('%Y-%m-%d') if end_date else '',
-                                                    "supervisor_name": user_name,
-                                                    "line_manager_name": reports_to,
-                                                    "strengths": strengths,
-                                                    "weaknesses": weaknesses,
-                                                    "performance_scores": json.dumps(perf_scores),
-                                                    "total_performance_score": total_perf,
-                                                    "performance_rating": perf_rating,
-                                                    "disciplinary_action": disc_action,
-                                                    "disciplinary_reason": disc_reason,
-                                                    "disciplinary_remark": disc_remark,
-                                                    "supervisor_comments": supervisor_comments,
-                                                    "tl_recommendation": tl_recommendation,
-                                                    "status": "Pending HOD Validation",
-                                                    "review_date": now.strftime('%Y-%m-%d %H:%M')
-                                                })
-                                                
-                                                # Email to HOD
-                                                hod_email = find_hod_email_for_dept(dept) if 'find_hod_email_for_dept' in dir() else ''
-                                                if hod_email:
-                                                    send_confirmation_email(hod_email, 
-                                                        f"📝 Team Lead Review Complete: {emp_name}", 
-                                                        f"Dear HOD,\n\n{user_name} has completed the probation review for {emp_name}.\n\nScore: {total_perf}/100 ({perf_rating})\n\nPlease validate and provide your recommendation.\n\nhttps://hris.churchgate.com")
-                                                
-                                                send_confirmation_email(user_email, 
-                                                    f"📤 Submitted to HOD: {emp_name}", 
-                                                    f"Dear {user_name},\n\nYour review for {emp_name} has been submitted to the HOD for validation.\n\nChurchgate Group HR")
-                                                
-                                                st.success("✅ Submitted to HOD for validation!")
-                                                st.rerun()
-                                            except Exception as e:
-                                                st.error(f"Save error: {str(e)}")
+                                                emp_data = db.get_all_employees()
+                                                if not emp_data.empty:
+                                                    hod_match = emp_data[emp_data['department'] == dept]
+                                                    if not hod_match.empty:
+                                                        hod_email = hod_match.iloc[0].get('email', '')
+                                            except:
+                                                pass
+                                            
+                                            if hod_email:
+                                                send_confirmation_email(hod_email, 
+                                                    f"📝 Team Lead Review Complete: {emp_name}", 
+                                                    f"Dear HOD,\n\n{user_name} has completed the probation review for {emp_name}.\n\nScore: {total_perf}/100 ({perf_rating})\n\nRecommendation: {tl_recommendation}\n\nPlease validate and provide your recommendation.\n\nhttps://hris.churchgate.com")
+                                            
+                                            send_confirmation_email(user_email, 
+                                                f"📤 Submitted to HOD: {emp_name}", 
+                                                f"Dear {user_name},\n\nYour review for {emp_name} has been submitted to the HOD for validation.\n\nChurchgate Group HR")
+                                            
+                                            st.success("✅ Submitted to HOD for validation!")
+                                            st.rerun()
+                                        except Exception as e:
+                                            st.error(f"Save error: {str(e)}")
                             
-                            # HOD VALIDATION (after TL submits)
+                            # HOD VALIDATION (with ACTUAL NAMES)
                             if is_hod:
                                 try:
                                     reviews = db._get("confirmation_reviews")
                                     emp_review = [r for r in reviews if r.get('employee_id') == emp_id and r.get('status') == 'Pending HOD Validation']
                                     if emp_review:
                                         r = emp_review[0]
+                                        tl_name = r.get('supervisor_name', 'Team Lead')
+                                        
                                         st.markdown("---")
                                         st.markdown("#### 👔 HOD VALIDATION")
                                         
-                                        # Show TL review
-                                        st.markdown("##### Team Lead Review Summary")
+                                        st.markdown(f"##### {tl_name} Review Summary")
                                         col1, col2 = st.columns(2)
                                         with col1:
-                                            st.markdown(f"**TL/Supervisor:** {r.get('supervisor_name','')}")
-                                            st.markdown(f"**TL Score:** {r.get('total_performance_score','N/A')}/100 ({r.get('performance_rating','N/A')})")
+                                            st.markdown(f"**Supervisor:** {tl_name}")
+                                            st.markdown(f"**Score:** {r.get('total_performance_score','N/A')}/100 ({r.get('performance_rating','N/A')})")
                                             st.markdown(f"**💪 Strengths:** {r.get('strengths','')[:200]}")
                                         with col2:
-                                            st.markdown(f"**TL Recommendation:** {r.get('tl_recommendation','')}")
+                                            st.markdown(f"**Recommendation:** {r.get('tl_recommendation','')}")
                                             st.markdown(f"**📈 Weaknesses:** {r.get('weaknesses','')[:200]}")
-                                            st.markdown(f"**TL Comments:** {r.get('supervisor_comments','')}")
+                                            st.markdown(f"**Comments:** {r.get('supervisor_comments','')}")
                                         
                                         st.markdown("---")
-                                        
-                                        # HOD can edit scores
                                         st.markdown("##### HOD Score Adjustment (Optional)")
                                         try:
                                             existing_scores = json.loads(r.get('performance_scores', '{}'))
@@ -13385,51 +13387,50 @@ def staff_confirmation():
                                         
                                         st.markdown("---")
                                         
-                                        with st.form(key=f"hod_validation_{emp_id}"):
-                                            hod_decision = st.radio("HOD Decision *", [
-                                                "✅ Well Fitted / Confirm & Possible Increment",
-                                                "✅ Fitted / Confirm",
-                                                "🔄 Not Fitted / Extend Confirmation (1 Month)",
-                                                "🔄 Not Fitted / Extend Confirmation (2 Months)",
-                                                "🔄 Not Fitted / Extend Confirmation (3 Months)",
-                                                "❌ Not Recommended"
-                                            ], key=f"hod_val_dec_{emp_id}")
-                                            
-                                            hod_comments = st.text_area("HOD Comments *", key=f"hod_val_com_{emp_id}", height=80, placeholder="Your validation comments...")
-                                            
-                                            if st.form_submit_button("✅ Validate & Submit to COO", use_container_width=True, type="primary"):
-                                                if not hod_comments:
-                                                    st.error("❌ HOD comments required!")
+                                        hod_decision = st.selectbox("HOD Decision *", [
+                                            "✅ Well Fitted / Confirm & Possible Increment",
+                                            "✅ Fitted / Confirm",
+                                            "🔄 Not Fitted / Extend Confirmation (1 Month)",
+                                            "🔄 Not Fitted / Extend Confirmation (2 Months)",
+                                            "🔄 Not Fitted / Extend Confirmation (3 Months)",
+                                            "❌ Not Recommended"
+                                        ], key=f"hod_val_dec_{emp_id}")
+                                        
+                                        hod_comments = st.text_area("HOD Comments *", key=f"hod_val_com_{emp_id}", height=80, placeholder="Your validation comments...")
+                                        
+                                        if st.button("✅ Validate & Submit to COO", key=f"hod_val_submit_{emp_id}", use_container_width=True, type="primary"):
+                                            if not hod_comments:
+                                                st.error("❌ HOD comments required!")
+                                            else:
+                                                db._patch("confirmation_reviews", {
+                                                    "hod_name": user_name,
+                                                    "hod_scores": json.dumps(hod_scores),
+                                                    "hod_total_score": hod_total,
+                                                    "hod_rating": hod_rating,
+                                                    "hod_comments": hod_comments,
+                                                    "hod_decision": hod_decision,
+                                                    "status": "Pending COO Approval" if "Confirm" in hod_decision else "Extension Recommended"
+                                                }, {"id": r.get('id')})
+                                                
+                                                if "Confirm" in hod_decision:
+                                                    send_confirmation_email("jeromedas@churchgate.com", 
+                                                        f"✅ HOD Validated: {emp_name}", 
+                                                        f"Dear Jerome,\n\n{user_name} validated confirmation for {emp_name}.\n\nTL Score: {r.get('total_performance_score','')}/100\nHOD Score: {hod_total}/100 ({hod_rating})\n\nhttps://hris.churchgate.com")
+                                                    
+                                                    send_confirmation_email(user_email, 
+                                                        f"📤 Sent to COO: {emp_name}", 
+                                                        f"Your validation for {emp_name} has been sent to COO.")
+                                                    
+                                                    st.success("✅ Validated! Sent to COO.")
+                                                    st.rerun()
                                                 else:
-                                                    db._patch("confirmation_reviews", {
-                                                        "hod_name": user_name,
-                                                        "hod_scores": json.dumps(hod_scores),
-                                                        "hod_total_score": hod_total,
-                                                        "hod_rating": hod_rating,
-                                                        "hod_comments": hod_comments,
-                                                        "hod_decision": hod_decision,
-                                                        "status": "Pending COO Approval" if "Confirm" in hod_decision else "Extension Recommended"
-                                                    }, {"id": r.get('id')})
+                                                    hr_team = ["bsakote@churchgate.com", "ichukwunonye@churchgate.com"]
+                                                    for hr_recipient in hr_team:
+                                                        send_confirmation_email(hr_recipient, 
+                                                            f"🔄 Extension: {emp_name}", 
+                                                            f"HR Team,\n\n{user_name} recommended extension for {emp_name}.\n\nDecision: {hod_decision}")
                                                     
-                                                    if "Confirm" in hod_decision:
-                                                        send_confirmation_email("jeromedas@churchgate.com", 
-                                                            f"✅ HOD Validated: {emp_name}", 
-                                                            f"Dear Jerome,\n\n{user_name} validated confirmation for {emp_name}.\n\nTL Score: {r.get('total_performance_score','')}/100\nHOD Score: {hod_total}/100 ({hod_rating})\n\nhttps://hris.churchgate.com")
-                                                        
-                                                        send_confirmation_email(user_email, 
-                                                            f"📤 Sent to COO: {emp_name}", 
-                                                            f"Your validation for {emp_name} has been sent to COO.")
-                                                        
-                                                        st.success("✅ Validated! Sent to COO.")
-                                                    else:
-                                                        hr_team = ["bsakote@churchgate.com", "ichukwunonye@churchgate.com"]
-                                                        for hr_recipient in hr_team:
-                                                            send_confirmation_email(hr_recipient, 
-                                                                f"🔄 Extension: {emp_name}", 
-                                                                f"HR Team,\n\n{user_name} recommended extension for {emp_name}.")
-                                                        
-                                                        st.warning("🔄 Extension recommended.")
-                                                    
+                                                    st.warning("🔄 Extension recommended.")
                                                     st.rerun()
                                 except:
                                     pass
@@ -13439,7 +13440,7 @@ def staff_confirmation():
                 st.info("No employees currently on probation.")
     
     # ============================================================
-    # TAB 3: COO REVIEW & CONFIRM (was Tab 2)
+    # TAB 3: COO REVIEW & CONFIRM
     # ============================================================
     with tab3:
         st.subheader("🔍 COO Review & Confirm")
@@ -13500,6 +13501,9 @@ def staff_confirmation():
                         
                         if pending_reviews:
                             r = pending_reviews[0]
+                            tl_name = r.get('supervisor_name', 'Team Lead')
+                            hod_name = r.get('hod_name', 'HOD')
+                            
                             with st.expander(f"🏢 COO Final Approval: {emp_name} — {position} ({dept})", expanded=True):
                                 
                                 st.markdown("---")
@@ -13548,8 +13552,8 @@ def staff_confirmation():
                                 
                                 rating_color = '#38a169' if hod_rating == 'Outstanding' else '#3182ce' if hod_rating == 'Satisfactory' else '#d69e2e' if hod_rating == 'Average' else '#dd6b20'
                                 
-                                st.markdown(f"**TL TOTAL SCORE: {tl_score}/100 — {tl_rating}**")
-                                st.markdown(f"**HOD TOTAL SCORE: {hod_score}/100 — <span style='color:{rating_color};font-weight:700;'>{hod_rating}</span>**", unsafe_allow_html=True)
+                                st.markdown(f"**{tl_name} TOTAL SCORE: {tl_score}/100 — {tl_rating}**")
+                                st.markdown(f"**{hod_name} TOTAL SCORE: {hod_score}/100 — <span style='color:{rating_color};font-weight:700;'>{hod_rating}</span>**", unsafe_allow_html=True)
                                 
                                 st.markdown("---")
                                 st.markdown("##### 4. DISCIPLINARY STATUS")
@@ -13557,12 +13561,12 @@ def staff_confirmation():
                                 
                                 st.markdown("---")
                                 st.markdown("##### 5. RECOMMENDATIONS")
-                                st.markdown(f"**TL Recommendation:** {r.get('tl_recommendation','N/A')}")
-                                st.markdown(f"**TL Comments:** {r.get('supervisor_comments','N/A')}")
-                                st.markdown(f"**HOD Decision:** {r.get('hod_decision','N/A')}")
-                                st.markdown(f"**HOD Comments:** {r.get('hod_comments','N/A')}")
+                                st.markdown(f"**{tl_name} Recommendation:** {r.get('tl_recommendation','N/A')}")
+                                st.markdown(f"**{tl_name} Comments:** {r.get('supervisor_comments','N/A')}")
+                                st.markdown(f"**{hod_name} Decision:** {r.get('hod_decision','N/A')}")
+                                st.markdown(f"**{hod_name} Comments:** {r.get('hod_comments','N/A')}")
                                 st.markdown(f"**Immediate Supervisor:** {r.get('supervisor_name','')} | **Line Manager:** {r.get('line_manager_name','')}")
-                                st.markdown(f"**Reviewed by HOD:** {r.get('hod_name','')} on {r.get('review_date','')[:10]}")
+                                st.markdown(f"**Reviewed by {hod_name}:** on {r.get('review_date','')[:10]}")
                                 
                                 st.markdown("---")
                                 col1, col2, col3 = st.columns(3)
