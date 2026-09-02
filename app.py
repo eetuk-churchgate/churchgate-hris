@@ -5813,10 +5813,73 @@ def hr_announcement_tab(employees_df):
                             
                             for email, name in zip(recipient_emails, recipient_names):
                                 try:
-                                    # Add invisible tracking pixel to email body
+                                    # Build GOLD PREMIUM HTML email - works for AI and manual
+                                    # Convert body line breaks to paragraphs if it's plain text
+                                    # If AI generates markdown-style, convert to paragraphs
+                                    formatted_body = body
+                                    
+                                    # If body contains \n\n, wrap each paragraph in <p> tags
+                                    if '\n\n' in formatted_body:
+                                        paragraphs = formatted_body.split('\n\n')
+                                        formatted_body = ''.join([f'<p style="margin-bottom: 15px; color: #F0E6D3;">{p.strip()}</p>' for p in paragraphs if p.strip()])
+                                    else:
+                                        # Single line or no double breaks - use pre-wrap to preserve
+                                        formatted_body = f'<div style="color: #F0E6D3; white-space: pre-wrap;">{formatted_body}</div>'
+                                    
+                                    html_body = f"""
+                                    <!DOCTYPE html>
+                                    <html>
+                                    <body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #1a1a1a; padding: 20px;">
+                                        
+                                        <!-- HEADER -->
+                                        <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #B8960C 150%); padding: 25px 20px; text-align: center; border-radius: 12px 12px 0 0; border: 2px solid #B8960C; border-bottom: none;">
+                                            <h1 style="color: #C9A84C; margin: 0; font-family: 'Georgia', serif; font-size: 22px; letter-spacing: 0.05em;">Churchgate Group</h1>
+                                            <p style="color: #F0E6D3; margin: 8px 0 0 0; font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase;">📢 {selected_type}</p>
+                                        </div>
+                                        
+                                        <!-- MAIN CONTENT -->
+                                        <div style="background: #1E1E1E; padding: 30px 25px; border: 2px solid #B8960C; border-top: none; border-bottom: none;">
+                                            
+                                            <!-- SUBJECT -->
+                                            <div style="text-align: center; margin-bottom: 20px;">
+                                                <span style="background: linear-gradient(135deg, #C9A84C, #8B6914); color: white; padding: 10px 20px; border-radius: 6px; font-weight: 700; font-size: 14px; letter-spacing: 0.05em; display: inline-block;">
+                                                    {subject}
+                                                </span>
+                                            </div>
+                                            
+                                            <!-- GOLD DIVIDER -->
+                                            <div style="border-top: 2px solid #B8960C; margin: 20px 0;"></div>
+                                            
+                                            <!-- MESSAGE BODY - WELL PARAGRAPHED -->
+                                            <div style="font-size: 14px; line-height: 1.8; letter-spacing: 0.02em;">
+                                                {formatted_body}
+                                            </div>
+                                            
+                                            <!-- GOLD DIVIDER -->
+                                            <div style="border-top: 2px solid #B8960C; margin: 20px 0;"></div>
+                                            
+                                            <!-- SENDER SIGNATURE -->
+                                            <div style="background: #2D2D2D; padding: 15px; border-radius: 8px; border-left: 3px solid #C9A84C; margin-top: 15px;">
+                                                <p style="color: #C9A84C; font-weight: 700; margin: 0; font-size: 14px;">{st.session_state.user['name']}</p>
+                                                <p style="color: #F0E6D3; margin: 5px 0 0 0; font-size: 12px;">{st.session_state.user.get('department', 'Human Resources')}</p>
+                                                <p style="color: #9a8a78; margin: 3px 0 0 0; font-size: 11px;">Churchgate Group</p>
+                                                <p style="color: #9a8a78; margin: 3px 0 0 0; font-size: 11px;">Email: {st.session_state.user.get('email', 'hr@churchgate.com')}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- FOOTER -->
+                                        <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 15px; text-align: center; border-radius: 0 0 12px 12px; border: 2px solid #B8960C; border-top: none;">
+                                            <p style="color: #9a8a78; margin: 0; font-size: 10px;">Churchgate Group HRIS | hris.churchgate.com</p>
+                                            <p style="color: #9a8a78; margin: 5px 0 0 0; font-size: 10px;">© {datetime.now().year} Churchgate Group. All rights reserved.</p>
+                                        </div>
+                                    </body>
+                                    </html>
+                                    """
+                                    
+                                    # Add invisible tracking pixel
                                     tracking_pixel = f'<img src="{supabase_url}/rest/v1/announcement_tracking?recipient_email=eq.{email}&select=id" width="1" height="1" style="display:none;opacity:0;visibility:hidden;" />'
                                     
-                                    email_body_with_tracking = body + tracking_pixel
+                                    email_body_with_tracking = html_body + tracking_pixel
                                     
                                     es.send_email(email, subject, email_body_with_tracking)
                                     sent_count += 1
