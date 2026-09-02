@@ -30,6 +30,74 @@ import calendar
 sys.path.append(str(Path(__file__).parent))
 
 # ============================================================
+# AUTO CELEBRATION SCHEDULER - Runs daily at 7:30 AM WAT
+# ============================================================
+import schedule
+import threading
+import time as time_module
+
+def auto_send_celebrations_scheduled():
+    """Check and send celebrations daily at 7:30 AM Nigerian time"""
+    print(f"[AUTO] Checking celebrations at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}...")
+    
+    try:
+        emp_df = db.get_all_employees()
+        if emp_df.empty:
+            print("[AUTO] No employees found")
+            return
+        
+        today = datetime.now()
+        birthdays_today = []
+        anniversaries_today = []
+        
+        for _, emp in emp_df.iterrows():
+            # Check birthdays
+            dob = emp.get('date_of_birth')
+            if dob and str(dob) != 'None' and str(dob) != 'nan':
+                try:
+                    dob_date = pd.to_datetime(dob)
+                    if dob_date.month == today.month and dob_date.day == today.day:
+                        birthdays_today.append(f"{emp['first_name']} {emp['last_name']}")
+                except:
+                    pass
+            
+            # Check anniversaries
+            join_date = emp.get('join_date')
+            if join_date and str(join_date) != 'None' and str(join_date) != 'nan':
+                try:
+                    jd = pd.to_datetime(join_date)
+                    years = today.year - jd.year
+                    if jd.month == today.month and jd.day == today.day and years > 0:
+                        anniversaries_today.append(f"{emp['first_name']} {emp['last_name']}")
+                except:
+                    pass
+        
+        if birthdays_today or anniversaries_today:
+            print(f"[AUTO] Celebrations found! Birthdays: {len(birthdays_today)}, Anniversaries: {len(anniversaries_today)}")
+            # Call your existing function
+            bdays, annivs, msg = send_celebration_emails()
+            print(f"[AUTO] Celebration emails sent: {msg}")
+        else:
+            print("[AUTO] No celebrations today")
+    
+    except Exception as e:
+        print(f"[AUTO] Error: {str(e)}")
+
+def run_scheduler():
+    """Run scheduler in background thread"""
+    # 06:30 UTC = 07:30 AM Nigerian Time (WAT)
+    schedule.every().day.at("06:30").do(auto_send_celebrations_scheduled)
+    print("[SCHEDULER] Started - Will send celebrations daily at 06:30 UTC (07:30 WAT)")
+    
+    while True:
+        schedule.run_pending()
+        time_module.sleep(60)
+
+# Start scheduler in background thread
+scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+scheduler_thread.start()
+
+# ============================================================
 # GLOBAL PLOTLY DARK THEME - AUTO-APPLIES TO ALL CHARTS
 # ============================================================
 pio.templates["wtc_dark"] =pio.templates["plotly_dark"]
@@ -25864,7 +25932,7 @@ def wellness_perks():
 
 
 def send_celebration_emails():
-    """Send birthday and work anniversary celebration emails to all employees"""
+    """Send birthday and work anniversary celebration emails to all employees - GRAND EDITION"""
     today = datetime.now()
     today_str = today.strftime('%Y-%m-%d')
     
@@ -25886,10 +25954,13 @@ def send_celebration_emails():
                 try:
                     dob_date = pd.to_datetime(dob)
                     if dob_date.month == today.month and dob_date.day == today.day:
+                        # Calculate age
+                        age = today.year - dob_date.year
                         birthdays_today.append({
                             'name': f"{emp['first_name']} {emp['last_name']}",
                             'department': emp.get('department', ''),
-                            'position': emp.get('position', '')
+                            'position': emp.get('position', ''),
+                            'age': age
                         })
                 except:
                     pass
@@ -25905,7 +25976,8 @@ def send_celebration_emails():
                             anniversaries_today.append({
                                 'name': f"{emp['first_name']} {emp['last_name']}",
                                 'department': emp.get('department', ''),
-                                'years': years
+                                'years': years,
+                                'position': emp.get('position', '')
                             })
                 except:
                     pass
@@ -25913,44 +25985,119 @@ def send_celebration_emails():
         if not birthdays_today and not anniversaries_today:
             return 0, 0, "No celebrations today"
         
-        # Build email content
+        # Build email subject - FUN AND EXCITING
         subject_parts = []
         if birthdays_today:
             subject_parts.append(f"🎂 {len(birthdays_today)} Birthday{'s' if len(birthdays_today) > 1 else ''}")
         if anniversaries_today:
             subject_parts.append(f"⭐ {len(anniversaries_today)} Work Anniversary{'s' if len(anniversaries_today) > 1 else ''}")
         
-        subject = " | ".join(subject_parts) + " Today! 🎉"
+        subject = "🎉 " + " | ".join(subject_parts) + " Today! 🥳 Let's Celebrate!"
         
-        # Build HTML email body
+        # Get celebration emoji based on count
+        celebration_emoji = "🥳" if (len(birthdays_today) + len(anniversaries_today)) > 1 else "🎊"
+        
+        # Build GRAND HTML email body
         body = f"""
+        <!DOCTYPE html>
         <html>
-        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: #CC0000; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                <h1 style="color: white; margin: 0;">Churchgate Group</h1>
-                <p style="color: #ffcccc; margin: 5px 0 0 0;">Celebrating Our People</p>
+        <head>
+        <style>
+            @keyframes bounce {{
+                0%, 100% {{ transform: translateY(0); }}
+                50% {{ transform: translateY(-10px); }}
+            }}
+            @keyframes pop {{
+                0% {{ transform: scale(0); opacity: 0; }}
+                70% {{ transform: scale(1.1); }}
+                100% {{ transform: scale(1); opacity: 1; }}
+            }}
+            @keyframes confetti-fall {{
+                0% {{ transform: translateY(-100%); }}
+                100% {{ transform: translateY(100vh); }}
+            }}
+        </style>
+        </head>
+        <body style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #1a1a1a;">
+            
+            <!-- HEADER - GOLD PREMIUM -->
+            <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #B8960C 150%); padding: 30px 20px; text-align: center; border-radius: 12px 12px 0 0; border: 2px solid #B8960C; border-bottom: none;">
+                <div style="font-size: 50px; animation: bounce 2s infinite;">{celebration_emoji}</div>
+                <h1 style="color: #C9A84C; margin: 10px 0 0 0; font-family: 'Georgia', serif; font-size: 28px; letter-spacing: 0.05em;">Churchgate Group</h1>
+                <p style="color: #F0E6D3; margin: 8px 0 0 0; font-size: 14px; letter-spacing: 0.15em; text-transform: uppercase;">🎉 Celebrating Our Amazing People 🎉</p>
             </div>
-            <div style="background: white; padding: 25px; border: 1px solid #e0e0e0; border-top: none;">
-                <h2 style="color: #1a1a1a;">🎉 Today's Celebrations — {today.strftime('%B %d, %Y')}</h2>
+            
+            <!-- MAIN CONTENT -->
+            <div style="background: #1E1E1E; padding: 30px 25px; border: 2px solid #B8960C; border-top: none; border-bottom: none;">
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <span style="background: linear-gradient(135deg, #C9A84C, #8B6914); color: white; padding: 12px 24px; border-radius: 30px; font-weight: 800; font-size: 16px; letter-spacing: 0.08em; display: inline-block; animation: pop 0.8s ease-out;">
+                        {today.strftime('%A, %B %d, %Y')}
+                    </span>
+                </div>
         """
         
+        # BIRTHDAY SECTION
         if birthdays_today:
-            body += '<h3 style="color: #CC0000;">🎂 Happy Birthday!</h3><p>Join us in wishing a very happy birthday to:</p>'
+            body += f"""
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 40px;">🎂🎈🎁</div>
+                    <h2 style="color: #FF6B6B; margin: 10px 0; font-size: 22px; font-family: 'Georgia', serif;">IT'S BIRTHDAY TIME!</h2>
+                    <p style="color: #F0E6D3; margin: 5px 0 15px 0;">Join us in celebrating our wonderful colleague{'s' if len(birthdays_today) > 1 else ''}:</p>
+                </div>
+            """
             for b in birthdays_today:
-                body += f'<div style="background: #fff5f5; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #CC0000;"><strong>{b["name"]}</strong><br><small>{b["position"]} — {b["department"]}</small></div>'
+                body += f"""
+                <div style="background: linear-gradient(135deg, #2D1E1E, #3D2D2D); padding: 20px; margin: 10px 0; border-radius: 12px; border-left: 5px solid #FF6B6B; border-right: 5px solid #FF6B6B; text-align: center; animation: pop 0.6s ease-out;">
+                    <div style="font-size: 30px;">🎂</div>
+                    <div style="color: #FFD700; font-size: 20px; font-weight: 800; margin: 8px 0;">{b["name"]}</div>
+                    <div style="color: #F0E6D3; font-size: 14px;">{b["position"]} — {b["department"]}</div>
+                    <div style="color: #C9A84C; font-size: 13px; margin-top: 5px;">Turning {b["age"]} today! 🎈</div>
+                </div>
+                """
         
+        # ANNIVERSARY SECTION
         if anniversaries_today:
-            body += '<h3 style="color: #d69e2e;">⭐ Work Anniversary!</h3><p>Celebrating dedication and loyalty:</p>'
+            body += f"""
+                <div style="text-align: center; margin: 25px 0 20px 0;">
+                    <div style="font-size: 40px;">🏆⭐🌟</div>
+                    <h2 style="color: #C9A84C; margin: 10px 0; font-size: 22px; font-family: 'Georgia', serif;">WORK ANNIVERSARY MILESTONE!</h2>
+                    <p style="color: #F0E6D3; margin: 5px 0 15px 0;">Celebrating dedication, loyalty, and excellence:</p>
+                </div>
+            """
             for a in anniversaries_today:
-                body += f'<div style="background: #fffbf0; padding: 12px; margin: 8px 0; border-radius: 6px; border-left: 4px solid #d69e2e;"><strong>{a["name"]}</strong> — {a["years"]} year{"s" if a["years"] > 1 else ""} at Churchgate<br><small>{a["department"]}</small></div>'
+                # Choose medal based on years
+                medal = "🏆" if a["years"] >= 10 else "🥇" if a["years"] >= 5 else "⭐"
+                body += f"""
+                <div style="background: linear-gradient(135deg, #2D2D1E, #3D3D2D); padding: 20px; margin: 10px 0; border-radius: 12px; border-left: 5px solid #C9A84C; border-right: 5px solid #C9A84C; text-align: center; animation: pop 0.6s ease-out;">
+                    <div style="font-size: 30px;">{medal}</div>
+                    <div style="color: #C9A84C; font-size: 20px; font-weight: 800; margin: 8px 0;">{a["name"]}</div>
+                    <div style="color: #F0E6D3; font-size: 14px;">{a["department"]}</div>
+                    <div style="color: #FFD700; font-size: 15px; margin-top: 5px; font-weight: 700;">{a["years"]} Amazing Year{'s' if a["years"] > 1 else ''} at Churchgate! 🎊</div>
+                </div>
+                """
         
+        # FUN MESSAGE
         body += f"""
-                <div style="background: #f8f8f8; padding: 15px; margin-top: 20px; border-radius: 6px; text-align: center;">
-                    <p style="color: #666; margin: 0;">💡 <strong>Take a moment today</strong> to reach out and celebrate your colleague! A simple message, a call, or a coffee together goes a long way.</p>
+                <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 20px; margin-top: 25px; border-radius: 12px; text-align: center; border: 2px dashed #B8960C;">
+                    <div style="font-size: 25px;">💬</div>
+                    <p style="color: #C9A84C; font-weight: 700; margin: 8px 0 0 0;">A little love goes a long way!</p>
+                    <p style="color: #F0E6D3; margin: 8px 0 0 0; line-height: 1.6;">
+                        Take a moment today to reach out and celebrate your colleague! 🎉<br>
+                        A simple message, a call, a coffee together, or a team shoutout makes all the difference. 💛
+                    </p>
+                </div>
+                
+                <!-- CONFETTI EMOJIS -->
+                <div style="text-align: center; margin-top: 20px; font-size: 14px; letter-spacing: 10px;">
+                    🎊 🎉 🥳 🎈 🎂 ⭐ 🎁 💛 🏆 🌟 🎊
                 </div>
             </div>
-            <div style="background: #1a1a1a; padding: 15px; text-align: center; border-radius: 0 0 8px 8px;">
-                <p style="color: #888; margin: 0; font-size: 12px;">Churchgate Group HRIS | hr@churchgate.com</p>
+            
+            <!-- FOOTER -->
+            <div style="background: linear-gradient(135deg, #1a1a1a, #2d2d2d); padding: 20px; text-align: center; border-radius: 0 0 12px 12px; border: 2px solid #B8960C; border-top: none;">
+                <p style="color: #C9A84C; margin: 0; font-size: 13px; font-weight: 600;">Churchgate Group HRIS</p>
+                <p style="color: #9a8a78; margin: 5px 0 0 0; font-size: 11px;">hr@churchgate.com</p>
+                <p style="color: #9a8a78; margin: 10px 0 0 0; font-size: 10px;">© {today.year} Churchgate Group. All rights reserved.</p>
             </div>
         </body>
         </html>
