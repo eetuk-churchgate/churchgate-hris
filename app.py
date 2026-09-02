@@ -18052,14 +18052,14 @@ APPLY NOW: {public_url}
                         'Accounts & Finance': 'jeff@churchgate.com',
                         'Facility Management': 'deffiong@churchgate.com',
                         'Human Resources': 'bsakote@churchgate.com',
-                        'Legal': 'daiyedun@churchgate.com',
+                        'Legal': 'atella@churchgate.com',
                         'Operations': 'adeogun@churchgate.com',
-                        'Procurement': 'abora@churchgate.com',
+                        'Procurement': 'bora@churchgate.com',
                         'Sales & Marketing': 'akarim@churchgate.com',
                         'Security': 'usabdullahi@churchgate.com',
                         'Technology Group': 'eetuk@churchgate.com',
                         'Engineering & Project Development': 'purwar@churchgate.com',
-                        'Central Stores': 'abora@churchgate.com',
+                        'Central Stores': 'bora@churchgate.com',
                         'Warehouse Management': 'kperavali@churchgate.com',
                         'Project Development': 'deffiong@churchgate.com',
                         'Trade Services': 'akarim@churchgate.com',
@@ -26047,6 +26047,21 @@ def send_celebration_emails():
     today = datetime.now()
     today_str = today.strftime('%Y-%m-%d')
     
+    # Creative birthday messages (NO AGE DISPLAY)
+    import random
+    birthday_messages = [
+        "Leveling up today! 🎮",
+        "Another year of greatness! ✨",
+        "A year wiser, a year better! 🌟",
+        "It's YOUR special day! 🎈",
+        "One more candle, one more reason to celebrate! 🎂",
+        "Making the world brighter today! 💛",
+        "Another trip around the sun! ☀️",
+        "Celebrating YOU today! 🥳",
+        "Born to shine! Shining today! ✨",
+        "A day as awesome as you are! 🎉"
+    ]
+    
     try:
         emp_df = db.get_all_employees()
         if emp_df.empty:
@@ -26065,13 +26080,11 @@ def send_celebration_emails():
                 try:
                     dob_date = pd.to_datetime(dob)
                     if dob_date.month == today.month and dob_date.day == today.day:
-                        # Calculate age
-                        age = today.year - dob_date.year
+                        # NO AGE - removed for privacy
                         birthdays_today.append({
                             'name': f"{emp['first_name']} {emp['last_name']}",
                             'department': emp.get('department', ''),
-                            'position': emp.get('position', ''),
-                            'age': age
+                            'position': emp.get('position', '')
                         })
                 except:
                     pass
@@ -26162,7 +26175,7 @@ def send_celebration_emails():
                     <div style="font-size: 30px;">🎂</div>
                     <div style="color: #FFD700; font-size: 20px; font-weight: 800; margin: 8px 0;">{b["name"]}</div>
                     <div style="color: #F0E6D3; font-size: 14px;">{b["position"]} — {b["department"]}</div>
-                    <div style="color: #C9A84C; font-size: 13px; margin-top: 5px;">Turning {b["age"]} today! 🎈</div>
+                    <div style="color: #C9A84C; font-size: 13px; margin-top: 5px;">{random.choice(birthday_messages)}</div>
                 </div>
                 """
         
