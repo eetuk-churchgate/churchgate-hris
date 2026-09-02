@@ -12990,12 +12990,19 @@ def performance_okrs():
 
 
 def send_confirmation_reminders():
-    """Send automated reminders for confirmation workflow"""
+    """Send automated reminders for confirmation workflow - SKIPS CONFIRMED"""
     try:
         from utils.email_service import EmailService
         es = EmailService()
         
         HR_TEAM = ["bsakote@churchgate.com", "ichukwunonye@churchgate.com", "gbalogun@churchgate.com", "eochala@churchgate.com"]
+        
+        # Get CONFIRMED employee IDs to EXCLUDE from reminders
+        try:
+            reviews_data = db._get("confirmation_reviews")
+            confirmed_ids = set([r.get('employee_id', '') for r in reviews_data if r.get('status') in ['Approved by COO', 'Letter Sent', 'Completed']]) if reviews_data else set()
+        except:
+            confirmed_ids = set()
         
         # Get probation employees
         try:
@@ -13006,9 +13013,15 @@ def send_confirmation_reminders():
         
         now = datetime.now()
         
-        # HOD reminders
+        # HOD reminders - SKIP CONFIRMED
         if not probation_employees.empty:
             for _, emp in probation_employees.iterrows():
+                emp_id = emp.get('employee_id', '')
+                
+                # SKIP confirmed employees - NO reminder emails for them
+                if emp_id in confirmed_ids:
+                    continue
+                
                 # Calculate probation end
                 join_date = emp.get('join_date', '')
                 try:
@@ -13028,7 +13041,6 @@ def send_confirmation_reminders():
                 try:
                     all_emp_data = db.get_all_employees()
                     if not all_emp_data.empty:
-                        # Use reports_to field - the ACTUAL supervisor
                         emp_reports_to = str(emp.get('reports_to', '')).strip()
                         if emp_reports_to:
                             hod_match = all_emp_data[all_emp_data.apply(
@@ -13053,16 +13065,17 @@ def send_confirmation_reminders():
                             f"🚨 OVERDUE Confirmation: {emp_name}",
                             f"Dear HOD,\n\n{emp_name} ({dept}) confirmation is OVERDUE by {abs(days_left)} days.\n\nImmediate action required.\n\nChurchgate Group HR")
         
-        # COO and HR reminders
+        # COO and HR reminders - ONLY PENDING, NOT CONFIRMED
         reviews = db._get("confirmation_reviews") or []
         pending_coo = [r for r in reviews if r.get('status') == 'Pending COO Approval']
-        hr_processing = [r for r in reviews if r.get('status') == 'Approved by COO']
+        hr_processing = [r for r in reviews if r.get('status') == 'Approved by COO' and r.get('employee_id', '') not in confirmed_ids]
         
         if pending_coo:
             es.send_email("jeromedas@churchgate.com",
                 f"📋 Pending Confirmations: {len(pending_coo)} awaiting your approval",
                 f"Dear Jerome,\n\nYou have {len(pending_coo)} confirmation(s) awaiting your approval.\n\nPlease review at: https://hris.churchgate.com\n\nChurchgate Group HR")
         
+        # Only send HR processing email if there are NEW confirmations (not already processed)
         if hr_processing:
             for hr_recipient in HR_TEAM:
                 es.send_email(hr_recipient,
@@ -13345,7 +13358,7 @@ def staff_confirmation():
             st.success("🎉 No employees currently on probation!")
     
     # ============================================================
-    # TAB 2: TEAM LEAD/HOD REVIEW (NEW!)
+    # TAB 2: TEAM LEAD/HOD REVIEW - EXCLUDES CONFIRMED
     # ============================================================
     with tab2:
         st.subheader("📝 Team Lead/HOD Review")
@@ -13354,10 +13367,23 @@ def staff_confirmation():
         if not is_team_lead:
             st.info("This section is for Team Leads, Managers, and HODs only.")
         else:
+            # Get CONFIRMED employee IDs to EXCLUDE
+            try:
+                reviews_data_tab2 = db._get("confirmation_reviews")
+                confirmed_ids_tab2 = set([r.get('employee_id', '') for r in reviews_data_tab2 if r.get('status') in ['Approved by COO', 'Letter Sent', 'Completed']]) if reviews_data_tab2 else set()
+            except:
+                confirmed_ids_tab2 = set()
+            
             if not probation_employees.empty:
-                # Build team lead's employees based on reports_to
+                # Build team lead's employees based on reports_to - EXCLUDE CONFIRMED
                 team_employees = []
                 for _, emp in probation_employees.iterrows():
+                    emp_id = emp.get('employee_id', '')
+                    
+                    # SKIP confirmed employees
+                    if emp_id in confirmed_ids_tab2:
+                        continue
+                    
                     reports_to = str(emp.get('reports_to', '')).strip()
                     emp_name = f"{emp['first_name']} {emp['last_name']}"
                     
@@ -13396,6 +13422,12 @@ def staff_confirmation():
                     now_date = datetime.now()
                     due_review = []
                     for _, emp_row in filtered_tl.iterrows():
+                        emp_id = emp_row.get('employee_id', '')
+                        
+                        # SKIP confirmed employees in due review
+                        if emp_id in confirmed_ids_tab2:
+                            continue
+                        
                         emp_end = calculate_probation_end(emp_row.get('join_date'))
                         if emp_end and emp_end <= now_date:
                             due_review.append(emp_row)
@@ -13432,21 +13464,17 @@ def staff_confirmation():
                                     tl_name = latest.get('supervisor_name', 'Team Lead')
                                     hod_name = latest.get('hod_name', 'HOD')
                                     
-                                    # For TEAM LEAD: Show status and skip form if already submitted
                                     if review_status == 'Pending HOD Validation' and not is_hod:
                                         st.success(f"✅ Already assessed and submitted for validation")
                                         st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100 ({latest.get('performance_rating','')})")
                                         st.markdown(f"**{tl_name} Comments:** {latest.get('supervisor_comments','')}")
                                         continue
                                     
-                                    # For HOD: Show TL summary AND allow validation
                                     if review_status == 'Pending HOD Validation' and is_hod:
                                         st.info(f"✅ {tl_name} has assessed - proceed with validation below")
                                         st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100 ({latest.get('performance_rating','')})")
                                         st.markdown(f"**{tl_name} Comments:** {latest.get('supervisor_comments','')}")
-                                        # DO NOT continue - let HOD see the validation form
                                     
-                                    # Already sent to COO - both TL and HOD see status only
                                     elif review_status == 'Pending COO Approval':
                                         st.success(f"✅ Already assessed and submitted for confirmation")
                                         st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100")
@@ -13454,7 +13482,7 @@ def staff_confirmation():
                                         st.markdown(f"**{hod_name} Decision:** {latest.get('hod_decision','')}")
                                         continue
                                     
-                                    elif review_status in ['Approved by COO', 'Letter Sent']:
+                                    elif review_status in ['Approved by COO', 'Letter Sent', 'Completed']:
                                         st.success(f"🎉 Confirmation complete!")
                                         continue
                                     
@@ -13600,7 +13628,6 @@ def staff_confirmation():
                                             try:
                                                 emp_data = db.get_all_employees()
                                                 if not emp_data.empty:
-                                                    # Find HOD of this department by role
                                                     if 'role' in emp_data.columns:
                                                         hod_candidates = emp_data[
                                                             (emp_data['department'].str.lower() == dept.lower()) & 
@@ -13609,7 +13636,6 @@ def staff_confirmation():
                                                         if not hod_candidates.empty:
                                                             hod_email = hod_candidates.iloc[0].get('email', '')
                                                     
-                                                    # Fallback: first person in department
                                                     if not hod_email:
                                                         dept_match = emp_data[emp_data['department'].str.lower() == dept.lower()]
                                                         if not dept_match.empty:
@@ -13617,11 +13643,9 @@ def staff_confirmation():
                                             except:
                                                 pass
                                             
-                                            # Build list of HOD emails
                                             if hod_email:
                                                 hod_emails.append(hod_email)
                                             
-                                            # Add known HODs by department
                                             known_hods = {
                                                 'Technology Group': ['eetuk@churchgate.com'],
                                                 'Human Resources': ['bsakote@churchgate.com'],
@@ -13634,10 +13658,8 @@ def staff_confirmation():
                                                     if extra_email not in hod_emails:
                                                         hod_emails.append(extra_email)
                                             
-                                            # Remove duplicates and empty
                                             hod_emails = list(set([e for e in hod_emails if e]))
                                             
-                                            # Send email to ALL HODs
                                             for h_email in hod_emails:
                                                 send_confirmation_email(h_email, 
                                                     f"📝 Team Lead Review Complete: {emp_name}", 
