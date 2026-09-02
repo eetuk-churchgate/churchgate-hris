@@ -7660,7 +7660,8 @@ def employee_management():
                         'Legal',
                         'Human Resources',
                         'Accounts & Finance',
-                        'Procurement'
+                        'Procurement',
+                        'Senior Management'
                     ]
                     
                     dept_options = []
