@@ -31,3 +31,4 @@ ipinfo
 user-agents
 aiohttp
 duckduckgo-search
+schedule==1.2.1
