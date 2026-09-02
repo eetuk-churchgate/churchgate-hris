@@ -4484,7 +4484,7 @@ def employee_dashboard():
     hod_list = [
         ('Abiola Tella', 'Legal'),
         ('Adebayo Sakote', 'Human Resources'),
-        ('Adeogun Ibukun', 'Admin'),
+        ('Adeogun Ibukun', 'Operations'),
         ('Anand Bora', 'Procurement'),
         ('David Effiong', 'Facility Management'),
         ('Denis Ugoh', 'Accounts & Finance'),
@@ -4494,7 +4494,7 @@ def employee_dashboard():
         ('Nchor Agba', 'Security'),
         ('Olatubosun Otaiku', 'Central Stores'),
         ('Peravali Kotaiah', 'Warehouse Management'),
-        ('Sanjeev Purwar', 'Engineering & Project Development & Project Development'),
+        ('Sanjeev Purwar', 'Engineering & Project Development'),
         ('Sani Usman', 'Security'),
     ]
     
