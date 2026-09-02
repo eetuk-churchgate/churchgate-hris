@@ -5811,20 +5811,51 @@ def hr_announcement_tab(employees_df):
                             # Supabase URL for tracking pixel
                             supabase_url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
                             
+                            # Get FULL sender details from database
+                            sender_name = st.session_state.user['name']
+                            sender_email = st.session_state.user.get('email', '')
+                            sender_dept = st.session_state.user.get('department', 'Human Resources')
+                            sender_position = st.session_state.user.get('position', '')
+                            sender_region = ''
+                            sender_subsidiary = ''
+                            sender_phone = ''
+                            
+                            # Fetch complete sender info from employees table
+                            try:
+                                sender_emp = db._get("employees", {"email": sender_email})
+                                if sender_emp and len(sender_emp) > 0:
+                                    emp_data = sender_emp[0]
+                                    sender_position = emp_data.get('position', sender_position)
+                                    sender_dept = emp_data.get('department', sender_dept)
+                                    sender_region = emp_data.get('region', '')
+                                    sender_subsidiary = emp_data.get('subsidiary', '')
+                                    sender_phone = emp_data.get('phone', '')
+                            except:
+                                pass
+                            
                             for email, name in zip(recipient_emails, recipient_names):
                                 try:
-                                    # Build GOLD PREMIUM HTML email - works for AI and manual
-                                    # Convert body line breaks to paragraphs if it's plain text
-                                    # If AI generates markdown-style, convert to paragraphs
+                                    # Format body with proper paragraphs
                                     formatted_body = body
-                                    
-                                    # If body contains \n\n, wrap each paragraph in <p> tags
                                     if '\n\n' in formatted_body:
                                         paragraphs = formatted_body.split('\n\n')
                                         formatted_body = ''.join([f'<p style="margin-bottom: 15px; color: #F0E6D3;">{p.strip()}</p>' for p in paragraphs if p.strip()])
                                     else:
-                                        # Single line or no double breaks - use pre-wrap to preserve
                                         formatted_body = f'<div style="color: #F0E6D3; white-space: pre-wrap;">{formatted_body}</div>'
+                                    
+                                    # Build sender signature HTML with FULL details
+                                    signature_html = f"""
+                                    <div style="background: #2D2D2D; padding: 15px; border-radius: 8px; border-left: 3px solid #C9A84C; margin-top: 15px;">
+                                        <p style="color: #C9A84C; font-weight: 700; margin: 0; font-size: 14px;">{sender_name}</p>
+                                        {f'<p style="color: #F0E6D3; margin: 5px 0 0 0; font-size: 12px;">{sender_position}</p>' if sender_position else ''}
+                                        <p style="color: #F0E6D3; margin: 5px 0 0 0; font-size: 12px;">{sender_dept}</p>
+                                        <p style="color: #9a8a78; margin: 3px 0 0 0; font-size: 11px;">Churchgate Group</p>
+                                        {f'<p style="color: #9a8a78; margin: 3px 0 0 0; font-size: 11px;">{sender_region}</p>' if sender_region else ''}
+                                        {f'<p style="color: #9a8a78; margin: 3px 0 0 0; font-size: 11px;">{sender_subsidiary}</p>' if sender_subsidiary else ''}
+                                        {f'<p style="color: #9a8a78; margin: 3px 0 0 0; font-size: 11px;">Phone: {sender_phone}</p>' if sender_phone else ''}
+                                        <p style="color: #9a8a78; margin: 3px 0 0 0; font-size: 11px;">Email: {sender_email}</p>
+                                    </div>
+                                    """
                                     
                                     html_body = f"""
                                     <!DOCTYPE html>
@@ -5850,7 +5881,7 @@ def hr_announcement_tab(employees_df):
                                             <!-- GOLD DIVIDER -->
                                             <div style="border-top: 2px solid #B8960C; margin: 20px 0;"></div>
                                             
-                                            <!-- MESSAGE BODY - WELL PARAGRAPHED -->
+                                            <!-- MESSAGE BODY -->
                                             <div style="font-size: 14px; line-height: 1.8; letter-spacing: 0.02em;">
                                                 {formatted_body}
                                             </div>
@@ -5858,13 +5889,8 @@ def hr_announcement_tab(employees_df):
                                             <!-- GOLD DIVIDER -->
                                             <div style="border-top: 2px solid #B8960C; margin: 20px 0;"></div>
                                             
-                                            <!-- SENDER SIGNATURE -->
-                                            <div style="background: #2D2D2D; padding: 15px; border-radius: 8px; border-left: 3px solid #C9A84C; margin-top: 15px;">
-                                                <p style="color: #C9A84C; font-weight: 700; margin: 0; font-size: 14px;">{st.session_state.user['name']}</p>
-                                                <p style="color: #F0E6D3; margin: 5px 0 0 0; font-size: 12px;">{st.session_state.user.get('department', 'Human Resources')}</p>
-                                                <p style="color: #9a8a78; margin: 3px 0 0 0; font-size: 11px;">Churchgate Group</p>
-                                                <p style="color: #9a8a78; margin: 3px 0 0 0; font-size: 11px;">Email: {st.session_state.user.get('email', 'hr@churchgate.com')}</p>
-                                            </div>
+                                            <!-- SENDER SIGNATURE - FULL DETAILS -->
+                                            {signature_html}
                                         </div>
                                         
                                         <!-- FOOTER -->
