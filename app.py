@@ -30,15 +30,28 @@ import calendar
 sys.path.append(str(Path(__file__).parent))
 
 # ============================================================
-# AUTO CELEBRATION SCHEDULER - Runs daily at 7:30 AM WAT
+# AUTO CELEBRATION SCHEDULER - Runs daily at 9:00 AM WAT (ONCE ONLY)
 # ============================================================
 import schedule
 import threading
 import time as time_module
 
 def auto_send_celebrations_scheduled():
-    """Check and send celebrations daily at 7:30 AM Nigerian time"""
+    """Check and send celebrations daily at 9:00 AM Nigerian time - ONLY ONCE PER DAY"""
     print(f"[AUTO] Checking celebrations at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}...")
+    
+    # CHECK IF ALREADY SENT TODAY
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    
+    try:
+        existing_check = db._get("celebration_log")
+        if existing_check:
+            for log in existing_check:
+                if log.get('sent_date') == today_str:
+                    print(f"[AUTO] Celebrations already sent today ({today_str}). Skipping.")
+                    return
+    except:
+        pass
     
     try:
         emp_df = db.get_all_employees()
@@ -74,7 +87,19 @@ def auto_send_celebrations_scheduled():
         
         if birthdays_today or anniversaries_today:
             print(f"[AUTO] Celebrations found! Birthdays: {len(birthdays_today)}, Anniversaries: {len(anniversaries_today)}")
-            # Call your existing function
+            
+            # LOG FIRST to prevent duplicate sends
+            try:
+                db._post("celebration_log", {
+                    "sent_date": today_str,
+                    "birthdays": len(birthdays_today),
+                    "anniversaries": len(anniversaries_today),
+                    "sent_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                })
+            except:
+                pass
+            
+            # Send emails
             bdays, annivs, msg = send_celebration_emails()
             print(f"[AUTO] Celebration emails sent: {msg}")
         else:
@@ -85,12 +110,12 @@ def auto_send_celebrations_scheduled():
 
 def run_scheduler():
     """Schedule loop for the daily celebration email. Started once per process."""
-    # 06:30 UTC = 07:30 AM Nigerian Time (WAT)
+    # 08:00 UTC = 09:00 AM Nigerian Time (WAT)
     # Clear first: `schedule`'s registry is module-global and survives Streamlit
     # reruns, so re-registering would stack duplicate jobs that each send a round.
     schedule.clear('celebrations')
-    schedule.every().day.at("06:30").do(auto_send_celebrations_scheduled).tag('celebrations')
-    print("[SCHEDULER] Started - Will send celebrations daily at 06:30 UTC (07:30 WAT)")
+    schedule.every().day.at("08:00").do(auto_send_celebrations_scheduled).tag('celebrations')
+    print("[SCHEDULER] Started - Will send celebrations daily at 08:00 UTC (09:00 WAT)")
 
     while True:
         schedule.run_pending()
@@ -104,7 +129,7 @@ def start_celebration_scheduler():
     Streamlit re-executes this module top to bottom on every rerun, for every
     session. Starting the thread unguarded at import time spawned a new
     never-exiting thread AND registered another duplicate job on `schedule`'s
-    global registry on every single user interaction, so at 06:30 every one of
+    global registry on every single user interaction, so at 08:00 every one of
     the accumulated jobs fired its own round of celebration emails to every
     employee. st.cache_resource is process-wide and survives reruns, so the
     thread is created once no matter how many reruns or sessions occur.

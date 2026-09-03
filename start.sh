@@ -62,7 +62,7 @@ emit() {
 # Startup diagnostic: report which REQUIRED secrets resolved (names only, no values).
 # Checks both the env var and the generated secrets.toml so a missing Supabase
 # credential shows up clearly in the Railway deploy logs.
-for k in SUPABASE_URL SUPABASE_KEY SMTP_PASSWORD; do
+for k in SUPABASE_URL SUPABASE_KEY SMTP_PASSWORD SMTP_SENDER_EMAIL; do
   if [ -n "$(printenv "$k" || true)" ] || grep -q "^${k} " .streamlit/secrets.toml 2>/dev/null; then
     echo "[start] secret ${k}: present"
   else
