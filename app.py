@@ -30,15 +30,28 @@ import calendar
 sys.path.append(str(Path(__file__).parent))
 
 # ============================================================
-# AUTO CELEBRATION SCHEDULER - Runs daily at 7:30 AM WAT
+# AUTO CELEBRATION SCHEDULER - Runs daily at 9:00 AM WAT (ONCE ONLY)
 # ============================================================
 import schedule
 import threading
 import time as time_module
 
 def auto_send_celebrations_scheduled():
-    """Check and send celebrations daily at 7:30 AM Nigerian time"""
+    """Check and send celebrations daily at 9:00 AM Nigerian time - ONLY ONCE PER DAY"""
     print(f"[AUTO] Checking celebrations at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}...")
+    
+    # CHECK IF ALREADY SENT TODAY
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    
+    try:
+        existing_check = db._get("celebration_log")
+        if existing_check:
+            for log in existing_check:
+                if log.get('sent_date') == today_str:
+                    print(f"[AUTO] Celebrations already sent today ({today_str}). Skipping.")
+                    return
+    except:
+        pass
     
     try:
         emp_df = db.get_all_employees()
@@ -74,7 +87,19 @@ def auto_send_celebrations_scheduled():
         
         if birthdays_today or anniversaries_today:
             print(f"[AUTO] Celebrations found! Birthdays: {len(birthdays_today)}, Anniversaries: {len(anniversaries_today)}")
-            # Call your existing function
+            
+            # LOG FIRST to prevent duplicate sends
+            try:
+                db._post("celebration_log", {
+                    "sent_date": today_str,
+                    "birthdays": len(birthdays_today),
+                    "anniversaries": len(anniversaries_today),
+                    "sent_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                })
+            except:
+                pass
+            
+            # Send emails
             bdays, annivs, msg = send_celebration_emails()
             print(f"[AUTO] Celebration emails sent: {msg}")
         else:
@@ -84,10 +109,17 @@ def auto_send_celebrations_scheduled():
         print(f"[AUTO] Error: {str(e)}")
 
 def run_scheduler():
-    """Run scheduler in background thread"""
-    # 06:30 UTC = 07:30 AM Nigerian Time (WAT)
-    schedule.every().day.at("06:30").do(auto_send_celebrations_scheduled)
-    print("[SCHEDULER] Started - Will send celebrations daily at 06:30 UTC (07:30 WAT)")
+    """Run scheduler in background thread - ONLY ONE INSTANCE"""
+    # Check if scheduler already running
+    if hasattr(st.session_state, 'scheduler_started'):
+        print("[SCHEDULER] Already started. Skipping.")
+        return
+    
+    st.session_state.scheduler_started = True
+    print("[SCHEDULER] Started - Will send celebrations daily at 08:00 UTC (09:00 WAT)")
+    
+    # 08:00 UTC = 09:00 AM Nigerian Time (WAT)
+    schedule.every().day.at("08:00").do(auto_send_celebrations_scheduled)
     
     while True:
         schedule.run_pending()
