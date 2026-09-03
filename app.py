@@ -84,18 +84,36 @@ def auto_send_celebrations_scheduled():
         print(f"[AUTO] Error: {str(e)}")
 
 def run_scheduler():
-    """Run scheduler in background thread"""
+    """Schedule loop for the daily celebration email. Started once per process."""
     # 06:30 UTC = 07:30 AM Nigerian Time (WAT)
-    schedule.every().day.at("06:30").do(auto_send_celebrations_scheduled)
+    # Clear first: `schedule`'s registry is module-global and survives Streamlit
+    # reruns, so re-registering would stack duplicate jobs that each send a round.
+    schedule.clear('celebrations')
+    schedule.every().day.at("06:30").do(auto_send_celebrations_scheduled).tag('celebrations')
     print("[SCHEDULER] Started - Will send celebrations daily at 06:30 UTC (07:30 WAT)")
-    
+
     while True:
         schedule.run_pending()
         time_module.sleep(60)
 
-# Start scheduler in background thread
-scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
-scheduler_thread.start()
+
+@st.cache_resource
+def start_celebration_scheduler():
+    """Start the celebration scheduler exactly once per server process.
+
+    Streamlit re-executes this module top to bottom on every rerun, for every
+    session. Starting the thread unguarded at import time spawned a new
+    never-exiting thread AND registered another duplicate job on `schedule`'s
+    global registry on every single user interaction, so at 06:30 every one of
+    the accumulated jobs fired its own round of celebration emails to every
+    employee. st.cache_resource is process-wide and survives reruns, so the
+    thread is created once no matter how many reruns or sessions occur.
+
+    Called after init_resources() so the module-level `db` the job needs exists.
+    """
+    thread = threading.Thread(target=run_scheduler, daemon=True, name="celebration-scheduler")
+    thread.start()
+    return thread
 
 # ============================================================
 # GLOBAL PLOTLY DARK THEME - AUTO-APPLIES TO ALL CHARTS
@@ -3098,6 +3116,58 @@ def init_resources():
     return db, ai_agent, linkedin_parser, email_service, chat_service, training_service
 
 db, ai_agent, linkedin_parser, email_service, chat_service, training_service = init_resources()
+
+# Start the daily celebration scheduler. Cached, so it runs once per process --
+# see start_celebration_scheduler() for why an unguarded start spammed staff.
+start_celebration_scheduler()
+
+# ============================================================
+# OUTBOUND MAIL LATCH
+# ============================================================
+# Several notifications mail the whole company (or every HOD) in one go. Streamlit
+# re-runs this script constantly, and st.session_state is per browser session, so
+# a "have we sent this yet?" flag kept in session_state re-fires for every new
+# session and every user. These helpers hold that record process-wide and in
+# audit_trail instead, so a blast happens once per cooldown window across all
+# sessions, reruns, restarts and replicas.
+
+MAIL_LATCH_ACTION = "MailBlastSent"
+
+
+@st.cache_resource
+def _mail_latch():
+    """Process-wide {key: datetime} of when each blast last went out."""
+    return {}
+
+
+def mail_blast_due(key, min_interval_hours):
+    """False while the previous send of `key` is still inside its cooldown."""
+    now = datetime.now()
+    last = _mail_latch().get(key)
+    if last and (now - last).total_seconds() < min_interval_hours * 3600:
+        return False
+    try:
+        for r in (db._get("audit_trail", {"action": MAIL_LATCH_ACTION, "details": key}) or []):
+            try:
+                ts = datetime.strptime(r.get('timestamp_text', ''), '%Y-%m-%d %H:%M')
+            except Exception:
+                continue
+            if (now - ts).total_seconds() < min_interval_hours * 3600:
+                return False
+    except Exception:
+        pass
+    return True
+
+
+def mark_mail_blast(key):
+    """Claim a blast before sending it, so a concurrent trigger backs off."""
+    now = datetime.now()
+    _mail_latch()[key] = now
+    try:
+        db.save_audit(MAIL_LATCH_ACTION, key, "system", now.strftime('%Y-%m-%d %H:%M'))
+    except Exception:
+        pass
+
 
 if 'user' not in st.session_state:
     st.session_state.user = None
@@ -13181,21 +13251,13 @@ def staff_confirmation():
     """
     st.markdown("""<div class="churchgate-header"><h1>✅ Staff Confirmation Board</h1><p>Probation Tracking | Team Lead Review | HOD Validation | COO Approval | Confirmation Letters</p></div>""", unsafe_allow_html=True)
     
-    # Automated reminders
-    if 'last_reminder_sent' not in st.session_state:
-        st.session_state.last_reminder_sent = None
-    
-    should_send = False
-    if st.session_state.last_reminder_sent:
-        days_since = (datetime.now() - st.session_state.last_reminder_sent).days
-        if days_since >= 2:
-            should_send = True
-    else:
-        should_send = True
-    
-    if should_send:
+    # Automated reminders, at most once every 2 days.
+    # The cooldown must NOT live in st.session_state: that is per browser session,
+    # so a fresh session always looked like "never sent" and re-mailed every HOD,
+    # the COO and the whole HR team each time any user first opened this page.
+    if mail_blast_due("confirmation-reminders", 48):
+        mark_mail_blast("confirmation-reminders")
         send_confirmation_reminders()
-        st.session_state.last_reminder_sent = datetime.now()
     
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
@@ -26108,6 +26170,12 @@ def send_celebration_emails():
         
         if not birthdays_today and not anniversaries_today:
             return 0, 0, "No celebrations today"
+
+        # Every trigger below this line mails EVERY employee, so claim the day
+        # first. Without this, any repeat trigger re-blasts the whole company.
+        if not mail_blast_due(f"celebration:{today_str}", 20):
+            return len(birthdays_today), len(anniversaries_today), "Already sent today - skipped"
+        mark_mail_blast(f"celebration:{today_str}")
         
         # Build email subject - FUN AND EXCITING
         subject_parts = []
@@ -29689,14 +29757,26 @@ def main():
     if 'user' not in st.session_state:
         st.session_state.user = None
     
-    # Automated celebration email trigger (called by cron job)
+    # Automated celebration email trigger (called by cron job).
+    # Gated by a shared secret: this runs before any login check and mails every
+    # employee, so ungated it let anyone with the URL blast all staff -- and a
+    # plain browser refresh re-fired it.
     query_params = st.query_params
     if 'trigger_celebration' in query_params:
-        try:
-            bdays, annivs, msg = send_celebration_emails()
-            st.write(f"Celebration emails: {bdays} birthdays, {annivs} anniversaries. {msg}")
-        except Exception as e:
-            st.write(f"Celebration email error: {e}")
+        expected = os.environ.get("CELEBRATION_TRIGGER_TOKEN", "")
+        if not expected:
+            try:
+                expected = st.secrets.get("CELEBRATION_TRIGGER_TOKEN", "")
+            except Exception:
+                expected = ""
+        if expected and str(query_params.get('trigger_celebration', '')) == expected:
+            try:
+                bdays, annivs, msg = send_celebration_emails()
+                st.write(f"Celebration emails: {bdays} birthdays, {annivs} anniversaries. {msg}")
+            except Exception as e:
+                st.write(f"Celebration email error: {e}")
+        else:
+            st.write("Unauthorized.")
         st.stop()
     
     # Persist login across refreshes

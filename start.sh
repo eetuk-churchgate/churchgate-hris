@@ -56,6 +56,7 @@ emit() {
   emit ASANA_PERSONAL_TOKEN   "${ASANA_PERSONAL_TOKEN:-}"
   emit ASANA_WORKSPACE_ID     "${ASANA_WORKSPACE_ID:-}"
   emit GOOGLE_CALENDAR_API_KEY "${GOOGLE_CALENDAR_API_KEY:-}"
+  emit CELEBRATION_TRIGGER_TOKEN "${CELEBRATION_TRIGGER_TOKEN:-}"
 } > .streamlit/secrets.toml
 
 # Startup diagnostic: report which REQUIRED secrets resolved (names only, no values).
