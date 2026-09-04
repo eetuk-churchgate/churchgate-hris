@@ -14157,8 +14157,6 @@ def staff_confirmation():
                                             st.error("❌ Rejected"); st.rerun()
                     except:
                         pass
-                else:
-                    st.info("No employees currently on probation.")
             else:
                 st.info("This section is for COO only.")
     
