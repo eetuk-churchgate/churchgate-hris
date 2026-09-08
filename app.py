@@ -21362,29 +21362,50 @@ def ai_recruitment_agent():
                 st.text_area("Extracted", jd_text[:500] + "...", height=150, disabled=True)
         
         if st.button("🔍 Analyze JD with AI", use_container_width=True, type="primary"):
-            if jd_text:
+            if not jd_text or not jd_text.strip():
+                st.error("❌ Please paste or upload a Job Description first!")
+            else:
                 with st.spinner("🤖 AI analyzing JD..."):
-                    time.sleep(1.5)
-                    analysis = ai_agent.analyze_jd(jd_text)
-                    st.session_state.current_jd = analysis
-                    st.success("✅ Analysis Complete!")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        st.markdown(f"**Title:** {analysis['title']}")
-                        st.markdown(f"**Dept:** {analysis['department']}")
-                        st.markdown(f"**Experience:** {analysis['experience_level']}")
-                    with c2:
-                        st.markdown("**Required Skills:**")
-                        for skill in analysis['required_skills'][:10]:
-                            st.markdown(f"- `{skill['skill'].title()}`")
-                    with st.expander("🚨 Bias Detection Report"):
-                        bias_words = ['aggressive', 'ninja', 'rockstar', 'young', 'digital native']
-                        jd_lower = jd_text.lower()
-                        biases = [w for w in bias_words if w in jd_lower]
-                        if biases:
-                            st.warning(f"⚠️ {len(biases)} potentially biased terms: {', '.join(biases)}")
+                    try:
+                        # Call the AI agent
+                        analysis = ai_agent.analyze_jd(jd_text)
+                        
+                        # Check if analysis returned valid data
+                        if analysis and isinstance(analysis, dict) and 'title' in analysis:
+                            st.session_state.current_jd = analysis
+                            st.success("✅ Analysis Complete!")
+                            
+                            c1, c2 = st.columns(2)
+                            with c1:
+                                st.markdown(f"**Title:** {analysis.get('title', 'N/A')}")
+                                st.markdown(f"**Dept:** {analysis.get('department', 'N/A')}")
+                                st.markdown(f"**Experience:** {analysis.get('experience_level', 'N/A')}")
+                            with c2:
+                                st.markdown("**Required Skills:**")
+                                required_skills = analysis.get('required_skills', [])
+                                if required_skills:
+                                    for skill in required_skills[:10]:
+                                        if isinstance(skill, dict):
+                                            st.markdown(f"- `{skill.get('skill', 'N/A').title()}`")
+                                        else:
+                                            st.markdown(f"- `{skill}`")
+                                else:
+                                    st.info("No skills extracted.")
+                            
+                            with st.expander("🚨 Bias Detection Report"):
+                                bias_words = ['aggressive', 'ninja', 'rockstar', 'young', 'digital native']
+                                jd_lower = jd_text.lower()
+                                biases = [w for w in bias_words if w in jd_lower]
+                                if biases:
+                                    st.warning(f"⚠️ {len(biases)} potentially biased terms: {', '.join(biases)}")
+                                else:
+                                    st.success("✅ No biased language detected")
                         else:
-                            st.success("✅ No biased language detected")
+                            st.error("❌ AI analysis returned invalid data. Check GROQ API key.")
+                            
+                    except Exception as e:
+                        st.error(f"❌ Analysis failed: {str(e)}")
+                        st.info("Check your GROQ API key in Railway Variables.")
     
     # ============ CV UPLOAD ============
     elif ai_section == "📤 CV Upload & Scoring":
