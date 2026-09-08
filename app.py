@@ -21359,7 +21359,15 @@ def ai_recruitment_agent():
             jd_file = st.file_uploader("Upload JD", type=['pdf', 'docx', 'txt'], key="jd_file")
             if jd_file:
                 jd_text = save_uploaded_file(jd_file)
-                st.text_area("Extracted", jd_text[:500] + "...", height=150, disabled=True)
+                
+                # Show extracted text in READABLE format
+                st.success(f"✅ Extracted {len(jd_text)} characters")
+                with st.expander("📄 View Extracted Text", expanded=False):
+                    st.markdown(f"""
+                    <div style="background:#2D2D2D;padding:1rem;border-radius:8px;border:1px solid #B8960C;color:#F0E6D3;font-size:0.85rem;line-height:1.6;max-height:300px;overflow-y:auto;white-space:pre-wrap;">
+                    {jd_text}
+                    </div>
+                    """, unsafe_allow_html=True)
         
         if st.button("🔍 Analyze JD with AI", use_container_width=True, type="primary"):
             if not jd_text or not jd_text.strip():
@@ -21367,10 +21375,8 @@ def ai_recruitment_agent():
             else:
                 with st.spinner("🤖 AI analyzing JD..."):
                     try:
-                        # Call the AI agent
                         analysis = ai_agent.analyze_jd(jd_text)
                         
-                        # Check if analysis returned valid data
                         if analysis and isinstance(analysis, dict) and 'title' in analysis:
                             st.session_state.current_jd = analysis
                             st.success("✅ Analysis Complete!")
