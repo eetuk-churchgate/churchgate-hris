@@ -10368,9 +10368,19 @@ def performance_okrs():
                                         db._post("hod_drafts", draft_payload)
                                     
                                     log_audit('HOD Save Progress', f'{staff_name} - HOD saved progress to drafts')
-                                    st.success("💾 Progress saved! You can logout, reload, or come back later — your work will be here.")
+                                    st.session_state[f'save_success_{staff_name}'] = True
                                 except Exception as e:
-                                    st.error(f"❌ Could not save progress: {str(e)}")
+                                    st.session_state[f'save_error_{staff_name}'] = str(e)
+                            
+                            # Show save success message ONCE
+                            if st.session_state.get(f'save_success_{staff_name}'):
+                                st.success("💾 Progress saved! You can logout, reload, or come back later.")
+                                st.session_state[f'save_success_{staff_name}'] = False
+                            
+                            # Show save error message ONCE
+                            if st.session_state.get(f'save_error_{staff_name}'):
+                                st.error(f"❌ Could not save progress: {st.session_state[f'save_error_{staff_name}']}")
+                                st.session_state[f'save_error_{staff_name}'] = False
                             
                             # ===== HANDLE SUBMIT (OUTSIDE FORM) =====
                             if submit_btn:
