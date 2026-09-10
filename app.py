@@ -4434,18 +4434,7 @@ def employee_dashboard():
         else:
             st.info("No upcoming holidays in the next 90 days.")
         
-        # Company events (can be customized)
-        st.markdown("---")
-        st.subheader("🏢 Company Events")
-        company_events = [
-            ("Monthly Town Hall", "Last Friday of every month", "📢"),
-            ("Quarterly Business Review", "First week of April, July, October, January", "📊"),
-            ("Annual General Meeting", "December 2026", "🏛️"),
-            ("Team Building Day", "Quarterly", "🤝"),
-        ]
         
-        for event, date_info, emoji in company_events:
-            st.markdown(f"{emoji} **{event}** — *{date_info}*")
         
         # Wellness Tip
         st.markdown("---")
