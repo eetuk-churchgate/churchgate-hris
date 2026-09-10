@@ -10250,118 +10250,120 @@ def performance_okrs():
                             
                             if not has_files: st.info("📎 No evidence files attached")
                             
-                            # SCORE REVIEW - YOUR ORIGINAL LOGIC UNTOUCHED
+                            # SCORE REVIEW - FORM WRAPPED (NO RELOAD ON TYPING)
                             st.markdown("---"); st.markdown("### 📊 Score Review")
                             
-                            hod_scores = {}
-                            pillar_order = get_pillars(hod_fy)
-                            
-                            staff_total = 0
-                            staff_count = 0
-                            hod_total = 0
-                            hod_count = 0
-                            
-                            for pillar in pillar_order:
-                                pillar_scores = {k: v for k, v in sorted(assessment['scores'].items(), key=natural_sort_key) if k.startswith(pillar)}
-                                if pillar_scores:
-                                    pillar_staff_avg = sum(int(v) for v in pillar_scores.values()) / len(pillar_scores)
-                                    st.markdown(f"**{pillar}** (Staff Avg: {pillar_staff_avg:.0f}%)")
-                                    for score_key, staff_score in pillar_scores.items():
-                                        kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
-                                        kpi_name = f"KPI {kpi_index + 1}"
-                                        try:
-                                            all_p = db._get("performance_data")
-                                            for row in (all_p or []):
-                                                if row.get('user_name') == staff_name and row.get('pillar_name') == pillar:
-                                                    kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
-                                                    if kpi_index < len(kpi_list): kpi_name = kpi_list[kpi_index].get('kpi', kpi_name)
-                                                    break
-                                        except: pass
-                                        
-                                        kpi_comment = assessment.get('pillar_comments', {}).get(pillar, '')
-                                        st.markdown(f"**{kpi_name}**")
-                                        if kpi_comment:
-                                            st.markdown(f"<div style='background:#faf8f2;padding:0.6rem;border-radius:4px;border-left:3px solid #D4AF37;font-size:0.8rem;margin-top:0.3rem;'>💬 {kpi_comment}</div>", unsafe_allow_html=True)
-                                        
-                                        c1, c2 = st.columns(2)
-                                        with c1: st.markdown(f"<small>Staff: {staff_score}%</small>", unsafe_allow_html=True)
-                                        with c2:
-                                            prev_hod = assessment.get('hod_scores', {}).get(score_key, 0) if is_re_review else 0
-                                            # Load from drafts table if exists
-                                            try:
-                                                draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
-                                                if draft_data and len(draft_data) > 0:
-                                                    saved_scores = json.loads(draft_data[0].get('hod_scores', '{}'))
-                                                    if score_key in saved_scores:
-                                                        prev_hod = saved_scores[score_key]
-                                            except: pass
-                                            hod_scores[score_key] = st.number_input("HOD Score", 0, 100, int(prev_hod) if prev_hod else 0, 1, key=f"hod_{staff_name}_{score_key}")
-                                        
-                                        # ===== KPI COMMENT FIELD (NEW) =====
-                                        draft_kpi_comment = assessment.get('hod_kpi_comments', {}).get(score_key, '') if is_re_review else ''
-                                        try:
-                                            draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
-                                            if draft_data and len(draft_data) > 0:
-                                                saved_kpi_comments = json.loads(draft_data[0].get('hod_kpi_comments', '{}'))
-                                                if score_key in saved_kpi_comments:
-                                                    draft_kpi_comment = saved_kpi_comments[score_key]
-                                        except: pass
-                                        st.text_input(
-                                            "HOD Comment for this KPI *",
-                                            value=draft_kpi_comment,
-                                            placeholder="Required - justify your score for this KPI...",
-                                            key=f"kpi_comment_{staff_name}_{score_key}"
-                                        )
-                                        # ===== END KPI COMMENT FIELD =====
-                                        
-                                        staff_total += int(staff_score)
-                                        staff_count += 1
-                                        hod_total += int(hod_scores[score_key])
-                                        hod_count += 1
-                                    st.markdown("---")
-                            
-                            staff_avg = staff_total / staff_count if staff_count > 0 else 0
-                            hod_avg = hod_total / hod_count if hod_count > 0 else 0
-                            
-                            c1, c2, c3 = st.columns(3)
-                            with c1:
-                                st.metric("📊 Staff Overall Avg", f"{staff_avg:.1f}%")
-                            with c2:
-                                st.metric("👔 HOD Overall Avg", f"{hod_avg:.1f}%")
-                            with c3:
-                                diff = staff_avg - hod_avg
-                                st.metric("📈 Difference", f"{diff:+.1f}%")
-                            
-                            draft_overall = assessment.get('hod_comments', '') if is_re_review else ''
+                            # Load existing draft
+                            existing_draft = {}
                             try:
                                 draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
                                 if draft_data and len(draft_data) > 0:
-                                    draft_overall = draft_data[0].get('hod_overall', '') or draft_overall
+                                    existing_draft = {
+                                        'scores': json.loads(draft_data[0].get('hod_scores', '{}')),
+                                        'kpi_comments': json.loads(draft_data[0].get('hod_kpi_comments', '{}')),
+                                        'overall': draft_data[0].get('hod_overall', '')
+                                    }
                             except: pass
-                            hod_overall = st.text_area(f"Your Overall Comments *", value=draft_overall, key=f"hod_app_{staff_name}")
                             
-                            # ===== SAVE PROGRESS - SAVES TO DEDICATED DRAFTS TABLE (NO STATUS CHANGE) =====
-                            if st.button(f"💾 Save Progress", key=f"save_progress_{staff_name}", use_container_width=True):
+                            with st.form(f"hod_review_form_{staff_name}_{hod_fy}"):
+                                hod_scores = {}
+                                hod_kpi_comments = {}
+                                pillar_order = get_pillars(hod_fy)
+                                
+                                staff_total = 0
+                                staff_count = 0
+                                hod_total = 0
+                                hod_count = 0
+                                
+                                for pillar in pillar_order:
+                                    pillar_scores = {k: v for k, v in sorted(assessment['scores'].items(), key=natural_sort_key) if k.startswith(pillar)}
+                                    if pillar_scores:
+                                        pillar_staff_avg = sum(int(v) for v in pillar_scores.values()) / len(pillar_scores)
+                                        st.markdown(f"**{pillar}** (Staff Avg: {pillar_staff_avg:.0f}%)")
+                                        for score_key, staff_score in pillar_scores.items():
+                                            kpi_index = int(score_key.rsplit('_', 1)[1]) if '_' in score_key and score_key.rsplit('_', 1)[1].isdigit() else 0
+                                            kpi_name = f"KPI {kpi_index + 1}"
+                                            try:
+                                                all_p = db._get("performance_data")
+                                                for row in (all_p or []):
+                                                    if row.get('user_name') == staff_name and row.get('pillar_name') == pillar:
+                                                        kpi_list = json.loads(row.get('kpi_data', '[]')) if row.get('kpi_data') else []
+                                                        if kpi_index < len(kpi_list): kpi_name = kpi_list[kpi_index].get('kpi', kpi_name)
+                                                        break
+                                            except: pass
+                                            
+                                            kpi_comment = assessment.get('pillar_comments', {}).get(pillar, '')
+                                            st.markdown(f"**{kpi_name}**")
+                                            if kpi_comment:
+                                                st.markdown(f"<div style='background:#faf8f2;padding:0.6rem;border-radius:4px;border-left:3px solid #D4AF37;font-size:0.8rem;margin-top:0.3rem;color:#1a1a1a;'>💬 Staff: {kpi_comment}</div>", unsafe_allow_html=True)
+                                            
+                                            # Score + comment side by side
+                                            c1, c2 = st.columns([1, 2])
+                                            with c1:
+                                                st.markdown(f"<small>Staff: {staff_score}%</small>", unsafe_allow_html=True)
+                                                # Priority: draft > previous HOD score > 0
+                                                prev_hod = existing_draft.get('scores', {}).get(score_key, None)
+                                                if prev_hod is None:
+                                                    prev_hod = assessment.get('hod_scores', {}).get(score_key, 0) if is_re_review else 0
+                                                hod_scores[score_key] = st.number_input("HOD Score", 0, 100, int(prev_hod) if prev_hod else 0, 1, key=f"hod_{staff_name}_{score_key}")
+                                            with c2:
+                                                # Priority: draft > previous HOD comment > empty
+                                                prev_kpi_comment = existing_draft.get('kpi_comments', {}).get(score_key, None)
+                                                if prev_kpi_comment is None:
+                                                    prev_kpi_comment = assessment.get('hod_kpi_comments', {}).get(score_key, '') if is_re_review else ''
+                                                hod_kpi_comments[score_key] = st.text_input("HOD Comment *", value=prev_kpi_comment, placeholder="Required - justify your score...", key=f"kpi_comment_{staff_name}_{score_key}")
+                                            
+                                            staff_total += int(staff_score)
+                                            staff_count += 1
+                                            hod_total += int(hod_scores[score_key])
+                                            hod_count += 1
+                                        st.markdown("---")
+                                
+                                staff_avg = staff_total / staff_count if staff_count > 0 else 0
+                                hod_avg = hod_total / hod_count if hod_count > 0 else 0
+                                
+                                c1, c2, c3 = st.columns(3)
+                                with c1:
+                                    st.metric("📊 Staff Overall Avg", f"{staff_avg:.1f}%")
+                                with c2:
+                                    st.metric("👔 HOD Overall Avg", f"{hod_avg:.1f}%")
+                                with c3:
+                                    diff = staff_avg - hod_avg
+                                    st.metric("📈 Difference", f"{diff:+.1f}%")
+                                
+                                prev_overall = existing_draft.get('overall', None)
+                                if prev_overall is None:
+                                    prev_overall = assessment.get('hod_comments', '') if is_re_review else ''
+                                hod_overall = st.text_area(f"Your Overall Comments *", value=prev_overall, key=f"hod_app_{staff_name}")
+                                
+                                # ===== FORM SUBMIT BUTTONS =====
+                                fb1, fb2 = st.columns(2)
+                                with fb1:
+                                    save_progress_btn = st.form_submit_button("💾 Save Progress", use_container_width=True)
+                                with fb2:
+                                    if is_re_review or is_escalated:
+                                        submit_btn = st.form_submit_button("✅ Submit Revised Review", use_container_width=True, type="primary")
+                                    else:
+                                        submit_btn = st.form_submit_button("✅ Submit HOD Review", use_container_width=True, type="primary")
+                            
+                            # ===== HANDLE SAVE PROGRESS (OUTSIDE FORM) =====
+                            if save_progress_btn:
                                 try:
-                                    # Collect KPI comments
-                                    kpi_comments_to_save = {sk: st.session_state.get(f"kpi_comment_{staff_name}_{sk}", '') for sk in hod_scores.keys()}
-                                    
-                                    # Check if draft exists
-                                    existing_draft = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle})
+                                    existing_check = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle})
                                     
                                     draft_payload = {
                                         "staff_name": staff_name,
                                         "cycle_name": hod_cycle,
                                         "fy": hod_fy,
                                         "hod_scores": json.dumps(hod_scores),
-                                        "hod_kpi_comments": json.dumps(kpi_comments_to_save),
+                                        "hod_kpi_comments": json.dumps(hod_kpi_comments),
                                         "hod_overall": hod_overall if hod_overall else '',
                                         "updated_by": user_name,
                                         "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                     }
                                     
-                                    if existing_draft and len(existing_draft) > 0:
-                                        db._patch("hod_drafts", draft_payload, {"id": existing_draft[0]['id']})
+                                    if existing_check and len(existing_check) > 0:
+                                        db._patch("hod_drafts", draft_payload, {"id": existing_check[0]['id']})
                                     else:
                                         db._post("hod_drafts", draft_payload)
                                     
@@ -10369,30 +10371,39 @@ def performance_okrs():
                                     st.success("💾 Progress saved! You can logout, reload, or come back later — your work will be here.")
                                 except Exception as e:
                                     st.error(f"❌ Could not save progress: {str(e)}")
-                            # ===== END SAVE PROGRESS =====
                             
+                            # ===== HANDLE SUBMIT (OUTSIDE FORM) =====
+                            if submit_btn:
+                                if not hod_overall:
+                                    st.error("❌ Overall comments required!")
+                                else:
+                                    missing = [sk for sk in hod_scores.keys() if not hod_kpi_comments.get(sk, '').strip()]
+                                    if missing:
+                                        st.error(f"❌ Please add comments for ALL KPIs! Missing: {len(missing)} KPI(s)")
+                                    else:
+                                        st.session_state.self_assessments[staff_name].update({'status': 'Approved', 'hod_scores': hod_scores, 'hod_comments': hod_overall, 'hod_kpi_comments': hod_kpi_comments, 'acceptance': None, 'reviewer_type': 'HOD'})
+                                        try: db.save_appraisal(staff_name, assessment.get('email', ''), get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 'Approved', assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}), hod_scores, hod_overall, hod_kpi_comments, None, None, assessment.get('date', ''))
+                                        except: pass
+                                        # Delete draft after submit
+                                        try: db._delete("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
+                                        except: pass
+                                        
+                                        emp_email = get_employee_email(staff_name)
+                                        if emp_email:
+                                            email_subject = "📝 Updated HOD Review" if is_re_review else "📝 HOD Review Complete"
+                                            try: EmailService().send_email(emp_email, email_subject, f"Dear {staff_name},\n\nYour HOD has completed your review.\n\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
+                                            except: pass
+                                        log_audit('HOD Revised Review' if is_re_review else 'HOD Review', f'{staff_name} reviewed by HOD')
+                                        st.success("✅ Submitted!"); st.balloons()
+                            
+                            # ===== STAND FIRM & REQUEST REVISION (OUTSIDE FORM) =====
                             if is_re_review or is_escalated:
-                                c1, c2, c3 = st.columns(3)
+                                c1, c2 = st.columns(2)
                                 with c1:
-                                    if st.button(f"✅ Submit Revised Review", key=f"submit_{staff_name}", type="primary"):
-                                        if not hod_overall: st.error("❌ Comments required!")
-                                        else:
-                                            st.session_state.self_assessments[staff_name].update({'status': 'Approved', 'hod_scores': hod_scores, 'hod_comments': hod_overall, 'acceptance': None, 'reviewer_type': 'HOD'})
-                                            try: db.save_appraisal(staff_name, assessment.get('email', ''), get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 'Approved', assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}), hod_scores, hod_overall, {}, None, None, assessment.get('date', ''))
-                                            except: pass
-                                            emp_email = get_employee_email(staff_name)
-                                            if emp_email:
-                                                try: EmailService().send_email(emp_email, f"📝 Updated HOD Review", f"Dear {staff_name},\n\nYour HOD has submitted an updated review.\n\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
-                                                except: pass
-                                            log_audit('HOD Revised Review', f'{staff_name} revised by HOD')
-                                            try: db._delete("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
-                                            except: pass
-                                            st.success("✅ Submitted!"); st.balloons()
-                                with c2:
                                     if st.button(f"✋ Stand Firm - Escalate", key=f"standfirm_{staff_name}"):
-                                        hod_overall = hod_overall or assessment.get('hod_comments', 'Standing firm.')
-                                        st.session_state.self_assessments[staff_name].update({'status': 'Escalated from TL' if is_escalated else 'Approved', 'acceptance': 'Rejected', 'hod_scores': hod_scores if hod_scores else assessment.get('hod_scores', {}), 'hod_comments': hod_overall, 'sr_decision': 'Pending Committee'})
-                                        try: db.save_appraisal(staff_name, assessment.get('email', ''), get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 'Escalated from TL' if is_escalated else 'Approved', assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}), st.session_state.self_assessments[staff_name].get('hod_scores', {}), hod_overall, {}, 'Rejected', 'Pending Committee', assessment.get('date', ''))
+                                        hod_overall_val = assessment.get('hod_comments', 'Standing firm.')
+                                        st.session_state.self_assessments[staff_name].update({'status': 'Escalated from TL' if is_escalated else 'Approved', 'acceptance': 'Rejected', 'hod_scores': assessment.get('hod_scores', {}), 'hod_comments': hod_overall_val, 'sr_decision': 'Pending Committee'})
+                                        try: db.save_appraisal(staff_name, assessment.get('email', ''), get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 'Escalated from TL' if is_escalated else 'Approved', assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}), st.session_state.self_assessments[staff_name].get('hod_scores', {}), hod_overall_val, {}, 'Rejected', 'Pending Committee', assessment.get('date', ''))
                                         except: pass
                                         try:
                                             sr_emails = employees_df[employees_df['department'] == 'Senior Management']['email'].dropna().tolist() if not employees_df.empty else []
@@ -10405,7 +10416,8 @@ def performance_okrs():
                                             except: pass
                                         log_audit('HOD Escalated', f'{staff_name} escalated')
                                         st.warning("✋ Escalated!")
-                                with c3:
+                                        st.rerun()
+                                with c2:
                                     if st.button(f"💬 Request Staff Revision", key=f"sendback_{staff_name}"):
                                         st.session_state.self_assessments[staff_name]['status'] = 'Revision Requested by HOD'
                                         try: db.save_appraisal(staff_name, assessment.get('email', ''), get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 'Revision Requested by HOD', assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}), assessment.get('hod_scores', {}), assessment.get('hod_comments', ''), {}, None, None, assessment.get('date', ''))
@@ -10416,6 +10428,7 @@ def performance_okrs():
                                             except: pass
                                         log_audit('HOD Requested Revision', f'{staff_name} sent back')
                                         st.info("💬 Revision requested")
+                                        st.rerun()
                             else:
                                 if st.button(f"✅ Submit HOD Review", key=f"submit_{staff_name}", type="primary"):
                                     if not hod_overall:
