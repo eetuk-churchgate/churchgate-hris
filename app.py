@@ -10358,7 +10358,7 @@ def performance_okrs():
                                     kpi_comments_to_save = {sk: st.session_state.get(f"kpi_comment_{staff_name}_{sk}", '') for sk in hod_scores.keys()}
                                     
                                     # Check if draft exists
-                                    existing_draft = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                    existing_draft = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle})
                                     
                                     draft_payload = {
                                         "staff_name": staff_name,
