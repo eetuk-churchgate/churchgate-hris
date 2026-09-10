@@ -10429,37 +10429,7 @@ def performance_okrs():
                                         log_audit('HOD Requested Revision', f'{staff_name} sent back')
                                         st.info("💬 Revision requested")
                                         st.rerun()
-                            else:
-                                if st.button(f"✅ Submit HOD Review", key=f"submit_{staff_name}", type="primary"):
-                                    if not hod_overall:
-                                        st.error("❌ Comments required!")
-                                    else:
-                                        # ===== VALIDATE ALL KPI COMMENTS (NEW) =====
-                                        missing_kpi_comments = []
-                                        for sk in hod_scores.keys():
-                                            kpi_comment_val = st.session_state.get(f"kpi_comment_{staff_name}_{sk}", '')
-                                            if not kpi_comment_val or not kpi_comment_val.strip():
-                                                missing_kpi_comments.append(sk)
-                                        
-                                        if missing_kpi_comments:
-                                            st.error(f"❌ Please add comments for ALL KPIs before submitting! Missing: {len(missing_kpi_comments)} KPI(s)")
-                                        else:
-                                            # Collect KPI comments
-                                            hod_kpi_comments = {}
-                                            for sk in hod_scores.keys():
-                                                hod_kpi_comments[sk] = st.session_state.get(f"kpi_comment_{staff_name}_{sk}", '')
-                                            
-                                            st.session_state.self_assessments[staff_name].update({'status': 'Approved', 'hod_scores': hod_scores, 'hod_comments': hod_overall, 'hod_kpi_comments': hod_kpi_comments, 'acceptance': None, 'reviewer_type': 'HOD'})
-                                            try: db.save_appraisal(staff_name, assessment.get('email', ''), get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, 'Approved', assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}), hod_scores, hod_overall, hod_kpi_comments, None, None, assessment.get('date', ''))
-                                            except: pass
-                                            emp_email = get_employee_email(staff_name)
-                                            if emp_email:
-                                                try: EmailService().send_email(emp_email, f"📝 HOD Review Complete", f"Dear {staff_name},\n\nYour HOD has completed your review.\n\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
-                                                except: pass
-                                            log_audit('HOD Review', f'{staff_name} reviewed by HOD')
-                                        try: db._delete("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
-                                        except: pass
-                                        st.success("✅ Submitted!"); st.balloons()
+                            
             else:
                 st.info("No pending appraisals.")
     
