@@ -10298,13 +10298,29 @@ def performance_okrs():
                                         with c1: st.markdown(f"<small>Staff: {staff_score}%</small>", unsafe_allow_html=True)
                                         with c2:
                                             prev_hod = assessment.get('hod_scores', {}).get(score_key, 0) if is_re_review else 0
+                                            # Load from drafts table if exists
+                                            try:
+                                                draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                                if draft_data and len(draft_data) > 0:
+                                                    saved_scores = json.loads(draft_data[0].get('hod_scores', '{}'))
+                                                    if score_key in saved_scores:
+                                                        prev_hod = saved_scores[score_key]
+                                            except: pass
                                             hod_scores[score_key] = st.number_input("HOD Score", 0, 100, int(prev_hod) if prev_hod else 0, 1, key=f"hod_{staff_name}_{score_key}")
                                         
                                         # ===== KPI COMMENT FIELD (NEW) =====
+                                        draft_kpi_comment = assessment.get('hod_kpi_comments', {}).get(score_key, '') if is_re_review else ''
+                                        try:
+                                            draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                            if draft_data and len(draft_data) > 0:
+                                                saved_kpi_comments = json.loads(draft_data[0].get('hod_kpi_comments', '{}'))
+                                                if score_key in saved_kpi_comments:
+                                                    draft_kpi_comment = saved_kpi_comments[score_key]
+                                        except: pass
                                         st.text_input(
                                             "HOD Comment for this KPI *",
-                                            value=assessment.get('hod_kpi_comments', {}).get(score_key, '') if is_re_review else '',
-                                            placeholder="Required - explain your score for this KPI...",
+                                            value=draft_kpi_comment,
+                                            placeholder="Required - justify your score for this KPI...",
                                             key=f"kpi_comment_{staff_name}_{score_key}"
                                         )
                                         # ===== END KPI COMMENT FIELD =====
@@ -10327,22 +10343,43 @@ def performance_okrs():
                                 diff = staff_avg - hod_avg
                                 st.metric("📈 Difference", f"{diff:+.1f}%")
                             
-                            hod_overall = st.text_area(f"Your Overall Comments *", value=assessment.get('hod_comments', '') if is_re_review else '', key=f"hod_app_{staff_name}")
+                            draft_overall = assessment.get('hod_comments', '') if is_re_review else ''
+                            try:
+                                draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                if draft_data and len(draft_data) > 0:
+                                    draft_overall = draft_data[0].get('hod_overall', '') or draft_overall
+                            except: pass
+                            hod_overall = st.text_area(f"Your Overall Comments *", value=draft_overall, key=f"hod_app_{staff_name}")
                             
-                            # ===== SAVE PROGRESS BUTTON (NEW) =====
+                            # ===== SAVE PROGRESS - SAVES TO DEDICATED DRAFTS TABLE (NO STATUS CHANGE) =====
                             if st.button(f"💾 Save Progress", key=f"save_progress_{staff_name}", use_container_width=True):
-                                if not hod_overall:
-                                    st.error("❌ Please add overall comments before saving progress!")
-                                else:
-                                    st.session_state.self_assessments[staff_name].update({
-                                        'hod_scores': hod_scores,
-                                        'hod_comments': hod_overall,
-                                        'reviewer_type': 'HOD'
-                                    })
-                                    try: db.save_appraisal(staff_name, assessment.get('email', ''), get_employee_dept(staff_name), st.session_state.appraisal_cycle_name, assessment.get('status', 'Submitted'), assessment['scores'], assessment.get('comments', ''), assessment.get('pillar_comments', {}), hod_scores, hod_overall, {}, None, None, assessment.get('date', ''))
-                                    except: pass
-                                    log_audit('HOD Save Progress', f'{staff_name} - HOD saved progress')
-                                    st.success("💾 Progress saved! You can continue later.")
+                                try:
+                                    # Collect KPI comments
+                                    kpi_comments_to_save = {sk: st.session_state.get(f"kpi_comment_{staff_name}_{sk}", '') for sk in hod_scores.keys()}
+                                    
+                                    # Check if draft exists
+                                    existing_draft = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                    
+                                    draft_payload = {
+                                        "staff_name": staff_name,
+                                        "cycle_name": st.session_state.appraisal_cycle_name,
+                                        "fy": hod_fy,
+                                        "hod_scores": json.dumps(hod_scores),
+                                        "hod_kpi_comments": json.dumps(kpi_comments_to_save),
+                                        "hod_overall": hod_overall if hod_overall else '',
+                                        "updated_by": user_name,
+                                        "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                    }
+                                    
+                                    if existing_draft and len(existing_draft) > 0:
+                                        db._patch("hod_drafts", draft_payload, {"id": existing_draft[0]['id']})
+                                    else:
+                                        db._post("hod_drafts", draft_payload)
+                                    
+                                    log_audit('HOD Save Progress', f'{staff_name} - HOD saved progress to drafts')
+                                    st.success("💾 Progress saved! You can logout, reload, or come back later — your work will be here.")
+                                except Exception as e:
+                                    st.error(f"❌ Could not save progress: {str(e)}")
                             # ===== END SAVE PROGRESS =====
                             
                             if is_re_review or is_escalated:
@@ -10359,6 +10396,8 @@ def performance_okrs():
                                                 try: EmailService().send_email(emp_email, f"📝 Updated HOD Review", f"Dear {staff_name},\n\nYour HOD has submitted an updated review.\n\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
                                                 except: pass
                                             log_audit('HOD Revised Review', f'{staff_name} revised by HOD')
+                                            try: db._delete("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                            except: pass
                                             st.success("✅ Submitted!"); st.balloons()
                                 with c2:
                                     if st.button(f"✋ Stand Firm - Escalate", key=f"standfirm_{staff_name}"):
@@ -10416,7 +10455,9 @@ def performance_okrs():
                                                 try: EmailService().send_email(emp_email, f"📝 HOD Review Complete", f"Dear {staff_name},\n\nYour HOD has completed your review.\n\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
                                                 except: pass
                                             log_audit('HOD Review', f'{staff_name} reviewed by HOD')
-                                            st.success("✅ Submitted!"); st.balloons()
+                                        try: db._delete("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                        except: pass
+                                        st.success("✅ Submitted!"); st.balloons()
             else:
                 st.info("No pending appraisals.")
     
