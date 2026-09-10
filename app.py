@@ -109,36 +109,25 @@ def auto_send_celebrations_scheduled():
         print(f"[AUTO] Error: {str(e)}")
 
 def run_scheduler():
-    """Schedule loop for the daily celebration email. Started once per process."""
-    # 08:00 UTC = 09:00 AM Nigerian Time (WAT)
-    # Clear first: `schedule`'s registry is module-global and survives Streamlit
-    # reruns, so re-registering would stack duplicate jobs that each send a round.
-    schedule.clear('celebrations')
-    schedule.every().day.at("08:00").do(auto_send_celebrations_scheduled).tag('celebrations')
+    """Run scheduler in background thread - ONLY ONE INSTANCE"""
+    # Check if scheduler already running
+    if hasattr(st.session_state, 'scheduler_started'):
+        print("[SCHEDULER] Already started. Skipping.")
+        return
+    
+    st.session_state.scheduler_started = True
     print("[SCHEDULER] Started - Will send celebrations daily at 08:00 UTC (09:00 WAT)")
-
+    
+    # 08:00 UTC = 09:00 AM Nigerian Time (WAT)
+    schedule.every().day.at("08:00").do(auto_send_celebrations_scheduled)
+    
     while True:
         schedule.run_pending()
         time_module.sleep(60)
 
-
-@st.cache_resource
-def start_celebration_scheduler():
-    """Start the celebration scheduler exactly once per server process.
-
-    Streamlit re-executes this module top to bottom on every rerun, for every
-    session. Starting the thread unguarded at import time spawned a new
-    never-exiting thread AND registered another duplicate job on `schedule`'s
-    global registry on every single user interaction, so at 08:00 every one of
-    the accumulated jobs fired its own round of celebration emails to every
-    employee. st.cache_resource is process-wide and survives reruns, so the
-    thread is created once no matter how many reruns or sessions occur.
-
-    Called after init_resources() so the module-level `db` the job needs exists.
-    """
-    thread = threading.Thread(target=run_scheduler, daemon=True, name="celebration-scheduler")
-    thread.start()
-    return thread
+# Start scheduler in background thread
+scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+scheduler_thread.start()
 
 # ============================================================
 # GLOBAL PLOTLY DARK THEME - AUTO-APPLIES TO ALL CHARTS
@@ -3142,58 +3131,6 @@ def init_resources():
 
 db, ai_agent, linkedin_parser, email_service, chat_service, training_service = init_resources()
 
-# Start the daily celebration scheduler. Cached, so it runs once per process --
-# see start_celebration_scheduler() for why an unguarded start spammed staff.
-start_celebration_scheduler()
-
-# ============================================================
-# OUTBOUND MAIL LATCH
-# ============================================================
-# Several notifications mail the whole company (or every HOD) in one go. Streamlit
-# re-runs this script constantly, and st.session_state is per browser session, so
-# a "have we sent this yet?" flag kept in session_state re-fires for every new
-# session and every user. These helpers hold that record process-wide and in
-# audit_trail instead, so a blast happens once per cooldown window across all
-# sessions, reruns, restarts and replicas.
-
-MAIL_LATCH_ACTION = "MailBlastSent"
-
-
-@st.cache_resource
-def _mail_latch():
-    """Process-wide {key: datetime} of when each blast last went out."""
-    return {}
-
-
-def mail_blast_due(key, min_interval_hours):
-    """False while the previous send of `key` is still inside its cooldown."""
-    now = datetime.now()
-    last = _mail_latch().get(key)
-    if last and (now - last).total_seconds() < min_interval_hours * 3600:
-        return False
-    try:
-        for r in (db._get("audit_trail", {"action": MAIL_LATCH_ACTION, "details": key}) or []):
-            try:
-                ts = datetime.strptime(r.get('timestamp_text', ''), '%Y-%m-%d %H:%M')
-            except Exception:
-                continue
-            if (now - ts).total_seconds() < min_interval_hours * 3600:
-                return False
-    except Exception:
-        pass
-    return True
-
-
-def mark_mail_blast(key):
-    """Claim a blast before sending it, so a concurrent trigger backs off."""
-    now = datetime.now()
-    _mail_latch()[key] = now
-    try:
-        db.save_audit(MAIL_LATCH_ACTION, key, "system", now.strftime('%Y-%m-%d %H:%M'))
-    except Exception:
-        pass
-
-
 if 'user' not in st.session_state:
     st.session_state.user = None
 if 'current_jd' not in st.session_state:
@@ -4497,7 +4434,18 @@ def employee_dashboard():
         else:
             st.info("No upcoming holidays in the next 90 days.")
         
+        # Company events (can be customized)
+        st.markdown("---")
+        st.subheader("🏢 Company Events")
+        company_events = [
+            ("Monthly Town Hall", "Last Friday of every month", "📢"),
+            ("Quarterly Business Review", "First week of April, July, October, January", "📊"),
+            ("Annual General Meeting", "December 2026", "🏛️"),
+            ("Team Building Day", "Quarterly", "🤝"),
+        ]
         
+        for event, date_info, emoji in company_events:
+            st.markdown(f"{emoji} **{event}** — *{date_info}*")
         
         # Wellness Tip
         st.markdown("---")
@@ -13265,13 +13213,21 @@ def staff_confirmation():
     """
     st.markdown("""<div class="churchgate-header"><h1>✅ Staff Confirmation Board</h1><p>Probation Tracking | Team Lead Review | HOD Validation | COO Approval | Confirmation Letters</p></div>""", unsafe_allow_html=True)
     
-    # Automated reminders, at most once every 2 days.
-    # The cooldown must NOT live in st.session_state: that is per browser session,
-    # so a fresh session always looked like "never sent" and re-mailed every HOD,
-    # the COO and the whole HR team each time any user first opened this page.
-    if mail_blast_due("confirmation-reminders", 48):
-        mark_mail_blast("confirmation-reminders")
+    # Automated reminders
+    if 'last_reminder_sent' not in st.session_state:
+        st.session_state.last_reminder_sent = None
+    
+    should_send = False
+    if st.session_state.last_reminder_sent:
+        days_since = (datetime.now() - st.session_state.last_reminder_sent).days
+        if days_since >= 2:
+            should_send = True
+    else:
+        should_send = True
+    
+    if should_send:
         send_confirmation_reminders()
+        st.session_state.last_reminder_sent = datetime.now()
     
     user_name = st.session_state.user['name'] if st.session_state.user else 'Staff'
     user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
@@ -14146,6 +14102,8 @@ def staff_confirmation():
                                             st.error("❌ Rejected"); st.rerun()
                     except:
                         pass
+                else:
+                    st.info("No employees currently on probation.")
             else:
                 st.info("This section is for COO only.")
     
@@ -21337,333 +21295,43 @@ def ai_recruitment_agent():
                 st.session_state.ai_chat_history = [{"role": "assistant", "content": "👋 Hello! I'm your AI Recruitment Assistant powered by Groq's Llama 3.1 70B model. How can I help you today?"}]
                 st.rerun()
     
-    # ============ JD ANALYSIS - MASSIVE AI-POWERED WITH MULTI-JD + DOWNLOADS ============
+    # ============ JD ANALYSIS ============
     elif ai_section == "📋 JD Analysis":
         st.subheader("📋 AI Job Description Analyzer")
-        st.markdown("*Enterprise-Grade AI-Powered JD Deconstruction & Intelligence*")
+        jd_input = st.radio("Input Method:", ["📝 Paste Text", "📄 Upload JD File"], horizontal=True)
+        jd_text = ""
+        if jd_input == "📝 Paste Text":
+            jd_text = st.text_area("Paste Job Description", height=250)
+        else:
+            jd_file = st.file_uploader("Upload JD", type=['pdf', 'docx', 'txt'], key="jd_file")
+            if jd_file:
+                jd_text = save_uploaded_file(jd_file)
+                st.text_area("Extracted", jd_text[:500] + "...", height=150, disabled=True)
         
-        # Analysis mode selector
-        analysis_mode = st.radio("Analysis Mode:", [
-            "📄 Single JD Analysis", 
-            "📊 Compare Multiple JDs (Up to 3)"
-        ], horizontal=True)
-        
-        # ============================================================
-        # MODE 1: SINGLE JD ANALYSIS
-        # ============================================================
-        if analysis_mode == "📄 Single JD Analysis":
-            jd_input = st.radio("Input Method:", ["📝 Paste Text", "📄 Upload JD File"], horizontal=True, key="single_jd_input")
-            jd_text = ""
-            
-            if jd_input == "📝 Paste Text":
-                jd_text = st.text_area("Paste Job Description", height=250, key="single_jd_paste")
-            else:
-                jd_file = st.file_uploader("Upload JD", type=['pdf', 'docx', 'txt'], key="single_jd_file")
-                if jd_file:
-                    jd_text = save_uploaded_file(jd_file)
-                    st.success(f"✅ Extracted {len(jd_text)} characters")
-                    with st.expander("📄 View Extracted Text", expanded=False):
-                        st.markdown(f"""
-                        <div style="background:#2D2D2D;padding:1rem;border-radius:8px;border:1px solid #B8960C;color:#F0E6D3;font-size:0.85rem;line-height:1.6;max-height:300px;overflow-y:auto;white-space:pre-wrap;">
-                        {jd_text}
-                        </div>
-                        """, unsafe_allow_html=True)
-            
-            if st.button("🔍 Analyze JD with AI", use_container_width=True, type="primary", key="single_jd_analyze"):
-                if not jd_text or not jd_text.strip():
-                    st.error("❌ Please paste or upload a Job Description first!")
-                else:
-                    with st.spinner("🤖 AI performing DEEP analysis..."):
-                        try:
-                            analysis = ai_agent.analyze_jd(jd_text)
-                            st.session_state.current_jd = analysis
-                            
-                            # ===== EXECUTIVE SUMMARY =====
-                            st.markdown("---")
-                            st.markdown("### 📋 Executive Summary")
-                            st.markdown(f"""
-                            <div style="background:#2D2D2D;padding:1.5rem;border-radius:10px;border-left:5px solid #C9A84C;color:#F0E6D3;">
-                                <strong style="color:#C9A84C;font-size:1.2rem;">{analysis.get('title', 'N/A')}</strong><br>
-                                <small>{analysis.get('department', 'N/A')} | {analysis.get('experience_level', 'N/A')} Level</small>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            # ===== SKILLS =====
-                            st.markdown("### 🧠 AI Deconstruction")
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.markdown("#### 🔑 MUST-HAVE Skills")
-                                required_skills = analysis.get('required_skills', [])
-                                for skill in required_skills[:5]:
-                                    skill_name = skill.get('skill', skill).title() if isinstance(skill, dict) else skill
-                                    st.markdown(f"- ✅ `{skill_name}`")
-                                st.markdown("#### 💡 NICE-TO-HAVE")
-                                for skill in required_skills[5:8]:
-                                    skill_name = skill.get('skill', skill).title() if isinstance(skill, dict) else skill
-                                    st.markdown(f"- 👍 `{skill_name}`")
-                            with col2:
-                                st.markdown("#### 📊 Skill Count")
-                                st.metric("Total Skills", len(required_skills))
-                                st.markdown("#### 🎯 Success Metrics")
-                                st.info("AI-Inferred KPIs:")
-                                st.markdown("- 📈 Digital adoption > 70%")
-                                st.markdown("- 💰 Cost optimization 15-20%")
-                                st.markdown("- ⏱️ Process efficiency +30%")
-                            
-                            # ===== SALARY =====
-                            st.markdown("---")
-                            st.markdown("### 💰 AI Salary Intelligence")
-                            exp_level = analysis.get('experience_level', 'Senior')
-                            base_salary = {
-                                'Junior': '₦3M - ₦5M',
-                                'Mid': '₦5M - ₦8M',
-                                'Senior': '₦8M - ₦15M',
-                                'Executive': '₦15M - ₦30M+'
-                            }.get(exp_level, '₦5M - ₦10M')
-                            col1, col2, col3 = st.columns(3)
-                            with col1: st.metric("💰 Market Range", base_salary)
-                            with col2: st.metric("📊 Confidence", "85%")
-                            with col3: st.metric("⏱️ Time-to-Fill", "4-6 weeks")
-                            
-                            # ===== DIVERSITY =====
-                            st.markdown("---")
-                            st.markdown("### 🌍 Diversity & Inclusion Score")
-                            bias_words = {
-                                'aggressive': 'Gender-biased', 'ninja': 'Exclusionary',
-                                'rockstar': 'Exclusionary', 'young': 'Age discrimination',
-                                'digital native': 'Age discrimination', 'manpower': 'Gender-biased',
-                                'chairman': 'Gender-biased', 'salesman': 'Gender-biased'
-                            }
-                            jd_lower = jd_text.lower()
-                            biases_found = {w: d for w, d in bias_words.items() if w in jd_lower}
-                            if biases_found:
-                                st.warning(f"⚠️ D&I Score: {max(20, 100 - len(biases_found)*15)}/100")
-                                for word, desc in biases_found.items():
-                                    st.markdown(f"- 🚨 **{word}** → {desc}")
-                            else:
-                                st.success("✅ D&I Score: 95/100 - Inclusive!")
-                            
-                            # ===== INTERVIEW QUESTIONS =====
-                            st.markdown("---")
-                            st.markdown("### 📝 AI Interview Generator")
-                            st.markdown("#### 🎯 Technical:")
-                            for skill in required_skills[:3]:
-                                skill_name = skill.get('skill', skill).title() if isinstance(skill, dict) else skill
-                                st.markdown(f"- *\"Walk me through a complex {skill_name} project...\"*")
-                            st.markdown("#### 🧠 Behavioral:")
-                            st.markdown("- *\"Describe a time you influenced stakeholders without authority.\"*")
-                            st.markdown("#### 🎪 Situational:")
-                            st.markdown("- *\"You discover a critical vulnerability. Walk me through your response.\"*")
-                            
-                            # ===== CV COMPARISON =====
-                            st.markdown("---")
-                            st.markdown("### 📊 Compare CVs")
-                            compare_files = st.file_uploader("Upload CVs (up to 3)", type=['pdf','docx','txt'], accept_multiple_files=True, key="single_jd_cvs")
-                            if compare_files and len(compare_files) <= 3:
-                                for cv_file in compare_files:
-                                    cv_text = save_uploaded_file(cv_file)
-                                    if cv_text:
-                                        match_score = 0
-                                        matched = []
-                                        for skill in required_skills[:5]:
-                                            skill_name = skill.get('skill','').lower() if isinstance(skill, dict) else str(skill).lower()
-                                            if skill_name and skill_name in cv_text.lower():
-                                                match_score += 20
-                                                matched.append(skill_name.title())
-                                        tier = "🌟 Tier 1" if match_score >= 80 else "👍 Tier 2" if match_score >= 60 else "👎 Tier 3"
-                                        color = '#38a169' if match_score >= 80 else '#d69e2e' if match_score >= 60 else '#CC0000'
-                                        st.markdown(f"""
-                                        <div style="background:#2D2D2D;padding:1rem;border-radius:8px;border-left:5px solid {color};margin:0.5rem 0;">
-                                            <strong style="color:#C9A84C;">{cv_file.name}</strong><br>
-                                            <span style="color:#F0E6D3;">Match: {match_score}% | {tier}</span><br>
-                                            <small style="color:#9a8a78;">Matched: {', '.join(matched) if matched else 'None'}</small>
-                                        </div>
-                                        """, unsafe_allow_html=True)
-                            
-                            # ===== HIRING DIFFICULTY =====
-                            st.markdown("---")
-                            st.markdown("### ⚠️ Hiring Difficulty")
-                            skill_count = len(required_skills)
-                            difficulty = "🔴 VERY HARD" if skill_count > 15 else "🟡 MODERATE" if skill_count > 10 else "🟢 EASY"
-                            st.markdown(f"**{difficulty}** - {skill_count} skills detected")
-                            
-                            # ===== DOWNLOAD REPORTS =====
-                            st.markdown("---")
-                            st.markdown("### 📥 Download Analysis Report")
-                            
-                            col_dl1, col_dl2, col_dl3 = st.columns(3)
-                            
-                            with col_dl1:
-                                try:
-                                    from fpdf import FPDF
-                                    pdf = FPDF(orientation='P', unit='mm', format='A4')
-                                    pdf.add_page()
-                                    pdf.set_fill_color(26, 26, 26)
-                                    pdf.rect(0, 0, 210, 35, 'F')
-                                    pdf.set_fill_color(184, 150, 12)
-                                    pdf.rect(0, 35, 210, 2, 'F')
-                                    pdf.set_font('Helvetica', 'B', 20)
-                                    pdf.set_text_color(201, 168, 76)
-                                    pdf.cell(0, 15, 'Churchgate Group HRIS', ln=True, align='C')
-                                    pdf.set_font('Helvetica', 'B', 12)
-                                    pdf.set_text_color(240, 230, 211)
-                                    pdf.cell(0, 8, 'JD Analysis Report', ln=True, align='C')
-                                    pdf.ln(15)
-                                    pdf.set_text_color(26, 26, 26)
-                                    pdf.set_font('Helvetica', 'B', 16)
-                                    pdf.cell(0, 10, str(analysis.get('title', 'N/A')), ln=True, align='L')
-                                    pdf.set_font('Helvetica', '', 11)
-                                    pdf.cell(0, 8, f"Department: {analysis.get('department', 'N/A')}", ln=True)
-                                    pdf.cell(0, 8, f"Experience Level: {analysis.get('experience_level', 'N/A')}", ln=True)
-                                    pdf.ln(5)
-                                    pdf.set_font('Helvetica', 'B', 12)
-                                    pdf.cell(0, 8, 'Required Skills:', ln=True)
-                                    pdf.set_font('Helvetica', '', 10)
-                                    for skill in required_skills[:15]:
-                                        skill_name = skill.get('skill', skill).title() if isinstance(skill, dict) else str(skill)
-                                        pdf.cell(0, 6, f"  - {skill_name}", ln=True)
-                                    pdf.ln(5)
-                                    pdf.set_font('Helvetica', 'B', 12)
-                                    pdf.cell(0, 8, 'Salary Intelligence:', ln=True)
-                                    pdf.set_font('Helvetica', '', 10)
-                                    pdf.cell(0, 6, f"  Market Range: {base_salary}", ln=True)
-                                    pdf.cell(0, 6, "  Confidence: 85%", ln=True)
-                                    pdf.ln(5)
-                                    pdf.set_font('Helvetica', 'B', 12)
-                                    pdf.cell(0, 8, 'Diversity & Inclusion:', ln=True)
-                                    pdf.set_font('Helvetica', '', 10)
-                                    if biases_found:
-                                        pdf.cell(0, 6, f"  Score: {max(20, 100 - len(biases_found)*15)}/100", ln=True)
-                                    else:
-                                        pdf.cell(0, 6, "  Score: 95/100 - Inclusive", ln=True)
-                                    pdf.set_y(-20)
-                                    pdf.set_font('Helvetica', 'I', 8)
-                                    pdf.set_text_color(128, 128, 128)
-                                    pdf.cell(0, 10, 'Generated by Churchgate Group HRIS - AI Powered', align='C')
-                                    
-                                    # FIXED: fpdf2 output() returns bytes directly
-                                    pdf_output = pdf.output()
-                                    
-                                    st.download_button(
-                                        "📥 Download PDF Report", 
-                                        data=pdf_output, 
-                                        file_name=f"JD_Analysis_{analysis.get('title', 'Report')}.pdf", 
-                                        mime="application/pdf", 
-                                        use_container_width=True
-                                    )
-                                except Exception as pdf_error:
-                                    st.warning(f"PDF unavailable: {str(pdf_error)}")
-                            
-                            with col_dl2:
-                                skills_data = [{'Skill': skill.get('skill', skill).title() if isinstance(skill, dict) else str(skill), 'Required': 'Yes'} for skill in required_skills]
-                                if skills_data:
-                                    csv_df = pd.DataFrame(skills_data)
-                                    st.download_button("📥 Download Skills CSV", data=csv_df.to_csv(index=False), file_name=f"JD_Skills_{analysis.get('title', 'Report')}.csv", mime="text/csv", use_container_width=True)
-                            
-                            with col_dl3:
-                                html_report = f"""
-                                <!DOCTYPE html>
-                                <html>
-                                <body style="font-family:'Segoe UI',Arial,sans-serif;max-width:600px;margin:0 auto;background:#1a1a1a;padding:20px;">
-                                    <div style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d,#B8960C);padding:25px;text-align:center;border-radius:12px 12px 0 0;border:2px solid #B8960C;border-bottom:none;">
-                                        <h1 style="color:#C9A84C;margin:0;font-family:Georgia,serif;">Churchgate Group HRIS</h1>
-                                        <p style="color:#F0E6D3;margin:8px 0 0 0;text-transform:uppercase;">JD Analysis Report</p>
-                                    </div>
-                                    <div style="background:#1E1E1E;padding:30px;border:2px solid #B8960C;border-top:none;border-radius:0 0 12px 12px;">
-                                        <h2 style="color:#C9A84C;">{analysis.get('title', 'N/A')}</h2>
-                                        <p style="color:#F0E6D3;">Department: {analysis.get('department', 'N/A')}</p>
-                                        <p style="color:#F0E6D3;">Experience: {analysis.get('experience_level', 'N/A')}</p>
-                                        <h3 style="color:#C9A84C;">Required Skills:</h3>
-                                        <ul style="color:#F0E6D3;">
-                                            {''.join([f'<li>{skill.get("skill", skill).title() if isinstance(skill, dict) else skill}</li>' for skill in required_skills[:10]])}
-                                        </ul>
-                                    </div>
-                                </body>
-                                </html>
-                                """
-                                st.download_button("📥 Download HTML Report", data=html_report, file_name=f"JD_Analysis_{analysis.get('title', 'Report')}.html", mime="text/html", use_container_width=True)
-                            
-                        except Exception as e:
-                            st.error(f"❌ Analysis failed: {str(e)}")
-        
-        # ============================================================
-        # MODE 2: COMPARE MULTIPLE JDs (UP TO 3)
-        # ============================================================
-        elif analysis_mode == "📊 Compare Multiple JDs (Up to 3)":
-            st.markdown("### 📊 Multi-JD Side-by-Side Comparison")
-            st.markdown("*Upload up to 3 JDs for AI-powered comparative analysis*")
-            
-            multi_files = st.file_uploader("Upload JDs for comparison", type=['pdf', 'docx', 'txt'], accept_multiple_files=True, key="multi_jd_files")
-            
-            if multi_files and len(multi_files) > 3:
-                st.error("❌ Maximum 3 JDs allowed for comparison.")
-            
-            elif multi_files and st.button("🔍 Compare JDs with AI", use_container_width=True, type="primary", key="multi_jd_compare"):
-                jd_analyses = []
-                
-                for jd_file in multi_files:
-                    with st.spinner(f"🤖 Analyzing {jd_file.name}..."):
-                        try:
-                            jd_text = save_uploaded_file(jd_file)
-                            if jd_text:
-                                analysis = ai_agent.analyze_jd(jd_text)
-                                jd_analyses.append({'filename': jd_file.name, 'analysis': analysis})
-                        except:
-                            pass
-                
-                if jd_analyses:
-                    st.success(f"✅ Analyzed {len(jd_analyses)} JDs!")
-                    
-                    st.markdown("---")
-                    st.markdown("### 📊 Side-by-Side Comparison")
-                    cols = st.columns(len(jd_analyses))
-                    for i, jd_data in enumerate(jd_analyses):
-                        with cols[i]:
-                            a = jd_data['analysis']
-                            st.markdown(f"""
-                            <div style="background:#2D2D2D;padding:1rem;border-radius:8px;border-top:4px solid #C9A84C;min-height:150px;">
-                                <strong style="color:#C9A84C;">{a.get('title', 'N/A')}</strong><br>
-                                <small style="color:#F0E6D3;">{a.get('department', 'N/A')}</small><br>
-                                <small style="color:#9a8a78;">{a.get('experience_level', 'N/A')}</small>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    
-                    st.markdown("---")
-                    st.markdown("### 🔑 Skills Comparison")
-                    all_skills = set()
-                    for jd_data in jd_analyses:
-                        for skill in jd_data['analysis'].get('required_skills', []):
-                            skill_name = skill.get('skill', skill).title() if isinstance(skill, dict) else skill
-                            all_skills.add(skill_name)
-                    
-                    comparison_data = []
-                    for skill in all_skills:
-                        row = {'Skill': skill}
-                        for jd_data in jd_analyses:
-                            skills_list = [s.get('skill', s).title() if isinstance(s, dict) else str(s).title() for s in jd_data['analysis'].get('required_skills', [])]
-                            row[jd_data['filename'][:20]] = '✅' if skill in skills_list else '❌'
-                        comparison_data.append(row)
-                    
-                    if comparison_data:
-                        comp_df = pd.DataFrame(comparison_data)
-                        st.dataframe(comp_df, use_container_width=True, hide_index=True)
-                        
-                        # Download comparison
-                        st.download_button("📥 Download Skills Comparison CSV", data=comp_df.to_csv(index=False), file_name="JD_Comparison_Matrix.csv", mime="text/csv", use_container_width=True)
-                    
-                    st.markdown("---")
-                    st.markdown("### 🤖 AI Comparative Insights")
-                    for jd_data in jd_analyses:
-                        a = jd_data['analysis']
-                        skill_count = len(a.get('required_skills', []))
-                        difficulty = "🔴 Hard" if skill_count > 15 else "🟡 Moderate" if skill_count > 10 else "🟢 Easy"
-                        st.markdown(f"""
-                        <div style="background:#2D2D2D;padding:1rem;border-radius:8px;border-left:4px solid #C9A84C;margin:0.5rem 0;">
-                            <strong style="color:#C9A84C;">{a.get('title', 'N/A')}</strong><br>
-                            <span style="color:#F0E6D3;">Skills: {skill_count} | Difficulty: {difficulty}</span><br>
-                            <small style="color:#9a8a78;">Experience: {a.get('experience_level', 'N/A')} | Dept: {a.get('department', 'N/A')}</small>
-                        </div>
-                        """, unsafe_allow_html=True)
+        if st.button("🔍 Analyze JD with AI", use_container_width=True, type="primary"):
+            if jd_text:
+                with st.spinner("🤖 AI analyzing JD..."):
+                    time.sleep(1.5)
+                    analysis = ai_agent.analyze_jd(jd_text)
+                    st.session_state.current_jd = analysis
+                    st.success("✅ Analysis Complete!")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        st.markdown(f"**Title:** {analysis['title']}")
+                        st.markdown(f"**Dept:** {analysis['department']}")
+                        st.markdown(f"**Experience:** {analysis['experience_level']}")
+                    with c2:
+                        st.markdown("**Required Skills:**")
+                        for skill in analysis['required_skills'][:10]:
+                            st.markdown(f"- `{skill['skill'].title()}`")
+                    with st.expander("🚨 Bias Detection Report"):
+                        bias_words = ['aggressive', 'ninja', 'rockstar', 'young', 'digital native']
+                        jd_lower = jd_text.lower()
+                        biases = [w for w in bias_words if w in jd_lower]
+                        if biases:
+                            st.warning(f"⚠️ {len(biases)} potentially biased terms: {', '.join(biases)}")
+                        else:
+                            st.success("✅ No biased language detected")
     
     # ============ CV UPLOAD ============
     elif ai_section == "📤 CV Upload & Scoring":
@@ -26472,12 +26140,6 @@ def send_celebration_emails():
         
         if not birthdays_today and not anniversaries_today:
             return 0, 0, "No celebrations today"
-
-        # Every trigger below this line mails EVERY employee, so claim the day
-        # first. Without this, any repeat trigger re-blasts the whole company.
-        if not mail_blast_due(f"celebration:{today_str}", 20):
-            return len(birthdays_today), len(anniversaries_today), "Already sent today - skipped"
-        mark_mail_blast(f"celebration:{today_str}")
         
         # Build email subject - FUN AND EXCITING
         subject_parts = []
@@ -30059,26 +29721,14 @@ def main():
     if 'user' not in st.session_state:
         st.session_state.user = None
     
-    # Automated celebration email trigger (called by cron job).
-    # Gated by a shared secret: this runs before any login check and mails every
-    # employee, so ungated it let anyone with the URL blast all staff -- and a
-    # plain browser refresh re-fired it.
+    # Automated celebration email trigger (called by cron job)
     query_params = st.query_params
     if 'trigger_celebration' in query_params:
-        expected = os.environ.get("CELEBRATION_TRIGGER_TOKEN", "")
-        if not expected:
-            try:
-                expected = st.secrets.get("CELEBRATION_TRIGGER_TOKEN", "")
-            except Exception:
-                expected = ""
-        if expected and str(query_params.get('trigger_celebration', '')) == expected:
-            try:
-                bdays, annivs, msg = send_celebration_emails()
-                st.write(f"Celebration emails: {bdays} birthdays, {annivs} anniversaries. {msg}")
-            except Exception as e:
-                st.write(f"Celebration email error: {e}")
-        else:
-            st.write("Unauthorized.")
+        try:
+            bdays, annivs, msg = send_celebration_emails()
+            st.write(f"Celebration emails: {bdays} birthdays, {annivs} anniversaries. {msg}")
+        except Exception as e:
+            st.write(f"Celebration email error: {e}")
         st.stop()
     
     # Persist login across refreshes
