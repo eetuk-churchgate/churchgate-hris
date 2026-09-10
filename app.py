@@ -10300,7 +10300,7 @@ def performance_okrs():
                                             prev_hod = assessment.get('hod_scores', {}).get(score_key, 0) if is_re_review else 0
                                             # Load from drafts table if exists
                                             try:
-                                                draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                                draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
                                                 if draft_data and len(draft_data) > 0:
                                                     saved_scores = json.loads(draft_data[0].get('hod_scores', '{}'))
                                                     if score_key in saved_scores:
@@ -10311,7 +10311,7 @@ def performance_okrs():
                                         # ===== KPI COMMENT FIELD (NEW) =====
                                         draft_kpi_comment = assessment.get('hod_kpi_comments', {}).get(score_key, '') if is_re_review else ''
                                         try:
-                                            draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                            draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
                                             if draft_data and len(draft_data) > 0:
                                                 saved_kpi_comments = json.loads(draft_data[0].get('hod_kpi_comments', '{}'))
                                                 if score_key in saved_kpi_comments:
@@ -10345,7 +10345,7 @@ def performance_okrs():
                             
                             draft_overall = assessment.get('hod_comments', '') if is_re_review else ''
                             try:
-                                draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                draft_data = db._get("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
                                 if draft_data and len(draft_data) > 0:
                                     draft_overall = draft_data[0].get('hod_overall', '') or draft_overall
                             except: pass
@@ -10362,7 +10362,7 @@ def performance_okrs():
                                     
                                     draft_payload = {
                                         "staff_name": staff_name,
-                                        "cycle_name": st.session_state.appraisal_cycle_name,
+                                        "cycle_name": hod_cycle,
                                         "fy": hod_fy,
                                         "hod_scores": json.dumps(hod_scores),
                                         "hod_kpi_comments": json.dumps(kpi_comments_to_save),
@@ -10396,7 +10396,7 @@ def performance_okrs():
                                                 try: EmailService().send_email(emp_email, f"📝 Updated HOD Review", f"Dear {staff_name},\n\nYour HOD has submitted an updated review.\n\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
                                                 except: pass
                                             log_audit('HOD Revised Review', f'{staff_name} revised by HOD')
-                                            try: db._delete("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                            try: db._delete("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
                                             except: pass
                                             st.success("✅ Submitted!"); st.balloons()
                                 with c2:
@@ -10455,7 +10455,7 @@ def performance_okrs():
                                                 try: EmailService().send_email(emp_email, f"📝 HOD Review Complete", f"Dear {staff_name},\n\nYour HOD has completed your review.\n\nHOD Comments: {hod_overall}\n\nChurchgate Group HR")
                                                 except: pass
                                             log_audit('HOD Review', f'{staff_name} reviewed by HOD')
-                                        try: db._delete("hod_drafts", {"staff_name": staff_name, "cycle_name": st.session_state.appraisal_cycle_name})
+                                        try: db._delete("hod_drafts", {"staff_name": staff_name, "cycle_name": hod_cycle, "fy": hod_fy})
                                         except: pass
                                         st.success("✅ Submitted!"); st.balloons()
             else:
