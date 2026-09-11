@@ -23,9 +23,9 @@ class EmailService:
         self.sender_email = os.environ.get("SMTP_SENDER_EMAIL", os.environ.get("SMTP_EMAIL", ""))
         if not self.sender_email:
             try:
-                self.sender_email = st.secrets.get("SMTP_EMAIL", "eetuk@churchgate.com")
+                self.sender_email = st.secrets.get("SMTP_EMAIL", "hris@churchgate.com")
             except:
-                self.sender_email = "eetuk@churchgate.com"
+                self.sender_email = "hris@churchgate.com"
         
         self.sender_name = "Churchgate Group HRIS"
         
