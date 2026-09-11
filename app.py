@@ -17196,7 +17196,7 @@ def jd_progress_tracker(employees_df=None):
                                 
                                 try:
                                     from utils.email_service import EmailService
-                                    EmailService().send_email('eetuk@churchgate.com', f"🤖 AI Assessment Complete: {emp_name_ai}", f"AI assessment for {emp_name_ai} has been completed.")
+                                    EmailService().send_email('hris@churchgate.com', f"🤖 AI Assessment Complete: {emp_name_ai}", f"AI assessment for {emp_name_ai} has been completed.")
                                     st.info("📧 Assessment sent to HR")
                                 except:
                                     pass
