@@ -292,6 +292,7 @@ def load_appraisals_cached():
         return []
 
 @st.cache_data(ttl=60)
+@st.cache_data(ttl=60)
 def load_engagement_cached():
     """Cache engagement data for 1 minute"""
     try:
@@ -300,7 +301,7 @@ def load_engagement_cached():
             return pd.DataFrame()
         df = pd.DataFrame(data)
         if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+            df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce', utc=True).dt.tz_localize(None)
             df = df.dropna(subset=['timestamp'])
         return df
     except:
@@ -28881,7 +28882,8 @@ def advanced_analytics():
     web_users = 0
     
     if not eng_df.empty and 'timestamp' in eng_df.columns:
-        eng_df['timestamp'] = pd.to_datetime(eng_df['timestamp'])
+        eng_df['timestamp'] = pd.to_datetime(eng_df['timestamp'], errors='coerce', utc=True).dt.tz_localize(None)
+        eng_df = eng_df.dropna(subset=['timestamp'])
         today = datetime.now().date()
         week_ago = today - timedelta(days=7)
         month_ago = today - timedelta(days=30)
@@ -29526,7 +29528,8 @@ Analyze this HRIS data and provide a COMPREHENSIVE organizational analysis:
         emp_df = load_employees_cached()
         
         if not eng_df.empty and 'timestamp' in eng_df.columns:
-            eng_df['timestamp'] = pd.to_datetime(eng_df['timestamp'])
+            eng_df['timestamp'] = pd.to_datetime(eng_df['timestamp'], errors='coerce', utc=True).dt.tz_localize(None)
+            eng_df = eng_df.dropna(subset=['timestamp'])
             today = datetime.now().date()
             week_ago = today - timedelta(days=7)
             month_ago = today - timedelta(days=30)
