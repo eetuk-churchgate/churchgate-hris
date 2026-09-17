@@ -29605,16 +29605,21 @@ Analyze this HRIS data and provide a COMPREHENSIVE organizational analysis:
                     if others_count > 0:
                         pie_data.append({'User': 'Others', 'Visits': others_count})
                     pie_df = pd.DataFrame(pie_data)
-                    fig_pie = px.pie(pie_df, values='Visits', names='User', hole=0.4, color_discrete_sequence=['#CC0000', '#1a1a1a', '#4a4a4a', '#3182ce', '#38a169', '#d69e2e'])
-                    fig_pie.update_layout(
-                        height=300, 
-                        margin=dict(t=10, b=10),
-                        paper_bgcolor='#1E1E1E',
-                        plot_bgcolor='#1E1E1E',
-                        font=dict(color='#FFFFFF', family='Inter, sans-serif', size=13),
-                        legend=dict(font=dict(color='#FFFFFF', size=12))
-                    )
-                    st.plotly_chart(fig_pie, use_container_width=True)
+                    
+                    # SAFE: Only render chart if there is data
+                    if not pie_df.empty and 'User' in pie_df.columns and 'Visits' in pie_df.columns:
+                        fig_pie = px.pie(pie_df, values='Visits', names='User', hole=0.4, color_discrete_sequence=['#CC0000', '#1a1a1a', '#4a4a4a', '#3182ce', '#38a169', '#d69e2e'])
+                        fig_pie.update_layout(
+                            height=300, 
+                            margin=dict(t=10, b=10),
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#FFFFFF', family='Inter, sans-serif', size=13),
+                            legend=dict(font=dict(color='#FFFFFF', size=12))
+                        )
+                        st.plotly_chart(fig_pie, use_container_width=True)
+                    else:
+                        st.info("📊 No user activity data available yet.")
                 
                 st.download_button("📥 Download User Activity Report (CSV)", user_activity.to_csv(index=False), "user_activity_report.csv", "text/csv")
             
