@@ -291,12 +291,18 @@ def load_appraisals_cached():
     except:
         return []
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=60)
 def load_engagement_cached():
-    """Cache engagement data for 5 minutes"""
+    """Cache engagement data for 1 minute"""
     try:
         data = db._get("user_engagement")
-        return pd.DataFrame(data) if data else pd.DataFrame()
+        if not data:
+            return pd.DataFrame()
+        df = pd.DataFrame(data)
+        if 'timestamp' in df.columns:
+            df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+            df = df.dropna(subset=['timestamp'])
+        return df
     except:
         return pd.DataFrame()
 
@@ -28765,6 +28771,8 @@ def ai_dlp_monitor_dashboard():
 
 def advanced_analytics():
     track_engagement("Advanced Analytics")
+    # Force fresh engagement data on every visit
+    load_engagement_cached.clear()
     emp_df = load_employees_cached()
     eng_df = load_engagement_cached()
     candidates_df = load_candidates_cached()
@@ -29631,15 +29639,18 @@ Analyze this HRIS data and provide a COMPREHENSIVE organizational analysis:
                 col1, col2 = st.columns(2)
                 with col1:
                     module_usage = filtered['module'].value_counts().head(10)
-                    fig_mod = px.bar(x=module_usage.index, y=module_usage.values, title="Most Used Modules", color=module_usage.values, color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
-                    fig_mod.update_layout(
-                        height=350,
-                        paper_bgcolor='#1E1E1E',
-                        plot_bgcolor='#1E1E1E',
-                        font=dict(color='#F0E6D3', family='Inter, sans-serif'),
-                        title_font=dict(color='#C9A84C', family='Georgia, serif')
-                    )
-                    st.plotly_chart(fig_mod, use_container_width=True)
+                    if not module_usage.empty:
+                        fig_mod = px.bar(x=module_usage.index, y=module_usage.values, title="Most Used Modules", color=module_usage.values, color_continuous_scale=['#CC0000', '#d69e2e', '#38a169'])
+                        fig_mod.update_layout(
+                            height=350,
+                            paper_bgcolor='#1E1E1E',
+                            plot_bgcolor='#1E1E1E',
+                            font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                            title_font=dict(color='#C9A84C', family='Georgia, serif')
+                        )
+                        st.plotly_chart(fig_mod, use_container_width=True)
+                    else:
+                        st.info("📊 No module usage data available yet.")
                 with col2:
                     if 'device' in filtered.columns:
                         module_device = filtered.groupby(['module', 'device']).size().unstack(fill_value=0)
@@ -29653,25 +29664,37 @@ Analyze this HRIS data and provide a COMPREHENSIVE organizational analysis:
                                 title_font=dict(color='#C9A84C', family='Georgia, serif')
                             )
                             st.plotly_chart(fig_dev, use_container_width=True)
+                        else:
+                            st.info("📊 No device usage data available yet.")
             
             st.markdown("---")
             
             st.subheader("🕐 Peak Usage Hours")
+            
             filtered['hour'] = filtered['timestamp'].dt.hour
             filtered['day'] = filtered['timestamp'].dt.day_name()
             hourly_usage = filtered.groupby(['day', 'hour']).size().unstack(fill_value=0)
             day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
             hourly_usage = hourly_usage.reindex([d for d in day_order if d in hourly_usage.index])
-            fig_heat = go.Figure(data=go.Heatmap(z=hourly_usage.values, x=[f'{h}:00' for h in hourly_usage.columns], y=hourly_usage.index, colorscale=[[0, '#f5f5f5'], [0.5, '#CC0000'], [1, '#1a1a1a']]))
-            fig_heat.update_layout(
-                height=300, 
-                title="Hourly Usage Heatmap by Day",
-                paper_bgcolor='#1E1E1E',
-                plot_bgcolor='#1E1E1E',
-                font=dict(color='#F0E6D3', family='Inter, sans-serif'),
-                title_font=dict(color='#C9A84C', family='Georgia, serif')
-            )
-            st.plotly_chart(fig_heat, use_container_width=True)
+            
+            if not hourly_usage.empty:
+                fig_heat = go.Figure(data=[go.Heatmap(
+                    z=hourly_usage.values,
+                    x=[f'{h}:00' for h in hourly_usage.columns],
+                    y=hourly_usage.index,
+                    colorscale=[[0, '#f5f5f5'], [0.5, '#CC0000'], [1, '#1a1a1a']]
+                )])
+                fig_heat.update_layout(
+                    height=300,
+                    title="Hourly Usage Heatmap by Day",
+                    paper_bgcolor='#1E1E1E',
+                    plot_bgcolor='#1E1E1E',
+                    font=dict(color='#F0E6D3', family='Inter, sans-serif'),
+                    title_font=dict(color='#C9A84C', family='Georgia, serif')
+                )
+                st.plotly_chart(fig_heat, use_container_width=True)
+            else:
+                st.info("📊 No hourly usage data available yet.")
             
             st.markdown("---")
             
