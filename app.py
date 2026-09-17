@@ -13212,19 +13212,21 @@ def performance_okrs():
 
 
 def send_confirmation_reminders():
-    """Send automated reminders for confirmation workflow - SKIPS CONFIRMED"""
+    """Send automated reminders for confirmation workflow - SKIPS CONFIRMED AND ALREADY-SUBMITTED"""
     try:
         from utils.email_service import EmailService
         es = EmailService()
         
         HR_TEAM = ["bsakote@churchgate.com", "ichukwunonye@churchgate.com", "gbalogun@churchgate.com", "eochala@churchgate.com"]
         
-        # Get CONFIRMED employee IDs to EXCLUDE from reminders
+        # Get CONFIRMED employee IDs
         try:
             reviews_data = db._get("confirmation_reviews")
             confirmed_ids = set([r.get('employee_id', '') for r in reviews_data if r.get('status') in ['Approved by COO', 'Letter Sent', 'Completed']]) if reviews_data else set()
+            reviews_by_emp = {r.get('employee_id', ''): r for r in (reviews_data or [])}
         except:
             confirmed_ids = set()
+            reviews_by_emp = {}
         
         # Get probation employees
         try:
@@ -13235,13 +13237,19 @@ def send_confirmation_reminders():
         
         now = datetime.now()
         
-        # HOD reminders - SKIP CONFIRMED
+        # HOD/TL reminders
         if not probation_employees.empty:
             for _, emp in probation_employees.iterrows():
                 emp_id = emp.get('employee_id', '')
                 
-                # SKIP confirmed employees - NO reminder emails for them
+                # SKIP confirmed employees
                 if emp_id in confirmed_ids:
+                    continue
+                
+                # SKIP if a review already exists with status beyond Draft
+                existing_review = reviews_by_emp.get(emp_id, {})
+                existing_status = existing_review.get('status', '')
+                if existing_status in ['Pending COO Approval', 'Returned for Review', 'Approved by COO', 'Letter Sent', 'Completed', 'Rejected by COO', 'Extension Recommended', 'Pending HOD Validation']:
                     continue
                 
                 # Calculate probation end
@@ -13287,7 +13295,7 @@ def send_confirmation_reminders():
                             f"🚨 OVERDUE Confirmation: {emp_name}",
                             f"Dear HOD,\n\n{emp_name} ({dept}) confirmation is OVERDUE by {abs(days_left)} days.\n\nImmediate action required.\n\nChurchgate Group HR")
         
-        # COO and HR reminders - ONLY PENDING, NOT CONFIRMED
+        # COO and HR reminders
         reviews = db._get("confirmation_reviews") or []
         pending_coo = [r for r in reviews if r.get('status') == 'Pending COO Approval']
         hr_processing = [r for r in reviews if r.get('status') == 'Approved by COO' and r.get('employee_id', '') not in confirmed_ids]
@@ -13297,7 +13305,6 @@ def send_confirmation_reminders():
                 f"📋 Pending Confirmations: {len(pending_coo)} awaiting your approval",
                 f"Dear Jerome,\n\nYou have {len(pending_coo)} confirmation(s) awaiting your approval.\n\nPlease review at: https://hris.churchgate.com\n\nChurchgate Group HR")
         
-        # Only send HR processing email if there are NEW confirmations (not already processed)
         if hr_processing:
             for hr_recipient in HR_TEAM:
                 es.send_email(hr_recipient,
