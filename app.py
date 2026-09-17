@@ -292,20 +292,50 @@ def load_appraisals_cached():
         return []
 
 @st.cache_data(ttl=60)
-@st.cache_data(ttl=60)
 def load_engagement_cached():
-    """Cache engagement data for 1 minute"""
+    """Cache engagement data for 1 minute - PAGINATED to bypass Supabase 1000-row limit"""
     try:
-        data = db._get("user_engagement")
-        if not data:
+        import requests as _req
+        _url = os.environ.get("SUPABASE_URL", "https://pobfydvkjzhkmhuqwmtf.supabase.co")
+        _key = os.environ.get("SUPABASE_KEY", "")
+        _headers = {
+            "apikey": _key,
+            "Authorization": f"Bearer {_key}",
+            "Range-Unit": "items",
+        }
+        
+        all_rows = []
+        batch_size = 1000
+        offset = 0
+        max_batches = 30  # safety cap = 30,000 rows
+        
+        while True:
+            range_header = f"{offset}-{offset + batch_size - 1}"
+            _headers["Range"] = range_header
+            r = _req.get(f"{_url}/rest/v1/user_engagement?select=*&order=id.asc", headers=_headers, timeout=30)
+            if r.status_code not in [200, 206]:
+                break
+            batch = r.json()
+            if not batch:
+                break
+            all_rows.extend(batch)
+            if len(batch) < batch_size:
+                break
+            offset += batch_size
+            if offset >= batch_size * max_batches:
+                break
+        
+        if not all_rows:
             return pd.DataFrame()
-        df = pd.DataFrame(data)
+        
+        df = pd.DataFrame(all_rows)
         if 'timestamp' in df.columns:
             df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce', utc=True).dt.tz_localize(None)
             df = df.dropna(subset=['timestamp'])
         return df
-    except:
+    except Exception as e:
         return pd.DataFrame()
+
 
 def clear_all_cache():
     """Clear all cached data"""
@@ -29527,9 +29557,9 @@ Analyze this HRIS data and provide a COMPREHENSIVE organizational analysis:
         eng_df = load_engagement_cached()
         emp_df = load_employees_cached()
         
+        st.caption(f"📊 Loaded {len(eng_df)} total records")
+        
         if not eng_df.empty and 'timestamp' in eng_df.columns:
-            eng_df['timestamp'] = pd.to_datetime(eng_df['timestamp'], errors='coerce', utc=True).dt.tz_localize(None)
-            eng_df = eng_df.dropna(subset=['timestamp'])
             today = datetime.now().date()
             week_ago = today - timedelta(days=7)
             month_ago = today - timedelta(days=30)
