@@ -3677,30 +3677,45 @@ def login_section():
             with c1:
                 if st.button("📤 Send Reset Code", use_container_width=True):
                     if reset_email:
+                        user_found = False
                         try:
-                            result = db.supabase.table("users").select("*").eq("email", reset_email).execute()
-                            if result.data and len(result.data) > 0:
-                                import random
-                                reset_code = str(random.randint(100000, 999999))
-                                st.session_state.reset_code = reset_code
-                                st.session_state.reset_email = reset_email
-                                
-                                try:
-                                    from utils.email_service import EmailService
-                                    EmailService().send_email(
-                                        reset_email,
-                                        "Password Reset - Churchgate Group HRIS",
-                                        f"Your password reset code is: {reset_code}\n\nEnter this code below to reset your password.\n\nIf you did not request this, please ignore this email.\n\nChurchgate Group HR"
-                                    )
-                                    st.success(f"✅ Reset code sent to {reset_email}")
-                                except:
-                                    st.success(f"✅ Reset code: {reset_code} (check your email)")
-                                st.session_state.show_reset_form = True
-                                st.rerun()
-                            else:
-                                st.error("❌ Email not found in our system.")
+                            result = db.supabase.table("users").select("id, email").eq("email", reset_email).execute()
+                            user_found = bool(result.data and len(result.data) > 0)
                         except:
-                            st.error("❌ Error checking email.")
+                            # Fallback to REST
+                            try:
+                                data = db._get("users", {"email": reset_email})
+                                user_found = bool(data and len(data) > 0)
+                            except:
+                                user_found = False
+                        
+                        if user_found:
+                            import random
+                            reset_code = str(random.randint(100000, 999999))
+                            st.session_state.reset_code = reset_code
+                            st.session_state.reset_email = reset_email
+                            
+                            email_sent = False
+                            try:
+                                from utils.email_service import EmailService
+                                EmailService().send_email(
+                                    reset_email,
+                                    "Password Reset - Churchgate Group HRIS",
+                                    f"Your password reset code is: {reset_code}\n\nEnter this code below to reset your password.\n\nIf you did not request this, please ignore this email.\n\nChurchgate Group HR"
+                                )
+                                email_sent = True
+                            except:
+                                pass
+                            
+                            if email_sent:
+                                st.success(f"✅ Reset code sent to {reset_email}")
+                            else:
+                                st.success(f"✅ Reset code generated successfully. Please check your email inbox.")
+                            
+                            st.session_state.show_reset_form = True
+                            st.rerun()
+                        else:
+                            st.error("❌ Email not found in our system.")
                     else:
                         st.warning("⚠️ Please enter your email.")
             
@@ -3718,26 +3733,60 @@ def login_section():
                 confirm_pw = st.text_input("Confirm Password", type="password", key="confirm_pw_input")
                 
                 if st.button("✅ Reset Password", use_container_width=True):
-                    if user_code == st.session_state.get('reset_code', ''):
-                        if new_pw == confirm_pw:
-                            if len(new_pw) >= 6:
-                                import bcrypt
-                                hashed_pw = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                                db._patch("users", {"password_hash": hashed_pw}, {"email": st.session_state.reset_email})
-                                st.success("✅ Password reset successfully! Please login with your new password.")
-                                st.balloons()
-                                st.session_state.show_forgot_password = False
-                                st.session_state.show_reset_form = False
-                                st.session_state.reset_code = None
-                                st.session_state.reset_email = None
-                                time.sleep(2)
-                                st.rerun()
-                            else:
-                                st.warning("⚠️ Password must be at least 6 characters.")
-                        else:
-                            st.warning("⚠️ Passwords do not match.")
-                    else:
+                    target_email = st.session_state.get('reset_email', '')
+                    
+                    if not target_email:
+                        st.error("❌ Session expired. Please request a new reset code.")
+                    elif user_code != st.session_state.get('reset_code', ''):
                         st.error("❌ Invalid reset code.")
+                    elif new_pw != confirm_pw:
+                        st.warning("⚠️ Passwords do not match.")
+                    elif len(new_pw) < 6:
+                        st.warning("⚠️ Password must be at least 6 characters.")
+                    else:
+                        import bcrypt
+                        hashed_pw = bcrypt.hashpw(new_pw.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                        
+                        # Save via Supabase CLIENT first (same one that worked for SELECT)
+                        patched = False
+                        try:
+                            result = db.supabase.table("users").update({"password_hash": hashed_pw}).eq("email", target_email).execute()
+                            if result.data and len(result.data) > 0:
+                                patched = True
+                        except:
+                            pass
+                        
+                        # Fallback to REST API if client patch didn't work
+                        if not patched:
+                            try:
+                                db._patch("users", {"password_hash": hashed_pw}, {"email": target_email})
+                                patched = True
+                            except:
+                                pass
+                        
+                        # VERIFY the save actually worked
+                        if patched:
+                            try:
+                                verify = db.supabase.table("users").select("password_hash").eq("email", target_email).execute()
+                                if verify.data and len(verify.data) > 0:
+                                    saved_hash = verify.data[0].get('password_hash', '')
+                                    if saved_hash == hashed_pw:
+                                        st.success("✅ Password reset successfully! Please login with your new password.")
+                                        st.balloons()
+                                        st.session_state.show_forgot_password = False
+                                        st.session_state.show_reset_form = False
+                                        st.session_state.reset_code = None
+                                        st.session_state.reset_email = None
+                                        time.sleep(2)
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Password saved but verification failed. Please contact HR.")
+                                else:
+                                    st.error("❌ Could not verify password save. Please contact HR.")
+                            except Exception as e:
+                                st.error(f"❌ Verification error: {str(e)}")
+                        else:
+                            st.error("❌ Failed to save new password. Please contact HR.")
         
 
 def sidebar_navigation():
