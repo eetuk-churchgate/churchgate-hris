@@ -7054,7 +7054,7 @@ def employee_management():
                 value=st.session_state.get('single_name', ''))
             single_pw = st.text_input("Password", value="churchgate2026")
         with c2:
-            dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin']
+            dept_options = ['Senior Management', 'Technology Group', 'Facility Management', 'Human Resources', 'Accounts & Finance', 'Sales & Marketing', 'Procurement', 'Security', 'Legal', 'Operations', 'Engineering & Project Development', 'Admin', 'Central Stores', 'Finishing & Quality Control']
             current_dept = st.session_state.get('single_dept', 'Senior Management')
             dept_idx = dept_options.index(current_dept) if current_dept in dept_options else 0
             single_dept = st.selectbox("Department", dept_options, index=dept_idx)
