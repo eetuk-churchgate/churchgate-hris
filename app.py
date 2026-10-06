@@ -3820,8 +3820,25 @@ def sidebar_navigation():
             st.markdown(f"""<div style="background: rgba(255,255,255,0.08); padding: 0.8rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(204, 0, 0, 0.2);"><div style="display: flex; align-items: center; gap: 0.6rem;">{profile_html}<div><p style="color: #333; margin: 0; font-weight: 600; font-size: 0.85rem;">{user['name']}</p><p style="color: #666; margin: 0; font-size: 0.7rem;">{user['role']} • {user.get('department', '')}</p></div></div></div>""", unsafe_allow_html=True)
         
         user_role = st.session_state.user['role'] if st.session_state.user else 'Employee'
+        user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
+        is_senior = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
+        
+        # Master menu with icons - alphabetical order
+        all_menu_items = {
+            "🤖 AI Recruitment Agent": "robot",
+            "📊 Executive Dashboard": "speedometer2",
+            "🏠 Employee Dashboard": "house-fill",
+            "👥 Employee Management": "people-fill",
+            "📋 My Documents": "folder-fill",
+            "👤 My Profile": "person-circle",
+            "📈 Performance & OKRs": "graph-up-arrow",
+            "💼 Recruitment Hub": "briefcase-fill",
+            "✅ Staff Confirmation": "check-circle-fill",
+            "🛡️ AI DLP Monitor": "shield-lock-fill",
+        }
+        
         if user_role in ['Admin', 'HR Director']:
-            menu_options = [
+            allowed = [
                 "🤖 AI Recruitment Agent",
                 "🏠 Employee Dashboard",
                 "👥 Employee Management",
@@ -3831,14 +3848,22 @@ def sidebar_navigation():
                 "📈 Performance & OKRs",
                 "💼 Recruitment Hub",
                 "✅ Staff Confirmation",
+                "🛡️ AI DLP Monitor",
             ]
-            all_icons = [
-                "robot", "house-fill", "people-fill", "speedometer2",
-                "folder-fill", "person-circle", "graph-up-arrow",
-                "briefcase-fill", "check-circle-fill"
+        elif is_senior:
+            allowed = [
+                "🤖 AI Recruitment Agent",
+                "🏠 Employee Dashboard",
+                "📊 Executive Dashboard",
+                "📋 My Documents",
+                "👤 My Profile",
+                "📈 Performance & OKRs",
+                "💼 Recruitment Hub",
+                "✅ Staff Confirmation",
+                "🛡️ AI DLP Monitor",
             ]
-        elif user_role in ['Manager', 'HOD', 'Team Lead', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level', 'Senior Management']:
-            menu_options = [
+        elif user_role in ['Manager', 'HOD', 'Team Lead', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level']:
+            allowed = [
                 "🤖 AI Recruitment Agent",
                 "🏠 Employee Dashboard",
                 "📋 My Documents",
@@ -3847,22 +3872,32 @@ def sidebar_navigation():
                 "💼 Recruitment Hub",
                 "✅ Staff Confirmation",
             ]
-            all_icons = [
-                "robot", "house-fill", "folder-fill", "person-circle",
-                "graph-up-arrow", "briefcase-fill", "check-circle-fill"
-            ]
         else:
-            menu_options = [
+            allowed = [
                 "🏠 Employee Dashboard",
                 "📋 My Documents",
                 "👤 My Profile",
                 "📈 My Performance & OKRs",
                 "💼 Recruitment Hub",
             ]
-            all_icons = [
-                "house-fill", "folder-fill", "person-circle",
-                "graph-up-arrow", "briefcase-fill"
-            ]
+        
+        # Sort alphabetically (ignore emoji for sorting)
+        def sort_key(item):
+            # Strip emoji + space to sort by actual name
+            import re
+            return re.sub(r'[^\w\s]', '', item).strip().lower()
+        
+        allowed_sorted = sorted(allowed, key=sort_key)
+        
+        # Build icons list matching sorted order
+        all_icons = []
+        for item in allowed_sorted:
+            if item == "📈 My Performance & OKRs":
+                all_icons.append("graph-up-arrow")
+            else:
+                all_icons.append(all_menu_items.get(item, "circle"))
+        
+        menu_options = allowed_sorted
         
         selected = option_menu(
             menu_title=None, 
