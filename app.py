@@ -3823,23 +3823,26 @@ def sidebar_navigation():
         user_dept = st.session_state.user.get('department', '') if st.session_state.user else ''
         is_senior = user_role in ['Admin', 'HR Director'] or user_dept == 'Senior Management'
         
-        # Master menu with icons - alphabetical order
+        # Master menu with icons
         all_menu_items = {
+            "📊 Advanced Analytics": "graph-up",
             "🤖 AI Recruitment Agent": "robot",
-            "📊 Executive Dashboard": "speedometer2",
+            "🛡️ AI DLP Monitor": "shield-lock-fill",
             "🏠 Employee Dashboard": "house-fill",
             "👥 Employee Management": "people-fill",
+            "📊 Executive Dashboard": "speedometer2",
             "📋 My Documents": "folder-fill",
             "👤 My Profile": "person-circle",
             "📈 Performance & OKRs": "graph-up-arrow",
             "💼 Recruitment Hub": "briefcase-fill",
             "✅ Staff Confirmation": "check-circle-fill",
-            "🛡️ AI DLP Monitor": "shield-lock-fill",
         }
         
         if user_role in ['Admin', 'HR Director']:
             allowed = [
+                "📊 Advanced Analytics",
                 "🤖 AI Recruitment Agent",
+                "🛡️ AI DLP Monitor",
                 "🏠 Employee Dashboard",
                 "👥 Employee Management",
                 "📊 Executive Dashboard",
@@ -3848,11 +3851,12 @@ def sidebar_navigation():
                 "📈 Performance & OKRs",
                 "💼 Recruitment Hub",
                 "✅ Staff Confirmation",
-                "🛡️ AI DLP Monitor",
             ]
         elif is_senior:
             allowed = [
+                "📊 Advanced Analytics",
                 "🤖 AI Recruitment Agent",
+                "🛡️ AI DLP Monitor",
                 "🏠 Employee Dashboard",
                 "📊 Executive Dashboard",
                 "📋 My Documents",
@@ -3860,7 +3864,6 @@ def sidebar_navigation():
                 "📈 Performance & OKRs",
                 "💼 Recruitment Hub",
                 "✅ Staff Confirmation",
-                "🛡️ AI DLP Monitor",
             ]
         elif user_role in ['Manager', 'HOD', 'Team Lead', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level']:
             allowed = [
@@ -3881,15 +3884,14 @@ def sidebar_navigation():
                 "💼 Recruitment Hub",
             ]
         
-        # Sort alphabetically (ignore emoji for sorting)
+        # Sort alphabetically (strip emoji for sorting)
         def sort_key(item):
-            # Strip emoji + space to sort by actual name
             import re
             return re.sub(r'[^\w\s]', '', item).strip().lower()
         
         allowed_sorted = sorted(allowed, key=sort_key)
         
-        # Build icons list matching sorted order
+        # Build icons list
         all_icons = []
         for item in allowed_sorted:
             if item == "📈 My Performance & OKRs":
