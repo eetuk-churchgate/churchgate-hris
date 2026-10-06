@@ -3823,92 +3823,45 @@ def sidebar_navigation():
         if user_role in ['Admin', 'HR Director']:
             menu_options = [
                 "🤖 AI Recruitment Agent",
-                "📊 Advanced Analytics",
-                "🛡️ AI DLP Monitor",
-                "📋 Audit Log",
-                "📅 Calendar",
-                "💬 Chat & Communications",
-                "🌐 Directory",
                 "🏠 Employee Dashboard",
                 "👥 Employee Management",
                 "📊 Executive Dashboard",
-                "💡 Ideas Box",
-                "📚 Knowledge Base",
-                "🎓 LMS",
-                "🎯 My Goals",
                 "📋 My Documents",
                 "👤 My Profile",
-                "🔔 Notifications",
                 "📈 Performance & OKRs",
-                "🚀 Promotions",
                 "💼 Recruitment Hub",
-                "📊 Reports & Analytics",
-                "🔄 Requests Hub",
                 "✅ Staff Confirmation",
-                "🎓 Training & Development",
-                "🎉 Wellness & Perks",
             ]
             all_icons = [
-                "robot", "graph-up", "shield-lock-fill", "file-earmark-bar-graph",
-                "calendar-fill", "chat-dots-fill", "globe", "house-fill",
-                "people-fill", "speedometer2", "lightbulb-fill", "book-half",
-                "mortarboard-fill", "bullseye", "folder-fill", "person-circle",
-                "bell-fill", "graph-up-arrow", "trophy-fill", "briefcase-fill",
-                "file-earmark-bar-graph", "inbox-fill", "check-circle-fill", "book-fill",
-                "heart-fill"
+                "robot", "house-fill", "people-fill", "speedometer2",
+                "folder-fill", "person-circle", "graph-up-arrow",
+                "briefcase-fill", "check-circle-fill"
             ]
         elif user_role in ['Manager', 'HOD', 'Team Lead', 'Senior Manager', 'General Manager', 'Head of Department(HOD)', 'Management', 'Senior Management/C-Level', 'Senior Management']:
             menu_options = [
                 "🤖 AI Recruitment Agent",
-                "🛡️ AI DLP Monitor",
-                "📅 Calendar",
-                "💬 Chat & Communications",
-                "🌐 Directory",
                 "🏠 Employee Dashboard",
-                "💡 Ideas Box",
-                "📚 Knowledge Base",
-                "🎓 LMS",
-                "🎯 My Goals",
                 "📋 My Documents",
                 "👤 My Profile",
                 "📈 Performance & OKRs",
                 "💼 Recruitment Hub",
-                "🔄 Requests Hub",
                 "✅ Staff Confirmation",
-                "🎓 Training & Development",
-                "🎉 Wellness & Perks",
             ]
             all_icons = [
-                "robot", "shield-lock-fill", "calendar-fill", "chat-dots-fill",
-                "globe", "house-fill", "lightbulb-fill", "book-half",
-                "mortarboard-fill", "bullseye", "folder-fill", "person-circle",
-                "graph-up-arrow", "briefcase-fill", "inbox-fill", "check-circle-fill",
-                "book-fill", "heart-fill"
+                "robot", "house-fill", "folder-fill", "person-circle",
+                "graph-up-arrow", "briefcase-fill", "check-circle-fill"
             ]
-
         else:
             menu_options = [
-                "📅 Calendar",
-                "💬 Chat & Communications",
-                "🌐 Directory",
                 "🏠 Employee Dashboard",
-                "💡 Ideas Box",
-                "📚 Knowledge Base",
-                "🎓 LMS",
-                "🎯 My Goals",
                 "📋 My Documents",
                 "👤 My Profile",
                 "📈 My Performance & OKRs",
                 "💼 Recruitment Hub",
-                "🔄 Requests Hub",
-                "🎓 Training & Development",
-                "🎉 Wellness & Perks",
             ]
             all_icons = [
-                "calendar-fill", "chat-dots-fill", "globe", "house-fill",
-                "lightbulb-fill", "book-half", "mortarboard-fill", "bullseye",
-                "folder-fill", "person-circle", "graph-up-arrow", "briefcase-fill",
-                "inbox-fill", "book-fill", "heart-fill"
+                "house-fill", "folder-fill", "person-circle",
+                "graph-up-arrow", "briefcase-fill"
             ]
         
         selected = option_menu(
