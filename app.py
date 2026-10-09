@@ -14254,7 +14254,7 @@ def staff_confirmation():
                 st.info("This section is for COO only.")
     
     # ============================================================
-    # TAB 4: CONFIRMED STAFF
+    # TAB 4: CONFIRMED STAFF — FULL INFORMATION (Original CSS)
     # ============================================================
     if tab4 is not None:
         with tab4:
@@ -14265,6 +14265,30 @@ def staff_confirmation():
                     confirmed = [r for r in reviews if r.get('status') in ['Approved by COO', 'Letter Sent']]
                     
                     if confirmed:
+                        # ============================================================
+                        # DEDUPLICATE BY employee_id + employee_name (keep latest)
+                        # ============================================================
+                        seen_keys = {}
+                        deduped = []
+                        for r in confirmed:
+                            uniq = f"{r.get('employee_id', '')}_{r.get('employee_name', '')}"
+                            if uniq not in seen_keys:
+                                seen_keys[uniq] = r
+                                deduped.append(r)
+                            else:
+                                # Keep the one with more recent approved_date
+                                existing = seen_keys[uniq]
+                                if (r.get('approved_date') or '') > (existing.get('approved_date') or ''):
+                                    # Replace existing
+                                    idx = deduped.index(existing)
+                                    deduped[idx] = r
+                                    seen_keys[uniq] = r
+                        
+                        confirmed = deduped
+                        
+                        # ============================================================
+                        # SUMMARY METRICS (Original Style)
+                        # ============================================================
                         avg_score = sum(float(r.get('total_performance_score', 0)) for r in confirmed) / len(confirmed)
                         outstanding = len([r for r in confirmed if r.get('performance_rating') == 'Outstanding'])
                         satisfactory = len([r for r in confirmed if r.get('performance_rating') == 'Satisfactory'])
@@ -14278,7 +14302,26 @@ def staff_confirmation():
                         
                         st.markdown("---")
                         
-                        for r in confirmed:
+                        # ============================================================
+                        # STANDARD PERFORMANCE CRITERIA LABELS
+                        # ============================================================
+                        CRITERIA_LABELS = [
+                            "Quality and Quantity of work",
+                            "Knowledge of work and procedures",
+                            "Requisite/cognate Technical Skills",
+                            "Care and Maintenance of Assets",
+                            "Ability to Communicate",
+                            "Interpersonal Relationship & Team Spirit",
+                            "Dependability/Discipline",
+                            "Initiative and Creativity",
+                            "Leadership",
+                            "Potentialities"
+                        ]
+                        
+                        # ============================================================
+                        # CONFIRMED STAFF CARDS
+                        # ============================================================
+                        for idx, r in enumerate(confirmed):
                             score = r.get('total_performance_score', 'N/A')
                             rating = r.get('performance_rating', 'N/A')
                             
@@ -14288,56 +14331,336 @@ def staff_confirmation():
                             }
                             rating_color = rating_colors.get(rating, '#a0aec0')
                             
+                            emp_id = r.get('employee_id', f'unknown_{idx}')
+                            uniq_expander_key = f"conf_{emp_id}_{idx}"
+                            
                             with st.expander(f"{'🌟' if rating == 'Outstanding' else '✅'} {r.get('employee_name','')} — {r.get('position','')} | {score}/100 ({rating})"):
+                                
+                                # ============================================================
+                                # EMPLOYEE DATA
+                                # ============================================================
                                 col1, col2 = st.columns(2)
                                 with col1:
                                     st.markdown(f"**👤 Employee:** {r.get('employee_name','')}")
                                     st.markdown(f"**💼 Position:** {r.get('position','')}")
                                     st.markdown(f"**🏢 Department:** {r.get('department','')}")
                                     st.markdown(f"**📍 Region:** {r.get('region','N/A')} | **🏢 Subsidiary:** {r.get('subsidiary','N/A')}")
-                                    st.markdown(f"**👥 TL:** {r.get('supervisor_name','')} | **👔 HOD:** {r.get('hod_name','')}")
                                 with col2:
-                                    st.markdown(f"**📅 Confirmed:** {r.get('approved_date','')[:10]}")
-                                    st.markdown(f"**📊 Score:** {score}/100")
-                                    st.markdown(f"**⭐ Rating:** <span style='color:{rating_color};font-weight:700;'>{rating}</span>", unsafe_allow_html=True)
+                                    st.markdown(f"**📅 Join Date:** {r.get('join_date','N/A')}")
+                                    st.markdown(f"**⏰ Probation End:** {r.get('probation_end','N/A')}")
+                                    st.markdown(f"**📅 Confirmed:** {r.get('approved_date','')[:10] if r.get('approved_date') else 'N/A'}")
+                                    st.markdown(f"**👥 TL:** {r.get('supervisor_name','')} | **👔 HOD:** {r.get('hod_name','')}")
                                 
+                                # ============================================================
+                                # STRENGTHS & WEAKNESSES (FULL TEXT — NO TRUNCATION)
+                                # ============================================================
                                 if r.get('strengths') or r.get('weaknesses'):
                                     st.markdown("---")
-                                    col1, col2 = st.columns(2)
-                                    with col1:
+                                    sw_col1, sw_col2 = st.columns(2)
+                                    with sw_col1:
                                         if r.get('strengths'):
                                             st.markdown("**💪 Strengths:**")
-                                            st.markdown(f"<small>{r.get('strengths','')[:300]}</small>", unsafe_allow_html=True)
-                                    with col2:
+                                            st.markdown(f"<small>{r.get('strengths','')}</small>", unsafe_allow_html=True)
+                                    with sw_col2:
                                         if r.get('weaknesses'):
                                             st.markdown("**📈 Development Areas:**")
-                                            st.markdown(f"<small>{r.get('weaknesses','')[:300]}</small>", unsafe_allow_html=True)
+                                            st.markdown(f"<small>{r.get('weaknesses','')}</small>", unsafe_allow_html=True)
+                                
+                                # ============================================================
+                                # FULL PERFORMANCE RATING BREAKDOWN — FIXED
+                                # ============================================================
+                                perf_scores = {}
+                                try:
+                                    perf_raw = r.get('performance_scores', '{}')
+                                    if isinstance(perf_raw, str):
+                                        perf_scores = json.loads(perf_raw)
+                                    elif isinstance(perf_raw, dict):
+                                        perf_scores = perf_raw
+                                except:
+                                    perf_scores = {}
+                                
+                                if perf_scores:
+                                    st.markdown("---")
+                                    st.markdown("**📊 Performance Rating Breakdown:**")
+                                    
+                                    # Build rows using CRITERIA_LABELS mapped by index
+                                    breakdown_rows = []
+                                    for score_idx in range(10):
+                                        criteria_name = CRITERIA_LABELS[score_idx] if score_idx < len(CRITERIA_LABELS) else f"Criterion {score_idx + 1}"
+                                        val = perf_scores.get(str(score_idx), perf_scores.get(score_idx, 'N/A'))
+                                        
+                                        if val != 'N/A' and isinstance(val, (int, float)):
+                                            if val >= 8:
+                                                val_color = '#38a169'
+                                            elif val >= 6:
+                                                val_color = '#d69e2e'
+                                            else:
+                                                val_color = '#CC0000'
+                                        else:
+                                            val_color = '#a0aec0'
+                                        
+                                        breakdown_rows.append((criteria_name, val, val_color))
+                                    
+                                    # Render as a clean table
+                                    table_html = '<table style="width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);">'
+                                    table_html += '<thead><tr style="background:#1a1a1a;color:white;"><th style="padding:0.5rem 1rem;text-align:left;font-size:0.8rem;">Performance Criteria</th><th style="padding:0.5rem 1rem;text-align:center;font-size:0.8rem;width:100px;">Rating</th></tr></thead><tbody>'
+                                    
+                                    for criteria_name, val, val_color in breakdown_rows:
+                                        table_html += f'<tr><td style="padding:0.5rem 1rem;border-bottom:1px solid #eee;color:#333;font-size:0.85rem;">{criteria_name}</td><td style="padding:0.5rem 1rem;border-bottom:1px solid #eee;text-align:center;font-weight:700;color:{val_color};font-size:0.9rem;">{val}/10</td></tr>'
+                                    
+                                    table_html += '</tbody></table>'
+                                    st.markdown(table_html, unsafe_allow_html=True)
+                                
+                                # ============================================================
+                                # SCORE SUMMARY — TL | HOD | COO (Fixed fallback)
+                                # ============================================================
+                                st.markdown("---")
+                                st.markdown("**🎯 Score Summary:**")
+                                
+                                tl_score = r.get('total_performance_score') or 'N/A'
+                                hod_score = r.get('hod_total_score')
+                                # Fallback to TL score if HOD score missing
+                                if hod_score is None or hod_score == '' or hod_score == 0:
+                                    hod_score_display = tl_score
+                                    hod_score_note = '(not separately recorded)'
+                                else:
+                                    hod_score_display = hod_score
+                                    hod_score_note = ''
+                                
+                                final_score = r.get('total_performance_score', 'N/A')
+                                final_rating = r.get('performance_rating', 'N/A')
+                                
+                                sc1, sc2, sc3 = st.columns(3)
+                                with sc1:
+                                    st.markdown(f"**👥 TL Score**")
+                                    st.markdown(f"### {tl_score}/100")
+                                    st.caption(f"{r.get('supervisor_name','N/A')}")
+                                with sc2:
+                                    st.markdown(f"**👔 HOD Score**")
+                                    st.markdown(f"### {hod_score_display}/100")
+                                    st.caption(f"{r.get('hod_name','N/A')} {hod_score_note}")
+                                with sc3:
+                                    st.markdown(f"**🚀 Final Score**")
+                                    st.markdown(f"<h3 style='color:{rating_color};'>{final_score}/100</h3>", unsafe_allow_html=True)
+                                    st.caption(f"{final_rating}")
+                                
+                                # ============================================================
+                                # TEAM LEADER / SUPERVISOR REVIEW
+                                # ============================================================
+                                if r.get('tl_recommendation') or r.get('supervisor_comments'):
+                                    st.markdown("---")
+                                    st.markdown("**👥 Team Leader / Supervisor Review:**")
+                                    st.markdown(f"*Reviewer:* {r.get('supervisor_name','N/A')}")
+                                    
+                                    if r.get('tl_recommendation'):
+                                        st.markdown(f"**✅ TL Recommendation:** {r.get('tl_recommendation','')}")
+                                    
+                                    if r.get('supervisor_comments'):
+                                        st.markdown(f"**💬 TL Comments:**")
+                                        st.markdown(f"<small>{r.get('supervisor_comments','')}</small>", unsafe_allow_html=True)
+                                    
+                                    if r.get('line_manager_name') and r.get('line_manager_name') != r.get('supervisor_name'):
+                                        st.markdown(f"**Line Manager:** {r.get('line_manager_name','')}")
+                                
+                                # ============================================================
+                                # HOD REVIEW
+                                # ============================================================
+                                if r.get('hod_decision') or r.get('hod_comments') or r.get('hod_assessment'):
+                                    st.markdown("---")
+                                    st.markdown("**👔 HOD Review:**")
+                                    st.markdown(f"*Reviewer:* {r.get('hod_name','N/A')}")
+                                    
+                                    if r.get('hod_decision'):
+                                        st.markdown(f"**✅ HOD Decision:** {r.get('hod_decision','')}")
+                                    
+                                    if r.get('hod_comments'):
+                                        st.markdown(f"**💬 HOD Comments:**")
+                                        st.markdown(f"<small>{r.get('hod_comments','')}</small>", unsafe_allow_html=True)
+                                    
+                                    if r.get('hod_assessment'):
+                                        st.markdown(f"**📝 HOD Assessment:**")
+                                        st.markdown(f"<small>{r.get('hod_assessment','')}</small>", unsafe_allow_html=True)
+                                
+                                # ============================================================
+                                # COO FINAL DECISION
+                                # ============================================================
+                                if r.get('coo_decision') or r.get('coo_comments'):
+                                    st.markdown("---")
+                                    st.markdown("**🚀 COO Final Decision:**")
+                                    st.markdown(f"*COO:* {r.get('coo_name','N/A')} | *Date:* {r.get('approved_date','')[:10] if r.get('approved_date') else 'N/A'}")
+                                    
+                                    if r.get('coo_decision'):
+                                        st.markdown(f"**✅ COO Decision:** {r.get('coo_decision','')}")
+                                    
+                                    if r.get('coo_comments'):
+                                        st.markdown(f"**💬 COO Executive Comments:**")
+                                        st.markdown(f"<small>{r.get('coo_comments','')}</small>", unsafe_allow_html=True)
+                                
+                                # ============================================================
+                                # DISCIPLINARY STATUS
+                                # ============================================================
+                                st.markdown("---")
+                                if r.get('disciplinary_action') and r.get('disciplinary_action') != 'None':
+                                    st.markdown(f"**⚠️ Disciplinary Status:**")
+                                    st.markdown(f"- Action: {r.get('disciplinary_action','')}")
+                                    st.markdown(f"- Reason: {r.get('disciplinary_reason','')}")
+                                    st.markdown(f"- Remark: {r.get('disciplinary_remark','')}")
+                                else:
+                                    st.markdown("✅ **Disciplinary Status:** No disciplinary issues recorded")
+                                
+                                # ============================================================
+                                # HR PROCESSING — Unique keys per record
+                                # ============================================================
+                                if r.get('status') == 'Approved by COO':
+                                    st.markdown("---")
+                                    st.markdown("**🏢 HR ACTION REQUIRED — Send Confirmation Letter**")
+                                    
+                                    # Get employee email with better fallback
+                                    emp_email = ''
+                                    try:
+                                        emp_data = db.get_all_employees()
+                                        if not emp_data.empty and emp_id:
+                                            match = emp_data[emp_data['employee_id'] == emp_id]
+                                            if not match.empty:
+                                                emp_email = match.iloc[0].get('email', '')
+                                    except:
+                                        pass
+                                    
+                                    st.markdown(f"**📧 Employee Email:** {emp_email or '⚠️ Not Found'}")
+                                    
+                                    # UNIQUE KEY using employee_id + index
+                                    letter_key = f"letter_{emp_id}_{idx}"
+                                    send_btn_key = f"send_letter_{emp_id}_{idx}"
+                                    
+                                    letter_file = st.file_uploader(
+                                        "📎 Upload Confirmation Letter (PDF or DOCX)",
+                                        type=['pdf', 'docx'],
+                                        key=letter_key
+                                    )
+                                    
+                                    if st.button("📧 Send Confirmation Letter & Complete",
+                                                key=send_btn_key,
+                                                use_container_width=True,
+                                                type="primary"):
+                                        if letter_file:
+                                            if emp_email:
+                                                try:
+                                                    from utils.email_service import EmailService
+                                                    EmailService().send_email(
+                                                        emp_email,
+                                                        f"🎉 Your Confirmation Letter - Churchgate Group",
+                                                        f"Dear {r.get('employee_name','')},\n\nCongratulations! Your employment has been confirmed with Churchgate Group.\n\nPlease find your confirmation letter attached.\n\nWelcome to the team!\n\nChurchgate Group HR"
+                                                    )
+                                                    
+                                                    db._patch("confirmation_reviews", {
+                                                        "status": "Letter Sent",
+                                                        "letter_sent_date": datetime.now().strftime('%Y-%m-%d %H:%M')
+                                                    }, {"employee_id": emp_id})
+                                                    
+                                                    db._patch("employees", {
+                                                        "status": "Active",
+                                                        "confirmation_status": "Letter Sent"
+                                                    }, {"employee_id": emp_id})
+                                                    
+                                                    st.success(f"✅ Confirmation letter sent to {emp_email}!")
+                                                    st.balloons()
+                                                    time.sleep(1.5)
+                                                    st.rerun()
+                                                except Exception as e:
+                                                    st.error(f"❌ Error: {str(e)}")
+                                            else:
+                                                st.error("❌ No email found for this employee")
+                                        else:
+                                            st.error("❌ Please upload the confirmation letter first")
+                                
+                                elif r.get('status') == 'Letter Sent':
+                                    st.markdown("---")
+                                    st.success(f"✅ **Confirmation Letter Sent** — Completed on: {r.get('letter_sent_date', 'N/A')}")
                         
-                        # Export
+                        # ============================================================
+                        # EXPORT
+                        # ============================================================
                         st.markdown("---")
-                        export_data = [{
-                            'Employee': r.get('employee_name'), 'Position': r.get('position'),
-                            'Department': r.get('department'), 'Region': r.get('region',''),
-                            'Subsidiary': r.get('subsidiary',''), 'Score': r.get('total_performance_score'),
-                            'Rating': r.get('performance_rating'), 'Confirmed Date': r.get('approved_date','')[:10],
-                            'TL': r.get('supervisor_name'), 'HOD': r.get('hod_name')
-                        } for r in confirmed]
-                        st.download_button("📥 Export Confirmed Staff (CSV)", 
+                        
+                        export_data = []
+                        for r in confirmed:
+                            # Parse perf scores for export
+                            perf_scores_export = {}
+                            try:
+                                pr = r.get('performance_scores', '{}')
+                                if isinstance(pr, str):
+                                    perf_scores_export = json.loads(pr)
+                                elif isinstance(pr, dict):
+                                    perf_scores_export = pr
+                            except:
+                                pass
+                            
+                            row = {
+                                'Employee': r.get('employee_name'),
+                                'Position': r.get('position'),
+                                'Department': r.get('department'),
+                                'Region': r.get('region',''),
+                                'Subsidiary': r.get('subsidiary',''),
+                                'Join Date': r.get('join_date',''),
+                                'Probation End': r.get('probation_end',''),
+                                'TL Name': r.get('supervisor_name',''),
+                                'HOD Name': r.get('hod_name',''),
+                                'COO Name': r.get('coo_name',''),
+                                'TL Score': r.get('total_performance_score'),
+                                'HOD Score': r.get('hod_total_score') or r.get('total_performance_score'),
+                                'Final Rating': r.get('performance_rating'),
+                                'TL Recommendation': r.get('tl_recommendation',''),
+                                'TL Comments': r.get('supervisor_comments',''),
+                                'HOD Decision': r.get('hod_decision',''),
+                                'HOD Comments': r.get('hod_comments',''),
+                                'COO Decision': r.get('coo_decision',''),
+                                'COO Comments': r.get('coo_comments',''),
+                                'Strengths': r.get('strengths',''),
+                                'Weaknesses': r.get('weaknesses',''),
+                                'Disciplinary': r.get('disciplinary_action',''),
+                                'Status': r.get('status',''),
+                                'Confirmed Date': r.get('approved_date','')[:10] if r.get('approved_date') else ''
+                            }
+                            
+                            # Add criteria scores as separate columns
+                            for si in range(10):
+                                criteria_short = CRITERIA_LABELS[si][:30] if si < len(CRITERIA_LABELS) else f"Criterion {si+1}"
+                                row[criteria_short] = perf_scores_export.get(str(si), perf_scores_export.get(si, ''))
+                            
+                            export_data.append(row)
+                        
+                        st.download_button(
+                            "📥 Export Confirmed Staff (CSV)",
                             pd.DataFrame(export_data).to_csv(index=False),
-                            "confirmed_staff.csv", "text/csv", use_container_width=True)
+                            "confirmed_staff.csv",
+                            "text/csv",
+                            use_container_width=True
+                        )
                     else:
                         st.info("No confirmed staff yet.")
                     
-                    # HR PROCESSING QUEUE
+                    # ============================================================
+                    # HR PROCESSING QUEUE (unchanged — preserved)
+                    # ============================================================
                     st.markdown("---")
                     st.markdown("#### 🏢 HR Processing Queue")
                     
                     hr_processing = [r for r in reviews if r.get('status') == 'Approved by COO'] if reviews else []
                     
+                    # Deduplicate by employee_id
+                    seen_hr = set()
+                    hr_unique = []
+                    for r in hr_processing:
+                        key = f"{r.get('employee_id','')}_{r.get('employee_name','')}"
+                        if key not in seen_hr:
+                            seen_hr.add(key)
+                            hr_unique.append(r)
+                    hr_processing = hr_unique
+                    
                     if hr_processing:
-                        for r in hr_processing:
+                        for hidx, r in enumerate(hr_processing):
                             emp_name = r.get('employee_name', '')
-                            emp_id = r.get('employee_id', '')
+                            emp_id = r.get('employee_id', f'unknown_{hidx}')
                             emp_email = ''
                             
                             try:
@@ -14354,9 +14677,17 @@ def staff_confirmation():
                                 st.markdown(f"**Email:** {emp_email or 'N/A'}")
                                 st.markdown(f"**Score:** {r.get('total_performance_score', 'N/A')}/100 — {r.get('performance_rating', 'N/A')}")
                                 
-                                letter_file = st.file_uploader("Upload Confirmation Letter (PDF or DOCX)", type=['pdf', 'docx'], key=f"letter_{emp_id}")
+                                # UNIQUE KEYS
+                                letter_file = st.file_uploader(
+                                    "Upload Confirmation Letter (PDF or DOCX)",
+                                    type=['pdf', 'docx'],
+                                    key=f"hrq_letter_{emp_id}_{hidx}"
+                                )
                                 
-                                if st.button("📧 Send Confirmation Letter", key=f"send_letter_{emp_id}", use_container_width=True, type="primary"):
+                                if st.button("📧 Send Confirmation Letter",
+                                            key=f"hrq_send_{emp_id}_{hidx}",
+                                            use_container_width=True,
+                                            type="primary"):
                                     if letter_file:
                                         if emp_email:
                                             try:
@@ -14390,8 +14721,8 @@ def staff_confirmation():
                         st.info("No pending HR processing.")
                 else:
                     st.info("No confirmation reviews found.")
-            except:
-                st.info("Data loading...")
+            except Exception as e:
+                st.info(f"Data loading... ({str(e)})")
     
     # ============================================================
     # TAB 5: DASHBOARD - CLEAN (NO DIAGNOSTICS)
