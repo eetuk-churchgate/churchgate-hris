@@ -18580,7 +18580,11 @@ APPLY NOW: {public_url}
         st.subheader("📋 Job Requisition Form")
         st.info("Workflow: Line Manager → Super Admin → COO → Job Goes LIVE on Careers Page")
         
-        with st.form("job_requisition_form"):
+        # NOTE: st_quill is a bidirectional custom component, which does not honour
+        # st.form batching -- clicking the submit button first blurs the editor, which
+        # fires a component-value rerun and swallows the submit event. A plain container
+        # + st.button keeps the click reliable.
+        with st.container():
             st.markdown("### New Job Requisition")
             c1, c2 = st.columns(2)
             with c1:
@@ -18635,14 +18639,20 @@ APPLY NOW: {public_url}
                 st.session_state.jd_html_content = ""
             
             jd_text_for_submission = st_quill(
-                value=st.session_state.jd_html_content,
                 placeholder="Start typing your job description here...",
                 html=True,
                 key="jd_quill_editor"
             )
             
-            if jd_text_for_submission:
+            if jd_text_for_submission is not None:
                 st.session_state.jd_html_content = jd_text_for_submission
+            jd_text_for_submission = st.session_state.jd_html_content
+            
+            # An "empty" Quill editor still returns markup such as "<p><br></p>",
+            # so validate against the stripped text rather than the raw HTML.
+            jd_plain_text = re.sub(r"<[^>]*>", "", jd_text_for_submission or "").replace("&nbsp;", " ").strip()
+            
+            if jd_plain_text:
                 with st.expander("👁️ Live Preview", expanded=True):
                     st.markdown(jd_text_for_submission, unsafe_allow_html=True)
             
@@ -18665,14 +18675,14 @@ APPLY NOW: {public_url}
             with c5:
                 post_hotnigerianjobs = st.checkbox("HotNigerianJobs", value=True)
             
-            submitted = st.form_submit_button("📤 Submit for Approval", use_container_width=True)
+            submitted = st.button("📤 Submit for Approval", use_container_width=True, type="primary", key="submit_requisition_btn")
             
             if submitted:
                 if not job_title:
                     st.error("❌ Job Title is required!")
                 elif not department:
                     st.error("❌ Department is required!")
-                elif not jd_text_for_submission:
+                elif not jd_plain_text:
                     st.error("❌ Job Description is required!")
                 elif hiring_reason == "Select Reason...":
                     st.error("❌ Please select a hiring reason!")
@@ -18706,8 +18716,9 @@ APPLY NOW: {public_url}
                             req['lm_comment'], req['admin_comment'], req['coo_comment'],
                             req.get('lm_name', ''), req.get('admin_name', ''), req.get('coo_name', ''),
                             req.get('evidence_files', []), req.get('hiring_reason', ''), req.get('submitter_comment', ''))
-                    except:
-                        pass
+                    except Exception as e:
+                        st.error(f"❌ Requisition was not saved to the database: {e}")
+                        st.stop()
                     
                     lm_emails = {
                         'Accounts & Finance': 'jeff@churchgate.com',
@@ -18895,12 +18906,17 @@ APPLY NOW: {public_url}
                             if req.get('coo_comment') and req.get('coo_name'):
                                 st.warning(f"🔄 COO ({req['coo_name']}) requested revision: \"{req['coo_comment']}\"")
                             st.markdown("#### 👔 Line Manager Authorization")
-                            with st.form(key=f"lm_form_{i}"):
+                            # st_quill is a bidirectional custom component and cannot sit inside
+                            # st.form -- it pushes its value on blur, which swallows the submit
+                            # click. Use a plain container + st.button instead.
+                            with st.container():
                                 edit_jd = st_quill(value=jd_content, html=True, key=f"edit_jd_lm_{i}")
+                                if not edit_jd:
+                                    edit_jd = jd_content
                                 lm_comment_input = st.text_area("Line Manager Comment *", key=f"lm_comment_input_{i}", placeholder="e.g., This position is for expansion purposes")
                                 evidence_file = st.file_uploader("Upload evidence", key=f"lm_evidence_{i}", type=['pdf', 'docx', 'xlsx', 'png', 'jpg'])
                                 
-                                if st.form_submit_button("✅ Authorize & Send to HR", use_container_width=True):
+                                if st.button("✅ Authorize & Send to HR", use_container_width=True, type="primary", key=f"lm_authorize_btn_{i}"):
                                     if lm_comment_input:
                                         st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
                                         st.session_state.job_requisitions[i]['lm_comment'] = lm_comment_input
@@ -18929,7 +18945,7 @@ APPLY NOW: {public_url}
                                             r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
                                             r['lm_comment'], r['admin_comment'], r['coo_comment'],
                                             r.get('lm_name', ''), r.get('admin_name', ''), r.get('coo_name', ''),
-                                            r.get('evidence_files', [])
+                                            r.get('evidence_files', []), r.get('hiring_reason', ''), r.get('submitter_comment', '')
                                         )
                                         
                                         if email_svc:
@@ -18951,12 +18967,17 @@ APPLY NOW: {public_url}
                             if req.get('coo_comment') and req.get('coo_name'):
                                 st.warning(f"🔄 COO ({req['coo_name']}) requested revision: \"{req['coo_comment']}\"")
                             st.markdown("#### 🔍 HR Admin Validation")
-                            with st.form(key=f"admin_form_{i}"):
+                            # st_quill is a bidirectional custom component and cannot sit inside
+                            # st.form -- it pushes its value on blur, which swallows the submit
+                            # click. Use a plain container + st.button instead.
+                            with st.container():
                                 edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"edit_jd_admin_{i}")
+                                if not edit_jd:
+                                    edit_jd = req.get('jd', '')
                                 edit_salary = st.text_input("Edit Salary Range", value=req.get('salary', ''), key=f"edit_salary_{i}")
                                 admin_comment_input = st.text_area("Admin Validation Comment *", key=f"admin_comment_input_{i}", placeholder="e.g., Approved for expansion purposes")
                                 
-                                if st.form_submit_button("✅ Validate & Send to COO", use_container_width=True):
+                                if st.button("✅ Validate & Send to COO", use_container_width=True, type="primary", key=f"admin_validate_btn_{i}"):
                                     if admin_comment_input:
                                         st.session_state.job_requisitions[i]['status'] = 'Pending COO Approval'
                                         st.session_state.job_requisitions[i]['admin_comment'] = admin_comment_input
@@ -18971,7 +18992,7 @@ APPLY NOW: {public_url}
                                             r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
                                             r['lm_comment'], r['admin_comment'], r['coo_comment'],
                                             r.get('lm_name', ''), r.get('admin_name', ''), r.get('coo_name', ''),
-                                            r.get('evidence_files', [])
+                                            r.get('evidence_files', []), r.get('hiring_reason', ''), r.get('submitter_comment', '')
                                         )
                                         
                                         if email_svc:
@@ -19119,13 +19140,18 @@ APPLY NOW: {public_url}
                         st.markdown("**🔄 Action:** LM must review and resubmit. Then Admin validates before COO sees it again.")
                         
                         if is_admin or is_manager:
-                            with st.form(key=f"revise_form_{i}"):
+                            # st_quill is a bidirectional custom component and cannot sit inside
+                            # st.form -- it pushes its value on blur, which swallows the submit
+                            # click. Use a plain container + st.button instead.
+                            with st.container():
                                 edit_jd = st_quill(value=req.get('jd', ''), html=True, key=f"revise_jd_{i}")
+                                if not edit_jd:
+                                    edit_jd = req.get('jd', '')
                                 edit_salary = st.text_input("Salary", value=req.get('salary', ''), key=f"revise_salary_{i}")
                                 evidence_file = st.file_uploader("Evidence", key=f"revise_evidence_{i}", type=['pdf', 'docx', 'xlsx', 'png', 'jpg'])
                                 revise_comment = st.text_area("Update Comment *", key=f"revise_comment_{i}")
                                 
-                                if st.form_submit_button("✅ Resubmit to Admin", use_container_width=True):
+                                if st.button("✅ Resubmit to Admin", use_container_width=True, type="primary", key=f"revise_resubmit_btn_{i}"):
                                     if revise_comment:
                                         st.session_state.job_requisitions[i]['status'] = 'Pending Admin Approval'
                                         st.session_state.job_requisitions[i]['jd'] = edit_jd
@@ -19155,7 +19181,7 @@ APPLY NOW: {public_url}
                                             r['jd'], r['screening'], r['posts'], r['status'], r['submitted_by'], r['date'],
                                             r['lm_comment'], r['admin_comment'], r['coo_comment'],
                                             r.get('lm_name', ''), r.get('admin_name', ''), r.get('coo_name', ''),
-                                            r.get('evidence_files', [])
+                                            r.get('evidence_files', []), r.get('hiring_reason', ''), r.get('submitter_comment', '')
                                         )
                                         
                                         st.success("✅ Resubmitted to Admin!")
