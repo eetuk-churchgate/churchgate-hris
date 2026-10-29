@@ -19374,7 +19374,60 @@ APPLY NOW: {public_url}
     with tab3:
         st.subheader("📢 Active Job Postings")
         
-        # Get expired jobs
+        # ============================================================
+        # AUTO-EXPIRE LOGIC & AUTO-DELETE (RUNS ON LOAD)
+        # ============================================================
+        now = datetime.now()
+        jobs_to_expire = []
+        jobs_to_delete = []
+        
+        for job in st.session_state.active_jobs:
+            try:
+                closing_date = datetime.strptime(job['closing'], '%Y-%m-%d')
+                if closing_date < now:
+                    jobs_to_expire.append(job['ref'])
+            except:
+                pass
+                
+        # Move expired live jobs to Expired status
+        if jobs_to_expire:
+            for ref in jobs_to_expire:
+                # Update Session State
+                for i, req in enumerate(st.session_state.job_requisitions):
+                    if req.get('id') == ref:
+                        st.session_state.job_requisitions[i]['status'] = 'Expired'
+                        break
+                # Update Database
+                try:
+                    db._patch("job_requisitions", {"status": "Expired"}, {"req_id": ref})
+                except:
+                    pass
+            
+            # Remove from active_jobs
+            st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('ref') not in jobs_to_expire]
+            st.rerun()
+
+        # Auto-delete jobs expired for more than 7 days
+        for req in st.session_state.job_requisitions:
+            if req.get('status') == 'Expired':
+                try:
+                    closing_date = datetime.strptime(req.get('closing', ''), '%Y-%m-%d')
+                    days_expired = (now - closing_date).days
+                    if days_expired > 7:
+                        jobs_to_delete.append(req['id'])
+                except:
+                    pass
+                    
+        if jobs_to_delete:
+            for ref in jobs_to_delete:
+                st.session_state.job_requisitions = [r for r in st.session_state.job_requisitions if r.get('id') != ref]
+                try:
+                    db._delete("job_requisitions", {"req_id": ref})
+                except:
+                    pass
+            st.rerun()
+
+        # Get expired jobs (Now accurate)
         expired_jobs = [req for req in st.session_state.job_requisitions if req.get('status') == 'Expired']
         
         # Stats row
@@ -19387,11 +19440,10 @@ APPLY NOW: {public_url}
             total_apps = sum(job.get('applications', 0) for job in st.session_state.active_jobs)
             st.metric("👥 Total Applicants", total_apps)
         with c4:
-            # Jobs closing within 7 days
             urgent = 0
             for job in st.session_state.active_jobs:
                 try:
-                    days_left = (datetime.strptime(job['closing'], '%Y-%m-%d') - datetime.now()).days
+                    days_left = (datetime.strptime(job['closing'], '%Y-%m-%d') - now).days
                     if days_left <= 7:
                         urgent += 1
                 except:
@@ -19405,7 +19457,7 @@ APPLY NOW: {public_url}
             st.markdown("### 🟢 Live Jobs")
             for job in st.session_state.active_jobs:
                 try:
-                    days_left = (datetime.strptime(job['closing'], '%Y-%m-%d') - datetime.now()).days
+                    days_left = (datetime.strptime(job['closing'], '%Y-%m-%d') - now).days
                     if days_left <= 3:
                         status_icon = "🔴"
                         status_text = f"Closing in {days_left} days!"
@@ -19420,14 +19472,12 @@ APPLY NOW: {public_url}
                     status_text = ""
                 
                 with st.expander(f"{status_icon} {job['ref']} - {job['title']} | {job['department']} | {status_text}", expanded=False):
-                    # Count actual applications for this job (match both REQ and JOB formats)
                     try:
                         all_candidates = get_cached_candidates_hub()
                         app_count = 0
                         if not all_candidates.empty and 'job_id' in all_candidates.columns:
                             job_ref = job['ref']
                             short_ref = job_ref[-6:] if len(job_ref) >= 6 else job_ref
-                            # Try matching REQ- format and JOB- format
                             for _, cand in all_candidates.iterrows():
                                 cand_job = str(cand.get('job_id', '')).strip()
                                 if cand_job == job_ref or cand_job[-6:] == short_ref:
@@ -19435,7 +19485,6 @@ APPLY NOW: {public_url}
                     except:
                         app_count = 0
                     
-                    # Stats row
                     c1, c2, c3, c4 = st.columns(4)
                     with c1:
                         st.markdown(f"**👥 Applicants:** {app_count}")
@@ -19446,10 +19495,9 @@ APPLY NOW: {public_url}
                     with c4:
                         st.markdown(f"**💰 Salary:** {job.get('salary', 'Not specified') or 'Not specified'}")
                     
-                    # Countdown timer
                     try:
                         closing_date = datetime.strptime(job['closing'], '%Y-%m-%d')
-                        days_left = (closing_date - datetime.now()).days
+                        days_left = (closing_date - now).days
                         if days_left <= 3:
                             st.error(f"🔴 URGENT: Only {days_left} days remaining! Closing: {job['closing']}")
                         elif days_left <= 7:
@@ -19461,16 +19509,13 @@ APPLY NOW: {public_url}
                     
                     st.markdown("---")
                     
-                    # Public URL
                     st.markdown("**📎 Public Career Page URL:**")
                     st.code(job['public_url'], language=None)
                     
-                    # Platform status
                     st.markdown(f"**📢 Platforms:** LinkedIn: {'✅' if job['posts'].get('linkedin') else '❌'} | Indeed: {'✅' if job['posts'].get('indeed') else '❌'} | Glassdoor: {'✅' if job['posts'].get('glassdoor') else '❌'}")
                     
                     st.markdown("---")
                     
-                    # Quick actions
                     c1, c2, c3 = st.columns(3)
                     with c1:
                         share_url = job['public_url']
@@ -19482,11 +19527,10 @@ APPLY NOW: {public_url}
                     
                     st.markdown("---")
                     
-                    # ADMIN CONTROLS (Close & Extend)
+                    # ADMIN CONTROLS
                     st.markdown("### ⚙️ Job Controls")
                     c_ctrl1, c_ctrl2 = st.columns(2)
                     
-                    # EXTEND DEADLINE
                     with c_ctrl1:
                         with st.form(f"extend_form_{job['ref']}"):
                             st.markdown("**⏳ Extend Deadline**")
@@ -19497,19 +19541,16 @@ APPLY NOW: {public_url}
                             if st.form_submit_button("💾 Update Deadline", use_container_width=True):
                                 new_date_str = new_date.strftime('%Y-%m-%d')
                                 
-                                # 1. Update Session State
                                 for i, req in enumerate(st.session_state.job_requisitions):
                                     if req.get('id') == job['ref']:
                                         st.session_state.job_requisitions[i]['closing'] = new_date_str
                                         break
                                 
-                                # Update active jobs list
                                 for j in st.session_state.active_jobs:
                                     if j['ref'] == job['ref']:
                                         j['closing'] = new_date_str
                                         break
                                 
-                                # 2. Update Database
                                 try:
                                     db._patch("job_requisitions", {"closing": new_date_str}, {"req_id": job['ref']})
                                 except:
@@ -19519,20 +19560,18 @@ APPLY NOW: {public_url}
                                 time.sleep(1)
                                 st.rerun()
                     
-                    # CLOSE JOB
                     with c_ctrl2:
                         st.markdown("**⏹️ Close Job**")
-                        st.markdown("<small style='color:#888;'>This will move the job to Expired.</small>", unsafe_allow_html=True)
+                        st.markdown("<small style='color:#888;'>Move immediately to Expired.</small>", unsafe_allow_html=True)
                         st.markdown("<br>", unsafe_allow_html=True)
                         
-                        if st.button(f"⏹️ Close Job Immediately", key=f"close_{job['ref']}", use_container_width=True, type="primary"):
+                        if st.button(f"⏹️ Close Job", key=f"close_{job['ref']}", use_container_width=True, type="primary"):
                             for i, req in enumerate(st.session_state.job_requisitions):
                                 if req.get('id') == job['ref']:
                                     st.session_state.job_requisitions[i]['status'] = 'Expired'
                                     break
                             st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('ref') != job['ref']]
                             
-                            # Update DB status
                             try:
                                 db._patch("job_requisitions", {"status": "Expired"}, {"req_id": job['ref']})
                             except:
@@ -19544,9 +19583,16 @@ APPLY NOW: {public_url}
         # ===== EXPIRED JOBS =====
         if expired_jobs:
             st.markdown("---")
-            st.markdown("### 🔴 Expired Jobs")
+            st.markdown("### 🔴 Expired Jobs (Auto-deleted after 7 days)")
             for req in expired_jobs:
-                with st.expander(f"🔴 {req['id']} - {req['title']} | {req['department']} | Expired: {req.get('closing', 'N/A')}", expanded=False):
+                # Calculate days expired for UI display
+                days_expired = 0
+                try:
+                    days_expired = (now - datetime.strptime(req.get('closing', ''), '%Y-%m-%d')).days
+                except:
+                    pass
+                    
+                with st.expander(f"🔴 {req['id']} - {req['title']} | {req['department']} | Expired {days_expired} days ago", expanded=False):
                     col1, col2 = st.columns(2)
                     with col1:
                         st.markdown(f"**📍 Location:** {req.get('location', 'N/A')}")
@@ -19562,7 +19608,15 @@ APPLY NOW: {public_url}
                         if st.button(f"📊 View Report", key=f"report_{req['id']}"):
                             try:
                                 candidates = get_cached_candidates_hub()
-                                job_candidates = candidates[candidates['job_id'] == req['id']] if not candidates.empty else []
+                                job_ref = req['id']
+                                short_ref = job_ref[-6:] if len(job_ref) >= 6 else job_ref
+                                
+                                # Find matching candidates using the ID logic
+                                job_candidates = candidates[
+                                    (candidates['job_id'].astype(str).str.strip() == job_ref) | 
+                                    (candidates['job_id'].astype(str).str.strip().str[-6:] == short_ref)
+                                ] if not candidates.empty else []
+                                
                                 st.metric("Total Applicants", len(job_candidates))
                                 if len(job_candidates) > 0:
                                     html_table = job_candidates[['first_name', 'last_name', 'email', 'status']].to_html(classes='dark-csv-table', index=False, border=0, escape=False)
@@ -19571,7 +19625,7 @@ APPLY NOW: {public_url}
                                 st.info("No application data available.")
                     with c2:
                         if st.button(f"🔄 Repost", key=f"repost_{req['id']}"):
-                            new_close = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+                            new_close = (now + timedelta(days=30)).strftime('%Y-%m-%d')
                             for i, r in enumerate(st.session_state.job_requisitions):
                                 if r.get('id') == req['id']:
                                     st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
