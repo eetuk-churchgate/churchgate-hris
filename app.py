@@ -19627,26 +19627,19 @@ APPLY NOW: {public_url}
                     display = display[display['status'].str.lower() == status_filter.lower()]
                 
                 # ==========================================
-                # SMART JOB FILTER (3-Layer Fallback)
+                # STRICT JOB FILTER (No CV guessing)
                 # ==========================================
                 if job_filter_name != "All Jobs":
                     target_clean_id = title_to_clean_id.get(job_filter_name, "")
                     
-                    # Layer 1: Clean ID Match (Strips REQ-, JOB-, and spaces from candidate side)
-                    match_id = display['job_id'].astype(str).str.replace("REQ-", "").str.replace("JOB-", "").str.replace(" ", "").str.strip() == target_clean_id
+                    # Check if the candidate's job_id matches the Requisition ID
+                    match_id = display['job_id'].astype(str).str.replace("REQ-", "").str.replace("JOB-", "").replace(" ", "").str.strip() == target_clean_id
                     
-                    # Layer 2: Position Match (Does their current job title match the selected job?)
-                    match_position = display['current_position'].astype(str).str.contains(job_filter_name, case=False, na=False)
+                    # Check if the candidate's current position matches the Job Title
+                    match_position = display['current_position'].astype(str).str.lower().str.contains(job_filter_name.lower(), na=False)
                     
-                    # Layer 3: CV Keyword Match (Split title into words > 3 letters and search CV)
-                    keywords = [k for k in job_filter_name.replace('.', '').split() if len(k) > 3]
-                    match_cv = pd.Series(False, index=display.index)
-                    if keywords:
-                        for kw in keywords:
-                            match_cv = match_cv | display['resume_text'].astype(str).str.contains(kw, case=False, na=False)
-                    
-                    # Combine all layers (If ANY match, show candidate)
-                    display = display[match_id | match_position | match_cv]
+                    # Combine (Must match the ID OR the Position)
+                    display = display[match_id | match_position]
                 
                 # Search Filter
                 if search_cand:
