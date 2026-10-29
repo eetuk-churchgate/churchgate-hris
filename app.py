@@ -19587,25 +19587,34 @@ APPLY NOW: {public_url}
             
             if not candidates.empty:
                 # ==========================================
-                # BULLETPROOF JOB MAPPING (Cleans all IDs)
+                # BULLETPROOF JOB MAPPING
                 # ==========================================
                 all_reqs = get_cached_requisitions_hub()
                 
-                title_to_clean_id = {}
-                clean_id_to_title = {}
+                req_id_to_title = {}
+                title_to_req_id = {}
                 
                 for r in all_reqs:
                     req_id = str(r.get('req_id', '')).strip()
                     title = str(r.get('title', '')).strip()
-                    
                     if req_id and title:
-                        # Strip out "REQ-", "JOB-", and spaces to get raw numbers
-                        clean_id = req_id.replace("REQ-", "").replace("JOB-", "").replace(" ", "").strip()
-                        title_to_clean_id[title] = clean_id
-                        clean_id_to_title[clean_id] = title
-                
-                # Dropdown shows ONLY the clean Job Titles
-                display_options = ["All Jobs"] + sorted(list(title_to_clean_id.keys()))
+                        req_id_to_title[req_id] = title
+                        title_to_req_id[title] = req_id
+                        # Map short IDs
+                        if len(req_id) >= 6:
+                            req_id_to_title[req_id[-6:]] = title
+                            req_id_to_title[f"JOB-{req_id[-6:]}"] = title
+
+                # Build dropdown based on what's actually in the candidates table
+                job_options = ["All Jobs"]
+                for cj in candidates['job_id'].dropna().unique():
+                    cj_str = str(cj).strip()
+                    if cj_str and cj_str not in ['None', '', 'nan']:
+                        title = req_id_to_title.get(cj_str, req_id_to_title.get(cj_str[-6:] if len(cj_str) >= 6 else cj_str, cj_str))
+                        if title not in job_options and title != cj_str:
+                            job_options.append(title)
+                            
+                job_options = sorted(list(set(job_options)))
                 
                 # Filters
                 col1, col2, col3, col4 = st.columns(4)
@@ -19613,7 +19622,7 @@ APPLY NOW: {public_url}
                 with col1:
                     status_filter = st.selectbox("Status", ["All", "New", "Shortlisted", "Interview Scheduled", "Offered", "Hired", "Rejected"], key="cand_status")
                 with col2:
-                    job_filter_name = st.selectbox("Job", display_options, key="cand_job")
+                    job_filter_name = st.selectbox("Job", job_options, key="cand_job")
                 with col3:
                     sort_by = st.selectbox("Sort", ["Newest First", "Name A-Z", "Status"], key="cand_sort")
                 with col4:
@@ -19622,26 +19631,33 @@ APPLY NOW: {public_url}
                 # Apply Filters
                 display = candidates.copy()
                 
-                # Status Filter
                 if status_filter != "All":
                     display = display[display['status'].str.lower() == status_filter.lower()]
                 
                 # ==========================================
-                # STRICT JOB FILTER (No CV guessing)
+                # THE ULTIMATE 3-LAYER SMART FILTER
                 # ==========================================
                 if job_filter_name != "All Jobs":
-                    target_clean_id = title_to_clean_id.get(job_filter_name, "")
+                    target_req_id = str(title_to_req_id.get(job_filter_name, "")).strip()
+                    short_target = target_req_id[-6:] if len(target_req_id) >= 6 else target_req_id
                     
-                    # Check if the candidate's job_id matches the Requisition ID
-                    match_id = display['job_id'].astype(str).str.replace("REQ-", "").str.replace("JOB-", "").replace(" ", "").str.strip() == target_clean_id
+                    # Layer 1: The Strip Pattern (Last 6 Digits Match)
+                    match_id = (display['job_id'].astype(str).str.strip() == target_req_id) | \
+                               (display['job_id'].astype(str).str.strip().str[-6:] == short_target)
+                               
+                    # Layer 2: The Position Match
+                    match_position = display['current_position'].astype(str).str.contains(job_filter_name, case=False, na=False)
                     
-                    # Check if the candidate's current position matches the Job Title
-                    match_position = display['current_position'].astype(str).str.lower().str.contains(job_filter_name.lower(), na=False)
+                    # Layer 3: The CV Keyword Match (Splits title into words > 3 chars)
+                    keywords = [k for k in job_filter_name.replace('.', '').split() if len(k) > 3]
+                    match_cv = pd.Series(False, index=display.index)
+                    if keywords:
+                        for kw in keywords:
+                            match_cv = match_cv | display['resume_text'].astype(str).str.contains(kw, case=False, na=False)
                     
-                    # Combine (Must match the ID OR the Position)
-                    display = display[match_id | match_position]
+                    # COMBINE: If ANY layer matches, show candidate
+                    display = display[match_id | match_position | match_cv]
                 
-                # Search Filter
                 if search_cand:
                     s = search_cand.lower()
                     display = display[
@@ -19651,7 +19667,6 @@ APPLY NOW: {public_url}
                         display['job_id'].astype(str).str.lower().str.contains(s, na=False)
                     ]
                 
-                # Sort
                 if sort_by == "Name A-Z":
                     display = display.sort_values('first_name')
                 elif sort_by == "Status":
@@ -19686,15 +19701,13 @@ APPLY NOW: {public_url}
                 end_idx = min(start_idx + items_per_page, len(display))
                 page_display = display.iloc[start_idx:end_idx]
                 
-                # Render ONLY current page
                 for i, (_, cand) in enumerate(page_display.iterrows()):
                     initials = (str(cand.get('first_name', ''))[:1] + str(cand.get('last_name', ''))[:1]).upper()
                     status = cand.get('status', 'New')
                     job_id_val = str(cand.get('job_id', '')).strip()
                     
-                    # Look up the clean title from the candidate's raw ID
-                    clean_cand_id = job_id_val.replace("REQ-", "").replace("JOB-", "").replace(" ", "").strip()
-                    job_title = clean_id_to_title.get(clean_cand_id, job_id_val)
+                    # Display title
+                    job_title = req_id_to_title.get(job_id_val, req_id_to_title.get(job_id_val[-6:] if len(job_id_val) >= 6 else job_id_val, job_id_val))
                     if job_title == 'None' or not job_title: job_title = 'No Job Specified'
                     
                     score = int(float(cand.get('ai_score', 0))) if cand.get('ai_score') and float(cand.get('ai_score', 0)) > 0 else 0
@@ -19722,7 +19735,6 @@ APPLY NOW: {public_url}
                         
                         st.markdown("---")
                         
-                        # CV Display
                         st.markdown("### 📄 CV & Documents")
                         cv_text = str(cand.get('resume_text', ''))
                         cv_url = str(cand.get('cv_url', ''))
@@ -19745,7 +19757,6 @@ APPLY NOW: {public_url}
                         
                         st.markdown("---")
                         
-                        # Quick actions
                         c1, c2, c3, c4 = st.columns(4)
                         with c1:
                             new_status = st.selectbox("Update Status", ["New", "Shortlisted", "Interview Scheduled", "Offered", "Hired", "Rejected"], key=f"status_{cand_ref}_{start_idx}_{i}")
@@ -19776,7 +19787,7 @@ APPLY NOW: {public_url}
                                         jd_text = ""
                                         if job_id_val and job_id_val not in ['None', '', 'nan']:
                                             for r in all_reqs:
-                                                if r.get('req_id') == job_id_val or r.get('req_id', '').replace("REQ-", "").replace("JOB-", "") == clean_cand_id:
+                                                if r.get('req_id') == job_id_val or r.get('req_id', '')[-6:] == job_id_val[-6:]:
                                                     jd_text = r.get('jd', '')
                                                     break
                                         res = ai_agent.deep_analyze_candidate(cv_text_local, jd_text)
