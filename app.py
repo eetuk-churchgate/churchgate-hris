@@ -19588,40 +19588,70 @@ APPLY NOW: {public_url}
             if not candidates.empty:
                 # Filters
                 col1, col2, col3, col4 = st.columns(4)
+                
                 with col1:
                     status_filter = st.selectbox("Status", ["All", "New", "Shortlisted", "Interview Scheduled", "Offered", "Hired", "Rejected"], key="cand_status")
+                
                 with col2:
-                    # Build job name map from cache
-                    job_name_map = {"All Jobs": "All Jobs"}
+                    # BUILD JOB MAP (Title -> ID)
+                    job_title_to_id = {}
                     all_reqs = get_cached_requisitions_hub()
                     for r in all_reqs:
                         req_id = r.get('req_id', '')
                         title = r.get('title', req_id)
-                        job_name_map[title] = req_id
+                        job_title_to_id[title] = req_id
                     
+                    # Add raw IDs from candidates to ensure we capture everything
                     if 'job_id' in candidates.columns:
                         for jid in candidates['job_id'].dropna().unique():
-                            if jid not in job_name_map.values():
-                                job_name_map[jid] = jid
+                            if jid not in job_title_to_id.values():
+                                job_title_to_id[jid] = jid
                     
-                    job_filter_name = st.selectbox("Job", list(job_name_map.keys()), key="cand_job")
-                    job_filter = job_name_map.get(job_filter_name, "All Jobs")
+                    job_options = ["All Jobs"] + list(job_title_to_id.keys())
+                    job_filter_name = st.selectbox("Job", job_options, key="cand_job")
+                
                 with col3:
                     sort_by = st.selectbox("Sort", ["Newest First", "Name A-Z", "Status"], key="cand_sort")
                 with col4:
                     search_cand = st.text_input("🔍 Search", placeholder="Name or email...", key="cand_search")
                 
-                # Apply filters
+                # Apply Filters
                 display = candidates.copy()
+                
+                # Status Filter
                 if status_filter != "All":
-                    display = display[display['status'] == status_filter]
-                if job_filter != "All Jobs" and 'job_id' in display.columns:
-                    display = display[display['job_id'] == job_filter]
+                    display = display[display['status'].str.lower() == status_filter.lower()]
+                
+                # ==========================================
+                # FIXED JOB FILTER LOGIC
+                # ==========================================
+                if job_filter_name != "All Jobs":
+                    target_job_id = str(job_title_to_id.get(job_filter_name, "")).strip()
+                    
+                    if target_job_id and 'job_id' in display.columns:
+                        # Clean the target ID to just get the core numbers/letters
+                        clean_target = target_job_id.replace("JOB-", "").replace("REQ-", "").strip()
+                        
+                        # Create a clean version of the candidate's job_id column
+                        display['clean_job_id'] = display['job_id'].astype(str).str.replace("JOB-", "").str.replace("REQ-", "").str.strip()
+                        
+                        # Match if they are identical, OR if one contains the other
+                        display = display[
+                            (display['job_id'].astype(str) == target_job_id) | 
+                            (display['clean_job_id'] == clean_target) |
+                            (display['clean_job_id'].str.contains(clean_target, na=False))
+                        ]
+                
+                # Search Filter
                 if search_cand:
                     s = search_cand.lower()
-                    display = display[display['first_name'].str.lower().str.contains(s, na=False) | display['last_name'].str.lower().str.contains(s, na=False) | display['email'].str.lower().str.contains(s, na=False)]
+                    display = display[
+                        display['first_name'].str.lower().str.contains(s, na=False) | 
+                        display['last_name'].str.lower().str.contains(s, na=False) | 
+                        display['email'].str.lower().str.contains(s, na=False)
+                    ]
                 
-                # Apply sorting
+                # Sort
                 if sort_by == "Name A-Z":
                     display = display.sort_values('first_name')
                 elif sort_by == "Status":
@@ -19656,18 +19686,15 @@ APPLY NOW: {public_url}
                 end_idx = min(start_idx + items_per_page, len(display))
                 page_display = display.iloc[start_idx:end_idx]
                 
-                # Build job map for display
-                job_map = {}
-                for r in all_reqs:
-                    req_id = r.get('req_id', '')
-                    job_map[req_id] = r.get('title', req_id)
+                # Build job map for display (ID -> Title)
+                job_id_to_title = {v: k for k, v in job_title_to_id.items()}
                 
                 # Render ONLY current page
                 for i, (_, cand) in enumerate(page_display.iterrows()):
                     initials = (str(cand.get('first_name', ''))[:1] + str(cand.get('last_name', ''))[:1]).upper()
                     status = cand.get('status', 'New')
                     job_id = str(cand.get('job_id', ''))
-                    job_title = job_map.get(job_id, job_id) if job_id and job_id != 'None' else 'No Job Specified'
+                    job_title = job_id_to_title.get(job_id, job_id) if job_id and job_id != 'None' else 'No Job Specified'
                     score = int(float(cand.get('ai_score', 0))) if cand.get('ai_score') and float(cand.get('ai_score', 0)) > 0 else 0
                     cand_ref = cand.get('candidate_ref', f"unknown_{i}")
                     
@@ -19678,7 +19705,6 @@ APPLY NOW: {public_url}
                     
                     emoji = "🌟" if score >= 85 else "👍" if score >= 70 else "🔶" if score > 0 else "📋"
                     
-                    # expanded=False so they are collapsed by default!
                     with st.expander(f"{emoji} {cand.get('first_name', '')} {cand.get('last_name', '')} | {job_title} | {status} | Score: {score}%", expanded=False):
                         col1, col2 = st.columns([1, 3])
                         with col1:
@@ -19703,7 +19729,6 @@ APPLY NOW: {public_url}
                         col_cv1, col_cv2 = st.columns([3, 1])
                         with col_cv1:
                             if cv_text and cv_text not in ['None', '', 'nan'] and len(cv_text) > 10:
-                                # Unique key using start_idx and i
                                 st.text_area("CV Content", cv_text[:2000], height=200, key=f"cv_tab3_{cand_ref}_{start_idx}_{i}", label_visibility="collapsed")
                                 st.download_button("📥 Download CV Text", cv_text, f"CV_{cand.get('first_name', '')}_{cand.get('last_name', '')}.txt", "text/plain", key=f"dl_txt_tab3_{cand_ref}_{start_idx}_{i}")
                             else:
