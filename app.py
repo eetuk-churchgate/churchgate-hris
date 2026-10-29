@@ -19586,72 +19586,78 @@ APPLY NOW: {public_url}
             st.subheader("📋 Candidate Database")
             
             if not candidates.empty:
+                # ==========================================
+                # ULTRA-FAST JOB MAPPING
+                # ==========================================
+                id_to_title = {}
+                title_to_id = {}
+                
+                all_reqs = get_cached_requisitions_hub()
+                for r in all_reqs:
+                    req_id = str(r.get('req_id', '')).strip()
+                    title = str(r.get('title', req_id)).strip()
+                    if req_id:
+                        id_to_title[req_id] = title
+                        title_to_id[title] = req_id
+                        # Map short versions
+                        if req_id.startswith("JOB-"):
+                            id_to_title[req_id.replace("JOB-", "")] = title
+                            title_to_id[title] = req_id.replace("JOB-", "")
+                        elif req_id.startswith("REQ-"):
+                            id_to_title[req_id.replace("REQ-", "")] = title
+                            title_to_id[title] = req_id.replace("REQ-", "")
+                            
+                # Catch orphaned IDs without scanning text
+                if 'job_id' in candidates.columns:
+                    for jid in candidates['job_id'].dropna().unique():
+                        jid_str = str(jid).strip()
+                        if jid_str and jid_str not in id_to_title and jid_str != 'None':
+                            id_to_title[jid_str] = jid_str
+                            for title, existing_id in title_to_id.items():
+                                if existing_id.endswith(jid_str):
+                                    id_to_title[jid_str] = title
+                                    break
+                
+                display_options = ["All Jobs"] + sorted(list(title_to_id.keys()))
+                
                 # Filters
                 col1, col2, col3, col4 = st.columns(4)
                 
                 with col1:
                     status_filter = st.selectbox("Status", ["All", "New", "Shortlisted", "Interview Scheduled", "Offered", "Hired", "Rejected"], key="cand_status")
-                
                 with col2:
-                    # BUILD JOB MAP (Title -> ID)
-                    job_title_to_id = {}
-                    all_reqs = get_cached_requisitions_hub()
-                    for r in all_reqs:
-                        req_id = r.get('req_id', '')
-                        title = r.get('title', req_id)
-                        job_title_to_id[title] = req_id
-                    
-                    # Add raw IDs from candidates to ensure we capture everything
-                    if 'job_id' in candidates.columns:
-                        for jid in candidates['job_id'].dropna().unique():
-                            if jid not in job_title_to_id.values():
-                                job_title_to_id[jid] = jid
-                    
-                    job_options = ["All Jobs"] + list(job_title_to_id.keys())
-                    job_filter_name = st.selectbox("Job", job_options, key="cand_job")
-                
+                    job_filter_name = st.selectbox("Job", display_options, key="cand_job")
                 with col3:
                     sort_by = st.selectbox("Sort", ["Newest First", "Name A-Z", "Status"], key="cand_sort")
                 with col4:
                     search_cand = st.text_input("🔍 Search", placeholder="Name or email...", key="cand_search")
                 
-                # Apply Filters
+                # Apply Filters (Instant Pandas Filtering)
                 display = candidates.copy()
                 
-                # Status Filter
                 if status_filter != "All":
                     display = display[display['status'].str.lower() == status_filter.lower()]
                 
-                # ==========================================
-                # FIXED JOB FILTER LOGIC
-                # ==========================================
+                # FAST JOB FILTER (No text scanning on CVs)
                 if job_filter_name != "All Jobs":
-                    target_job_id = str(job_title_to_id.get(job_filter_name, "")).strip()
+                    target_id = str(title_to_id.get(job_filter_name, "")).strip()
+                    clean_target = target_id.replace("JOB-", "").replace("REQ-", "").strip()
                     
-                    if target_job_id and 'job_id' in display.columns:
-                        # Clean the target ID to just get the core numbers/letters
-                        clean_target = target_job_id.replace("JOB-", "").replace("REQ-", "").strip()
-                        
-                        # Create a clean version of the candidate's job_id column
-                        display['clean_job_id'] = display['job_id'].astype(str).str.replace("JOB-", "").str.replace("REQ-", "").str.strip()
-                        
-                        # Match if they are identical, OR if one contains the other
+                    if clean_target and 'job_id' in display.columns:
+                        # Instant ID match check
                         display = display[
-                            (display['job_id'].astype(str) == target_job_id) | 
-                            (display['clean_job_id'] == clean_target) |
-                            (display['clean_job_id'].str.contains(clean_target, na=False))
+                            display['job_id'].astype(str).str.replace("JOB-", "").str.replace("REQ-", "").str.strip() == clean_target
                         ]
                 
-                # Search Filter
                 if search_cand:
                     s = search_cand.lower()
+                    # Search only names and emails, not CV texts
                     display = display[
                         display['first_name'].str.lower().str.contains(s, na=False) | 
                         display['last_name'].str.lower().str.contains(s, na=False) | 
                         display['email'].str.lower().str.contains(s, na=False)
                     ]
                 
-                # Sort
                 if sort_by == "Name A-Z":
                     display = display.sort_values('first_name')
                 elif sort_by == "Status":
@@ -19686,15 +19692,15 @@ APPLY NOW: {public_url}
                 end_idx = min(start_idx + items_per_page, len(display))
                 page_display = display.iloc[start_idx:end_idx]
                 
-                # Build job map for display (ID -> Title)
-                job_id_to_title = {v: k for k, v in job_title_to_id.items()}
-                
                 # Render ONLY current page
                 for i, (_, cand) in enumerate(page_display.iterrows()):
                     initials = (str(cand.get('first_name', ''))[:1] + str(cand.get('last_name', ''))[:1]).upper()
                     status = cand.get('status', 'New')
-                    job_id = str(cand.get('job_id', ''))
-                    job_title = job_id_to_title.get(job_id, job_id) if job_id and job_id != 'None' else 'No Job Specified'
+                    job_id_val = str(cand.get('job_id', ''))
+                    
+                    job_title = id_to_title.get(job_id_val, id_to_title.get(job_id_val.replace("JOB-", "").replace("REQ-", ""), job_id_val))
+                    if job_title == 'None': job_title = 'No Job Specified'
+                    
                     score = int(float(cand.get('ai_score', 0))) if cand.get('ai_score') and float(cand.get('ai_score', 0)) > 0 else 0
                     cand_ref = cand.get('candidate_ref', f"unknown_{i}")
                     
@@ -19750,7 +19756,7 @@ APPLY NOW: {public_url}
                         with c2:
                             if st.button("💾 Update", key=f"upd_{cand_ref}_{start_idx}_{i}"):
                                 db._patch("candidates", {"status": new_status}, {"candidate_ref": cand_ref})
-                                get_cached_candidates_hub.clear() # Clear cache to refresh the UI
+                                get_cached_candidates_hub.clear()
                                 st.success("✅ Updated!")
                                 st.rerun()
                         with c3:
@@ -19772,9 +19778,9 @@ APPLY NOW: {public_url}
                                 if cv_text_local and cv_text_local not in ['None', '', 'nan'] and len(cv_text_local) > 50:
                                     with st.spinner("🤖 Running AI analysis..."):
                                         jd_text = ""
-                                        if job_id and job_id not in ['None', '', 'nan']:
+                                        if job_id_val and job_id_val not in ['None', '', 'nan']:
                                             for r in all_reqs:
-                                                if r.get('req_id') == job_id:
+                                                if r.get('req_id') == job_id_val:
                                                     jd_text = r.get('jd', '')
                                                     break
                                         res = ai_agent.deep_analyze_candidate(cv_text_local, jd_text)
