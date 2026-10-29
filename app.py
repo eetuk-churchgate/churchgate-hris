@@ -19422,19 +19422,16 @@ APPLY NOW: {public_url}
                 with st.expander(f"{status_icon} {job['ref']} - {job['title']} | {job['department']} | {status_text}", expanded=False):
                     # Count actual applications for this job (match both REQ and JOB formats)
                     try:
-                        all_candidates = db.get_all_candidates()
+                        all_candidates = get_cached_candidates_hub()
                         app_count = 0
                         if not all_candidates.empty and 'job_id' in all_candidates.columns:
                             job_ref = job['ref']
+                            short_ref = job_ref[-6:] if len(job_ref) >= 6 else job_ref
                             # Try matching REQ- format and JOB- format
                             for _, cand in all_candidates.iterrows():
-                                cand_job = str(cand.get('job_id', ''))
-                                if cand_job == job_ref:
+                                cand_job = str(cand.get('job_id', '')).strip()
+                                if cand_job == job_ref or cand_job[-6:] == short_ref:
                                     app_count += 1
-                                elif 'REQ-' in job_ref and 'JOB-' in cand_job:
-                                    # REQ-202608070900 matches JOB-070900
-                                    if job_ref[-6:] in cand_job:
-                                        app_count += 1
                     except:
                         app_count = 0
                     
@@ -19473,20 +19470,8 @@ APPLY NOW: {public_url}
                     
                     st.markdown("---")
                     
-                    # Application stats
-                    if app_count > 0:
-                        try:
-                            status_counts = job_applications['status'].value_counts().to_dict() if 'status' in job_applications.columns else {}
-                            st.markdown("**📊 Application Pipeline:**")
-                            cols = st.columns(len(status_counts) if status_counts else 1)
-                            for i, (status, count) in enumerate(status_counts.items()):
-                                with cols[i]:
-                                    st.metric(status, count)
-                        except:
-                            pass
-                    
                     # Quick actions
-                    c1, c2, c3, c4 = st.columns(4)
+                    c1, c2, c3 = st.columns(3)
                     with c1:
                         share_url = job['public_url']
                         st.markdown(f"[🔗 LinkedIn Share](https://www.linkedin.com/sharing/share-offsite/?url={share_url})")
@@ -19494,13 +19479,65 @@ APPLY NOW: {public_url}
                         st.markdown(f"[💬 WhatsApp Share](https://wa.me/?text=Job:%20{job['title']}%20at%20Churchgate%20Group%20{share_url})")
                     with c3:
                         st.markdown(f"[📋 View Career Page]({share_url})")
-                    with c4:
-                        if st.button(f"⏹️ Close Job", key=f"close_{job['ref']}"):
+                    
+                    st.markdown("---")
+                    
+                    # ADMIN CONTROLS (Close & Extend)
+                    st.markdown("### ⚙️ Job Controls")
+                    c_ctrl1, c_ctrl2 = st.columns(2)
+                    
+                    # EXTEND DEADLINE
+                    with c_ctrl1:
+                        with st.form(f"extend_form_{job['ref']}"):
+                            st.markdown("**⏳ Extend Deadline**")
+                            new_date = st.date_input("New Closing Date", 
+                                value=datetime.strptime(job['closing'], '%Y-%m-%d') + timedelta(days=7),
+                                key=f"extend_date_{job['ref']}")
+                            
+                            if st.form_submit_button("💾 Update Deadline", use_container_width=True):
+                                new_date_str = new_date.strftime('%Y-%m-%d')
+                                
+                                # 1. Update Session State
+                                for i, req in enumerate(st.session_state.job_requisitions):
+                                    if req.get('id') == job['ref']:
+                                        st.session_state.job_requisitions[i]['closing'] = new_date_str
+                                        break
+                                
+                                # Update active jobs list
+                                for j in st.session_state.active_jobs:
+                                    if j['ref'] == job['ref']:
+                                        j['closing'] = new_date_str
+                                        break
+                                
+                                # 2. Update Database
+                                try:
+                                    db._patch("job_requisitions", {"closing": new_date_str}, {"req_id": job['ref']})
+                                except:
+                                    pass
+                                
+                                st.success(f"✅ Deadline extended to {new_date_str}!")
+                                time.sleep(1)
+                                st.rerun()
+                    
+                    # CLOSE JOB
+                    with c_ctrl2:
+                        st.markdown("**⏹️ Close Job**")
+                        st.markdown("<small style='color:#888;'>This will move the job to Expired.</small>", unsafe_allow_html=True)
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        
+                        if st.button(f"⏹️ Close Job Immediately", key=f"close_{job['ref']}", use_container_width=True, type="primary"):
                             for i, req in enumerate(st.session_state.job_requisitions):
                                 if req.get('id') == job['ref']:
                                     st.session_state.job_requisitions[i]['status'] = 'Expired'
                                     break
                             st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('ref') != job['ref']]
+                            
+                            # Update DB status
+                            try:
+                                db._patch("job_requisitions", {"status": "Expired"}, {"req_id": job['ref']})
+                            except:
+                                pass
+                                
                             st.warning(f"⏹️ {job['title']} closed!")
                             st.rerun()
         
@@ -19524,7 +19561,7 @@ APPLY NOW: {public_url}
                     with c1:
                         if st.button(f"📊 View Report", key=f"report_{req['id']}"):
                             try:
-                                candidates = db.get_all_candidates()
+                                candidates = get_cached_candidates_hub()
                                 job_candidates = candidates[candidates['job_id'] == req['id']] if not candidates.empty else []
                                 st.metric("Total Applicants", len(job_candidates))
                                 if len(job_candidates) > 0:
@@ -19534,13 +19571,27 @@ APPLY NOW: {public_url}
                                 st.info("No application data available.")
                     with c2:
                         if st.button(f"🔄 Repost", key=f"repost_{req['id']}"):
-                            st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
-                            st.session_state.job_requisitions[i]['closing'] = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+                            new_close = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+                            for i, r in enumerate(st.session_state.job_requisitions):
+                                if r.get('id') == req['id']:
+                                    st.session_state.job_requisitions[i]['status'] = 'Approved - Live'
+                                    st.session_state.job_requisitions[i]['closing'] = new_close
+                                    break
+                            
+                            try:
+                                db._patch("job_requisitions", {"status": "Approved - Live", "closing": new_close}, {"req_id": req['id']})
+                            except:
+                                pass
+                            
                             st.success(f"🔄 {req['title']} reposted for 30 days!")
                             st.rerun()
                     with c3:
                         if st.button(f"🗑️ Delete", key=f"del_{req['id']}"):
                             st.session_state.job_requisitions = [r for r in st.session_state.job_requisitions if r['id'] != req['id']]
+                            try:
+                                db._delete("job_requisitions", {"req_id": req['id']})
+                            except:
+                                pass
                             st.success("🗑️ Deleted permanently!")
                             st.rerun()
         
