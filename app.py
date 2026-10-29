@@ -19587,10 +19587,11 @@ APPLY NOW: {public_url}
             
             if not candidates.empty:
                 # ==========================================
-                # BULLETPROOF JOB MAPPING
+                # BULLETPROOF JOB MAPPING (Matches Tab 5 logic)
                 # ==========================================
                 all_reqs = get_cached_requisitions_hub()
                 
+                # Map all variations of IDs to Titles
                 req_id_to_title = {}
                 title_to_req_id = {}
                 
@@ -19600,17 +19601,20 @@ APPLY NOW: {public_url}
                     if req_id and title:
                         req_id_to_title[req_id] = title
                         title_to_req_id[title] = req_id
-                        # Map short IDs
+                        # Add short version (e.g. 261232)
                         if len(req_id) >= 6:
                             req_id_to_title[req_id[-6:]] = title
                             req_id_to_title[f"JOB-{req_id[-6:]}"] = title
 
-                # Build dropdown based on what's actually in the candidates table
+                # Build the dropdown options based ONLY on what actually exists in the candidate table
                 job_options = ["All Jobs"]
-                for cj in candidates['job_id'].dropna().unique():
+                candidate_job_ids = candidates['job_id'].dropna().unique()
+                
+                for cj in candidate_job_ids:
                     cj_str = str(cj).strip()
                     if cj_str and cj_str not in ['None', '', 'nan']:
-                        title = req_id_to_title.get(cj_str, req_id_to_title.get(cj_str[-6:] if len(cj_str) >= 6 else cj_str, cj_str))
+                        # Find the title for this candidate's job_id
+                        title = req_id_to_title.get(cj_str, req_id_to_title.get(cj_str[-6:], cj_str))
                         if title not in job_options and title != cj_str:
                             job_options.append(title)
                             
@@ -19631,33 +19635,30 @@ APPLY NOW: {public_url}
                 # Apply Filters
                 display = candidates.copy()
                 
+                # Status Filter
                 if status_filter != "All":
                     display = display[display['status'].str.lower() == status_filter.lower()]
                 
                 # ==========================================
-                # THE ULTIMATE 3-LAYER SMART FILTER
+                # EXACT MATCH JOB FILTER (Like Tab 5)
                 # ==========================================
                 if job_filter_name != "All Jobs":
-                    target_req_id = str(title_to_req_id.get(job_filter_name, "")).strip()
+                    # 1. Find the target ID for this job
+                    target_req_id = title_to_req_id.get(job_filter_name, "")
                     short_target = target_req_id[-6:] if len(target_req_id) >= 6 else target_req_id
                     
-                    # Layer 1: The Strip Pattern (Last 6 Digits Match)
+                    # 2. Match ID (exact or short version)
                     match_id = (display['job_id'].astype(str).str.strip() == target_req_id) | \
                                (display['job_id'].astype(str).str.strip().str[-6:] == short_target)
                                
-                    # Layer 2: The Position Match
-                    match_position = display['current_position'].astype(str).str.contains(job_filter_name, case=False, na=False)
+                    # 3. Match Title in current_position or CV (The Tab 5 magic)
+                    match_title = display['current_position'].astype(str).str.contains(job_filter_name, case=False, na=False) | \
+                                  display['resume_text'].astype(str).str.contains(job_filter_name, case=False, na=False)
                     
-                    # Layer 3: The CV Keyword Match (Splits title into words > 3 chars)
-                    keywords = [k for k in job_filter_name.replace('.', '').split() if len(k) > 3]
-                    match_cv = pd.Series(False, index=display.index)
-                    if keywords:
-                        for kw in keywords:
-                            match_cv = match_cv | display['resume_text'].astype(str).str.contains(kw, case=False, na=False)
-                    
-                    # COMBINE: If ANY layer matches, show candidate
-                    display = display[match_id | match_position | match_cv]
+                    # Combine (If they have the ID OR the Title, they show up)
+                    display = display[match_id | match_title]
                 
+                # Search Filter
                 if search_cand:
                     s = search_cand.lower()
                     display = display[
@@ -19667,6 +19668,7 @@ APPLY NOW: {public_url}
                         display['job_id'].astype(str).str.lower().str.contains(s, na=False)
                     ]
                 
+                # Sort
                 if sort_by == "Name A-Z":
                     display = display.sort_values('first_name')
                 elif sort_by == "Status":
@@ -19701,12 +19703,13 @@ APPLY NOW: {public_url}
                 end_idx = min(start_idx + items_per_page, len(display))
                 page_display = display.iloc[start_idx:end_idx]
                 
+                # Render ONLY current page
                 for i, (_, cand) in enumerate(page_display.iterrows()):
                     initials = (str(cand.get('first_name', ''))[:1] + str(cand.get('last_name', ''))[:1]).upper()
                     status = cand.get('status', 'New')
                     job_id_val = str(cand.get('job_id', '')).strip()
                     
-                    # Display title
+                    # Display title: check direct, check short, fallback to ID
                     job_title = req_id_to_title.get(job_id_val, req_id_to_title.get(job_id_val[-6:] if len(job_id_val) >= 6 else job_id_val, job_id_val))
                     if job_title == 'None' or not job_title: job_title = 'No Job Specified'
                     
@@ -19735,6 +19738,7 @@ APPLY NOW: {public_url}
                         
                         st.markdown("---")
                         
+                        # CV Display
                         st.markdown("### 📄 CV & Documents")
                         cv_text = str(cand.get('resume_text', ''))
                         cv_url = str(cand.get('cv_url', ''))
@@ -19757,6 +19761,7 @@ APPLY NOW: {public_url}
                         
                         st.markdown("---")
                         
+                        # Quick actions
                         c1, c2, c3, c4 = st.columns(4)
                         with c1:
                             new_status = st.selectbox("Update Status", ["New", "Shortlisted", "Interview Scheduled", "Offered", "Hired", "Rejected"], key=f"status_{cand_ref}_{start_idx}_{i}")
