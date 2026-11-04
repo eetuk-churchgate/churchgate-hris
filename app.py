@@ -19375,12 +19375,13 @@ APPLY NOW: {public_url}
         st.subheader("📢 Active Job Postings")
         
         # ============================================================
-        # AUTO-EXPIRE LOGIC & AUTO-DELETE (RUNS ON LOAD)
+        # AUTO-EXPIRE LOGIC & 90-DAY UI CLEANUP (NO DB DELETION)
         # ============================================================
         now = datetime.now()
         jobs_to_expire = []
-        jobs_to_delete = []
+        jobs_to_hide = []
         
+        # 1. Auto-Expire Live Jobs
         for job in st.session_state.active_jobs:
             try:
                 closing_date = datetime.strptime(job['closing'], '%Y-%m-%d')
@@ -19397,7 +19398,7 @@ APPLY NOW: {public_url}
                     if req.get('id') == ref:
                         st.session_state.job_requisitions[i]['status'] = 'Expired'
                         break
-                # Update Database
+                # Update Database Status ONLY (No Deletion)
                 try:
                     db._patch("job_requisitions", {"status": "Expired"}, {"req_id": ref})
                 except:
@@ -19407,27 +19408,24 @@ APPLY NOW: {public_url}
             st.session_state.active_jobs = [j for j in st.session_state.active_jobs if j.get('ref') not in jobs_to_expire]
             st.rerun()
 
-        # Auto-delete jobs expired for more than 7 days
+        # 2. Hide from UI if expired > 90 days (KEEP IN DB)
         for req in st.session_state.job_requisitions:
             if req.get('status') == 'Expired':
                 try:
                     closing_date = datetime.strptime(req.get('closing', ''), '%Y-%m-%d')
                     days_expired = (now - closing_date).days
-                    if days_expired > 7:
-                        jobs_to_delete.append(req['id'])
+                    if days_expired > 90:
+                        jobs_to_hide.append(req['id'])
                 except:
                     pass
                     
-        if jobs_to_delete:
-            for ref in jobs_to_delete:
+        # Hide from UI (Session Only)
+        if jobs_to_hide:
+            for ref in jobs_to_hide:
                 st.session_state.job_requisitions = [r for r in st.session_state.job_requisitions if r.get('id') != ref]
-                try:
-                    db._delete("job_requisitions", {"req_id": ref})
-                except:
-                    pass
             st.rerun()
 
-        # Get expired jobs (Now accurate)
+        # Get expired jobs for display (Now with 90-day threshold)
         expired_jobs = [req for req in st.session_state.job_requisitions if req.get('status') == 'Expired']
         
         # Stats row
@@ -19583,9 +19581,8 @@ APPLY NOW: {public_url}
         # ===== EXPIRED JOBS =====
         if expired_jobs:
             st.markdown("---")
-            st.markdown("### 🔴 Expired Jobs (Auto-deleted after 7 days)")
+            st.markdown("### 🔴 Expired Jobs (Archived after 90 days)")
             for req in expired_jobs:
-                # Calculate days expired for UI display
                 days_expired = 0
                 try:
                     days_expired = (now - datetime.strptime(req.get('closing', ''), '%Y-%m-%d')).days
@@ -19640,7 +19637,8 @@ APPLY NOW: {public_url}
                             st.success(f"🔄 {req['title']} reposted for 30 days!")
                             st.rerun()
                     with c3:
-                        if st.button(f"🗑️ Delete", key=f"del_{req['id']}"):
+                        # NOTE: This now only deletes from DB if explicitly clicked by admin
+                        if st.button(f"🗑️ Delete Permanently", key=f"del_{req['id']}"):
                             st.session_state.job_requisitions = [r for r in st.session_state.job_requisitions if r['id'] != req['id']]
                             try:
                                 db._delete("job_requisitions", {"req_id": req['id']})
