@@ -13774,6 +13774,182 @@ def staff_confirmation():
                                     tl_name = latest.get('supervisor_name', 'Team Lead')
                                     hod_name = latest.get('hod_name', 'HOD')
                                     
+                                    # ============================================================
+                                    # NEW: HANDLE COO RETURNED FOR REVIEW
+                                    # ============================================================
+                                    if review_status in ['Returned for Review', 'Rejected by COO']:
+                                        st.error(f"🚨 COO Returned this for Review on {latest.get('approved_date', 'N/A')[:10]}")
+                                        st.warning(f"**COO Comments:** {latest.get('coo_comments', 'No comment provided')}")
+                                        
+                                        # Display Full Read-Only Summary (Like Tab 4)
+                                        st.markdown("---")
+                                        st.markdown("### 📋 Full Staff Evaluation Summary")
+                                        
+                                        col1, col2 = st.columns(2)
+                                        with col1:
+                                            st.markdown(f"**👤 Employee:** {latest.get('employee_name','')}")
+                                            st.markdown(f"**💼 Position:** {latest.get('position','')}")
+                                            st.markdown(f"**🏢 Department:** {latest.get('department','')}")
+                                            st.markdown(f"**📍 Region:** {latest.get('region','N/A')} | **🏢 Subsidiary:** {latest.get('subsidiary','N/A')}")
+                                        with col2:
+                                            st.markdown(f"**📅 Join Date:** {latest.get('join_date','N/A')}")
+                                            st.markdown(f"**⏰ Probation End:** {latest.get('probation_end','N/A')}")
+                                            st.markdown(f"**👥 TL:** {tl_name} | **👔 HOD:** {hod_name}")
+
+                                        # Strengths & Weaknesses
+                                        if latest.get('strengths') or latest.get('weaknesses'):
+                                            st.markdown("---")
+                                            sw_col1, sw_col2 = st.columns(2)
+                                            with sw_col1:
+                                                if latest.get('strengths'):
+                                                    st.markdown("**💪 Strengths:**")
+                                                    st.markdown(f"<small>{latest.get('strengths','')}</small>", unsafe_allow_html=True)
+                                            with sw_col2:
+                                                if latest.get('weaknesses'):
+                                                    st.markdown("**📈 Development Areas:**")
+                                                    st.markdown(f"<small>{latest.get('weaknesses','')}</small>", unsafe_allow_html=True)
+
+                                        # Performance Scores Breakdown
+                                        perf_scores = {}
+                                        try:
+                                            perf_raw = latest.get('performance_scores', '{}')
+                                            if isinstance(perf_raw, str):
+                                                perf_scores = json.loads(perf_raw)
+                                        except:
+                                            pass
+                                            
+                                        if perf_scores:
+                                            st.markdown("---")
+                                            st.markdown("**📊 Performance Rating Breakdown:**")
+                                            
+                                            CRITERIA_LABELS = [
+                                                "Quality and Quantity of work", "Knowledge of work and procedures",
+                                                "Requisite/cognate Technical Skills", "Care and Maintenance of Assets",
+                                                "Ability to Communicate", "Interpersonal Relationship & Team Spirit",
+                                                "Dependability/Discipline", "Initiative and Creativity",
+                                                "Leadership", "Potentialities"
+                                            ]
+                                            
+                                            # Build a clean DataFrame for the table
+                                            table_data = []
+                                            for i in range(10):
+                                                val = perf_scores.get(str(i), 0)
+                                                table_data.append({"Criteria": CRITERIA_LABELS[i], "Rating": f"{val}/10"})
+                                            
+                                            st.table(pd.DataFrame(table_data))
+
+                                        # Score Summary
+                                        st.markdown("---")
+                                        st.markdown("**🎯 Score Summary:**")
+                                        sc1, sc2, sc3 = st.columns(3)
+                                        with sc1:
+                                            st.metric("👥 TL Score", f"{latest.get('total_performance_score', 0)}/100")
+                                        with sc2:
+                                            st.metric("👔 HOD Score", f"{latest.get('hod_total_score', 0)}/100")
+                                        with sc3:
+                                            st.metric("🚀 Final Score", f"{latest.get('total_performance_score', 0)}/100", latest.get('performance_rating', 'N/A'))
+
+                                        # Previous Comments Trail
+                                        st.markdown("---")
+                                        st.markdown("**👥 Team Leader / Supervisor Review:**")
+                                        st.markdown(f"*Reviewer:* {tl_name}")
+                                        st.markdown(f"**✅ TL Recommendation:** {latest.get('tl_recommendation','N/A')}")
+                                        st.markdown(f"**💬 TL Comments:**")
+                                        st.info(latest.get('supervisor_comments', 'N/A'))
+
+                                        st.markdown("**👔 HOD Review:**")
+                                        st.markdown(f"*Reviewer:* {hod_name}")
+                                        st.markdown(f"**✅ HOD Decision:** {latest.get('hod_decision','N/A')}")
+                                        st.markdown(f"**💬 HOD Comments:**")
+                                        st.info(latest.get('hod_comments', 'N/A'))
+
+                                        # EDITABLE SCORES FOR RE-REVIEW
+                                        st.markdown("---")
+                                        st.markdown("### ✏️ Update Evaluation (Required after COO Review)")
+                                        
+                                        # 1. Editable HOD Scores
+                                        st.markdown("#### HOD Score Adjustment")
+                                        existing_scores = json.loads(latest.get('hod_scores', '{}')) if latest.get('hod_scores') else {}
+                                        if not existing_scores:
+                                            existing_scores = perf_scores # Fallback to TL scores if HOD didn't save
+                                            
+                                        hod_scores = {}
+                                        for i, criterion in enumerate(CRITERIA_LABELS):
+                                            existing_score = int(existing_scores.get(str(i), 5))
+                                            col1, col2 = st.columns([3, 1])
+                                            with col1: st.markdown(f"**{criterion}**")
+                                            with col2:
+                                                hod_scores[str(i)] = st.number_input("HOD Score", 0, 10, existing_score, key=f"ret_hod_score_{i}_{emp_id}")
+                                        
+                                        hod_total = sum(hod_scores.values())
+                                        
+                                        if hod_total >= 90: hod_rating = "Outstanding"; hod_color = "#38a169"
+                                        elif hod_total >= 70: hod_rating = "Satisfactory"; hod_color = "#3182ce"
+                                        elif hod_total >= 50: hod_rating = "Average"; hod_color = "#d69e2e"
+                                        elif hod_total >= 30: hod_rating = "Unsatisfactory"; hod_color = "#dd6b20"
+                                        else: hod_rating = "Poor"; hod_color = "#CC0000"
+                                        
+                                        st.markdown(f"**HOD TOTAL SCORE: {hod_total} / 100 — <span style='color:{hod_color};font-weight:700;'>{hod_rating}</span>**", unsafe_allow_html=True)
+                                        
+                                        st.markdown("---")
+                                        
+                                        # 2. Editable HOD Decision & Comments
+                                        hod_decision = st.selectbox("HOD Decision *", [
+                                            "✅ Well Fitted / Confirm & Possible Increment",
+                                            "✅ Fitted / Confirm",
+                                            "🔄 Not Fitted / Extend Confirmation (1 Month)",
+                                            "🔄 Not Fitted / Extend Confirmation (2 Months)",
+                                            "🔄 Not Fitted / Extend Confirmation (3 Months)",
+                                            "❌ Not Recommended"
+                                        ], key=f"ret_hod_val_dec_{emp_id}")
+                                        
+                                        hod_comments = st.text_area("HOD Comments *", value=latest.get('hod_comments', ''), key=f"ret_hod_val_com_{emp_id}", height=80)
+                                        
+                                        # 3. Resubmit Button
+                                        if st.button("✅ Resubmit to COO", key=f"ret_hod_val_submit_{emp_id}", use_container_width=True, type="primary"):
+                                            if not hod_comments:
+                                                st.error("❌ HOD comments required!")
+                                            else:
+                                                # Update the record with new scores and status
+                                                db._patch("confirmation_reviews", {
+                                                    "hod_name": user_name,
+                                                    "hod_scores": json.dumps(hod_scores),
+                                                    "hod_total_score": hod_total,
+                                                    "hod_rating": hod_rating,
+                                                    "hod_comments": hod_comments,
+                                                    "hod_decision": hod_decision,
+                                                    "status": "Pending COO Approval" if "Confirm" in hod_decision else "Extension Recommended",
+                                                    "coo_comments": "", # Clear the old COO comment
+                                                    "coo_decision": ""
+                                                }, {"id": latest.get('id')})
+                                                
+                                                if "Confirm" in hod_decision:
+                                                    send_confirmation_email("jeromedas@churchgate.com", 
+                                                        f"🔄 Revised Review: {emp_name}", 
+                                                        f"Dear Jerome,\n\n{user_name} has revised the confirmation review for {emp_name} following your feedback.\n\nNew HOD Score: {hod_total}/100 ({hod_rating})\n\nPlease review and provide your final decision.\n\nhttps://hris.churchgate.com")
+                                                    
+                                                    send_confirmation_email(user_email, 
+                                                        f"📤 Sent to COO: {emp_name}", 
+                                                        f"Your revised validation for {emp_name} has been sent back to COO.")
+                                                    
+                                                    st.success("✅ Revised review sent back to COO!")
+                                                else:
+                                                    hr_team = ["bsakote@churchgate.com", "ichukwunonye@churchgate.com"]
+                                                    for hr_recipient in hr_team:
+                                                        send_confirmation_email(hr_recipient, 
+                                                            f"🔄 Extension: {emp_name}", 
+                                                            f"HR Team,\n\n{user_name} recommended extension for {emp_name} during re-review.\n\nDecision: {hod_decision}")
+                                                    
+                                                    st.warning("🔄 Extension recommended.")
+                                                
+                                                st.balloons()
+                                                st.rerun()
+                                        
+                                        continue # Skip the normal HOD validation form below since we handled the review here
+                                    
+                                    # ============================================================
+                                    # NORMAL HOD VALIDATION (Pending HOD Validation)
+                                    # ============================================================
                                     if review_status == 'Pending HOD Validation' and not is_hod:
                                         st.success(f"✅ Already assessed and submitted for validation")
                                         st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100 ({latest.get('performance_rating','')})")
@@ -13799,8 +13975,8 @@ def staff_confirmation():
                                     elif 'Extension' in review_status:
                                         st.warning(f"🔄 Extension recommended: {review_status}")
                                         continue
-                            except:
-                                pass
+                            except Exception as e:
+                                st.error(f"Error loading review: {e}")
                             
                             # ============================================================
                             # TEAM LEAD FORM — Only for Team Leads, NOT for HODs
