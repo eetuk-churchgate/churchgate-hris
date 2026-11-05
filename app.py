@@ -13771,15 +13771,19 @@ def staff_confirmation():
                                 if emp_review:
                                     latest = emp_review[0]
                                     review_status = latest.get('status', '')
-                                    tl_name = latest.get('supervisor_name', 'Team Lead')
-                                    hod_name = latest.get('hod_name', 'HOD')
+                                    tl_name = latest.get('supervisor_name', 'Team Lead') or 'Team Lead'
+                                    hod_name = latest.get('hod_name', 'HOD') or 'HOD'
                                     
                                     # ============================================================
                                     # NEW: HANDLE COO RETURNED FOR REVIEW
                                     # ============================================================
                                     if review_status in ['Returned for Review', 'Rejected by COO']:
-                                        st.error(f"🚨 COO Returned this for Review on {latest.get('approved_date', 'N/A')[:10]}")
-                                        st.warning(f"**COO Comments:** {latest.get('coo_comments', 'No comment provided')}")
+                                        # SAFE DATE FALLBACK
+                                        approved_date_val = str(latest.get('approved_date') or 'N/A')
+                                        safe_date = approved_date_val[:10] if approved_date_val != 'N/A' else 'N/A'
+                                        
+                                        st.error(f"🚨 COO Returned this for Review on {safe_date}")
+                                        st.warning(f"**COO Comments:** {latest.get('coo_comments') or 'No comment provided'}")
                                         
                                         # Display Full Read-Only Summary (Like Tab 4)
                                         st.markdown("---")
@@ -13787,13 +13791,13 @@ def staff_confirmation():
                                         
                                         col1, col2 = st.columns(2)
                                         with col1:
-                                            st.markdown(f"**👤 Employee:** {latest.get('employee_name','')}")
-                                            st.markdown(f"**💼 Position:** {latest.get('position','')}")
-                                            st.markdown(f"**🏢 Department:** {latest.get('department','')}")
-                                            st.markdown(f"**📍 Region:** {latest.get('region','N/A')} | **🏢 Subsidiary:** {latest.get('subsidiary','N/A')}")
+                                            st.markdown(f"**👤 Employee:** {latest.get('employee_name','') or 'N/A'}")
+                                            st.markdown(f"**💼 Position:** {latest.get('position','') or 'N/A'}")
+                                            st.markdown(f"**🏢 Department:** {latest.get('department','') or 'N/A'}")
+                                            st.markdown(f"**📍 Region:** {latest.get('region','N/A') or 'N/A'} | **🏢 Subsidiary:** {latest.get('subsidiary','N/A') or 'N/A'}")
                                         with col2:
-                                            st.markdown(f"**📅 Join Date:** {latest.get('join_date','N/A')}")
-                                            st.markdown(f"**⏰ Probation End:** {latest.get('probation_end','N/A')}")
+                                            st.markdown(f"**📅 Join Date:** {latest.get('join_date','N/A') or 'N/A'}")
+                                            st.markdown(f"**⏰ Probation End:** {latest.get('probation_end','N/A') or 'N/A'}")
                                             st.markdown(f"**👥 TL:** {tl_name} | **👔 HOD:** {hod_name}")
 
                                         # Strengths & Weaknesses
@@ -13803,16 +13807,16 @@ def staff_confirmation():
                                             with sw_col1:
                                                 if latest.get('strengths'):
                                                     st.markdown("**💪 Strengths:**")
-                                                    st.markdown(f"<small>{latest.get('strengths','')}</small>", unsafe_allow_html=True)
+                                                    st.markdown(f"<small>{latest.get('strengths','') or ''}</small>", unsafe_allow_html=True)
                                             with sw_col2:
                                                 if latest.get('weaknesses'):
                                                     st.markdown("**📈 Development Areas:**")
-                                                    st.markdown(f"<small>{latest.get('weaknesses','')}</small>", unsafe_allow_html=True)
+                                                    st.markdown(f"<small>{latest.get('weaknesses','') or ''}</small>", unsafe_allow_html=True)
 
                                         # Performance Scores Breakdown
                                         perf_scores = {}
                                         try:
-                                            perf_raw = latest.get('performance_scores', '{}')
+                                            perf_raw = latest.get('performance_scores') or '{}'
                                             if isinstance(perf_raw, str):
                                                 perf_scores = json.loads(perf_raw)
                                         except:
@@ -13843,25 +13847,25 @@ def staff_confirmation():
                                         st.markdown("**🎯 Score Summary:**")
                                         sc1, sc2, sc3 = st.columns(3)
                                         with sc1:
-                                            st.metric("👥 TL Score", f"{latest.get('total_performance_score', 0)}/100")
+                                            st.metric("👥 TL Score", f"{latest.get('total_performance_score', 0) or 0}/100")
                                         with sc2:
-                                            st.metric("👔 HOD Score", f"{latest.get('hod_total_score', 0)}/100")
+                                            st.metric("👔 HOD Score", f"{latest.get('hod_total_score', 0) or 0}/100")
                                         with sc3:
-                                            st.metric("🚀 Final Score", f"{latest.get('total_performance_score', 0)}/100", latest.get('performance_rating', 'N/A'))
+                                            st.metric("🚀 Final Score", f"{latest.get('total_performance_score', 0) or 0}/100", latest.get('performance_rating') or 'N/A')
 
                                         # Previous Comments Trail
                                         st.markdown("---")
                                         st.markdown("**👥 Team Leader / Supervisor Review:**")
                                         st.markdown(f"*Reviewer:* {tl_name}")
-                                        st.markdown(f"**✅ TL Recommendation:** {latest.get('tl_recommendation','N/A')}")
+                                        st.markdown(f"**✅ TL Recommendation:** {latest.get('tl_recommendation','N/A') or 'N/A'}")
                                         st.markdown(f"**💬 TL Comments:**")
-                                        st.info(latest.get('supervisor_comments', 'N/A'))
+                                        st.info(latest.get('supervisor_comments') or 'N/A')
 
                                         st.markdown("**👔 HOD Review:**")
                                         st.markdown(f"*Reviewer:* {hod_name}")
-                                        st.markdown(f"**✅ HOD Decision:** {latest.get('hod_decision','N/A')}")
+                                        st.markdown(f"**✅ HOD Decision:** {latest.get('hod_decision','N/A') or 'N/A'}")
                                         st.markdown(f"**💬 HOD Comments:**")
-                                        st.info(latest.get('hod_comments', 'N/A'))
+                                        st.info(latest.get('hod_comments') or 'N/A')
 
                                         # EDITABLE SCORES FOR RE-REVIEW
                                         st.markdown("---")
@@ -13869,7 +13873,14 @@ def staff_confirmation():
                                         
                                         # 1. Editable HOD Scores
                                         st.markdown("#### HOD Score Adjustment")
-                                        existing_scores = json.loads(latest.get('hod_scores', '{}')) if latest.get('hod_scores') else {}
+                                        existing_scores = {}
+                                        try:
+                                            hod_scores_raw = latest.get('hod_scores') or '{}'
+                                            if isinstance(hod_scores_raw, str):
+                                                existing_scores = json.loads(hod_scores_raw)
+                                        except:
+                                            pass
+                                            
                                         if not existing_scores:
                                             existing_scores = perf_scores # Fallback to TL scores if HOD didn't save
                                             
@@ -13903,7 +13914,7 @@ def staff_confirmation():
                                             "❌ Not Recommended"
                                         ], key=f"ret_hod_val_dec_{emp_id}")
                                         
-                                        hod_comments = st.text_area("HOD Comments *", value=latest.get('hod_comments', ''), key=f"ret_hod_val_com_{emp_id}", height=80)
+                                        hod_comments = st.text_area("HOD Comments *", value=latest.get('hod_comments') or '', key=f"ret_hod_val_com_{emp_id}", height=80)
                                         
                                         # 3. Resubmit Button
                                         if st.button("✅ Resubmit to COO", key=f"ret_hod_val_submit_{emp_id}", use_container_width=True, type="primary"):
@@ -13952,20 +13963,20 @@ def staff_confirmation():
                                     # ============================================================
                                     if review_status == 'Pending HOD Validation' and not is_hod:
                                         st.success(f"✅ Already assessed and submitted for validation")
-                                        st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100 ({latest.get('performance_rating','')})")
-                                        st.markdown(f"**{tl_name} Comments:** {latest.get('supervisor_comments','')}")
+                                        st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','') or ''}/100 ({latest.get('performance_rating','') or ''})")
+                                        st.markdown(f"**{tl_name} Comments:** {latest.get('supervisor_comments','') or ''}")
                                         continue
                                     
                                     if review_status == 'Pending HOD Validation' and is_hod:
                                         st.info(f"✅ {tl_name} has assessed - proceed with validation below")
-                                        st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100 ({latest.get('performance_rating','')})")
-                                        st.markdown(f"**{tl_name} Comments:** {latest.get('supervisor_comments','')}")
+                                        st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','') or ''}/100 ({latest.get('performance_rating','') or ''})")
+                                        st.markdown(f"**{tl_name} Comments:** {latest.get('supervisor_comments','') or ''}")
                                     
                                     elif review_status == 'Pending COO Approval':
                                         st.success(f"✅ Already assessed and submitted for confirmation")
-                                        st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','')}/100")
-                                        st.markdown(f"**{hod_name} Score:** {latest.get('hod_total_score','')}/100 ({latest.get('hod_rating','')})")
-                                        st.markdown(f"**{hod_name} Decision:** {latest.get('hod_decision','')}")
+                                        st.markdown(f"**{tl_name} Score:** {latest.get('total_performance_score','') or ''}/100")
+                                        st.markdown(f"**{hod_name} Score:** {latest.get('hod_total_score','') or ''}/100 ({latest.get('hod_rating','') or ''})")
+                                        st.markdown(f"**{hod_name} Decision:** {latest.get('hod_decision','') or ''}")
                                         continue
                                     
                                     elif review_status in ['Approved by COO', 'Letter Sent', 'Completed']:
